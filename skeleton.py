@@ -223,6 +223,8 @@ class Skeleton:
 
         self._zone_number = number
         self._zone_letter = letter
+        if self.is_cartesian():
+            self.set_metadata({"utm_zone": f"{number:02.0f}{letter}"}, append=True)
 
         if not silent:
             print(f"Setting UTM ({number}, {letter})")

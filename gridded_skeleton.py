@@ -140,7 +140,7 @@ class GriddedSkeleton(Skeleton):
 
         """
 
-        def determine_nx_ny(nx, ny, dx, dy, dlon, dlat):
+        def determine_nx_ny(nx, ny, dx, dy, dm, dlon, dlat, dnmi):
             x_end = self.edges("x", native=True)[1]
             y_end = self.edges("y", native=True)[1]
 
@@ -152,7 +152,7 @@ class GriddedSkeleton(Skeleton):
                     dm = dnmi * 1850
                 else:
                     dlat = dnmi / 60
-                    dlon = 1.85 / (dnmi * lon_in_km(np.median(self.lat())))
+                    dlon = dnmi * (1.85 / lon_in_km(np.median(self.lat())))
 
             if dlon and dlat:
                 nx = np.round((self.edges("lon")[1] - self.edges("lon")[0]) / dlon) + 1
@@ -186,7 +186,9 @@ class GriddedSkeleton(Skeleton):
                 "Give a combination of nx/xy, dlon/dlat, dx/dy or dm or dmi"
             )
 
-        nx, ny, native_x_end, native_y_end = determine_nx_ny(nx, ny, dx, dy, dlon, dlat)
+        nx, ny, native_x_end, native_y_end = determine_nx_ny(
+            nx, ny, dx, dy, dm, dlon, dlat, dnmi
+        )
         x_native = np.linspace(self.x(native=True)[0], native_x_end, nx)
         y_native = np.linspace(self.y(native=True)[0], native_y_end, ny)
         if self.is_cartesian():
