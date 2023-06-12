@@ -1,5 +1,5 @@
 import numpy as np
-from .skeletons import Skeleton
+from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
 from .distance_functions import lon_in_km
 
@@ -189,8 +189,11 @@ class GriddedSkeleton(Skeleton):
         nx, ny, native_x_end, native_y_end = determine_nx_ny(
             nx, ny, dx, dy, dm, dlon, dlat, dnmi
         )
-        x_native = np.linspace(self.x(native=True)[0], native_x_end, nx)
-        y_native = np.linspace(self.y(native=True)[0], native_y_end, ny)
+
+        # Unique to not get [0,0,0] etc. arrays if nx=1
+        x_native = np.unique(np.linspace(self.x(native=True)[0], native_x_end, nx))
+        y_native = np.unique(np.linspace(self.y(native=True)[0], native_y_end, ny))
+
         if self.is_cartesian():
             x = x_native
             y = y_native
