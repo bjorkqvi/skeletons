@@ -1,5 +1,5 @@
 import numpy as np
-from .skeleton import Skeleton
+from .skeletons import Skeleton
 
 
 class PointSkeleton(Skeleton):

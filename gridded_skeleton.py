@@ -1,5 +1,5 @@
 import numpy as np
-from .skeleton import Skeleton
+from .skeletons import Skeleton
 from .point_skeleton import PointSkeleton
 from .distance_functions import lon_in_km
 
@@ -218,7 +218,7 @@ class GriddedSkeleton(Skeleton):
 
         string += f"{self.x_str} {x0} - {x1}, {self.y_str}: {y0} - {y1}\n"
 
-        if self.native_dx() is not None:
+        if self.dx(native=True) is not None:
             string += f"d{self.x_str}, d{self.x_str} = {self.dx(native=True)}, {self.native_dy(native=True)}"
 
             if self.native_dx() > 0 and self.native_dy() > 0:

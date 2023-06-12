@@ -63,7 +63,7 @@ class Skeleton:
         if not hasattr(self, "ds_manager"):
             self.ds_manager = DatasetManager(self._coord_manager)
 
-        x, y, lon, lat = sanitize_input(x, y, lon, lat)
+        x, y, lon, lat = sanitize_input(x, y, lon, lat, self.is_gridded())
         x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
 
         self.x_str = x_str
@@ -784,7 +784,7 @@ class Skeleton:
             raise ValueError("name needs to be a string")
 
 
-def sanitize_input(x, y, lon, lat):
+def sanitize_input(x, y, lon, lat, is_gridded_format):
     """Sanitizes input. After this all variables are either
     non-empty np.ndarrays with len >= 1 or None"""
 
@@ -831,6 +831,30 @@ def sanitize_input(x, y, lon, lat):
         lon = None
     if lat is not None and lat.shape == (0,):
         lat = None
+
+    # For point Skeletons duplicate a single value to the correct length (e.g. lon=0, lat=(1,2,3) -> lon=(0,0,0))
+
+    if not is_gridded_format:
+        if x is not None and y is not None:
+            if len(x) != len(y):
+                if len(x) == 1:
+                    x = np.repeat(x[0], len(y))
+                elif len(y) == 1:
+                    y = np.repeat(y[0], len(x))
+                else:
+                    raise Exception(
+                        f"x-vector is {len(x)} long but y-vecor is {len(y)} long!"
+                    )
+        if lon is not None and lat is not None:
+            if len(lon) != len(lat):
+                if len(lon) == 1:
+                    lon = np.repeat(lon[0], len(lat))
+                elif len(lat) == 1:
+                    lat = np.repeat(lat[0], len(lon))
+                else:
+                    raise Exception(
+                        f"x-vector is {len(lon)} long but y-vecor is {len(lat)} long!"
+                    )
 
     if x is None and y is None and lon is None and lat is None:
         raise Exception("x, y, lon, lat cannot ALL be None!")
