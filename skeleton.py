@@ -59,25 +59,27 @@ class Skeleton:
         self._coord_manager.set_initial_coords(self._initial_coords())
         self._coord_manager.set_initial_vars(self._initial_vars())
 
-        # Migth have been already created by decorators
-        if not hasattr(self, "ds_manager"):
-            self.ds_manager = DatasetManager(self._coord_manager)
-
         x, y, lon, lat = sanitize_input(x, y, lon, lat, self.is_gridded())
+
         x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
+
+        if not self._structure_initialized() and self.is_gridded():
+            xvec, yvec = coord_len_to_max_two(xvec), coord_len_to_max_two(yvec)
 
         self.x_str = x_str
         self.y_str = y_str
 
         # The manager contains the Xarray Dataset
-        self.ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
+        if not self._structure_initialized():
+            self._ds_manager = DatasetManager(self._coord_manager)
+        self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
         self.set_utm(silent=True)
 
         self._reset_masks()
         self._reset_datavars()
 
     def _structure_initialized(self) -> bool:
-        return hasattr(self, "ds_manager")
+        return hasattr(self, "_ds_manager")
 
     def _skeleton_empty(self) -> bool:
         if not self._structure_initialized():
@@ -88,7 +90,7 @@ class Skeleton:
         """Absorb another object of same type. This is used e.g. when pathcing
         cached data and joining different Boundary etc. over time.
         """
-        self.ds_manager.set_new_ds(
+        self._ds_manager.set_new_ds(
             xr.concat([self.ds(), obj.ds()], dim=dimension, data_vars="minimal").sortby(
                 dimension
             )
@@ -116,7 +118,7 @@ class Skeleton:
         if updated_mask is None:
             updated_mask = self.get(f"{name}_mask", empty=True)
 
-        self.ds_manager.set(
+        self._ds_manager.set(
             data=updated_mask.astype(int), data_name=f"{name}_mask", coord_type=coords
         )
 
@@ -129,7 +131,7 @@ class Skeleton:
 
         if updated_var is None:
             updated_var = self.get(name, empty=True)
-        self.ds_manager.set(data=updated_var, data_name=name, coord_type=coords)
+        self._ds_manager.set(data=updated_var, data_name=name, coord_type=coords)
 
     def get(self, name, empty=False):
         """Gets a mask or data variable.
@@ -143,7 +145,7 @@ class Skeleton:
         if empty:
             return eval(f"self.{name}(empty=True)")
 
-        data = self.ds_manager.get(name)
+        data = self._ds_manager.get(name)
         if data is None:
             return None
 
@@ -243,7 +245,7 @@ class Skeleton:
     def ds(self):
         if not self._structure_initialized():
             return None
-        return self.ds_manager.ds()
+        return self._ds_manager.ds()
 
     def size(self, type: str = "all", **kwargs) -> tuple[int]:
         """Returns the size of the Dataset.
@@ -255,12 +257,12 @@ class Skeleton:
         """
         if not self._structure_initialized():
             return None
-        return self.ds_manager.coords_to_size(self.ds_manager.coords(type), **kwargs)
+        return self._ds_manager.coords_to_size(self._ds_manager.coords(type), **kwargs)
 
     def inds(self, **kwargs) -> np.ndarray:
         if not self._structure_initialized():
             return None
-        inds = self.ds_manager.get("inds", **kwargs)
+        inds = self._ds_manager.get("inds", **kwargs)
         if inds is None:
             return None
         vals = inds.values.copy()
@@ -295,7 +297,7 @@ class Skeleton:
             return None
 
         if self.is_cartesian():
-            x = self.ds_manager.get("x", **kwargs).values.copy()
+            x = self._ds_manager.get("x", **kwargs).values.copy()
         else:
             number, letter = self.utm()
             if (
@@ -365,7 +367,7 @@ class Skeleton:
             return None
 
         if self.is_cartesian():
-            y = self.ds_manager.get("y", **kwargs).values.copy()
+            y = self._ds_manager.get("y", **kwargs).values.copy()
         else:
             number, letter = self.utm()
             posmask = self.lat(**kwargs) >= 0
@@ -456,7 +458,7 @@ class Skeleton:
             )
 
             return lon
-        return self.ds_manager.get("lon", **kwargs).values.copy()
+        return self._ds_manager.get("lon", **kwargs).values.copy()
 
     def lat(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
         """Returns the spherical lat-coordinate.
@@ -497,7 +499,7 @@ class Skeleton:
             )
             return lat
 
-        return self.ds_manager.get("lat", **kwargs).values.copy()
+        return self._ds_manager.get("lat", **kwargs).values.copy()
 
     def edges(
         self, coord: str, native: bool = False, strict=False
@@ -694,7 +696,7 @@ class Skeleton:
             old_metadata = self.metadata()
             old_metadata.update(metadata)
             metadata = old_metadata
-        self.ds_manager.set_attrs(metadata)
+        self._ds_manager.set_attrs(metadata)
 
     def _set_mask(self, mask_setter, mask_type: str) -> None:
         """Set a mask that represents e.g. Boundary points or spectral output
@@ -833,7 +835,6 @@ def sanitize_input(x, y, lon, lat, is_gridded_format):
         lat = None
 
     # For point Skeletons duplicate a single value to the correct length (e.g. lon=0, lat=(1,2,3) -> lon=(0,0,0))
-
     if not is_gridded_format:
         if x is not None and y is not None:
             if len(x) != len(y):
@@ -855,7 +856,6 @@ def sanitize_input(x, y, lon, lat, is_gridded_format):
                     raise Exception(
                         f"x-vector is {len(lon)} long but y-vecor is {len(lat)} long!"
                     )
-
     if x is None and y is None and lon is None and lat is None:
         raise Exception("x, y, lon, lat cannot ALL be None!")
 
@@ -940,6 +940,8 @@ def force_to_iterable(x, fmt: str = None) -> Iterable:
     if not isinstance(x, Iterable):
         x = [x]
 
+    x = [float(a) for a in x if a is not None]
+
     if fmt == "numpy":
         x = np.array(x)
     elif fmt == "list":
@@ -962,3 +964,9 @@ def valid_utm_zone(utm_zone: tuple[int, str]) -> bool:
         return False
 
     return True
+
+
+def coord_len_to_max_two(xvec):
+    if xvec is not None and len(xvec) > 2:
+        xvec = np.array([min(xvec), max(xvec)])
+    return xvec
