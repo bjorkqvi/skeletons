@@ -60,7 +60,7 @@ class DatasetManager:
             # Check that all added coordinates are provided
             for coord in self.coord_manager.added_coords("all"):
                 if coord not in ds_coords:
-                    if self.ds().get(coord) is not None:
+                    if self.get(coord) is not None:
                         # Add in old coordinate if it is not provided now (can happen when using set_spacing)
                         coord_dict[coord] = self.ds().get(coord).values
                     else:

@@ -26,7 +26,7 @@ def add_datavar(
             if empty:
                 return np.full(self.size(coords, **kwargs), default_value)
 
-            data = self.ds_manager.get(name, **kwargs)
+            data = self._ds_manager.get(name, **kwargs)
             if data_array:
                 return data.copy()
             return data.values.copy()
