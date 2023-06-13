@@ -315,6 +315,9 @@ Nonetheless, converting between different types of skeletons is usually not need
 Expanding **skeletons**
 =============================================
 
+Adding data variables
+--------------------------------------------
+
 The real benefit from skeletons is that you can define your own objects while still retaining all the original methods that are defined to handle the spatial coordinates. As an example, lets define an object that contains gridded significant wave height (hs) data:
 
 .. code-block:: python
@@ -381,3 +384,56 @@ array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
        0.])
+
+Adding additional coordinates
+--------------------------------------------
+
+Although all skeletons will have the x-y or lon-lat spatial coordinates, decorators can be used to add additional coordinates that the possible data is defined on. As an example, lets create a structure to keep water temperature data on a spherical 3D grid:
+
+.. code-block:: python
+  from skeletons import GriddedSkeleton
+  from skeletons.coordinate_factory import add_coord
+  from skeletons.datavar_factory import add_datavar
+  import numpy as np
+
+
+  @add_datavar(name="water_temperature", default_value=10.0)
+  @add_coord(name="z", grid_coord=True)
+  class a3DGrid(GriddedSkeleton):
+      pass
+
+
+  grid = a3DGrid(lon=(25, 30), lat=(58, 62), z=(0, 100))
+  grid.set_spacing(dnmi=1)
+  grid.set_z_spacing(dx=1)
+
+  new_data = np.random.rand(grid.ny(), grid.nx(), len(grid.z()))
+  grid.set_water_temperature(new_data)
+
+
+The ``@add_coord`` decorator does the following:
+  * adds a coordinate named ``z`` to signify the depth
+  * adds the possibility to provide the variable ``z`` when initializing the skeleton
+  * adds a method ``.z()`` to access the values of this coordinate
+  * adds a method ``.set_z_spacing()`` to set the spacing of the coordinate (only ``dx`` and ``nx`` keywords possible)
+  
+The ``@add_datavar`` decordator does the following:
+  * adds a data variable names ``water_temperature`` defined on all three coordinates
+  * sets the default value for this variable to 10
+  * creates a ``.water_temperature()`` method to access that variable
+  * creates a method ``.set_water_temperature()`` that takes a numpy array
+  
+
+Plotting the data
+--------------------------------------------
+
+Skeletons don't have any plotting functionality built in, but since it wraps around xarray datasets, the xarray plotting functions can be used. To plot the surface temperature in the previous example, just use:
+
+.. code-block:: python
+  import matplotlib.pyplot as plt
+  
+  grid.water_temperature(z=0, data_array=True).plot()
+  plt.show()
+  
+.. image:: simple_plot.png
+
