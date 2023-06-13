@@ -304,9 +304,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 lat = np.median(self.lat(**kwargs))
-                print(
-                    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-                )
+                # print(
+                #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
+                # )
                 x, __, __, __ = utm.from_latlon(
                     lat,
                     self.lon(**kwargs),
@@ -376,9 +376,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 lon = np.median(self.lon(**kwargs))
-                print(
-                    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-                )
+                # print(
+                #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
+                # )
                 y = np.zeros(len(self.lat(**kwargs)))
                 if np.any(posmask):
                     _, y[posmask], __, __ = utm.from_latlon(
@@ -443,9 +443,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 y = np.median(self.y(**kwargs))
-                print(
-                    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
-                )
+                # print(
+                #    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
+                # )
             else:
                 y = self.y(**kwargs)
             number, letter = self.utm()
@@ -484,9 +484,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 x = np.median(self.x(**kwargs))
-                print(
-                    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
-                )
+                # print(
+                #    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
+                # )
             else:
                 x = self.x(**kwargs)
             number, letter = self.utm()
@@ -551,8 +551,9 @@ class Skeleton:
         if self.nx() == 1:
             return 0.0
 
-        edges = self.edges("x", native=native)
-        return (edges[1] - edges[0]) / (self.nx() - 1)
+        return (max(self.x(native=native)) - min(self.x(native=native))) / (
+            self.nx() - 1
+        )
 
     def dy(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the y vector. Conversion made for
@@ -566,8 +567,9 @@ class Skeleton:
         if self.ny() == 1:
             return 0.0
 
-        edges = self.edges("y", native=native)
-        return (edges[1] - edges[0]) / (self.ny() - 1)
+        return (max(self.y(native=native)) - min(self.y(native=native))) / (
+            self.ny() - 1
+        )
 
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the longitude vector. Conversion made for
@@ -580,8 +582,9 @@ class Skeleton:
         if self.nx() == 1:
             return 0.0
 
-        edges = self.edges("lon", native=native)
-        return (edges[1] - edges[0]) / (self.nx() - 1)
+        return (max(self.lon(native=native)) - min(self.lon(native=native))) / (
+            self.nx() - 1
+        )
 
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
@@ -594,8 +597,9 @@ class Skeleton:
         if self.ny() == 1:
             return 0.0
 
-        edges = self.edges("lat", native=native)
-        return (edges[1] - edges[0]) / (self.ny() - 1)
+        return (max(self.lat(native=native)) - min(self.lat(native=native))) / (
+            self.ny() - 1
+        )
 
     def yank_point(
         self,
