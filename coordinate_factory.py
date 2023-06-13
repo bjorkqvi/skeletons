@@ -11,6 +11,22 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
 
     This allows for alternative definitions of the get-method elsewere."""
 
+    def set_spacing(self, nx: int = None, dx: float = None):
+        """Sets spacing for added variable"""
+        z = self.get(name)
+
+        if dx is not None:
+            nx = int((max(z) - min(z)) / dx + 1)
+
+        kwargs = {name: np.linspace(min(z), max(z), nx)}
+        self._init_structure(
+            self.x(strict=True),
+            self.y(strict=True),
+            self.lon(strict=True),
+            self.lat(strict=True),
+            **kwargs,
+        )
+
     def get_coord(self, data_array=False, **kwargs):
         if not self._structure_initialized():
             return None
@@ -27,6 +43,8 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
         exec(f"c._{name} = get_coord")
     else:
         exec(f"c.{name} = get_coord")
+
+    exec(f"c.set_{name}_spacing = set_spacing")
     return c
 
 
