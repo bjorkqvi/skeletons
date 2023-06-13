@@ -391,6 +391,7 @@ Adding additional coordinates
 Although all skeletons will have the x-y or lon-lat spatial coordinates, decorators can be used to add additional coordinates that the possible data is defined on. As an example, lets create a structure to keep water temperature data on a spherical 3D grid:
 
 .. code-block:: python
+
   from skeletons import GriddedSkeleton
   from skeletons.coordinate_factory import add_coord
   from skeletons.datavar_factory import add_datavar
@@ -430,6 +431,7 @@ Plotting the data
 Skeletons don't have any plotting functionality built in, but since it wraps around xarray datasets, the xarray plotting functions can be used. To plot the surface temperature in the previous example, just use:
 
 .. code-block:: python
+
   import matplotlib.pyplot as plt
   
   grid.water_temperature(z=0, data_array=True).plot()
@@ -437,3 +439,4 @@ Skeletons don't have any plotting functionality built in, but since it wraps aro
   
 .. image:: simple_plot.png
 
+Here, the ``data_array=True`` tells the method to return the xarray data array instead of a numpy array of the values.
