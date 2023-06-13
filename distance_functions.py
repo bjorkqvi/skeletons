@@ -1,4 +1,5 @@
 import geopy.distance
+import numpy as np
 
 
 def min_distance(lon, lat, lon_vec, lat_vec) -> tuple[float, int]:
