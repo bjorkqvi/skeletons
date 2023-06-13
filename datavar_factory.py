@@ -31,6 +31,9 @@ def add_datavar(
                 return data.copy()
             return data.values.copy()
 
+        def set_var(self, data: np.ndarray = None) -> None:
+            self._update_datavar(name, data)
+
         if not hasattr(c, "_coord_manager"):
             c._coord_manager = CoordinateManager()
 
@@ -41,8 +44,10 @@ def add_datavar(
         else:
             if aftermath:
                 exec(f"c.{name} = partial(get_var, c)")
+                exec(f"c.set_{name} = partial(set_var, c)")
             else:
                 exec(f"c.{name} = get_var")
+                exec(f"c.set_{name} = set_var")
 
         return c
 
