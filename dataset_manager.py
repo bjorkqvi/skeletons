@@ -60,9 +60,13 @@ class DatasetManager:
             # Check that all added coordinates are provided
             for coord in self.coord_manager.added_coords("all"):
                 if coord not in ds_coords:
-                    raise ValueError(
-                        f"Coordinate '{coord}' has been added (by a decorator?) but it was not provided when the Dataset ({ds_coords}) was created!"
-                    )
+                    if self.ds().get(coord) is not None:
+                        # Add in old coordinate if it is not provided now (can happen when using set_spacing)
+                        coord_dict[coord] = self.ds().get(coord).values
+                    else:
+                        raise ValueError(
+                            f"Coordinate '{coord}' has been added (by a decorator?) but it was not provided when the Dataset ({ds_coords}) was created!"
+                        )
 
             # Check that all provided coordinates have been added
             for coord in set(ds_coords) - set(SPATIAL_COORDS):

@@ -5,16 +5,16 @@ import numpy as np
 from .coordinate_manager import CoordinateManager
 
 
-def coord_decorator(coord_name, grid_coord, c, stash_get=False):
+def coord_decorator(name, grid_coord, c, stash_get=False):
     """stash_get = True means that the coordinate data can be accessed
-    by method ._{coord_name}() instead of .{coord_name}()
+    by method ._{name}() instead of .{name}()
 
     This allows for alternative definitions of the get-method elsewere."""
 
     def get_coord(self, data_array=False, **kwargs):
         if not self._structure_initialized():
             return None
-        data = self.ds_manager.get(coord_name, **kwargs)
+        data = self._ds_manager.get(name, **kwargs)
         if data_array:
             return data
         return data.values.copy()
@@ -22,20 +22,20 @@ def coord_decorator(coord_name, grid_coord, c, stash_get=False):
     if not hasattr(c, "_coord_manager"):
         c._coord_manager = CoordinateManager()
 
-    c._coord_manager.add_coord(coord_name, grid_coord)
+    c._coord_manager.add_coord(name, grid_coord)
     if stash_get:
-        exec(f"c._{coord_name} = get_coord")
+        exec(f"c._{name} = get_coord")
     else:
-        exec(f"c.{coord_name} = get_coord")
+        exec(f"c.{name} = get_coord")
     return c
 
 
-def add_dummy(grid_coord: bool = False, coord_name: str = "dummy"):
-    """Template for how to add new coordinate decorators."""
-    return partial(coord_decorator, coord_name, grid_coord)
+def add_coord(grid_coord: bool = False, name: str = "dummy"):
+    """Add a generic coordinate with no customized methods."""
+    return partial(coord_decorator, name, grid_coord)
 
 
-def add_time(grid_coord: bool = False, coord_name: str = "time"):
+def add_time(grid_coord: bool = False, name: str = "time"):
     def wrapper(c):
         def unique_times(times, strf: str):
             return np.unique(np.array(pd.to_datetime(times).strftime(strf).to_list()))
@@ -44,7 +44,7 @@ def add_time(grid_coord: bool = False, coord_name: str = "time"):
             """Determins a Pandas data range of all the days in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self.ds_manager.get(coord_name).values.copy()
+            times = self._ds_manager.get(name).values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d %H"))
             else:
@@ -54,7 +54,7 @@ def add_time(grid_coord: bool = False, coord_name: str = "time"):
             """Determins a Pandas data range of all the days in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self.ds_manager.get(coord_name).values.copy()
+            times = self._ds_manager.get(name).values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d"))
             else:
@@ -64,7 +64,7 @@ def add_time(grid_coord: bool = False, coord_name: str = "time"):
             """Determins a Pandas data range of all the months in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self.ds_manager.get(coord_name).values.copy()
+            times = self._ds_manager.get(name).values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m"))
             else:
@@ -74,7 +74,7 @@ def add_time(grid_coord: bool = False, coord_name: str = "time"):
             """Determins a Pandas data range of all the months in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self.ds_manager.get(coord_name).values.copy()
+            times = self._ds_manager.get(name).values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y"))
             else:
@@ -83,7 +83,7 @@ def add_time(grid_coord: bool = False, coord_name: str = "time"):
         def get_time(self, data_array=False, **kwargs):
             if not self._structure_initialized():
                 return (None, None)
-            data = self.ds_manager.get(coord_name, **kwargs)
+            data = self._ds_manager.get(name, **kwargs)
             if data_array:
                 return data
             if len(data.values) > 1:
@@ -93,8 +93,8 @@ def add_time(grid_coord: bool = False, coord_name: str = "time"):
         if not hasattr(c, "_coord_manager"):
             c._coord_manager = CoordinateManager()
 
-        c._coord_manager.add_coord(coord_name, grid_coord)
-        exec(f"c.{coord_name} = get_time")
+        c._coord_manager.add_coord(name, grid_coord)
+        exec(f"c.{name} = get_time")
 
         c.days = days
         c.months = months
@@ -104,12 +104,12 @@ def add_time(grid_coord: bool = False, coord_name: str = "time"):
     return wrapper
 
 
-def add_frequency(grid_coord: bool = False, coord_name: str = "freq"):
+def add_frequency(grid_coord: bool = False, name: str = "freq"):
     def wrapper(c):
         def get_freq(self, angular=False):
             if not self._structure_initialized():
                 return None
-            freq = self.ds_manager.get(coord_name).values.copy()
+            freq = self._ds_manager.get(name).values.copy()
             if angular:
                 freq = 2 * np.pi * freq
             return freq
@@ -122,8 +122,8 @@ def add_frequency(grid_coord: bool = False, coord_name: str = "freq"):
 
         if not hasattr(c, "_coord_manager"):
             c._coord_manager = CoordinateManager()
-        c._coord_manager.add_coord(coord_name, grid_coord)
-        exec(f"c.{coord_name} = get_freq")
+        c._coord_manager.add_coord(name, grid_coord)
+        exec(f"c.{name} = get_freq")
         c.df = df
 
         return c
@@ -131,12 +131,12 @@ def add_frequency(grid_coord: bool = False, coord_name: str = "freq"):
     return wrapper
 
 
-def add_direction(grid_coord: bool = False, coord_name: str = "dirs"):
+def add_direction(grid_coord: bool = False, name: str = "dirs"):
     def wrapper(c):
         def get_dirs(self, radians=False):
             if not self._structure_initialized():
                 return None
-            dirs = self.ds_manager.get(coord_name).values.copy()
+            dirs = self._ds_manager.get(name).values.copy()
             if radians:
                 dirs = dirs * np.pi / 180
             return dirs
@@ -150,8 +150,8 @@ def add_direction(grid_coord: bool = False, coord_name: str = "dirs"):
 
         if not hasattr(c, "_coord_manager"):
             c._coord_manager = CoordinateManager()
-        c._coord_manager.add_coord(coord_name, grid_coord)
-        exec(f"c.{coord_name} = get_dirs")
+        c._coord_manager.add_coord(name, grid_coord)
+        exec(f"c.{name} = get_dirs")
         c.dd = ddir
         return c
 
