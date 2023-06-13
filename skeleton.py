@@ -40,8 +40,8 @@ class Skeleton:
     Keeps track of the native structure of the grid (cartesian UTM / sperical).
     """
 
-    def __init__(self, x=None, y=None, lon=None, lat=None) -> None:
-        self._init_structure(x, y, lon, lat)
+    def __init__(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
+        self._init_structure(x, y, lon, lat, **kwargs)
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
@@ -59,7 +59,9 @@ class Skeleton:
         self._coord_manager.set_initial_coords(self._initial_coords())
         self._coord_manager.set_initial_vars(self._initial_vars())
 
-        x, y, lon, lat = sanitize_input(x, y, lon, lat, self.is_gridded())
+        x, y, lon, lat, kwargs = sanitize_input(
+            x, y, lon, lat, self.is_gridded(), self._structure_initialized(), **kwargs
+        )
 
         x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
 
@@ -790,80 +792,96 @@ class Skeleton:
             raise ValueError("name needs to be a string")
 
 
-def sanitize_input(x, y, lon, lat, is_gridded_format):
-    """Sanitizes input. After this all variables are either
-    non-empty np.ndarrays with len >= 1 or None"""
+def coord_len_to_max_two(xvec):
+    if xvec is not None and len(xvec) > 2:
+        xvec = np.array([min(xvec), max(xvec)])
+    return xvec
+
+
+def sanitize_singe_variable(name: str, x):
+    """Forces to nump array and checks dimensions etc"""
 
     x = force_to_iterable(x, fmt="numpy")
-    y = force_to_iterable(y, fmt="numpy")
-    lon = force_to_iterable(lon, fmt="numpy")
-    lat = force_to_iterable(lat, fmt="numpy")
-    ## By now we should have numpy arrays
 
     # np.array([None, None]) -> None
     if x is None or all(v is None for v in x):
         x = None
-    if y is None or all(v is None for v in y):
-        y = None
-    if lon is None or all(v is None for v in lon):
-        lon = None
-    if lat is None or all(v is None for v in lat):
-        lat = None
 
-    # Throw error if lon.shape = (1,509) or something
-    if lon is not None and len(lon.shape) > 1:
-        raise Exception(
-            f"Longitude vector should have one dimension, but it has dimensions {lon.shape}!"
-        )
-    if lat is not None and len(lat.shape) > 1:
-        raise Exception(
-            f"Latitude vector should have one dimension, but it has dimensions {lat.shape}!"
-        )
     if x is not None and len(x.shape) > 1:
         raise Exception(
-            f"Cartesian x vector should have one dimension, but it has dimensions {x.shape}!"
-        )
-    if y is not None and len(y.shape) > 1:
-        raise Exception(
-            f"Cartesian y vector should have one dimension, but it has dimensions {y.shape}!"
+            f"Vector {name} should have one dimension, but it has dimensions {x.shape}!"
         )
 
     # Set np.array([]) to None
     if x is not None and x.shape == (0,):
         x = None
-    if y is not None and y.shape == (0,):
-        y = None
-    if lon is not None and lon.shape == (0,):
-        lon = None
-    if lat is not None and lat.shape == (0,):
-        lat = None
 
-    # For point Skeletons duplicate a single value to the correct length (e.g. lon=0, lat=(1,2,3) -> lon=(0,0,0))
+    return x
+
+
+def sanitize_point_structure(spatial: dict) -> dict:
+    """Repeats a single value to match lenths of arrays"""
+    x = spatial.get("x")
+    y = spatial.get("y")
+    lon = spatial.get("lon")
+    lat = spatial.get("lat")
+
+    if x is not None and y is not None:
+        if len(x) != len(y):
+            if len(x) == 1:
+                spatial["x"] = np.repeat(x[0], len(y))
+            elif len(y) == 1:
+                spatial["y"] = np.repeat(y[0], len(x))
+            else:
+                raise Exception(
+                    f"x-vector is {len(x)} long but y-vecor is {len(y)} long!"
+                )
+    if lon is not None and lat is not None:
+        if len(lon) != len(lat):
+            if len(lon) == 1:
+                spatial["lon"] = np.repeat(lon[0], len(lat))
+            elif len(lat) == 1:
+                spatial["lat"] = np.repeat(lat[0], len(lon))
+            else:
+                raise Exception(
+                    f"x-vector is {len(lon)} long but y-vecor is {len(lat)} long!"
+                )
+
+    return spatial
+
+
+def get_edges_of_arrays(spatial: dict) -> dict:
+    """Takes only edges of arrays, so [1,2,3] -> [1,3]"""
+    for key, value in spatial.items():
+        if value is not None:
+            spatial[key] = coord_len_to_max_two(value)
+
+    return spatial
+
+
+def sanitize_input(x, y, lon, lat, is_gridded_format, is_initialized, **kwargs):
+    """Sanitizes input. After this all variables are either
+    non-empty np.ndarrays with len >= 1 or None"""
+
+    spatial = {"x": x, "y": y, "lon": lon, "lat": lat}
+    for key, value in spatial.items():
+        spatial[key] = sanitize_singe_variable(key, value)
+
+    other = {}
+    for key, value in kwargs.items():
+        if key != "time":
+            other[key] = sanitize_singe_variable(key, value)
+
     if not is_gridded_format:
-        if x is not None and y is not None:
-            if len(x) != len(y):
-                if len(x) == 1:
-                    x = np.repeat(x[0], len(y))
-                elif len(y) == 1:
-                    y = np.repeat(y[0], len(x))
-                else:
-                    raise Exception(
-                        f"x-vector is {len(x)} long but y-vecor is {len(y)} long!"
-                    )
-        if lon is not None and lat is not None:
-            if len(lon) != len(lat):
-                if len(lon) == 1:
-                    lon = np.repeat(lon[0], len(lat))
-                elif len(lat) == 1:
-                    lat = np.repeat(lat[0], len(lon))
-                else:
-                    raise Exception(
-                        f"x-vector is {len(lon)} long but y-vecor is {len(lat)} long!"
-                    )
-    if x is None and y is None and lon is None and lat is None:
+        spatial = sanitize_point_structure(spatial)
+    else:
+        if not is_initialized:
+            spatial = get_edges_of_arrays(spatial)
+
+    if np.all([a is None for a in spatial.values()]):
         raise Exception("x, y, lon, lat cannot ALL be None!")
 
-    return x, y, lon, lat
+    return spatial["x"], spatial["y"], spatial["lon"], spatial["lat"], other
 
 
 def will_grid_be_spherical_or_cartesian(x, y, lon, lat):
@@ -968,9 +986,3 @@ def valid_utm_zone(utm_zone: tuple[int, str]) -> bool:
         return False
 
     return True
-
-
-def coord_len_to_max_two(xvec):
-    if xvec is not None and len(xvec) > 2:
-        xvec = np.array([min(xvec), max(xvec)])
-    return xvec

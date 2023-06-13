@@ -1,8 +1,6 @@
 class CoordinateManager:
     """Keeps track of coordinates and data variables that are added to classes
-    by the decorators.
-
-    Also contains list of strings of fixed coordinates used by Skeleton."""
+    by the decorators."""
 
     def __init__(self) -> None:
         self.coords = {}
