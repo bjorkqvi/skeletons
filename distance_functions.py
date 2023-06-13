@@ -30,6 +30,12 @@ def lon_in_km(lat: float) -> float:
     return distance_2points(lat, 0, lat, 1)
 
 
+def lat_in_km(lat: float) -> float:
+    """Converts one latitude degree to km for a given latitude."""
+
+    return distance_2points(lat, 0, lat + 1, 0)
+
+
 def domain_size_in_km(
     lon: tuple[float, float], lat: tuple[float, float]
 ) -> tuple[float, float]:

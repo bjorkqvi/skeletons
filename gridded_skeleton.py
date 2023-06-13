@@ -1,7 +1,7 @@
 import numpy as np
 from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
-from .distance_functions import lon_in_km
+from .distance_functions import lon_in_km, lat_in_km
 
 
 class GriddedSkeleton(Skeleton):
@@ -152,7 +152,9 @@ class GriddedSkeleton(Skeleton):
                     dm = dnmi * 1850
                 else:
                     dlat = dnmi / 60
-                    dlon = dnmi * (1.85 / lon_in_km(np.median(self.lat())))
+                    x_km = lon_in_km(np.median(self.lat()))
+                    y_km = lat_in_km(np.median(self.lat()))
+                    dlon = dlat * (y_km / x_km)
 
             if dlon and dlat:
                 nx = np.round((self.edges("lon")[1] - self.edges("lon")[0]) / dlon) + 1
