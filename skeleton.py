@@ -627,8 +627,6 @@ class Skeleton:
         lon = force_to_iterable(lon)
         lat = force_to_iterable(lat)
 
-        breakpoint()
-
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
 
@@ -704,21 +702,21 @@ class Skeleton:
             metadata = old_metadata
         self._ds_manager.set_attrs(metadata)
 
-    def _set_mask(self, mask_setter, mask_type: str) -> None:
-        """Set a mask that represents e.g. Boundary points or spectral output
-        point.
+    # def _set_mask(self, mask_setter, mask_type: str) -> None:
+    #     """Set a mask that represents e.g. Boundary points or spectral output
+    #     point.
 
-        NB! Points can overlap with land!
-        """
+    #     NB! Points can overlap with land!
+    #     """
 
-        if mask_type is None:
-            print(f"Provide mask_type variable.")
+    #     if mask_type is None:
+    #         print(f"Provide mask_type variable.")
 
-        print(f"Setting {mask_type} points...")
-        print(mask_setter)
+    #     print(f"Setting {mask_type} points...")
+    #     print(mask_setter)
 
-        mask = mask_setter(self)
-        self._update_mask(mask_type, mask)
+    #     mask = mask_setter(self)
+    #     self._update_mask(mask_type, mask)
 
     def masks(self):
         mask_list = []
