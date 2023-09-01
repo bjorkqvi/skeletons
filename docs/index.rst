@@ -375,15 +375,102 @@ The newly created ``.hs()`` method works directly with the xarray Dataset, and s
        [0., 0., 0., ..., 0., 0., 0.],
        [0., 0., 0., ..., 0., 0., 0.]])
 
->>> data.hs(lon=3)
-array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-       0.])
+  >>> data.hs(lon=3)
+  array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0.])
+
+
+Adding masks
+--------------------------------------------
+
+Logical masks (for example marking land points or points of interest) can be added to the skeletons. To for example add a land-sea mask to the previous example:
+
+.. code-block:: python
+
+  from skeletons import GriddedSkeleton
+  from skeletons.datavar_factory import add_datavar
+  from skeletons.mask_factory import add_mask
+
+  @add_datavar(name='hs', default_value=0.)
+  @add_mask(name='sea', default_value=1, coords='grid', opposite_name='land')
+  class WaveHeight(GriddedSkeleton):
+    pass
+
+This creates a logical mask that has value true for sea points. The ``opposite_name`` options automatically create a land mask that is false for poits that are not sea points.
+
+.. code-block:: python
+
+  data = WaveHeight(lon=(3,5), lat=(60,61))
+  data.set_spacing(dm=1000)
+
+  >>> data.land_mask()
+  array([[False, False, False, ..., False, False, False],
+         [False, False, False, ..., False, False, False],
+         [False, False, False, ..., False, False, False],
+         ...,
+         [False, False, False, ..., False, False, False],
+         [False, False, False, ..., False, False, False],
+         [False, False, False, ..., False, False, False]])
+  
+  >>> data.sea_mask()
+  array([[ True,  True,  True, ...,  True,  True,  True],
+         [ True,  True,  True, ...,  True,  True,  True],
+         [ True,  True,  True, ...,  True,  True,  True],
+         ...,
+         [ True,  True,  True, ...,  True,  True,  True],
+         [ True,  True,  True, ...,  True,  True,  True],
+         [ True,  True,  True, ...,  True,  True,  True]])
+
+
+To set a new mask, you can use the created methods. To e.g. set all points to land, you can either set sea points to false
+
+.. code-block:: python
+
+  new_mask = np.zeros(data.size())
+  data.set_sea_mask(new_mask)
+
+or land points to true
+
+.. code-block:: python
+
+  new_mask = np.ones(data.size())
+  data.set_land_mask(new_mask)
+
+Only the sea mask is saved in the underlying xarray dataset, meaning that the land and the sea mask will always be consistent.
+
+.. code-block:: python
+
+  >>> data.ds()
+  <xarray.Dataset>
+  Dimensions:   (lat: 120, lon: 119)
+  Coordinates:
+    * lat       (lat) float64 60.0 60.01 60.02 60.03 ... 60.97 60.98 60.99 61.0
+    * lon       (lon) float64 3.0 3.017 3.034 3.051 ... 4.949 4.966 4.983 5.0
+  Data variables:
+      sea_mask  (lat, lon) int64 0 0 0 0 0 0 0 0 0 0 0 0 ... 0 0 0 0 0 0 0 0 0 0 0
+      hs        (lat, lon) float64 0.0 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0 0.0
+
+You can also access the coordinates of the points in the mask. Let's set all points to sea points except the northern (upper) edge:
+
+.. code-block:: python
+
+  new_mask = np.ones(data.size())
+  new_mask[0,:] = 0
+  data.set_sea_mask(new_mask)
+
+  lon, lat = data.land_points()
+
+Where ``lon`` and ``lat`` now gives the coordinates of the land points. Notice, that this is just a convinently named wrapper for
+
+.. code-block:: python
+
+  lon, lat = data.lonlat(mask=data.land_mask())
 
 Adding additional coordinates
 --------------------------------------------
