@@ -1,6 +1,6 @@
 import numpy as np
 from .coordinate_manager import CoordinateManager
-from functools import partial
+from typing import Union
 
 
 def add_datavar(
@@ -31,7 +31,9 @@ def add_datavar(
                 return data.copy()
             return data.values.copy()
 
-        def set_var(self, data: np.ndarray = None) -> None:
+        def set_var(self, data: Union[np.ndarray, int, float] = None) -> None:
+            if isinstance(data, int) or isinstance(data, float):
+                data = np.full(self._ds_manager.get(name).shape, data)
             self._update_datavar(name, data)
 
         if not hasattr(c, "_coord_manager"):
