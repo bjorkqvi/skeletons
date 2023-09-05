@@ -625,38 +625,26 @@ class Skeleton:
 
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
 
-        x = force_to_iterable(x)
-        y = force_to_iterable(y)
-        lon = force_to_iterable(lon)
-        lat = force_to_iterable(lat)
+        x = force_to_iterable(x, fmt="numpy")
+        y = force_to_iterable(y, fmt="numpy")
+        lon = force_to_iterable(lon, fmt="numpy")
+        lat = force_to_iterable(lat, fmt="numpy")
 
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
 
         orig_zone = self.utm()
         if lon is not None and lat is not None:
-            x = []
-            y = []
-            for lo, la in zip(lon, lat):
-                xx, yy, zone_number, zone_letter = utm.from_latlon(la, lo)
-                x.append(xx)
-                y.append(yy)
-            self.set_utm(zone_number, zone_letter, silent=True)
+            x, y, zone_number, zone_letter = utm.from_latlon(lat, lon)
+            self.set_utm((zone_number, zone_letter), silent=True)
         else:
-            lon = []
-            lat = []
-            for xx, yy in zip(x, y):
-                llat, llon = utm.to_latlon(
-                    xx,
-                    yy,
-                    zone_number=orig_zone[0],
-                    zone_letter=orig_zone[1],
-                    strict=False,
-                )
-                lon.append(llon)
-                lat.append(llat)
-            lat = np.array(lat)
-            lon = np.array(lon)
+            lat, lon = utm.to_latlon(
+                x,
+                y,
+                zone_number=orig_zone[0],
+                zone_letter=orig_zone[1],
+                strict=False,
+            )
 
         posmask = np.logical_or(lat > 84, lat < -84)
         inds = []
@@ -668,12 +656,13 @@ class Skeleton:
             if mask:
                 dxx, ii = min_distance(
                     llon, llat, lonlist, latlist
-                )  # Slower, but works for hig/low latitudes
+                )  # Slower, but works for high/low latitudes
             else:
                 dxx, ii = min_cartesian_distance(xx, yy, xlist, ylist)
             inds.append(ii)
             dx.append(dxx)
         self.set_utm(orig_zone, silent=True)  # Reset UTM zone
+
         if unique:
             inds = np.unique(inds)
 

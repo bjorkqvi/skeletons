@@ -1,4 +1,4 @@
-from ..gridded_skeleton import PointSkeleton
+from ..point_skeleton import PointSkeleton
 import numpy as np
 
 
@@ -17,7 +17,7 @@ def test_yank_several_points_with_exact_coordinates():
     assert len(yanked_points["inds"]) == 3
     assert len(yanked_points["dx"]) == 3
     np.testing.assert_array_equal(yanked_points["inds"], np.array([0, 2, 4]))
-    np.testing.assert_array_almost_equal(yanked_points["dx"][0], np.array([0, 0, 0]))
+    np.testing.assert_array_almost_equal(yanked_points["dx"], np.array([0, 0, 0]))
 
 
 def test_yank_one_point_with_close_coordinate():
