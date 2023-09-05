@@ -649,12 +649,14 @@ class Skeleton:
                 llat, llon = utm.to_latlon(
                     xx,
                     yy,
-                    zone_number=zone_number,
-                    zone_letter=zone_letter,
+                    zone_number=orig_zone[0],
+                    zone_letter=orig_zone[1],
                     strict=False,
                 )
                 lon.append(llon)
                 lat.append(llat)
+            lat = np.array(lat)
+            lon = np.array(lon)
 
         posmask = np.logical_or(lat > 84, lat < -84)
         inds = []
