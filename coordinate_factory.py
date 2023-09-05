@@ -114,6 +114,7 @@ def add_time(grid_coord: bool = False, name: str = "time"):
         c._coord_manager.add_coord(name, grid_coord)
         exec(f"c.{name} = get_time")
 
+        c.hours = hours
         c.days = days
         c.months = months
         c.years = years

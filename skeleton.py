@@ -249,17 +249,19 @@ class Skeleton:
             return None
         return self._ds_manager.ds()
 
-    def size(self, type: str = "all", **kwargs) -> tuple[int]:
+    def size(self, coords: str = "all", **kwargs) -> tuple[int]:
         """Returns the size of the Dataset.
 
-        'all': size of entire Dataset
+        'all' [default]: size of entire Dataset
         'spatial': size over coordinates from the Skeleton (x, y, lon, lat, inds)
         'grid': size over coordinates for the grid (e.g. z, time)
         'gridpoint': size over coordinates for a grid point (e.g. frequency, direcion or time)
         """
         if not self._structure_initialized():
             return None
-        return self._ds_manager.coords_to_size(self._ds_manager.coords(type), **kwargs)
+        return self._ds_manager.coords_to_size(
+            self._ds_manager.coords(coords), **kwargs
+        )
 
     def inds(self, **kwargs) -> np.ndarray:
         if not self._structure_initialized():
@@ -869,6 +871,8 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, is_initialized, **kwargs):
     for key, value in kwargs.items():
         if key != "time":
             other[key] = sanitize_singe_variable(key, value)
+        else:
+            other[key] = value
 
     if not is_gridded_format:
         spatial = sanitize_point_structure(spatial)
