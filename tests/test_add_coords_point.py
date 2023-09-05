@@ -52,6 +52,9 @@ def test_2d_spectrum():
     np.testing.assert_array_almost_equal(spec.dirs(), dirs)
     np.testing.assert_array_almost_equal(spec.freq(angular=True), freqs * 2 * np.pi)
     np.testing.assert_array_almost_equal(spec.dirs(radians=True), dirs * np.pi / 180)
+    np.testing.assert_almost_equal(spec.dd(), 10)
+    np.testing.assert_almost_equal(spec.dd(radians=True), 10 * np.pi / 180)
+    np.testing.assert_almost_equal(spec.df(angular=True), 0.1 * 2 * np.pi)
 
     assert spec.size() == (2, len(freqs), len(dirs))
     assert spec.size(coords="all") == (2, len(freqs), len(dirs))
@@ -121,7 +124,7 @@ def test_timeseries():
 
     for n, t in enumerate(times):
         assert t == ts.time()[n]
-
+        assert t == ts.hours()[n]
     days = ts.days(datetime=True)[0:-1]
     reconstructed_days = [
         pd.to_datetime(f"2018-01-{dd:02.0f}") for dd in np.linspace(1, 31, 31)

@@ -163,7 +163,7 @@ def add_direction(grid_coord: bool = False, name: str = "dirs"):
         def ddir(self, radians=False):
             if not self._structure_initialized():
                 return None
-            dirs = get_dirs(self, radians=False).values.copy()
+            dirs = get_dirs(self, radians=False).copy()
             dmax = 2 * np.pi if radians else 360
             return dmax / len(dirs)
 
