@@ -94,7 +94,6 @@ class DatasetManager:
                     value = self.get(key)
 
                 if value is None:
-                    breakpoint()
                     raise KeyError(
                         f"The variable {key} was not provided in the keyword list when the object was initialized!"
                     )
@@ -108,7 +107,6 @@ class DatasetManager:
                     value = self.get(key)
 
                 if value is None:
-                    breakpoint()
                     raise KeyError(
                         f"The variable {key} was not provided in the keyword list when the object was initialized!"
                     )
@@ -149,6 +147,7 @@ class DatasetManager:
         var_dict = determine_vars()
 
         check_consistency()
+
         self.set_new_ds(xr.Dataset(coords=coord_dict, data_vars=var_dict))
 
     def set_new_ds(self, ds: xr.Dataset) -> None:
@@ -303,15 +302,15 @@ class DatasetManager:
         all_coords = list(self.ds().coords)
 
         if coords == "all":
-            return all_coords
+            return move_time_dim_to_front(all_coords)
         if coords == "spatial":
-            return list_intersection(all_coords, SPATIAL_COORDS)
+            return move_time_dim_to_front(list_intersection(all_coords, SPATIAL_COORDS))
         if coords == "grid":
             return move_time_dim_to_front(
                 self.coords("spatial") + self.coord_manager.added_coords("grid")
             )
         if coords == "gridpoint":
-            return self.coord_manager.added_coords("gridpoint")
+            return move_time_dim_to_front(self.coord_manager.added_coords("gridpoint"))
 
     def keys_to_dict(self, coords: list[str]) -> dict:
         """Takes a list of coordinates and returns a dictionary."""
