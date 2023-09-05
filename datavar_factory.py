@@ -4,7 +4,7 @@ from typing import Union
 
 
 def add_datavar(
-    name, coords="grid", default_value=0.0, stash_get=False, aftermath=False
+    name, coords="all", default_value=0.0, stash_get=False, aftermath=False
 ):
     """stash_get = True means that the coordinate data can be accessed
     by method ._{name}() instead of .{name}()

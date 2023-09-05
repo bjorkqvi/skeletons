@@ -257,6 +257,7 @@ class Skeleton:
         'grid': size over coordinates for the grid (e.g. z, time)
         'gridpoint': size over coordinates for a grid point (e.g. frequency, direcion or time)
         """
+
         if not self._structure_initialized():
             return None
         return self._ds_manager.coords_to_size(
@@ -703,22 +704,6 @@ class Skeleton:
             old_metadata.update(metadata)
             metadata = old_metadata
         self._ds_manager.set_attrs(metadata)
-
-    # def _set_mask(self, mask_setter, mask_type: str) -> None:
-    #     """Set a mask that represents e.g. Boundary points or spectral output
-    #     point.
-
-    #     NB! Points can overlap with land!
-    #     """
-
-    #     if mask_type is None:
-    #         print(f"Provide mask_type variable.")
-
-    #     print(f"Setting {mask_type} points...")
-    #     print(mask_setter)
-
-    #     mask = mask_setter(self)
-    #     self._update_mask(mask_type, mask)
 
     def masks(self):
         mask_list = []
