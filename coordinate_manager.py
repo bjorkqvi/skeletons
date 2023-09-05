@@ -64,7 +64,7 @@ class CoordinateManager:
     def added_masks(self) -> dict:
         return self.masks["added"]
 
-    def added_coords(self, type: str = "all") -> list[str]:
+    def added_coords(self, coords: str = "all") -> list[str]:
         """Returns list of coordinates that have been added to the fixed
         Skeleton coords.
 
@@ -72,10 +72,10 @@ class CoordinateManager:
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        if type not in ["all", "grid", "gridpoint"]:
+        if coords not in ["all", "grid", "gridpoint"]:
             print("Variable type needs to be 'all', 'grid' or 'gridpoint'.")
             return None
 
-        if type == "all":
+        if coords == "all":
             return self.added_coords("grid") + self.added_coords("gridpoint")
-        return self.coords[type]
+        return self.coords[coords]

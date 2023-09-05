@@ -77,6 +77,7 @@ class DatasetManager:
 
         def determine_coords() -> dict:
             """Creates dictonary of the coordinates"""
+
             coord_dict = {}
             if "y" in self.coord_manager.initial_coords():
                 coord_dict[y_str] = y
@@ -86,7 +87,32 @@ class DatasetManager:
                 coord_dict["inds"] = np.arange(len(x))
 
             # Add in other possible coordinates that are set at initialization
-            for key, value in kwargs.items():
+            for key in self.coord_manager.added_coords("grid"):
+                value = kwargs.get(key)
+
+                if value is None:
+                    value = self.get(key)
+
+                if value is None:
+                    breakpoint()
+                    raise KeyError(
+                        f"The variable {key} was not provided in the keyword list when the object was initialized!"
+                    )
+                value = np.array(value)
+                coord_dict[key] = value
+
+            for key in self.coord_manager.added_coords("gridpoint"):
+                value = kwargs.get(key)
+
+                if value is None:
+                    value = self.get(key)
+
+                if value is None:
+                    breakpoint()
+                    raise KeyError(
+                        f"The variable {key} was not provided in the keyword list when the object was initialized!"
+                    )
+                value = np.array(value)
                 coord_dict[key] = value
 
             coord_dict = {
@@ -118,6 +144,7 @@ class DatasetManager:
         x, y = clean_coordinate_vectors(
             x, y, is_cartesian=(x_str == "x"), indexed=indexed
         )
+
         coord_dict = determine_coords()
         var_dict = determine_vars()
 
@@ -248,10 +275,10 @@ class DatasetManager:
         """Returns a dict of the variables in the Dataset."""
         return self.keys_to_dict(self.vars())
 
-    def coords(self, type: str = "all") -> list[str]:
+    def coords(self, coords: str = "all") -> list[str]:
         """Returns a list of the coordinates from the Dataset.
 
-        'all': all coordinates in the Dataset
+        'all' [default]: all coordinates in the Dataset
         'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
@@ -265,7 +292,7 @@ class DatasetManager:
                     list3.append(val)
             return list3
 
-        if type not in ["all", "spatial", "grid", "gridpoint"]:
+        if coords not in ["all", "spatial", "grid", "gridpoint"]:
             raise ValueError(
                 "Type needs to be 'all', 'spatial', 'grid' or 'gridpoint'."
             )
@@ -275,15 +302,15 @@ class DatasetManager:
 
         all_coords = list(self.ds().coords)
 
-        if type == "all":
+        if coords == "all":
             return all_coords
-        if type == "spatial":
+        if coords == "spatial":
             return list_intersection(all_coords, SPATIAL_COORDS)
-        if type == "grid":
+        if coords == "grid":
             return move_time_dim_to_front(
                 self.coords("spatial") + self.coord_manager.added_coords("grid")
             )
-        if type == "gridpoint":
+        if coords == "gridpoint":
             return self.coord_manager.added_coords("gridpoint")
 
     def keys_to_dict(self, coords: list[str]) -> dict:
