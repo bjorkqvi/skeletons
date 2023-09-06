@@ -88,14 +88,17 @@ class Skeleton:
             return True
         return len(self.ds()[self.x_str]) == 0 and len(self.ds()[self.y_str]) == 0
 
-    def _absorb_object(self, obj, dimension: str) -> None:
+    def _absorb_skeleton(self, skeleton_to_absorb, dimension: str) -> None:
         """Absorb another object of same type. This is used e.g. when pathcing
         cached data and joining different Boundary etc. over time.
         """
+        if not self.is_gridded():
+            inds = skeleton_to_absorb.inds() + len(self.inds())
+            skeleton_to_absorb.ds()["inds"] = inds
         self._ds_manager.set_new_ds(
-            xr.concat([self.ds(), obj.ds()], dim=dimension, data_vars="minimal").sortby(
-                dimension
-            )
+            xr.concat(
+                [self.ds(), skeleton_to_absorb.ds()], dim=dimension, data_vars="minimal"
+            ).sortby(dimension)
         )
 
     def _reset_masks(self) -> None:

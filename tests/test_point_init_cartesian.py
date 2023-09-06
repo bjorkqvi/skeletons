@@ -9,7 +9,9 @@ def test_init_trivial():
     assert grid.ny() == 2
     assert grid.size() == (2,)
     np.testing.assert_array_almost_equal(grid.x(), np.array([1, 2]))
+    np.testing.assert_array_almost_equal(grid.x(normalize=True), np.array([0, 1]))
     np.testing.assert_array_almost_equal(grid.y(), np.array([0, 3]))
+    np.testing.assert_array_almost_equal(grid.y(normalize=True), np.array([0, 3]))
     np.testing.assert_array_almost_equal(grid.inds(), np.array([0, 1]))
     np.testing.assert_array_almost_equal(
         grid.xy(), (np.array([1, 2]), np.array([0, 3]))
@@ -61,7 +63,9 @@ def test_init_one_point_in_x_constant():
     assert grid.ny() == 2
     assert grid.size() == (2,)
     np.testing.assert_array_almost_equal(grid.y(), np.array([3, 5]))
+    np.testing.assert_array_almost_equal(grid.y(normalize=True), np.array([0, 2]))
     np.testing.assert_array_almost_equal(grid.x(), np.array([0, 0]))
+    np.testing.assert_array_almost_equal(grid.x(normalize=True), np.array([0, 0]))
     np.testing.assert_array_almost_equal(grid.inds(), np.array([0, 1]))
     np.testing.assert_array_almost_equal(
         grid.xy(), (np.array([0, 0]), np.array([3, 5]))
