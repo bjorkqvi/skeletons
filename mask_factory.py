@@ -6,7 +6,10 @@ SPHERICAL_STRINGS = ["lon", "lat", "lonlat"]
 
 
 def add_mask(
-    name: str, default_value: int, coords: str = "all", opposite_name: str = None
+    name: str,
+    default_value: int,
+    coords: str = "all",
+    opposite_name: str = None,
 ):
     """coord_type = 'all', 'spatial', 'grid' or 'gridpoint'"""
 
@@ -84,11 +87,11 @@ def add_mask(
         c._coord_manager.add_mask(name, coords)
         exec(f"c.{name}_mask = get_mask")
         exec(f"c.{name}_points = get_masked_points")
+        exec(f"c.set_{name}_mask = set_mask")
         if opposite_name is not None:
             exec(f"c.{opposite_name}_mask = get_not_mask")
             exec(f"c.{opposite_name}_points = get_not_points")
             exec(f"c.set_{opposite_name}_mask = set_opposite_mask")
-        exec(f"c.set_{name}_mask = set_mask")
 
         return c
 

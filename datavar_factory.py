@@ -4,7 +4,10 @@ from typing import Union
 
 
 def add_datavar(
-    name, coords="all", default_value=0.0, stash_get=False, aftermath=False
+    name,
+    coords="all",
+    default_value=0.0,
+    append=False,
 ):
     """stash_get = True means that the coordinate data can be accessed
     by method ._{name}() instead of .{name}()
@@ -41,15 +44,12 @@ def add_datavar(
 
         c._coord_manager.add_var(name, coords)
 
-        if stash_get:
-            exec(f"c._{name} = get_var")
+        if append:
+            exec(f"c.{name} = partial(get_var, c)")
+            exec(f"c.set_{name} = partial(set_var, c)")
         else:
-            if aftermath:
-                exec(f"c.{name} = partial(get_var, c)")
-                exec(f"c.set_{name} = partial(set_var, c)")
-            else:
-                exec(f"c.{name} = get_var")
-                exec(f"c.set_{name} = set_var")
+            exec(f"c.{name} = get_var")
+            exec(f"c.set_{name} = set_var")
 
         return c
 
