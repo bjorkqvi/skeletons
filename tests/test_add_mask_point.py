@@ -58,3 +58,35 @@ def test_add_gridpoint_coord_and_mask():
     np.testing.assert_array_equal(
         data.land_mask(), np.full(data.size(coords="grid"), True)
     )
+
+
+def test_get_points():
+    @add_mask(
+        name="sea",
+        default_value=1.0,
+        opposite_name="land",
+    )
+    @add_datavar(name="hs", default_value=0)
+    class WaveHeight(PointSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10, 20, 30), lat=(30, 40, 50))
+    mask = data.sea_mask()
+
+    lon, lat = data.sea_points()
+    np.testing.assert_array_almost_equal(lon, np.array([10, 20, 30]))
+    np.testing.assert_array_almost_equal(lat, np.array([30, 40, 50]))
+
+    lon, lat = data.land_points()
+    np.testing.assert_array_almost_equal(lon, np.array([]))
+    np.testing.assert_array_almost_equal(lat, np.array([]))
+
+    mask[0] = False
+    data.set_sea_mask(mask)
+    lon, lat = data.sea_points()
+    np.testing.assert_array_almost_equal(lon, np.array([20, 30]))
+    np.testing.assert_array_almost_equal(lat, np.array([40, 50]))
+
+    lon, lat = data.land_points()
+    np.testing.assert_array_almost_equal(lon, np.array([10]))
+    np.testing.assert_array_almost_equal(lat, np.array([30]))
