@@ -4,6 +4,7 @@ import numpy as np
 
 def test_init_trivial():
     grid = GriddedSkeleton(lon=(1, 2), lat=(0, 3))
+    repr = print(grid)
     assert grid.nx() == 2
     assert grid.ny() == 2
     assert grid.size() == (2, 2)
@@ -30,6 +31,7 @@ def test_init_one_point_in_lat():
 
 def test_init_one_point_in_lat_constant():
     grid = GriddedSkeleton(lon=(3, 5), lat=0)
+    repr = print(grid)
     assert grid.nx() == 2
     assert grid.ny() == 1
     assert grid.size() == (1, 2)

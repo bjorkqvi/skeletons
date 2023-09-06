@@ -4,6 +4,7 @@ import numpy as np
 
 def test_init_trivial():
     grid = PointSkeleton(x=(1, 2), y=(0, 3))
+    repr = print(grid)
     assert grid.nx() == 2
     assert grid.ny() == 2
     assert grid.size() == (2,)
