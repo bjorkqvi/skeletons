@@ -208,29 +208,6 @@ class GriddedSkeleton(Skeleton):
             y = None
         self._init_structure(x, y, lon, lat)
 
-    def __str__(self) -> str:
-        string = ""
-
-        if self.is_cartesian():
-            string += "Cartesian gridded skeleton"
-        else:
-            string += "Spherical gridded skeleton"
-
-        string += f" ({self.nx()} x {self.ny()})\n"
-
-        x0, x1 = self.edges("x", native=True)
-        y0, y1 = self.edges("y", native=True)
-
-        string += f"{self.x_str} {x0} - {x1}, {self.y_str}: {y0} - {y1}\n"
-
-        if self.dx(native=True) is not None:
-            string += f"d{self.x_str}, d{self.x_str} = {self.dx(native=True)}, {self.native_dy(native=True)}"
-
-            if self.native_dx() > 0 and self.native_dy() > 0:
-                string += f"\nInverse: d{self.x_str}, d{self.x_str} = {1/self.dx(native=True)}, {1/self.dy(native=True)}"
-
-        return string
-
     def __repr__(self) -> str:
         string = "grid = GriddedSkeleton"
 
