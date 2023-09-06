@@ -15,7 +15,7 @@ def test_yank_one_point_with_exact_coordinate():
 
 def test_yank_several_points_with_exact_coordinates():
     grid = PointSkeleton(lon=(10, 11, 12, 13, 14), lat=(0, 1, 2, 3, 4))
-    yanked_points = grid.yank_point(lon=(10, 12, 14), lat=(0, 2, 4))
+    yanked_points = grid.yank_point(lon=(10, 12, 14), lat=(0, 2, 4), fast=True)
     assert len(yanked_points["inds"]) == 3
     assert len(yanked_points["dx"]) == 3
     np.testing.assert_array_equal(yanked_points["inds"], np.array([0, 2, 4]))
@@ -35,7 +35,9 @@ def test_yank_one_point_with_close_coordinate():
 
 def test_yank_several_points_with_close_coordinates():
     grid = PointSkeleton(lon=(10, 11, 12, 13, 14), lat=(0, 1, 2, 3, 3.5))
-    yanked_points = grid.yank_point(lon=(10.001, 12, 13.01), lat=(0, 2.001, 3.001))
+    yanked_points = grid.yank_point(
+        lon=(10.001, 12, 13.01), lat=(0, 2.001, 3.001), fast=True
+    )
     assert len(yanked_points["inds"]) == 3
     assert len(yanked_points["dx"]) == 3
     np.testing.assert_array_equal(yanked_points["inds"], np.array([0, 2, 3]))
