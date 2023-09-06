@@ -19,7 +19,7 @@ def test_yank_one_point_with_exact_coordinate():
 def test_yank_several_points_with_exact_coordinates():
     grid = GriddedSkeleton(lon=(10, 14), lat=(0, 4))
     grid.set_spacing(nx=5, ny=5)
-    yanked_points = grid.yank_point(lon=(10, 12, 14), lat=(0, 2, 4))
+    yanked_points = grid.yank_point(lon=(10, 12, 14), lat=(0, 2, 4), fast=True)
     assert len(yanked_points["inds_x"]) == 3
     assert len(yanked_points["inds_y"]) == 3
     assert len(yanked_points["dx"]) == 3
@@ -45,7 +45,9 @@ def test_yank_one_point_with_close_coordinate():
 def test_yank_several_points_with_close_coordinates():
     grid = GriddedSkeleton(lon=(10, 14), lat=(0, 4))
     grid.set_spacing(nx=5, ny=5)
-    yanked_points = grid.yank_point(lon=(10.001, 12, 13.01), lat=(0, 2.001, 3.001))
+    yanked_points = grid.yank_point(
+        lon=(10.001, 12, 13.01), lat=(0, 2.001, 3.001), fast=True
+    )
     assert len(yanked_points["inds_x"]) == 3
     assert len(yanked_points["inds_y"]) == 3
     assert len(yanked_points["dx"]) == 3

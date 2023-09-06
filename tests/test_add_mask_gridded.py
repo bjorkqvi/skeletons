@@ -20,6 +20,8 @@ def test_add_mask():
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
 
+    assert data.masks()[0] == "sea_mask"
+
 
 def test_add_coord_and_mask():
     @add_mask(name="sea", default_value=1.0, opposite_name="land")
@@ -36,6 +38,8 @@ def test_add_coord_and_mask():
     data.set_sea_mask(data.hs() > 0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
+
+    assert data.masks()[0] == "sea_mask"
 
 
 def test_add_gridpoint_coord_and_mask():
