@@ -2,6 +2,13 @@ from ..gridded_skeleton import GriddedSkeleton
 import numpy as np
 
 
+def test_init_name():
+    grid = GriddedSkeleton(x=(1, 2), y=(0, 3))
+    assert grid.name == "LonelySkeleton"
+    grid.name = "TestGrid"
+    assert grid.name == "TestGrid"
+
+
 def test_init_trivial():
     grid = GriddedSkeleton(x=(1, 2), y=(0, 3))
     repr = print(grid)
