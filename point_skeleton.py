@@ -33,7 +33,7 @@ class PointSkeleton(Skeleton):
         mask: np.ndarray = None,
         native: bool = False,
         strict: bool = False,
-        **kwargs
+        **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of longitude and latitude of all points.
 
@@ -81,3 +81,29 @@ class PointSkeleton(Skeleton):
         if mask is not None:
             return x[mask], y[mask]
         return x, y
+
+    def __repr__(self) -> str:
+        string = "points = PointSkeleton"
+
+        x, y = self.lonlat(native=True)
+
+        string += f"({self.x_str}=("
+
+        for xx in x:
+            string += f"{xx},"
+
+        string = string[:-1]
+        string += ")"
+
+        string += f", {self.y_str}=("
+
+        for yy in y:
+            string += f"{yy},"
+
+        string = string[:-1]
+        string += "))\n"
+
+        utm_number, utm_zone = self.utm()
+        string += f"grid.set_utm(({utm_number}, '{utm_zone}'))"
+
+        return string

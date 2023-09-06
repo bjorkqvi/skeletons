@@ -166,15 +166,11 @@ class DatasetManager:
         """
         self._merge_in_ds(self.compile_to_ds(data, data_name, coord_type))
 
-    def get(
-        self, data_name: str, default_data=None, method="exact", **kwargs
-    ) -> xr.DataArray:
+    def get(self, data_name: str, default_data=None, **kwargs) -> xr.DataArray:
         """Gets data from Dataset.
 
         **kwargs can be used for slicing data.
 
-        method = 'exact' slices
-        method = 'nearest' gets nearest lon/lat point instead
         """
         ds = self.ds()
         if ds is None:
@@ -182,19 +178,6 @@ class DatasetManager:
 
         data = ds.get(data_name, default_data)
         if isinstance(data, xr.DataArray):
-            if method == "nearest":
-                if kwargs.get("lon") is None or kwargs.get("lat") is None:
-                    raise Exception("Define both lon and lat when using 'nearest'")
-                else:
-                    __, ind = min_distance(
-                        kwargs["lon"], kwargs["lat"], ds.get("lon"), ds.get("lat")
-                    )
-                    if "inds" in ds.coords:
-                        kwargs["inds"] = ind
-                    else:
-                        kwargs["lon"] = ds.get("lon")[ind]
-                        kwargs["lat"] = ds.get("lat")[ind]
-
             data = self._slice_data(data, **kwargs)
 
         return data
@@ -349,9 +332,6 @@ def clean_coordinate_vectors(x, y, is_cartesian, indexed):
         mask = lon > 180
         lon[mask] = lon[mask] - 360
         return lon
-
-    # def utm_lat_mask(lat):
-    #     return np.logical_and(lat < 84, lat > -80)
 
     x = np.array(x)
     y = np.array(y)
