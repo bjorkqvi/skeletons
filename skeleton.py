@@ -613,6 +613,7 @@ class Skeleton:
         x: Union[float, Iterable[float]] = None,
         y: Union[float, Iterable[float]] = None,
         unique: bool = False,
+        fast: bool = False,
     ) -> dict:
         """Finds points nearest to the x-y, lon-lat points provided and returns dict of corresponding indeces.
 
@@ -621,10 +622,13 @@ class Skeleton:
         PointSkelton: keys 'inds'
         GriddedSkeleton: keys 'inds_x' and 'inds_y'
 
-        Set unique=True to remove any repeated points."""
+        Set unique=True to remove any repeated points.
+        Set fast=True to use UTM casrtesian search for low latitudes."""
+
+        if self.is_cartesian():
+            fast = True
 
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
-
         x = force_to_iterable(x, fmt="numpy")
         y = force_to_iterable(y, fmt="numpy")
         lon = force_to_iterable(lon, fmt="numpy")
@@ -653,10 +657,10 @@ class Skeleton:
         xlist, ylist = self.xy()
         lonlist, latlist = self.lonlat()
         for xx, yy, llon, llat, mask in zip(x, y, lon, lat, posmask):
-            if mask:
+            if mask or not fast:
                 dxx, ii = min_distance(
                     llon, llat, lonlist, latlist
-                )  # Slower, but works for high/low latitudes
+                )  # Slower, but works for high/low latitudes and is exact
             else:
                 dxx, ii = min_cartesian_distance(xx, yy, xlist, ylist)
             inds.append(ii)
