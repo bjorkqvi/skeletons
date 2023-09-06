@@ -752,7 +752,7 @@ class Skeleton:
         return self._strict
 
     @strict.setter
-    def name(self, strict: bool) -> None:
+    def strict(self, strict: bool) -> None:
         if isinstance(strict, bool):
             self._strict = strict
         else:

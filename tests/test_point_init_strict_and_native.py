@@ -18,6 +18,22 @@ def test_spherical_strict():
     assert points.xy(strict=True) == (None, None)
 
 
+def test_spherical_global_strict():
+    points = PointSkeleton(lon=(1, 2), lat=(0, 3))
+    points.strict = True
+    assert points.x(strict=False) is None
+    assert points.y(strict=False) is None
+
+    np.testing.assert_array_almost_equal(points.lon(strict=True), np.array([1, 2]))
+    np.testing.assert_array_almost_equal(points.lat(strict=True), np.array([0, 3]))
+
+    np.testing.assert_array_almost_equal(
+        points.lonlat(strict=True), (np.array([1, 2]), np.array([0, 3]))
+    )
+
+    assert points.xy(strict=False) == (None, None)
+
+
 def test_spherical_native():
     points = PointSkeleton(lon=(1, 2), lat=(0, 3))
 
@@ -48,6 +64,23 @@ def test_cartesian_strict():
     )
 
     assert points.lonlat(strict=True) == (None, None)
+
+
+def test_cartesian_global_strict():
+    points = PointSkeleton(x=(1, 2), y=(0, 3))
+    points.strict = True
+
+    assert points.lon(strict=False) is None
+    assert points.lat(strict=False) is None
+
+    np.testing.assert_array_almost_equal(points.x(strict=True), np.array([1, 2]))
+    np.testing.assert_array_almost_equal(points.y(strict=True), np.array([0, 3]))
+
+    np.testing.assert_array_almost_equal(
+        points.xy(strict=True), (np.array([1, 2]), np.array([0, 3]))
+    )
+
+    assert points.lonlat(strict=False) == (None, None)
 
 
 def test_cartesian_native():
