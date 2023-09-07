@@ -1,8 +1,6 @@
 import numpy as np
 import xarray as xr
-import utm
 from .coordinate_manager import CoordinateManager
-from .distance_functions import min_distance
 
 
 def move_time_dim_to_front(coord_list) -> list[str]:
@@ -193,9 +191,17 @@ class DatasetManager:
             self.data.get(da_name).attrs = attributes
 
     def _slice_data(self, data, **kwargs) -> xr.DataArray:
+        coordinates = {}
+        keywords = {}
         for key, value in kwargs.items():
             if key in list(data.coords):
-                data = eval(f"data.sel({key}={value})")
+                coordinates[key] = value
+            else:
+                keywords[key] = value
+
+        for key, value in coordinates.items():
+            data = eval(f"data.sel({key}={value}, **keywords)")
+
         return data
 
     def _merge_in_ds(self, ds_list: list[xr.Dataset]) -> None:
