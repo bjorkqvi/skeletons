@@ -67,7 +67,7 @@ def test_cartesian_strict():
     assert grid.lonlat(strict=True) == (None, None)
 
 
-def test_cartesian_strict():
+def test_cartesian_global_strict():
     grid = GriddedSkeleton(x=(1, 2), y=(0, 3))
     grid.strict = True
 
