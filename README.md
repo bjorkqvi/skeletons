@@ -63,4 +63,6 @@ data.hours(datetime=False, fmt="%Y%M%d %H00") # Hours the format ['YYYYMMdd HH00
 
 data.set_hs(1.5) # Set a new constant Hs-value
 data.hs(data_array=True) # Get the Hs-values as a Xarray DataArray
+
+point_dict = data.yank_point(lon=9, lat=60) # Get index and distance to closest point
 ```
