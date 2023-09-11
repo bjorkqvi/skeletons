@@ -58,5 +58,5 @@ data.set_utm((33, "N"))
 lon, lat = data.lonlat() # Converts the UTM coordinates to spherical coordinates
 data.time() # Get times as a DatetimeIndex
 data.days(datetime=False) # Get all days as a list of strings in the format ['YYYY-MM-dd', ...]
-data.hours(datetime=False, fmt="%Y%M%d %H00") # Get all hours as a list of string in the format ['YYYYMMdd HH00', ...]
+data.hours(datetime=False, fmt="%Y%M%d %H00") # Hours the format ['YYYYMMdd HH00', ...]
 ```
