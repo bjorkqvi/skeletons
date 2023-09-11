@@ -38,3 +38,20 @@ def test_yank_several_points_with_close_coordinates():
     np.testing.assert_array_almost_equal(
         yanked_points["dx"], np.array([0.1, 0.5, (0.1**2 + 0.1**2) ** 0.5])
     )
+
+
+def test_yank_spherical_point_from_cartesian_grid():
+    data = PointSkeleton(x=(165640, 180189, 283749), y=(6666593, 6766055, 6769393))
+    data.set_utm((33, "N"))
+
+    assert np.round(data.lon()[0]) == 9
+    assert np.round(data.lat()[0]) == 60
+    dd = data.yank_point(lon=9, lat=60)
+    assert dd["inds"][0] == 0
+    assert dd["dx"][0] < 1
+
+    assert np.round(data.lon()[2]) == 11
+    assert np.round(data.lat()[2]) == 61
+    dd = data.yank_point(lon=11, lat=61)
+    assert dd["inds"][0] == 2
+    assert dd["dx"][0] < 1

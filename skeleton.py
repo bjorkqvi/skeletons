@@ -642,8 +642,16 @@ class Skeleton:
 
         orig_zone = self.utm()
         if lon is not None and lat is not None:
-            x, y, zone_number, zone_letter = utm.from_latlon(lat, lon)
-            self.set_utm((zone_number, zone_letter), silent=True)
+            if self.is_cartesian():
+                x, y, __, __ = utm.from_latlon(
+                    lat,
+                    lon,
+                    force_zone_number=orig_zone[0],
+                    force_zone_letter=orig_zone[1],
+                )
+            else:
+                x, y, zone_number, zone_letter = utm.from_latlon(lat, lon)
+                self.set_utm((zone_number, zone_letter), silent=True)
         else:
             lat, lon = utm.to_latlon(
                 x,
