@@ -385,6 +385,32 @@ The newly created ``.hs()`` method works directly with the xarray Dataset, and s
          0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
          0.])
 
+  >>> data.hs(lon=2.98, method='nearest')
+  array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0.])
+
+Finding points
+--------------------------------------------
+
+Although the above method of slicing is useful, it is not optimal when one want's to find a point nearest to a given coordinate. This is especially true for non-gridded data where one simply can't find the nearest longitude and latitude separately. Skeleton classes are therefore equipped with a dedicated method:
+
+.. code-block:: python
+
+  >>> point_dict = data.yank_point(lon=2.98, lat=60.01)
+  {'inds_x': array([0]), 'inds_y': array([1]), 'dx': array([1129.78211206])}
+
+This gives the corresponding index and distance to nearest point (in metres). The method takes tuples, and can be used also for gridded data (then the x- and y-index is returned seprately in the dict). 
+
+The method can also be used to find the nearest longitude-latitude point in a grid that has been defined on cartesian UTM-coordinates (or vice versa).
+
+
+
 
 Adding masks
 --------------------------------------------
