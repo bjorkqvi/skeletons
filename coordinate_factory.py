@@ -58,7 +58,7 @@ def add_time(grid_coord: bool = False, name: str = "time"):
         def unique_times(times, strf: str):
             return np.unique(np.array(pd.to_datetime(times).strftime(strf).to_list()))
 
-        def hours(self, datetime=True):
+        def hours(self, datetime=True, fmt: str = "%Y-%m-%d %H:00"):
             """Determins a Pandas data range of all the days in the time span."""
             if not self._structure_initialized():
                 return None
@@ -66,9 +66,9 @@ def add_time(grid_coord: bool = False, name: str = "time"):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d %H"))
             else:
-                return list(unique_times(times, "%Y-%m-%d %H"))
+                return list(unique_times(times, fmt))
 
-        def days(self, datetime=True):
+        def days(self, datetime=True, fmt: str = "%Y-%m-%d"):
             """Determins a Pandas data range of all the days in the time span."""
             if not self._structure_initialized():
                 return None
@@ -76,9 +76,9 @@ def add_time(grid_coord: bool = False, name: str = "time"):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d"))
             else:
-                return list(unique_times(times, "%Y-%m-%d"))
+                return list(unique_times(times, fmt))
 
-        def months(self, datetime=True):
+        def months(self, datetime=True, fmt: str = "%Y-%m"):
             """Determins a Pandas data range of all the months in the time span."""
             if not self._structure_initialized():
                 return None
@@ -86,9 +86,9 @@ def add_time(grid_coord: bool = False, name: str = "time"):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m"))
             else:
-                return list(unique_times(times, "%Y-%m"))
+                return list(unique_times(times, fmt))
 
-        def years(self, datetime=True):
+        def years(self, datetime=True, fmt: str = "%Y"):
             """Determins a Pandas data range of all the months in the time span."""
             if not self._structure_initialized():
                 return None
@@ -96,7 +96,7 @@ def add_time(grid_coord: bool = False, name: str = "time"):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y"))
             else:
-                return list(unique_times(times, "%Y"))
+                return list(unique_times(times, fmt))
 
         def get_time(self, data_array=False, **kwargs):
             if not self._structure_initialized():
