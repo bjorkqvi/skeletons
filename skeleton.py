@@ -789,10 +789,10 @@ def coord_len_to_max_two(xvec):
     return xvec
 
 
-def sanitize_singe_variable(name: str, x):
+def sanitize_singe_variable(name: str, x, fmt: str = "numpy"):
     """Forces to nump array and checks dimensions etc"""
 
-    x = force_to_iterable(x, fmt="numpy")
+    x = force_to_iterable(x, fmt=fmt)
 
     # np.array([None, None]) -> None
     if x is None or all(v is None for v in x):
@@ -860,10 +860,11 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, is_initialized, **kwargs):
 
     other = {}
     for key, value in kwargs.items():
-        if key != "time":
-            other[key] = sanitize_singe_variable(key, value)
-        else:
+        if key == "time":
+            # other[key] = sanitize_singe_variable(key, value, fmt="datetime")
             other[key] = value
+        else:
+            other[key] = sanitize_singe_variable(key, value)
 
     if not is_gridded_format:
         spatial = sanitize_point_structure(spatial)
