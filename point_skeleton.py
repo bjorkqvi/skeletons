@@ -102,8 +102,8 @@ class PointSkeleton(Skeleton):
 
         string = string[:-1]
         string += "))\n"
-
-        utm_number, utm_zone = self.utm()
-        string += f"grid.set_utm(({utm_number}, '{utm_zone}'))"
+        if self.is_cartesian():
+            utm_number, utm_zone = self.utm()
+            string += f"points.set_utm(({utm_number}, '{utm_zone}'))"
 
         return string
