@@ -109,7 +109,6 @@ Since there is no gridded structure, these vectors are given as a function of in
 
   >>> points.inds()
   array([0, 1, 2])
-.. code-block:: rst
 
 The size of the skeleton, defined by the indeces, is given by:
 
