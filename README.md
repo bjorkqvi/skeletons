@@ -2,6 +2,8 @@
 
 Skeletons is an easy extendable way to represent gridded and non-gridded geophysical data. It provides the basic structure to work with spherical and cartesian coordinates, and can be extended to data-specific objects by adding coordinates, data variables and logical masks.
 
+Please see https://data-skeletons.readthedocs.io/en/latest/ for a documentation.
+
 For example, to create a python class representing a 3D grid of water temperature data:
 ```python
 from skeletons import GriddedSkeleton
