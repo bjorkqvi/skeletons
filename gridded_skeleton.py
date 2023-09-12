@@ -216,7 +216,8 @@ class GriddedSkeleton(Skeleton):
         string += f"({self.x_str}=({x0},{x1}), {self.y_str}=({y0},{y1}))\n"
 
         string += f"grid.set_spacing(nx={self.nx()}, ny={self.ny()})\n"
-        utm_number, utm_zone = self.utm()
-        string += f"grid.set_utm(({utm_number}, '{utm_zone}'))"
+        if self.is_cartesian():
+            utm_number, utm_zone = self.utm()
+            string += f"grid.set_utm(({utm_number}, '{utm_zone}'))"
 
         return string
