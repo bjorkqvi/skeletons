@@ -13,6 +13,22 @@ class PointSkeleton(Skeleton):
     4) Methods xy() / lonlat() are identical to e.g. (x(), y()).
     """
 
+    @classmethod
+    def from_skeleton(
+        cls,
+        skeleton: Skeleton,
+        mask: np.ndarray = None,
+    ):
+        if mask is None:
+            mask = np.full(skeleton.size(), True)
+        lon, lat = skeleton.lonlat(strict=True, mask=mask)
+        x, y = skeleton.xy(strict=True, mask=mask)
+
+        new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
+        new_skeleton.set_utm(skeleton.utm(), silent=True)
+
+        return new_skeleton
+
     def is_gridded(self) -> bool:
         return False
 

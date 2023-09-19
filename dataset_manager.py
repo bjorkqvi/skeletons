@@ -180,15 +180,15 @@ class DatasetManager:
 
         return data
 
-    def set_attrs(self, attributes: dict, da_name: str = None) -> None:
+    def set_attrs(self, attributes: dict, data_array_name: str = None) -> None:
         """Sets attributes to DataArray da_name.
 
-        If da_name is not given, sets global attributes
+        If data_array_name is not given, sets global attributes
         """
-        if da_name is None:
+        if data_array_name is None:
             self.data.attrs = attributes
         else:
-            self.data.get(da_name).attrs = attributes
+            self.data.get(data_array_name).attrs = attributes
 
     def _slice_data(self, data, **kwargs) -> xr.DataArray:
         coordinates = {}

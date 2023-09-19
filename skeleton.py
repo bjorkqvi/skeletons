@@ -40,7 +40,10 @@ class Skeleton:
     Keeps track of the native structure of the grid (cartesian UTM / sperical).
     """
 
-    def __init__(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
+    def __init__(
+        self, x=None, y=None, lon=None, lat=None, name: str = "LonelySkeleton", **kwargs
+    ) -> None:
+        self.name = name
         self._init_structure(x, y, lon, lat, **kwargs)
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
@@ -702,14 +705,16 @@ class Skeleton:
             return None
         return self.ds().attrs
 
-    def set_metadata(self, metadata: dict, append=False) -> None:
+    def set_metadata(
+        self, metadata: dict, append=False, data_array_name: str = None
+    ) -> None:
         if not self._structure_initialized():
             return None
         if append:
             old_metadata = self.metadata()
             old_metadata.update(metadata)
             metadata = old_metadata
-        self._ds_manager.set_attrs(metadata)
+        self._ds_manager.set_attrs(metadata, data_array_name)
 
     def masks(self):
         mask_list = []

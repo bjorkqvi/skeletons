@@ -1,6 +1,7 @@
 import numpy as np
 from .coordinate_manager import CoordinateManager
 from typing import Union
+from functools import partial
 
 
 def add_datavar(
