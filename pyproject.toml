@@ -5,8 +5,8 @@ description = "Easily extended way to represent structured and unstructured geop
 authors = [ { name = "Jan-Victor Björkqvist", email = "janvb@met.no" } ]
 dependencies = [ "pyproj", "numpy" ]
 
-[project.optional-dependencies]
-tests = [ "pyresample", "xarray", "matplotlib", "cartopy", "cmocean" ]
+#[project.optional-dependencies]
+#tests = [ "numpy", "xarray", "pandas", "utm", "geopy"]
 
 [project.urls]
 repository = "http://github.com/bjorkqvi/skeletons"
