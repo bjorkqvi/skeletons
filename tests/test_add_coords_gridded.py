@@ -1,5 +1,5 @@
-from ..gridded_skeleton import GriddedSkeleton
-from ..coordinate_factory import add_coord, add_direction, add_frequency, add_time
+from skeletons.gridded_skeleton import GriddedSkeleton
+from skeletons.decorators import add_coord, add_direction, add_frequency, add_time
 import numpy as np
 import pandas as pd
 

@@ -1,4 +1,4 @@
-from ..point_skeleton import PointSkeleton
+from skeletons.point_skeleton import PointSkeleton
 import numpy as np
 import utm
 

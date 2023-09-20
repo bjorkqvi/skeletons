@@ -1,5 +1,5 @@
-from ..gridded_skeleton import PointSkeleton
-from ..distance_functions import distance_2points
+from skeletons.point_skeleton import PointSkeleton
+from skeletons.distance_functions import distance_2points
 
 import numpy as np
 
