@@ -17,7 +17,7 @@ A point cloud can easily be represented as an unstructured skeleton:
 
 .. code-block:: python
 
-  from skeletons import PointSkeleton
+  from geo_skeletons.point_skeleton import PointSkeleton
   points = PointSkeleton(lon=(30.0,30.1,30.5), lat=(60.0,60.0,60.8))
 
 
@@ -137,7 +137,7 @@ Unlike a PointSkeleton, a GriddedSkeleton is defined on an area:
 
 .. code-block:: python
 
-  from skeletons import GriddedSkeleton
+  from geo_skeletons.gridded_skeleton import GriddedSkeleton
   grid = GriddedSkeleton(lon=(30.0,30.5), lat=(60.0,60.8))
 
 
@@ -321,8 +321,8 @@ The real benefit from skeletons is that you can define your own objects while st
 
 .. code-block:: python
 
-  from skeletons import GriddedSkeleton
-  from skeletons.datavar_factory import add_datavar
+  from geo_skeletons.gridded_skeleton import GriddedSkeleton
+  from geo_skeletons.decorators import add_datavar
 
   @add_datavar(name='hs', default_value=0.)
   class WaveHeight(GriddedSkeleton):
@@ -418,9 +418,8 @@ Logical masks (for example marking land points or points of interest) can be add
 
 .. code-block:: python
 
-  from skeletons import GriddedSkeleton
-  from skeletons.datavar_factory import add_datavar
-  from skeletons.mask_factory import add_mask
+  from geo_skeletons.gridded_skeleton import GriddedSkeleton
+  from geo_skeletons.datavar_factory import add_datavar, add_mask
 
   @add_datavar(name='hs', default_value=0.)
   @add_mask(name='sea', default_value=1, coords='grid', opposite_name='land')
@@ -504,9 +503,8 @@ Although all skeletons will have the x-y or lon-lat spatial coordinates, decorat
 
 .. code-block:: python
 
-  from skeletons import GriddedSkeleton
-  from skeletons.coordinate_factory import add_coord
-  from skeletons.datavar_factory import add_datavar
+  from geo_skeletons.gridded_skeleton import GriddedSkeleton
+  from geo_skeletons.coordinate_factory import add_coord, add_datavar
   import numpy as np
 
 
