@@ -1,0 +1,15 @@
+[project]
+name = "skeletons"
+version = "1.0.1"
+description = "Easily extended way to represent structured and unstructured geophysical data."
+authors = [ { name = "Jan-Victor Björkqvist", email = "janvb@met.no" } ]
+dependencies = [ "pyproj", "numpy" ]
+
+[project.optional-dependencies]
+tests = [ "pyresample", "xarray", "matplotlib", "cartopy", "cmocean" ]
+
+[project.urls]
+repository = "http://github.com/bjorkqvi/skeletons"
+
+# [project.scripts]
+# "sfydata" = "sfy.cli.sfydata:sfy"
