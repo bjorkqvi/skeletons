@@ -31,6 +31,20 @@ jobs:
         run: |
           conda activate test
           pytest -vs --log-cli-level=debug
+
+      - name: Build wheels
+        run: |
+          conda activate test
+          mamba install -c conda-forge flit
+          flit build --format sdist
+
+      - name: Upload wheels
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu'
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
   release:
     name: Release
     runs-on: ubuntu-latest
