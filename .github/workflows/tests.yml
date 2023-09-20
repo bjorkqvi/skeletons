@@ -31,7 +31,6 @@ jobs:
         run: |
           conda activate test
           pytest -vs --log-cli-level=debug
-          
     release:
       name: Release
       runs-on: ubuntu-latest
