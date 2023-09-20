@@ -1,6 +1,6 @@
-from ..point_skeleton import PointSkeleton
-from ..coordinate_factory import add_coord
-from ..datavar_factory import add_datavar
+from skeletons.point_skeleton import PointSkeleton
+from skeletons.decorators import add_coord, add_datavar
+
 import numpy as np
 
 

@@ -1,5 +1,5 @@
-from ..gridded_skeleton import GriddedSkeleton
-from ..distance_functions import lon_in_km, lat_in_km
+from skeletons.gridded_skeleton import GriddedSkeleton
+from skeletons.distance_functions import lon_in_km, lat_in_km
 import numpy as np
 
 

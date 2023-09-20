@@ -2,8 +2,8 @@ import numpy as np
 import xarray as xr
 import utm
 from copy import copy
-from .dataset_manager import DatasetManager
-from .coordinate_manager import CoordinateManager
+from .decorators.dataset_manager import DatasetManager
+from .decorators.coordinate_manager import CoordinateManager
 from typing import Iterable, Union
 from .distance_functions import min_distance, min_cartesian_distance
 

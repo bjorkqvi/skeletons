@@ -1,4 +1,4 @@
-from ..gridded_skeleton import GriddedSkeleton
+from skeletons.gridded_skeleton import GriddedSkeleton
 import numpy as np
 
 

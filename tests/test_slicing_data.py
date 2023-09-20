@@ -1,6 +1,6 @@
-from ..gridded_skeleton import GriddedSkeleton
-from ..coordinate_factory import add_coord, add_time
-from ..datavar_factory import add_datavar
+from skeletons.gridded_skeleton import GriddedSkeleton
+from skeletons.decorators import add_coord, add_time, add_datavar
+
 import numpy as np
 import pandas as pd
 

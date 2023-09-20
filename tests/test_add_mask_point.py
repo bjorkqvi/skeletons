@@ -1,7 +1,5 @@
-from ..point_skeleton import PointSkeleton
-from ..coordinate_factory import add_coord, add_time
-from ..datavar_factory import add_datavar
-from ..mask_factory import add_mask
+from skeletons.point_skeleton import PointSkeleton
+from skeletons.decorators import add_coord, add_time, add_datavar, add_mask
 import numpy as np
 import pandas as pd
 
