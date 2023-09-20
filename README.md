@@ -6,8 +6,8 @@ Please see https://data-skeletons.readthedocs.io/en/latest/ for a documentation.
 
 For example, to create a python class representing a 3D grid of water temperature data:
 ```python
-from skeletons.gridded_skeleton import GriddedSkeleton
-from skeletons.decorators import add_coord, add_datavar
+from geo_skeletons.gridded_skeleton import GriddedSkeleton
+from geo_skeletons.decorators import add_coord, add_datavar
 import numpy as np
 
 @add_datavar(name="water_temperature", default_value=10.0)
@@ -39,8 +39,8 @@ grid.set_utm()
 To create a non-gridded object with wave height time series data and initialize it with cartesian coordinates in the UTM zone 33, N:
 
 ```python
-from skeletons.point_skeleton import PointSkeleton
-from skeletons.decorators import add_datavar, add_time
+from geo_skeletons.point_skeleton import PointSkeleton
+from goe_skeletons.decorators import add_datavar, add_time
 import pandas as pd
 
 @add_datavar(name="hs", default_value=0.0)
