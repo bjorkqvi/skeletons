@@ -3,7 +3,7 @@ name = "skeletons"
 version = "1.0.1"
 description = "Easily extended way to represent structured and unstructured geophysical data."
 authors = [ { name = "Jan-Victor Björkqvist", email = "janvb@met.no" } ]
-dependencies = [ "pyproj", "numpy" ]
+dependencies = [ "numpy", "xarray", "pandas", "utm", "geopy" ]
 
 #[project.optional-dependencies]
 #tests = [ "numpy", "xarray", "pandas", "utm", "geopy"]
