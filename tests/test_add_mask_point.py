@@ -1,5 +1,5 @@
-from skeletons.point_skeleton import PointSkeleton
-from skeletons.decorators import add_coord, add_time, add_datavar, add_mask
+from geo_skeletons.point_skeleton import PointSkeleton
+from geo_skeletons.decorators import add_coord, add_time, add_datavar, add_mask
 import numpy as np
 import pandas as pd
 

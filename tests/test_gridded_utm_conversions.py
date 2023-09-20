@@ -1,4 +1,4 @@
-from skeletons.gridded_skeleton import GriddedSkeleton
+from geo_skeletons.gridded_skeleton import GriddedSkeleton
 import numpy as np
 import utm
 

@@ -1,4 +1,4 @@
-from skeletons.point_skeleton import PointSkeleton
+from geo_skeletons.point_skeleton import PointSkeleton
 import numpy as np
 
 

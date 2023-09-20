@@ -1,5 +1,5 @@
-from skeletons.point_skeleton import PointSkeleton
-from skeletons.gridded_skeleton import GriddedSkeleton
+from geo_skeletons.point_skeleton import PointSkeleton
+from geo_skeletons.gridded_skeleton import GriddedSkeleton
 import numpy as np
 
 
