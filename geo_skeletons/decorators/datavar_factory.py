@@ -17,7 +17,7 @@ def add_datavar(
 
     def datavar_decorator(c):
         def get_var(
-            self, empty: bool = False, data_array: bool = False, **kwargs
+            self, empty: bool = False, data_array: bool = False, squeeze: bool=False, **kwargs
         ) -> np.ndarray:
             """Returns the data variable.
 
@@ -27,23 +27,24 @@ def add_datavar(
             """
             if not self._structure_initialized():
                 return None
-            if empty:
-                return np.full(self.size(coords, **kwargs), default_value)
+            return self.get(name, empty=empty, data_array=data_array, squeeze=squeeze, **kwargs)
+            # if empty:
+            #     return np.full(self.size(coords, **kwargs), default_value)
 
-            data = self._ds_manager.get(name, **kwargs)
-            if data_array:
-                return data.copy()
-            return data.values.copy()
+            # data = self._ds_manager.get(name, **kwargs)
+            # if data_array:
+            #     return data.copy()
+            # return data.values.copy()
 
-        def set_var(self, data: Union[np.ndarray, int, float] = None) -> None:
+        def set_var(self, data: Union[np.ndarray, int, float] = None, allow_reshape: bool=False) -> None:
             if isinstance(data, int) or isinstance(data, float):
                 data = np.full(self._ds_manager.get(name).shape, data)
-            self._update_datavar(name, data)
+            self.set(name, data, allow_reshape=allow_reshape)
 
         if not hasattr(c, "_coord_manager"):
             c._coord_manager = CoordinateManager()
 
-        c._coord_manager.add_var(name, coords)
+        c._coord_manager.add_var(name, coords, default_value)
 
         if append:
             exec(f"c.{name} = partial(get_var, c)")
