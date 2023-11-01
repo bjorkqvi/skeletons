@@ -2,9 +2,8 @@ import numpy as np
 import xarray as xr
 from .coordinate_manager import CoordinateManager
 
+from ..errors import DataWrongDimensionError, UnknownCoordinateError, CoordinateWrongLengthError, GridError
 
-class DataWrongDimensionError(Exception):
-    pass
 
 def move_time_dim_to_front(coord_list) -> list[str]:
     if "time" not in coord_list:
@@ -46,17 +45,11 @@ class DatasetManager:
                 ind_len = len(coord_dict["inds"])
                 for key, value in var_dict.items():
                     if len(value[1]) != ind_len:
-                        raise ValueError(
-                            f"Variable {key} is {len(value[1])} long but the index variable is {ind_len} long!"
-                        )
+                        raise CoordinateWrongLengthError(variable=key, len_of_variable=len(value[1]), index_variable='inds', len_of_index_variable=ind_len)
             if not (xy_set or lonlat_set or inds_set):
-                raise ValueError(
-                    "A proper spatial grid is not set: Requires 'x' and 'y', 'lon' and 'lat' or 'inds'!"
-                )
+                raise GridError
             if sum([xy_set, lonlat_set, inds_set]) > 1:
-                raise ValueError(
-                    "A well defined spatial grid is not set: Requires 'x' and 'y', 'lon' and 'lat' or 'inds'!"
-                )
+                raise GridError
 
             # Check that all added coordinates are provided
             for coord in self.coord_manager.added_coords("all"):
@@ -65,16 +58,12 @@ class DatasetManager:
                         # Add in old coordinate if it is not provided now (can happen when using set_spacing)
                         coord_dict[coord] = self.ds().get(coord).values
                     else:
-                        raise ValueError(
-                            f"Coordinate '{coord}' has been added (by a decorator?) but it was not provided when the Dataset ({ds_coords}) was created!"
-                        )
+                        raise UnknownCoordinateError(f"Skeleton has coordinate '{coord}', but it was not provided on initialization: {ds_coords}!")
 
             # Check that all provided coordinates have been added
             for coord in set(ds_coords) - set(SPATIAL_COORDS):
                 if coord not in self.coord_manager.added_coords("all"):
-                    raise Warning(
-                        f"Coordinate '{coord}' has been provided, but has not been added ({self.coord_manager.added_coords('all')})! Missing a decorator?"
-                    )
+                    raise UnknownCoordinateError(f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.added_coords('all')}! Missing a decorator?")
 
         def determine_coords() -> dict:
             """Creates dictonary of the coordinates"""
@@ -88,31 +77,16 @@ class DatasetManager:
                 coord_dict["inds"] = np.arange(len(x))
 
             # Add in other possible coordinates that are set at initialization
-            for key in self.coord_manager.added_coords("grid"):
+            for key in self.coord_manager.added_coords():
                 value = kwargs.get(key)
 
                 if value is None:
                     value = self.get(key)
 
                 if value is None:
-                    raise KeyError(
-                        f"The variable {key} was not provided in the keyword list when the object was initialized!"
-                    )
-                value = np.array(value)
-                coord_dict[key] = value
-
-            for key in self.coord_manager.added_coords("gridpoint"):
-                value = kwargs.get(key)
-
-                if value is None:
-                    value = self.get(key)
-
-                if value is None:
-                    raise KeyError(
-                        f"The variable {key} was not provided in the keyword list when the object was initialized!"
-                    )
-                value = np.array(value)
-                coord_dict[key] = value
+                    raise UnknownCoordinateError(f"Skeleton has coordinate '{key}', but it was not provided on initialization {kwargs.keys()} nor is it already set {self.coords()}!")
+                
+                coord_dict[key] = np.array(value)
 
             coord_dict = {
                 c: coord_dict[c] for c in move_time_dim_to_front(list(coord_dict))
@@ -241,39 +215,23 @@ class DatasetManager:
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-
-        def check_coord_consistency():
-            for i, item in enumerate(coords_dict.items()):
-                if i > len(data.shape) - 1:
-                    raise Exception(
-                        f"{item[0]} coordinate is {len(item[1])} long, but that dimension doesnt exist in the data!!!"
-                    )
-                if len(item[1]) != data.shape[i]:
-                    raise DataWrongDimensionError(
-                        f"{item[0]} coordinate is {len(item[1])} long, but size of data in that dimension (dim {i}) is {data.shape[i]}!!!"
-                    )
-
-            if i < len(data.shape) - 1:
-                raise Exception(
-                    f"The data had {len(data.shape)} dimensions but only {i} dimensions have been defined. Missing a decorator?"
-                )
-
         coords_dict = self.coords_dict(coord_type)
-        check_coord_consistency()
 
-        # Data variables
-        vars_dict = {}
-        vars_dict[data_name] = (coords_dict.keys(), data)
+        coord_shape = tuple(len(x) for x in coords_dict.values())
+        if coord_shape != data.shape:
+            raise DataWrongDimensionError(data_shape = data.shape, coord_shape=coord_shape)
+
+        vars_dict = {data_name: (coords_dict.keys(), data)}
 
         ds = xr.Dataset(data_vars=vars_dict, coords=coords_dict)
         return ds
 
     def vars(self) -> list[str]:
         """Returns a list of the variables in the Dataset."""
-        if hasattr(self, "data"):
-            return list(self.data.keys())
-        return []
-
+        if self.ds() is None:
+            return []
+        return list(self.data.keys())
+        
     def vars_dict(self) -> list[str]:
         """Returns a dict of the variables in the Dataset."""
         return self.keys_to_dict(self.vars())
@@ -297,10 +255,10 @@ class DatasetManager:
 
         if coords not in ["all", "spatial", "grid", "gridpoint"]:
             raise ValueError(
-                f"Type needs to be 'all', 'spatial', 'grid' or 'gridpoint', not {coords}."
+                f"Keyword 'coords' needs to be 'all' (default), 'spatial', 'grid' or 'gridpoint', not {coords}."
             )
 
-        if not hasattr(self, "data"):
+        if self.ds() is None:
             return []
 
         all_coords = list(self.ds().coords)
