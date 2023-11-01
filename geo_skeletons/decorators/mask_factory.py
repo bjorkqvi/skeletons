@@ -8,7 +8,7 @@ SPHERICAL_STRINGS = ["lon", "lat", "lonlat"]
 def add_mask(
     name: str,
     default_value: int,
-    coords: str = "all",
+    coords: str = "grid",
     opposite_name: str = None,
 ):
     """coord_type = 'all', 'spatial', 'grid' or 'gridpoint'"""
@@ -23,14 +23,9 @@ def add_mask(
             **kwargs can be used for slicing data.
             """
 
-            if empty:
-                return np.full(self.size(coords, **kwargs), default_value).astype(bool)
-            mask = self._ds_manager.get(f"{name}_mask", **kwargs).values.copy()
+            mask = self.get(f"{name}_mask", boolean_mask=True, **kwargs)
 
-            if mask is None:
-                return None
-
-            return mask.astype(bool)
+            return mask
 
         def get_not_mask(self, **kwargs):
             mask = get_mask(self, **kwargs)
@@ -46,7 +41,7 @@ def add_mask(
             strict=False,
             **kwargs,
         ):
-            mask = self.get(f"{name}_mask", **kwargs).copy()
+            mask = get_mask(self, **kwargs)
 
             if type in CARTESIAN_STRINGS:
                 return self.xy(
@@ -65,7 +60,7 @@ def add_mask(
             strict=False,
             **kwargs,
         ):
-            mask = np.logical_not(self.get(f"{name}_mask", **kwargs).copy())
+            mask = np.logical_not(get_mask(self, **kwargs))
 
             if type in CARTESIAN_STRINGS:
                 return self.xy(
@@ -77,14 +72,14 @@ def add_mask(
                 )
 
         def set_mask(self, data: np.ndarray = None) -> None:
-            self._update_mask(name, data)
+            self.set(f"{name}_mask", data.astype(bool))
 
         def set_opposite_mask(self, data: np.ndarray = None) -> None:
-            self._update_mask(name, np.logical_not(data))
+            self.set(f"{name}_mask", np.logical_not(data))
 
         if not hasattr(c, "_coord_manager"):
             c._coord_manager = CoordinateManager()
-        c._coord_manager.add_mask(name, coords)
+        c._coord_manager.add_mask(name, coords, default_value)
         exec(f"c.{name}_mask = get_mask")
         exec(f"c.{name}_points = get_masked_points")
         exec(f"c.set_{name}_mask = set_mask")

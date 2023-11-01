@@ -6,7 +6,7 @@ from .decorators.dataset_manager import DatasetManager
 from .decorators.coordinate_manager import CoordinateManager
 from typing import Iterable, Union
 from .distance_functions import min_distance, min_cartesian_distance
-
+from .decorators.dataset_manager import DataWrongDimensionError
 DEFAULT_UTM = (33, "W")
 VALID_UTM_ZONES = [
     "C",
@@ -68,8 +68,8 @@ class Skeleton:
 
         x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
 
-        if not self._structure_initialized() and self.is_gridded():
-            xvec, yvec = coord_len_to_max_two(xvec), coord_len_to_max_two(yvec)
+        # if not self._structure_initialized() and self.is_gridded():
+        #     xvec, yvec = coord_len_to_max_two(xvec), coord_len_to_max_two(yvec)
 
         self.x_str = x_str
         self.y_str = y_str
@@ -108,40 +108,53 @@ class Skeleton:
         """Resets the mask to default values."""
         for name in self._coord_manager.added_masks():
             # update-method sets empty mask when no is provided
-            self._update_mask(name)
+            self.set(name)
 
     def _reset_datavars(self) -> None:
         """Resets the data variables to default values."""
         for name in self._coord_manager.added_vars():
             # update-method sets empty mask when no is provided
-            self._update_datavar(name)
+            self.set(name)
 
-    def _update_mask(self, name: str, updated_mask=None) -> None:
-        coords = self._coord_manager.added_masks().get(name)
-        if name is None:
+    def set(self, name: str, data=None, allow_reshape: bool=False) -> None:
+        var_coords = self._coord_manager.added_vars().get(name)
+        mask_coords = self._coord_manager.added_masks().get(name)
+
+        coords = var_coords or mask_coords
+
+        if coords is None:
             raise ValueError(
-                f"A mask named {name} has not been defines ({list(self._coord_manager.added_masks().keys())})"
+                f"A data variable named {name} has not been defines ({list(self._coord_manager.added_vars().keys())}, {list(self._coord_manager.added_masks().keys())})"
             )
 
-        if updated_mask is None:
-            updated_mask = self.get(f"{name}_mask", empty=True)
+        if data is None:
+            data = self.get(name, empty=True)
 
-        self._ds_manager.set(
-            data=updated_mask.astype(int), data_name=f"{name}_mask", coord_type=coords
-        )
+        if mask_coords is not None:
+            data = data.astype(int)
 
-    def _update_datavar(self, name: str, updated_var=None) -> None:
-        coords = self._coord_manager.added_vars().get(name)
-        if name is None:
-            raise ValueError(
-                f"A data variable named {name} has not been defines ({list(self._coord_manager.added_vars().keys())})"
-            )
+        try:
+            self._ds_manager.set(data=data, data_name=name, coord_type=coords)
+        except DataWrongDimensionError as data_error:
+            if allow_reshape:
+                print(f'Size of {name} does not match size of {type(self).__name__}, trying to reshape...')
+                if len(data.shape) == 2 and len(self.size(coords)) ==2 and sum(data.shape) == sum(self.size(coords)):
+                    print(f'Transposing data {data.shape} -> {data.T.shape}...')
+                    reshaped_data = data.T
+                elif len(data.shape) == 2 and len(self.size(coords, squeeze=True)) ==2 and sum(data.shape) == sum(self.size(coords, squeeze=True)) and data.shape != self.size(coords, squeeze=True):
+                    print(f'Transposing and reshaping data {data.shape} -> {data.T.shape} -> {self.size(coords)}')
+                    reshaped_data = np.reshape(data.T, self.size(coords))
+                else:
+                    if len(data.shape) > len(self.size(coords)):   
+                        print(f'Squeezing data {data.shape} -> {self.size(coords)}...')
+                    else:
+                        print(f'Expanding data {data.shape} -> {self.size(coords)}...')
+                    reshaped_data = np.reshape(data, self.size(coords))
+                self._ds_manager.set(data=reshaped_data, data_name=name, coord_type=coords)
+            else:
+                raise data_error
 
-        if updated_var is None:
-            updated_var = self.get(name, empty=True)
-        self._ds_manager.set(data=updated_var, data_name=name, coord_type=coords)
-
-    def get(self, name, empty=False):
+    def get(self, name, empty=False, data_array: bool=False, squeeze: bool=False, boolean_mask: bool=False, **kwargs):
         """Gets a mask or data variable.
 
         The ds_manager always gets what is in the Dataset (integers for masks).
@@ -150,15 +163,23 @@ class Skeleton:
         if not self._structure_initialized():
             return None
 
-        if empty:
-            return eval(f"self.{name}(empty=True)")
+        data = self._ds_manager.get(name, empty=empty, **kwargs)
 
-        data = self._ds_manager.get(name)
-        if data is None:
+        if not isinstance(data, xr.DataArray):
             return None
 
-        data = eval(f"self.{name}()")
-        return data
+        data = data.copy()
+
+        if boolean_mask:
+            data.values = data.values.astype(bool)
+
+        if squeeze:
+            data = data.squeeze(drop=True)
+
+        if data_array:
+            return data
+        else:
+            return data.values
 
     def is_empty(self, name):
         """Checks if a Dataset variable is empty.
@@ -255,7 +276,7 @@ class Skeleton:
             return None
         return self._ds_manager.ds()
 
-    def size(self, coords: str = "all", **kwargs) -> tuple[int]:
+    def size(self, coords: str = "all", squeeze: bool = False, **kwargs) -> tuple[int]:
         """Returns the size of the Dataset.
 
         'all' [default]: size of entire Dataset
@@ -266,9 +287,14 @@ class Skeleton:
 
         if not self._structure_initialized():
             return None
-        return self._ds_manager.coords_to_size(
+        
+        size = self._ds_manager.coords_to_size(
             self._ds_manager.coords(coords), **kwargs
         )
+
+        if squeeze:
+            size = tuple([s for s in size if s >1])
+        return size
 
     def inds(self, **kwargs) -> np.ndarray:
         if not self._structure_initialized():
@@ -854,6 +880,14 @@ def get_edges_of_arrays(spatial: dict) -> dict:
 
     return spatial
 
+def check_that_variables_equal_length(x, y) -> bool:
+    if x is None and y is None:
+        return True
+    if x is None:
+        raise ValueError(f"x/lon variable None even though y/lat variable is not!")
+    if y is None:
+        raise ValueError(f"y/lat variable None even though x/lon variable is not!")
+    return len(x) == len(y)
 
 def sanitize_input(x, y, lon, lat, is_gridded_format, is_initialized, **kwargs):
     """Sanitizes input. After this all variables are either
@@ -873,9 +907,14 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, is_initialized, **kwargs):
 
     if not is_gridded_format:
         spatial = sanitize_point_structure(spatial)
-    else:
-        if not is_initialized:
-            spatial = get_edges_of_arrays(spatial)
+
+        for x, y in [('x','y'), ('lon','lat')]:
+            length_ok = check_that_variables_equal_length(spatial[x], spatial[y])
+            if not length_ok:
+                raise Exception(f"{x} is length {len(spatial[x])} but {y} is length {len(spatial[y])}!")
+    # else:
+    #     if not is_initialized:
+    #         spatial = get_edges_of_arrays(spatial)
 
     if np.all([a is None for a in spatial.values()]):
         raise Exception("x, y, lon, lat cannot ALL be None!")
@@ -958,9 +997,9 @@ def force_to_iterable(x, fmt: str = None) -> Iterable:
     if x is None:
         return None
 
-    if not isinstance(x, Iterable):
-        x = [x]
-
+    # if not isinstance(x, Iterable):
+    #     x = [x]
+    x = np.atleast_1d(x)
     x = [float(a) for a in x if a is not None]
 
     if fmt == "numpy":

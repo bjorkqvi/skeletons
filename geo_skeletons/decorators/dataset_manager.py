@@ -3,6 +3,9 @@ import xarray as xr
 from .coordinate_manager import CoordinateManager
 
 
+class DataWrongDimensionError(Exception):
+    pass
+
 def move_time_dim_to_front(coord_list) -> list[str]:
     if "time" not in coord_list:
         return coord_list
@@ -164,7 +167,7 @@ class DatasetManager:
         """
         self._merge_in_ds(self.compile_to_ds(data, data_name, coord_type))
 
-    def get(self, data_name: str, default_data=None, **kwargs) -> xr.DataArray:
+    def get(self, name: str, default_data=None, empty: bool=False, **kwargs) -> xr.DataArray:
         """Gets data from Dataset.
 
         **kwargs can be used for slicing data.
@@ -174,9 +177,21 @@ class DatasetManager:
         if ds is None:
             return None
 
-        data = ds.get(data_name, default_data)
-        if isinstance(data, xr.DataArray):
-            data = self._slice_data(data, **kwargs)
+        if empty:
+            coords = self.coord_manager.added_vars().get(name)
+            if coords is None:
+                coords = self.coord_manager.added_masks().get(name)
+                
+            empty_data = np.full(self.coords_to_size(self.coords(coords)), self.coord_manager.default_values.get(name))
+            default_data = xr.DataArray(data=empty_data,coords=self.coords_dict(coords))
+
+        data = ds.get(name, default_data)
+        if not isinstance(data, xr.DataArray):
+            return data
+        
+        data = self._slice_data(data, **kwargs)
+        if empty:
+            data.values = np.full(data.shape, self.coord_manager.default_values.get(name))
 
         return data
 
@@ -234,7 +249,7 @@ class DatasetManager:
                         f"{item[0]} coordinate is {len(item[1])} long, but that dimension doesnt exist in the data!!!"
                     )
                 if len(item[1]) != data.shape[i]:
-                    raise Exception(
+                    raise DataWrongDimensionError(
                         f"{item[0]} coordinate is {len(item[1])} long, but size of data in that dimension (dim {i}) is {data.shape[i]}!!!"
                     )
 
@@ -282,7 +297,7 @@ class DatasetManager:
 
         if coords not in ["all", "spatial", "grid", "gridpoint"]:
             raise ValueError(
-                "Type needs to be 'all', 'spatial', 'grid' or 'gridpoint'."
+                f"Type needs to be 'all', 'spatial', 'grid' or 'gridpoint', not {coords}."
             )
 
         if not hasattr(self, "data"):

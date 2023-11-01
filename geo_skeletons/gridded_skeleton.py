@@ -140,12 +140,16 @@ class GriddedSkeleton(Skeleton):
 
         """
 
-        def determine_nx_ny(nx, ny, dx, dy, dm, dlon, dlat, dnmi):
-            x_end = self.edges("x", native=True)[1]
-            y_end = self.edges("y", native=True)[1]
+        def determine_nx(x_type: str, nx, dx, dm, dlon, dnmi):
+            if x_type == 'x':
+                lon_type = 'lon'
+            else:
+                lon_type = 'lat'
 
-            if nx and ny:
-                return int(nx), int(ny), x_end, y_end
+            x_end = self.edges(x_type, native=True)[1]
+
+            if nx:
+                return int(nx), x_end
 
             if dnmi:
                 if self.is_cartesian():
@@ -154,43 +158,39 @@ class GriddedSkeleton(Skeleton):
                     dlat = dnmi / 60
                     x_km = lon_in_km(np.median(self.lat()))
                     y_km = lat_in_km(np.median(self.lat()))
-                    dlon = dlat * (y_km / x_km)
+                    if x_type == 'x':
+                        dlon = dlat * (y_km / x_km)
+                    else:
+                        dlon = dlat
 
-            if dlon and dlat:
-                nx = np.round((self.edges("lon")[1] - self.edges("lon")[0]) / dlon) + 1
-                ny = np.round((self.edges("lat")[1] - self.edges("lat")[0]) / dlat) + 1
+            if dlon:
+                nx = np.round((self.edges(lon_type)[1] - self.edges(lon_type)[0]) / dlon) + 1
                 if floating_edge:
                     if self.is_cartesian():
                         raise Exception(
                             "Grid is cartesian, so cant set exact dlon/dlat using floating_edge!"
                         )
-                    x_end = self.edges("lon")[0] + (nx - 1) * dlon
-                    y_end = self.edges("lat")[0] + (ny - 1) * dlat
-                return int(nx), int(ny), x_end, y_end
+                    x_end = self.edges(lon_type)[0] + (nx - 1) * dlon
+                return int(nx), x_end
 
             if dm:
                 dx = dm
-                dy = dm
 
-            if dx and dy:
-                nx = np.round((self.edges("x")[1] - self.edges("x")[0]) / dx) + 1
-                ny = np.round((self.edges("y")[1] - self.edges("y")[0]) / dy) + 1
+            if dx:
+                nx = np.round((self.edges(x_type)[1] - self.edges(x_type)[0]) / dx) + 1
                 if floating_edge:
                     if not self.is_cartesian():
                         raise Exception(
                             "Grid is spherical, so cant set exact dx/dy using floating_edge!"
                         )
-                    x_end = self.edges("x")[0] + (nx - 1) * dx
-                    y_end = self.edges("y")[0] + (ny - 1) * dy
-                return int(nx), int(ny), x_end, y_end
+                    x_end = self.edges(x_type)[0] + (nx - 1) * dx
+                return int(nx), x_end
 
-            raise ValueError(
-                "Give a combination of nx/xy, dlon/dlat, dx/dy or dm or dmi"
-            )
+            # Nothing given
+            return len(self.x()), x_end
 
-        nx, ny, native_x_end, native_y_end = determine_nx_ny(
-            nx, ny, dx, dy, dm, dlon, dlat, dnmi
-        )
+        nx, native_x_end = determine_nx('x', nx, dx, dm, dlon, dnmi)
+        ny, native_y_end = determine_nx('y', ny, dy, dm, dlat, dnmi)
 
         # Unique to not get [0,0,0] etc. arrays if nx=1
         x_native = np.unique(np.linspace(self.x(native=True)[0], native_x_end, nx))

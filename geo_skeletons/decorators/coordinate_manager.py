@@ -15,13 +15,17 @@ class CoordinateManager:
         self.masks = {}
         self.masks["added"] = {}
 
-    def add_var(self, name: str, coords: str) -> None:
+        self.default_values = {}
+
+    def add_var(self, name: str, coords: str, default_value: float) -> None:
         """Add a variable that the Skeleton will use."""
         self.vars["added"][name] = coords
+        self.default_values[name] = default_value
 
-    def add_mask(self, name: str, coords: str) -> None:
+    def add_mask(self, name: str, coords: str, default_value: int) -> None:
         """Add a mask that the Skeleton will use."""
-        self.masks["added"][name] = coords
+        self.masks["added"][f"{name}_mask"] = coords
+        self.default_values[f"{name}_mask"] = default_value
 
     def add_coord(self, name: str, grid_coord: bool) -> None:
         """Add a coordinate that the Skeleton will use.
