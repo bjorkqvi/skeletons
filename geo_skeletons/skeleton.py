@@ -6,7 +6,7 @@ from .decorators.dataset_manager import DatasetManager
 from .decorators.coordinate_manager import CoordinateManager
 from typing import Iterable, Union
 from .distance_functions import min_distance, min_cartesian_distance
-from .decorators.dataset_manager import DataWrongDimensionError
+from .errors import DataWrongDimensionError
 DEFAULT_UTM = (33, "W")
 VALID_UTM_ZONES = [
     "C",
