@@ -34,6 +34,50 @@ VALID_UTM_ZONES = [
 VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
 
 
+class SkeletonIterator:
+    def __init__(self, dict_of_coords: dict, coords_to_iterate: list[str], ds: xr.Dataset) -> None:
+        self.coords_to_iterate = coords_to_iterate
+        self.dict_of_coords = dict_of_coords
+        self.ds = ds
+        self._compile_list()
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        self.ct += 1
+        if self.ct < len(self.list_of_ds):
+            return self.list_of_ds[self.ct]
+        raise StopIteration
+
+    def __call__(self, coords_to_iterate: list[str]):
+        self.coords_to_iterate = coords_to_iterate
+        self._compile_list()
+        return self
+
+    def _compile_list(self):
+        coord_dict = {}
+        for coord in self.coords_to_iterate:
+            
+            coord_value = self.dict_of_coords.get(coord)
+            
+            if coord_value is None:
+                print(f"Cannot iterate over coord {coord}, since it does not exist: {self.dict_of_coords.keys()}")
+            else:
+                coord_dict[coord] = coord_value
+        
+        coord_tuples = itertools.product(*[val.values for __, val in coord_dict.items()])
+        list_of_ds = []
+        for ctuple in coord_tuples:
+            arg_dict = {}
+            for n, val in enumerate(ctuple):
+                arg_dict[list(coord_dict.keys())[n]] = val
+            list_of_ds.append(self.ds.sel(arg_dict))
+
+        self.list_of_ds = list_of_ds
+        self.ct = -1
+
+
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
     makes possible conversions between them.
@@ -48,18 +92,7 @@ class Skeleton:
         self._init_structure(x, y, lon, lat, **kwargs)
             
     def __iter__(self):
-        coord_dict = self._ds_manager.coords_dict('grid')
-        
-        
-        coord_tuples = itertools.product(*[val.values for __, val in coord_dict.items()])
-        list_of_ds = []
-        for ctuple in coord_tuples:
-            arg_dict = {}
-            for n, val in enumerate(ctuple):
-                arg_dict[list(coord_dict.keys())[n]] = val
-            list_of_ds.append(self.ds().sel(arg_dict))
-
-        return iter(list_of_ds)
+        return SkeletonIterator(self._ds_manager.coords_dict('all'), self._ds_manager.coords_dict('grid').keys(), self.ds())
             
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
