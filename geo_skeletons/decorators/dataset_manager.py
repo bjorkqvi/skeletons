@@ -189,7 +189,8 @@ class DatasetManager:
                 keywords[key] = value
 
         for key, value in coordinates.items():
-            data = eval(f"data.sel({key}={value}, **keywords)")
+            #data = eval(f"data.sel({key}={value}, **keywords)")
+            data = data.sel({key: value}, **keywords)
 
         return data
 

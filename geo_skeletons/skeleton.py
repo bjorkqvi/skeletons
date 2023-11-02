@@ -7,6 +7,7 @@ from .decorators.coordinate_manager import CoordinateManager
 from typing import Iterable, Union
 from .distance_functions import min_distance, min_cartesian_distance
 from .errors import DataWrongDimensionError
+import itertools
 DEFAULT_UTM = (33, "W")
 VALID_UTM_ZONES = [
     "C",
@@ -45,6 +46,21 @@ class Skeleton:
     ) -> None:
         self.name = name
         self._init_structure(x, y, lon, lat, **kwargs)
+            
+    def __iter__(self):
+        coord_dict = self._ds_manager.coords_dict('grid')
+        
+        
+        coord_tuples = itertools.product(*[val.values for __, val in coord_dict.items()])
+        list_of_ds = []
+        for ctuple in coord_tuples:
+            arg_dict = {}
+            for n, val in enumerate(ctuple):
+                arg_dict[list(coord_dict.keys())[n]] = val
+            list_of_ds.append(self.ds().sel(arg_dict))
+
+        return iter(list_of_ds)
+            
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
@@ -63,7 +79,7 @@ class Skeleton:
         self._coord_manager.set_initial_vars(self._initial_vars())
 
         x, y, lon, lat, kwargs = sanitize_input(
-            x, y, lon, lat, self.is_gridded(), self._structure_initialized(), **kwargs
+            x, y, lon, lat, self.is_gridded(), **kwargs
         )
 
         x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
@@ -889,7 +905,7 @@ def check_that_variables_equal_length(x, y) -> bool:
         raise ValueError(f"y/lat variable None even though x/lon variable is not!")
     return len(x) == len(y)
 
-def sanitize_input(x, y, lon, lat, is_gridded_format, is_initialized, **kwargs):
+def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
     """Sanitizes input. After this all variables are either
     non-empty np.ndarrays with len >= 1 or None"""
 
@@ -912,9 +928,6 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, is_initialized, **kwargs):
             length_ok = check_that_variables_equal_length(spatial[x], spatial[y])
             if not length_ok:
                 raise Exception(f"{x} is length {len(spatial[x])} but {y} is length {len(spatial[y])}!")
-    # else:
-    #     if not is_initialized:
-    #         spatial = get_edges_of_arrays(spatial)
 
     if np.all([a is None for a in spatial.values()]):
         raise Exception("x, y, lon, lat cannot ALL be None!")

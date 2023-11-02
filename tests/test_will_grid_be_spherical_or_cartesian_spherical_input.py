@@ -6,10 +6,9 @@ import numpy as np
 def test_lon_lat_tuple():
     x, y = None, None
     lon, lat = (0.0, 1.0), (2.0, 3.0)
-    is_initialized = False
 
     for is_gridded in [True, False]:
-        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded, is_initialized)
+        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded)
 
         native_x, native_y, xvec, yvec = func(lon=lon, lat=lat, x=x, y=y)
         assert native_x == "lon"
@@ -21,10 +20,8 @@ def test_lon_lat_tuple():
 def test_lon_lat_tuple_none_tuple():
     x, y = (None, None), (None, None)
     lon, lat = (0.0, 1.0), (2.0, 3.0)
-    is_initialized = False
-
     for is_gridded in [True, False]:
-        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded, is_initialized)
+        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded)
 
         native_x, native_y, xvec, yvec = func(lon=lon, lat=lat, x=x, y=y)
         assert native_x == "lon"
@@ -36,10 +33,9 @@ def test_lon_lat_tuple_none_tuple():
 def test_lon_lat_int_tuple():
     x, y = None, None
     lon, lat = (0, 1), (2, 3)
-    is_initialized = False
 
     for is_gridded in [True, False]:
-        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded, is_initialized)
+        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded)
 
         native_x, native_y, xvec, yvec = func(lon=lon, lat=lat, x=x, y=y)
         assert native_x == "lon"
@@ -51,10 +47,9 @@ def test_lon_lat_int_tuple():
 def test_lon_lat_single_tuple():
     x, y = None, None
     lon, lat = (0.0), (2.0)
-    is_initialized = False
 
     for is_gridded in [True, False]:
-        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded, is_initialized)
+        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded)
 
         native_x, native_y, xvec, yvec = func(lon=lon, lat=lat, x=x, y=y)
         assert native_x == "lon"
@@ -66,10 +61,9 @@ def test_lon_lat_single_tuple():
 def test_lon_lat_single_value():
     x, y = None, None
     lon, lat = 0.0, 2.0
-    is_initialized = False
 
     for is_gridded in [True, False]:
-        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded, is_initialized)
+        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded)
 
         native_x, native_y, xvec, yvec = func(lon=lon, lat=lat, x=x, y=y)
         assert native_x == "lon"
@@ -81,10 +75,9 @@ def test_lon_lat_single_value():
 def test_lon_lat_array():
     x, y = None, None
     lon, lat = np.array([0.0, 1.0, 2.0, 3.0]), np.array([2.0, 3.0, 4.0, 5.0])
-    is_initialized = True
 
     for is_gridded in [True, False]:
-        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded, is_initialized)
+        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded)
 
         native_x, native_y, xvec, yvec = func(lon=lon, lat=lat, x=x, y=y)
         assert native_x == "lon"
@@ -96,10 +89,9 @@ def test_lon_lat_array():
 def test_lon_lat_int_array():
     x, y = None, None
     lon, lat = np.array([0, 1, 2, 3]), np.array([2, 3, 4, 5])
-    is_initialized = True
 
     for is_gridded in [True, False]:
-        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded, is_initialized)
+        x, y, lon, lat, __ = sanitize_input(x, y, lon, lat, is_gridded)
 
         native_x, native_y, xvec, yvec = func(lon=lon, lat=lat, x=x, y=y)
         assert native_x == "lon"
