@@ -15,6 +15,25 @@ class GriddedSkeleton(Skeleton):
     (i.e. raveled meshgrid).
     """
 
+    @classmethod
+    def from_skeleton(
+        cls,
+        skeleton: Skeleton,
+        mask: np.ndarray = None,
+    ):
+        if not skeleton.is_gridded():
+            raise Exception("Can't create a GriddedSkeleton from a non-gridded data structure!")
+        
+        if mask is None:
+            mask = np.full(skeleton.size(), True)
+        lon, lat = skeleton.lon(strict=True, mask=mask), skeleton.lat(strict=True, mask=mask)
+        x, y = skeleton.x(strict=True, mask=mask), skeleton.y(strict=True, mask=mask)
+
+        new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
+        new_skeleton.set_utm(skeleton.utm(), silent=True)
+
+        return new_skeleton
+
     def is_gridded(self) -> bool:
         return True
 
