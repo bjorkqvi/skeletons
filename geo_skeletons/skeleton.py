@@ -104,18 +104,27 @@ class Skeleton:
         lon, lat = ds.get('lon'), ds.get('lat')
         x, y = ds.get('x'), ds.get('y')
        
+        if lon is not None:
+            lon = lon.values
+        if lat is not None:
+            lat = lat.values
+        if x is not None:
+            x = x.values
+        if y is not None:
+            y = y.values
+
         if x is None and y is None and lon is None and lat is None:
             raise ValueError("Can't find x/y lon/lat pair in Dataset!")
 
         # Gather other coordinates
         additional_coords = {}
-        for coord in [coord for coord in coords if coord != 'inds']:
+        for coord in [coord for coord in coords if coord not in ['inds', 'lon','lat', 'x','y']]:
             ds_val = ds.get(coord)
             provided_val =kwargs.get(coord)
             val = provided_val or ds_val
             if val is None:
                 raise ValueError(f"Can't find required coordinate {coord} in Dataset or in kwargs!")
-            additional_coords[coord] = val
+            additional_coords[coord] = val.values
         
         # Initialize Skeleton
         points = cls(x=x, y=y, lon=lon, lat=lat, **additional_coords)
@@ -185,14 +194,15 @@ class Skeleton:
         """Absorb another object of same type. This is used e.g. when pathcing
         cached data and joining different Boundary etc. over time.
         """
-        if not self.is_gridded():
+        if not self.is_gridded() and dim == 'inds':
             inds = skeleton_to_absorb.inds() + len(self.inds())
             skeleton_to_absorb.ds()["inds"] = inds
+
         new_skeleton = self.from_ds(xr.concat(
                     [self.ds(), skeleton_to_absorb.ds()],  dim=dim, data_vars="minimal"
                 ).sortby(dim))
-       
         return new_skeleton
+
     def _reset_masks(self) -> None:
         """Resets the mask to default values."""
         for name in self._coord_manager.added_masks():
