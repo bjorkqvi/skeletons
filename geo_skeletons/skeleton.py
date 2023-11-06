@@ -234,10 +234,10 @@ class Skeleton:
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
         """Inserts a slice of data into the Skeleton. 
         
-        If data named 'data' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
+        If data named 'geodata' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
         data_slice having the threshold=0.4 and time='2023-11-08 12:00:00' having shape=(10,) can be inserted by using the values:
         
-        .insert(name='data', data=data, time='2023-11-08 12:00:00', threshold=0.4)"""
+        .insert(name='geodata', data=data_slice, time='2023-11-08 12:00:00', threshold=0.4)"""
         dims = self.ds().dims
         index_kwargs = {}
         for dim in dims:
@@ -250,15 +250,17 @@ class Skeleton:
     def ind_insert(self, name: str, data: np.ndarray, **kwargs) -> None:
         """Inserts a slice of data into the Skeleton. 
         
-        If data named 'data' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
+        If data named 'geodata' has dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
         data_slice having the first threshold and first time can be inserted by using the index values:
         
-        .insert(name='data', data=data, time=0, threshold=0)"""
+        .insert(name='geodata', data=data_slice, time=0, threshold=0)"""
 
         dims = self.ds().dims
         index_list = list(np.arange(len(dims)))
         for n, dim in enumerate(dims):
             var = self.get(dim)
+            if var is None:
+                raise KeyError(f"No coordinate {dim} exists!")
             ind = kwargs.get(dim, slice(len(var)))
             index_list[n] = ind
 
@@ -333,7 +335,7 @@ class Skeleton:
                 raise data_error
 
         self.set_metadata(metadata)
-        
+
     def get(self, name, empty=False, data_array: bool=False, squeeze: bool=False, boolean_mask: bool=False, **kwargs):
         """Gets a mask or data variable.
 
