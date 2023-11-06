@@ -2,7 +2,7 @@ import numpy as np
 from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
 from .distance_functions import lon_in_km, lat_in_km
-
+import xarray as xr
 
 class GriddedSkeleton(Skeleton):
     """Gives a gridded structure to the Skeleton.
@@ -25,7 +25,7 @@ class GriddedSkeleton(Skeleton):
             raise Exception("Can't create a GriddedSkeleton from a non-gridded data structure!")
         
         if mask is None:
-            mask = np.full(skeleton.size(), True)
+            mask = np.full(skeleton.size('spatial'), True)
         lon, lat = skeleton.lon(strict=True, mask=mask), skeleton.lat(strict=True, mask=mask)
         x, y = skeleton.x(strict=True, mask=mask), skeleton.y(strict=True, mask=mask)
 
@@ -228,15 +228,20 @@ class GriddedSkeleton(Skeleton):
         self._init_structure(x, y, lon, lat)
 
     def __repr__(self) -> str:
-        string = "grid = GriddedSkeleton"
-
-        x0, x1 = self.edges("x", native=True)
-        y0, y1 = self.edges("y", native=True)
-        string += f"({self.x_str}=({x0},{x1}), {self.y_str}=({y0},{y1}))\n"
-
-        string += f"grid.set_spacing(nx={self.nx()}, ny={self.ny()})\n"
-        if self.is_cartesian():
-            utm_number, utm_zone = self.utm()
-            string += f"grid.set_utm(({utm_number}, '{utm_zone}'))"
-
+        string = f"<{type(self).__name__} (GriddedSkeleton)>\n"
+        string += "-"*34 + " Containing " + "-"*34 + "\n"
+        string += self.ds().__repr__()
+        string += "\n" + "-"*80
         return string
+        # string = "grid = GriddedSkeleton"
+
+        # x0, x1 = self.edges("x", native=True)
+        # y0, y1 = self.edges("y", native=True)
+        # string += f"({self.x_str}=({x0},{x1}), {self.y_str}=({y0},{y1}))\n"
+
+        # string += f"grid.set_spacing(nx={self.nx()}, ny={self.ny()})\n"
+        # if self.is_cartesian():
+        #     utm_number, utm_zone = self.utm()
+        #     string += f"grid.set_utm(({utm_number}, '{utm_zone}'))"
+
+        # return string

@@ -1,6 +1,6 @@
 import numpy as np
 from .skeleton import Skeleton
-
+import xarray as xr
 
 class PointSkeleton(Skeleton):
     """Gives a unstructured structure to the Skeleton.
@@ -19,8 +19,10 @@ class PointSkeleton(Skeleton):
         skeleton: Skeleton,
         mask: np.ndarray = None,
     ):
+        
         if mask is None:
-            mask = np.full(skeleton.size(), True)
+            mask = np.full(skeleton.size('spatial'), True)
+
         lon, lat = skeleton.lonlat(strict=True, mask=mask)
         x, y = skeleton.xy(strict=True, mask=mask)
 
@@ -28,7 +30,7 @@ class PointSkeleton(Skeleton):
         new_skeleton.set_utm(skeleton.utm(), silent=True)
 
         return new_skeleton
-
+    
     def is_gridded(self) -> bool:
         return False
 
@@ -99,27 +101,32 @@ class PointSkeleton(Skeleton):
         return x, y
 
     def __repr__(self) -> str:
-        string = "points = PointSkeleton"
-
-        x, y = self.lonlat(native=True)
-
-        string += f"({self.x_str}=("
-
-        for xx in x:
-            string += f"{xx},"
-
-        string = string[:-1]
-        string += ")"
-
-        string += f", {self.y_str}=("
-
-        for yy in y:
-            string += f"{yy},"
-
-        string = string[:-1]
-        string += "))\n"
-        if self.is_cartesian():
-            utm_number, utm_zone = self.utm()
-            string += f"points.set_utm(({utm_number}, '{utm_zone}'))"
-
+        string = f"<{type(self).__name__} (PointSkeleton)>\n"
+        string += "-"*34 + " Containing " + "-"*34 + "\n"
+        string += self.ds().__repr__()
+        string += "\n" + "-"*80
         return string
+        # string = "points = PointSkeleton"
+
+        # x, y = self.lonlat(native=True)
+
+        # string += f"({self.x_str}=("
+
+        # for xx in x:
+        #     string += f"{xx},"
+
+        # string = string[:-1]
+        # string += ")"
+
+        # string += f", {self.y_str}=("
+
+        # for yy in y:
+        #     string += f"{yy},"
+
+        # string = string[:-1]
+        # string += "))\n"
+        # if self.is_cartesian():
+        #     utm_number, utm_zone = self.utm()
+        #     string += f"points.set_utm(({utm_number}, '{utm_zone}'))"
+
+        # return string
