@@ -231,12 +231,56 @@ class Skeleton:
     def isel(self, **kwargs):
         return self.from_ds(self.ds().isel(**kwargs))
 
+    def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
+        """Inserts a slice of data into the Skeleton. 
+        
+        If data named 'data' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
+        data_slice having the threshold=0.4 and time='2023-11-08 12:00:00' having shape=(10,) can be inserted by using the values:
+        
+        .insert(name='data', data=data, time='2023-11-08 12:00:00', threshold=0.4)"""
+        dims = self.ds().dims
+        index_kwargs = {}
+        for dim in dims:
+            val = kwargs.get(dim)
+            if val is not None:
+                index_kwargs[dim] = np.where(self.get(dim)==val)[0][0]
+        
+        self.ind_insert(name=name, data=data, **index_kwargs)
+
+    def ind_insert(self, name: str, data: np.ndarray, **kwargs) -> None:
+        """Inserts a slice of data into the Skeleton. 
+        
+        If data named 'data' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
+        data_slice having the first threshold and first time can be inserted by using the index values:
+        
+        .insert(name='data', data=data, time=0, threshold=0)"""
+
+        dims = self.ds().dims
+        index_list = list(np.arange(len(dims)))
+        for n, dim in enumerate(dims):
+            var = self.get(dim)
+            ind = kwargs.get(dim, slice(len(var)))
+            index_list[n] = ind
+
+        old_data = self.get(name)
+        N = len(old_data.shape)
+        data_str = 'old_data['
+        for n in range(N):
+            data_str += f"{index_list[n]},"
+        data_str = data_str[:-1]
+        data_str += '] = data'
+        exec(data_str)
+        self.set(name, old_data)
+        return
+            
+
+
     def set(self, name: str, data=None, allow_reshape: bool=False, coords: list[str]=None, silent:bool=True) -> None:
         var_coord_type = self._coord_manager.added_vars().get(name)
         mask_coord_type = self._coord_manager.added_masks().get(name)
 
         coord_type = var_coord_type or mask_coord_type
-
+        metadata = self.metadata()
         if coord_type is None:
             raise ValueError(
                 f"A data variable named {name} has not been defines ({list(self._coord_manager.added_vars().keys())}, {list(self._coord_manager.added_masks().keys())})"
@@ -288,6 +332,8 @@ class Skeleton:
             else:
                 raise data_error
 
+        self.set_metadata(metadata)
+        
     def get(self, name, empty=False, data_array: bool=False, squeeze: bool=False, boolean_mask: bool=False, **kwargs):
         """Gets a mask or data variable.
 

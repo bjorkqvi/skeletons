@@ -138,6 +138,7 @@ class DatasetManager:
 
         coord_type = 'all', 'spatial', 'grid' or 'gridpoint'
         """
+
         self._merge_in_ds(self.compile_to_ds(data, data_name, coord_type))
 
     def get(self, name: str, default_data=None, empty: bool=False, **kwargs) -> xr.DataArray:
