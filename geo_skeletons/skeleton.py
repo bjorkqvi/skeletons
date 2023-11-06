@@ -120,12 +120,19 @@ class Skeleton:
         additional_coords = {}
         for coord in [coord for coord in coords if coord not in ['inds', 'lon','lat', 'x','y']]:
             ds_val = ds.get(coord)
+            if ds_val is not None:
+                ds_val = ds_val.values
             provided_val =kwargs.get(coord)
-            val = provided_val or ds_val
+
+            val = provided_val
+            if val is None:
+                val = ds_val
+            #val = provided_val or ds_val
             if val is None:
                 raise ValueError(f"Can't find required coordinate {coord} in Dataset or in kwargs!")
-            additional_coords[coord] = val.values
-        
+            additional_coords[coord] = val
+
+
         # Initialize Skeleton
         points = cls(x=x, y=y, lon=lon, lat=lat, **additional_coords)
 
