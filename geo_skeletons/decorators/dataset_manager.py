@@ -122,7 +122,6 @@ class DatasetManager:
         var_dict = determine_vars()
 
         check_consistency()
-
         self.set_new_ds(xr.Dataset(coords=coord_dict, data_vars=var_dict))
 
     def set_new_ds(self, ds: xr.Dataset) -> None:
