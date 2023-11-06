@@ -61,3 +61,48 @@ def test_absorb_gridded_spherical():
         grid.lonlat(),
         (np.array([1, 2, 3, 4, 1, 2, 3, 4]), np.array([0, 0, 0, 0, 3, 3, 3, 3])),
     )
+
+
+def test_absorb_point_skeleton_along_new_coordinate():
+    @add_datavar(name="test")
+    @add_coord(name="z")
+    class TestSkeleton(PointSkeleton):
+        pass
+
+    points1 = TestSkeleton(x=(1, 2), y=(3, 4), z=(0, 1, 2, 3, 4))
+    data1 = np.full(points1.size(), 1)
+    points1.set_test(data1)
+
+    points2 = TestSkeleton(x=(1, 2), y=(3, 4), z=(5, 6, 7))
+    data2 = np.full(points2.size(), 2)
+    points2.set_test(data2)
+
+    points3 = points1.absorb(points2, dim="z")
+    np.testing.assert_array_almost_equal(points3.z(), np.arange(8))
+    assert np.all(points3.test(z=slice(0, 4)) == points1.test())
+    assert np.all(points3.test(z=slice(5, 7)) == points2.test())
+    assert points3.size() == (2, 8)
+
+
+def test_absorb_gridded_skeleton_along_new_coordinate():
+    @add_datavar(name="test")
+    @add_coord(name="z")
+    class TestSkeleton(GriddedSkeleton):
+        pass
+
+    points1 = TestSkeleton(x=(1, 2), y=(3, 4), z=(0, 1, 2, 3, 4))
+    points1.set_spacing(nx=3, ny=4)
+    data1 = np.full(points1.size(), 1)
+    points1.set_test(data1)
+
+    points2 = TestSkeleton(x=(1, 2), y=(3, 4), z=(5, 6, 7))
+    points2.set_spacing(nx=3, ny=4)
+    data2 = np.full(points2.size(), 2)
+    points2.set_test(data2)
+
+    points3 = points1.absorb(points2, dim="z")
+
+    np.testing.assert_array_almost_equal(points3.z(), np.arange(8))
+    assert np.all(points3.test(z=slice(0, 4)) == points1.test())
+    assert np.all(points3.test(z=slice(5, 7)) == points2.test())
+    assert points3.size() == (4, 3, 8)
