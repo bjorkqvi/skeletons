@@ -75,7 +75,7 @@ class PointSkeleton(Skeleton):
         return lon, lat
 
     def xy(
-        self, mask: np.ndarray = None, strict=False, normalize: bool = False, **kwargs
+        self, mask: np.ndarray = None, strict=False, normalize: bool = False, utm: tuple[int, str], **kwargs
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of x- and y-coordinates of all points.
 
@@ -89,8 +89,8 @@ class PointSkeleton(Skeleton):
         """
 
         # Transforms x-y to lon-lat if necessary
-        x, y = super().x(strict=strict, normalize=normalize, **kwargs), super().y(
-            strict=strict, normalize=normalize, **kwargs
+        x, y = super().x(strict=strict, normalize=normalize, utm=utm, **kwargs), super().y(
+            strict=strict, normalize=normalize, utm=utm, **kwargs
         )
 
         if x is None:
@@ -106,27 +106,4 @@ class PointSkeleton(Skeleton):
         string += self.ds().__repr__()
         string += "\n" + "-"*80
         return string
-        # string = "points = PointSkeleton"
 
-        # x, y = self.lonlat(native=True)
-
-        # string += f"({self.x_str}=("
-
-        # for xx in x:
-        #     string += f"{xx},"
-
-        # string = string[:-1]
-        # string += ")"
-
-        # string += f", {self.y_str}=("
-
-        # for yy in y:
-        #     string += f"{yy},"
-
-        # string = string[:-1]
-        # string += "))\n"
-        # if self.is_cartesian():
-        #     utm_number, utm_zone = self.utm()
-        #     string += f"points.set_utm(({utm_number}, '{utm_zone}'))"
-
-        # return string
