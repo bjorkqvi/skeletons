@@ -494,6 +494,7 @@ class Skeleton:
         native: bool = False,
         strict: bool = False,
         normalize: bool = False,
+        utm: tuple[int, str] = None,
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian x-coordinate.
@@ -504,6 +505,8 @@ class Skeleton:
         If strict=True, then None is returned if grid is sperical
 
         native=True overrides strict=True for spherical grids
+
+        Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
 
         if not self._structure_initialized():
@@ -515,44 +518,51 @@ class Skeleton:
         if not self.is_cartesian() and (strict or self.strict):
             return None
 
-        if self.is_cartesian():
+        if self.is_cartesian() and self.utm() == utm:
             x = self._ds_manager.get("x", **kwargs).values.copy()
-        else:
+            if normalize:
+                x = x - min(x)
+            return x
+    
+        if utm is None:
             number, letter = self.utm()
-            if (
-                self.is_gridded()
-            ):  # This will rotate the grid, but is best estimate to keep it strucutred
-                lat = np.median(self.lat(**kwargs))
-                # print(
-                #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-                # )
-                x, __, __, __ = utm.from_latlon(
-                    lat,
-                    self.lon(**kwargs),
+        else:
+            number, letter = utm
+            
+        if (
+            self.is_gridded()
+        ):  # This will rotate the grid, but is best estimate to keep it strucutred
+            lat = np.median(self.lat(**kwargs))
+            # print(
+            #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
+            # )
+            x, __, __, __ = utm.from_latlon(
+                lat,
+                self.lon(**kwargs),
+                force_zone_number=number,
+                force_zone_letter=letter,
+            )
+        else:
+            lat = self.lat(**kwargs)
+            lat = cap_lat_for_utm(lat)
+
+            posmask = lat >= 0
+            negmask = lat < 0
+            x = np.zeros(len(lat))
+            if np.any(posmask):
+                x[posmask], __, __, __ = utm.from_latlon(
+                    lat[posmask],
+                    self.lon(**kwargs)[posmask],
                     force_zone_number=number,
                     force_zone_letter=letter,
                 )
-            else:
-                lat = self.lat(**kwargs)
-                lat = cap_lat_for_utm(lat)
-
-                posmask = lat >= 0
-                negmask = lat < 0
-                x = np.zeros(len(lat))
-                if np.any(posmask):
-                    x[posmask], __, __, __ = utm.from_latlon(
-                        lat[posmask],
-                        self.lon(**kwargs)[posmask],
-                        force_zone_number=number,
-                        force_zone_letter=letter,
-                    )
-                if np.any(negmask):
-                    x[negmask], __, __, __ = utm.from_latlon(
-                        -lat[negmask],
-                        self.lon(**kwargs)[negmask],
-                        force_zone_number=number,
-                        force_zone_letter=letter,
-                    )
+            if np.any(negmask):
+                x[negmask], __, __, __ = utm.from_latlon(
+                    -lat[negmask],
+                    self.lon(**kwargs)[negmask],
+                    force_zone_number=number,
+                    force_zone_letter=letter,
+                )
 
         if normalize:
             x = x - min(x)
@@ -564,6 +574,7 @@ class Skeleton:
         native: bool = False,
         strict: bool = False,
         normalize: bool = False,
+        utm: tuple[int, str] = None,
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian y-coordinate.
@@ -574,6 +585,8 @@ class Skeleton:
         If strict=True, then None is returned if grid is sperical
 
         native=True overrides strict=True for spherical grids
+
+        Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
 
         if not self._structure_initialized():
@@ -585,53 +598,59 @@ class Skeleton:
         if not self.is_cartesian() and (strict or self.strict):
             return None
 
-        if self.is_cartesian():
+        if self.is_cartesian() and self.utm() == utm::
             y = self._ds_manager.get("y", **kwargs).values.copy()
-        else:
+            if normalize:
+                y = y - min(y)
+            return y
+
+        if utm is None:
             number, letter = self.utm()
-            posmask = self.lat(**kwargs) >= 0
-            negmask = self.lat(**kwargs) < 0
-            if (
-                self.is_gridded()
-            ):  # This will rotate the grid, but is best estimate to keep it strucutred
-                lon = np.median(self.lon(**kwargs))
-                # print(
-                #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-                # )
-                y = np.zeros(len(self.lat(**kwargs)))
-                if np.any(posmask):
-                    _, y[posmask], __, __ = utm.from_latlon(
-                        self.lat(**kwargs)[posmask],
-                        lon,
-                        force_zone_number=number,
-                        force_zone_letter=letter,
-                    )
-                if np.any(negmask):
-                    _, y[negmask], __, __ = utm.from_latlon(
-                        -self.lat(**kwargs)[negmask],
-                        lon,
-                        force_zone_number=number,
-                        force_zone_letter=letter,
-                    )
-                    y[negmask] = -y[negmask]
-            else:
-                lat = cap_lat_for_utm(self.lat(**kwargs))
-                y = np.zeros(len(self.lat(**kwargs)))
-                if np.any(posmask):
-                    _, y[posmask], __, __ = utm.from_latlon(
-                        lat[posmask],
-                        self.lon(**kwargs)[posmask],
-                        force_zone_number=number,
-                        force_zone_letter=letter,
-                    )
-                if np.any(negmask):
-                    _, y[negmask], __, __ = utm.from_latlon(
-                        -lat[negmask],
-                        self.lon(**kwargs)[negmask],
-                        force_zone_number=number,
-                        force_zone_letter=letter,
-                    )
-                    y[negmask] = -y[negmask]
+        else:
+            number, letter = utm
+        posmask = self.lat(**kwargs) >= 0
+        negmask = self.lat(**kwargs) < 0
+        if (
+            self.is_gridded()
+        ):  # This will rotate the grid, but is best estimate to keep it strucutred
+            lon = np.median(self.lon(**kwargs))
+            # print(
+            #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
+            # )
+            y = np.zeros(len(self.lat(**kwargs)))
+            if np.any(posmask):
+                _, y[posmask], __, __ = utm.from_latlon(
+                    self.lat(**kwargs)[posmask],
+                    lon,
+                    force_zone_number=number,
+                    force_zone_letter=letter,
+                )
+            if np.any(negmask):
+                _, y[negmask], __, __ = utm.from_latlon(
+                    -self.lat(**kwargs)[negmask],
+                    lon,
+                    force_zone_number=number,
+                    force_zone_letter=letter,
+                )
+                y[negmask] = -y[negmask]
+        else:
+            lat = cap_lat_for_utm(self.lat(**kwargs))
+            y = np.zeros(len(self.lat(**kwargs)))
+            if np.any(posmask):
+                _, y[posmask], __, __ = utm.from_latlon(
+                    lat[posmask],
+                    self.lon(**kwargs)[posmask],
+                    force_zone_number=number,
+                    force_zone_letter=letter,
+                )
+            if np.any(negmask):
+                _, y[negmask], __, __ = utm.from_latlon(
+                    -lat[negmask],
+                    self.lon(**kwargs)[negmask],
+                    force_zone_number=number,
+                    force_zone_letter=letter,
+                )
+                y[negmask] = -y[negmask]
 
         if normalize:
             y = y - min(y)
@@ -994,7 +1013,6 @@ class Skeleton:
             self._name = new_name
         else:
             raise ValueError("name needs to be a string")
-
 
 def coord_len_to_max_two(xvec):
     if xvec is not None and len(xvec) > 2:

@@ -89,6 +89,7 @@ class GriddedSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         normalize: bool = False,
+        utm: tuple[int, str] = None,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of x and y of all points.
@@ -105,7 +106,7 @@ class GriddedSkeleton(Skeleton):
             mask = np.full(super().size("spatial", **kwargs), True)
         mask = mask.ravel()
 
-        x, y = self._native_xy(**kwargs)
+        x, y = self._native_xy(utm=utm, **kwargs)
 
         if self.is_cartesian() or native:
             return x[mask], y[mask]
@@ -116,11 +117,11 @@ class GriddedSkeleton(Skeleton):
 
         return points.xy(mask=mask)
 
-    def _native_xy(self, **kwargs) -> tuple[np.ndarray, np.ndarray]:
+    def _native_xy(self, utm: tuple[int, str], **kwargs) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of native x and y of all points."""
 
         x, y = np.meshgrid(
-            super().x(native=True, **kwargs), super().y(native=True, **kwargs)
+            super().x(native=True, utm=utm, **kwargs), super().y(native=True, utm=utm, **kwargs)
         )
 
         return x.ravel(), y.ravel()
@@ -233,15 +234,3 @@ class GriddedSkeleton(Skeleton):
         string += self.ds().__repr__()
         string += "\n" + "-"*80
         return string
-        # string = "grid = GriddedSkeleton"
-
-        # x0, x1 = self.edges("x", native=True)
-        # y0, y1 = self.edges("y", native=True)
-        # string += f"({self.x_str}=({x0},{x1}), {self.y_str}=({y0},{y1}))\n"
-
-        # string += f"grid.set_spacing(nx={self.nx()}, ny={self.ny()})\n"
-        # if self.is_cartesian():
-        #     utm_number, utm_zone = self.utm()
-        #     string += f"grid.set_utm(({utm_number}, '{utm_zone}'))"
-
-        # return string
