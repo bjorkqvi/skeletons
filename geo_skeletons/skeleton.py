@@ -1,6 +1,6 @@
 import numpy as np
 import xarray as xr
-import utm
+import utm as utm_module
 from copy import copy
 from .decorators.dataset_manager import DatasetManager
 from .decorators.coordinate_manager import CoordinateManager
@@ -417,7 +417,7 @@ class Skeleton:
                 else:
                     lat, lon = lat[lat < 0], lon[lat < 0]
 
-                __, __, zone_number, zone_letter = utm.from_latlon(lat, lon)
+                __, __, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
         else:
             zone_number, zone_letter = utm_zone
 
@@ -518,7 +518,7 @@ class Skeleton:
         if not self.is_cartesian() and (strict or self.strict):
             return None
 
-        if self.is_cartesian() and self.utm() == utm:
+        if self.is_cartesian() and (self.utm() == utm or utm is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()
             if normalize:
                 x = x - min(x)
@@ -536,7 +536,7 @@ class Skeleton:
             # print(
             #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
             # )
-            x, __, __, __ = utm.from_latlon(
+            x, __, __, __ = utm_module.from_latlon(
                 lat,
                 self.lon(**kwargs),
                 force_zone_number=number,
@@ -550,14 +550,14 @@ class Skeleton:
             negmask = lat < 0
             x = np.zeros(len(lat))
             if np.any(posmask):
-                x[posmask], __, __, __ = utm.from_latlon(
+                x[posmask], __, __, __ = utm_module.from_latlon(
                     lat[posmask],
                     self.lon(**kwargs)[posmask],
                     force_zone_number=number,
                     force_zone_letter=letter,
                 )
             if np.any(negmask):
-                x[negmask], __, __, __ = utm.from_latlon(
+                x[negmask], __, __, __ = utm_module.from_latlon(
                     -lat[negmask],
                     self.lon(**kwargs)[negmask],
                     force_zone_number=number,
@@ -598,7 +598,7 @@ class Skeleton:
         if not self.is_cartesian() and (strict or self.strict):
             return None
 
-        if self.is_cartesian() and self.utm() == utm::
+        if self.is_cartesian() and (self.utm() == utm or utm is None):
             y = self._ds_manager.get("y", **kwargs).values.copy()
             if normalize:
                 y = y - min(y)
@@ -619,14 +619,14 @@ class Skeleton:
             # )
             y = np.zeros(len(self.lat(**kwargs)))
             if np.any(posmask):
-                _, y[posmask], __, __ = utm.from_latlon(
+                _, y[posmask], __, __ = utm_module.from_latlon(
                     self.lat(**kwargs)[posmask],
                     lon,
                     force_zone_number=number,
                     force_zone_letter=letter,
                 )
             if np.any(negmask):
-                _, y[negmask], __, __ = utm.from_latlon(
+                _, y[negmask], __, __ = utm_module.from_latlon(
                     -self.lat(**kwargs)[negmask],
                     lon,
                     force_zone_number=number,
@@ -637,14 +637,14 @@ class Skeleton:
             lat = cap_lat_for_utm(self.lat(**kwargs))
             y = np.zeros(len(self.lat(**kwargs)))
             if np.any(posmask):
-                _, y[posmask], __, __ = utm.from_latlon(
+                _, y[posmask], __, __ = utm_module.from_latlon(
                     lat[posmask],
                     self.lon(**kwargs)[posmask],
                     force_zone_number=number,
                     force_zone_letter=letter,
                 )
             if np.any(negmask):
-                _, y[negmask], __, __ = utm.from_latlon(
+                _, y[negmask], __, __ = utm_module.from_latlon(
                     -lat[negmask],
                     self.lon(**kwargs)[negmask],
                     force_zone_number=number,
@@ -687,7 +687,7 @@ class Skeleton:
             else:
                 y = self.y(**kwargs)
             number, letter = self.utm()
-            __, lon = utm.to_latlon(
+            __, lon = utm_module.to_latlon(
                 self.x(**kwargs),
                 np.mod(y, 10_000_000),
                 zone_number=number,
@@ -728,7 +728,7 @@ class Skeleton:
             else:
                 x = self.x(**kwargs)
             number, letter = self.utm()
-            lat, __ = utm.to_latlon(
+            lat, __ = utm_module.to_latlon(
                 x,
                 np.mod(self.y(**kwargs), 10_000_000),
                 zone_number=number,
@@ -873,17 +873,17 @@ class Skeleton:
         orig_zone = self.utm()
         if lon is not None and lat is not None:
             if self.is_cartesian():
-                x, y, __, __ = utm.from_latlon(
+                x, y, __, __ = utm_module.from_latlon(
                     lat,
                     lon,
                     force_zone_number=orig_zone[0],
                     force_zone_letter=orig_zone[1],
                 )
             else:
-                x, y, zone_number, zone_letter = utm.from_latlon(lat, lon)
+                x, y, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
                 self.set_utm((zone_number, zone_letter), silent=True)
         else:
-            lat, lon = utm.to_latlon(
+            lat, lon = utm_module.to_latlon(
                 x,
                 y,
                 zone_number=orig_zone[0],

@@ -75,7 +75,7 @@ class PointSkeleton(Skeleton):
         return lon, lat
 
     def xy(
-        self, mask: np.ndarray = None, strict=False, normalize: bool = False, utm: tuple[int, str], **kwargs
+        self, mask: np.ndarray = None, strict=False, normalize: bool = False, utm: tuple[int, str]=None, **kwargs
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of x- and y-coordinates of all points.
 

@@ -117,7 +117,7 @@ class GriddedSkeleton(Skeleton):
 
         return points.xy(mask=mask)
 
-    def _native_xy(self, utm: tuple[int, str], **kwargs) -> tuple[np.ndarray, np.ndarray]:
+    def _native_xy(self, utm: tuple[int, str]=None, **kwargs) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of native x and y of all points."""
 
         x, y = np.meshgrid(
