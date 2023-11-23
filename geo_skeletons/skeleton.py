@@ -31,6 +31,7 @@ VALID_UTM_ZONES = [
     "U",
     "V",
     "W",
+    "X",
 ]
 
 VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
