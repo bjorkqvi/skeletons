@@ -10,6 +10,7 @@ from .errors import DataWrongDimensionError
 import itertools
 import pandas as pd
 from typing import Iterable
+
 DEFAULT_UTM = (33, "W")
 VALID_UTM_ZONES = [
     "C",
@@ -38,15 +39,17 @@ VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
 
 
 class SkeletonIterator:
-    def __init__(self, dict_of_coords: dict, coords_to_iterate: list[str], skeleton) -> None:
+    def __init__(
+        self, dict_of_coords: dict, coords_to_iterate: list[str], skeleton
+    ) -> None:
         self.coords_to_iterate = coords_to_iterate
         self.dict_of_coords = dict_of_coords
         self.skeleton = skeleton
         self._compile_list()
-    
+
     def __iter__(self):
         return self
-    
+
     def __next__(self):
         self.ct += 1
         if self.ct < len(self.list_of_skeletons):
@@ -61,15 +64,19 @@ class SkeletonIterator:
     def _compile_list(self):
         coord_dict = {}
         for coord in self.coords_to_iterate:
-            
+
             coord_value = self.dict_of_coords.get(coord)
-            
+
             if coord_value is None:
-                print(f"Cannot iterate over coord {coord}, since it does not exist: {self.dict_of_coords.keys()}")
+                print(
+                    f"Cannot iterate over coord {coord}, since it does not exist: {self.dict_of_coords.keys()}"
+                )
             else:
                 coord_dict[coord] = coord_value
-        
-        coord_tuples = itertools.product(*[val.values for __, val in coord_dict.items()])
+
+        coord_tuples = itertools.product(
+            *[val.values for __, val in coord_dict.items()]
+        )
         list_of_skeletons = []
         for ctuple in coord_tuples:
             arg_dict = {}
@@ -93,18 +100,16 @@ class Skeleton:
     ) -> None:
         self.name = name
         self._init_structure(x, y, lon, lat, **kwargs)
-            
 
     @classmethod
     def from_ds(cls, ds: xr.Dataset, **kwargs):
         """Generats a PointSkeleton from an xarray Dataset. All coordinates must be present, but only matching data variables included."""
         coords = list(ds.coords) + list(kwargs.keys())
 
-       
         # Getting mandatory spatial variables
-        lon, lat = ds.get('lon'), ds.get('lat')
-        x, y = ds.get('x'), ds.get('y')
-       
+        lon, lat = ds.get("lon"), ds.get("lat")
+        x, y = ds.get("x"), ds.get("y")
+
         if lon is not None:
             lon = lon.values
         if lat is not None:
@@ -119,20 +124,23 @@ class Skeleton:
 
         # Gather other coordinates
         additional_coords = {}
-        for coord in [coord for coord in coords if coord not in ['inds', 'lon','lat', 'x','y']]:
+        for coord in [
+            coord for coord in coords if coord not in ["inds", "lon", "lat", "x", "y"]
+        ]:
             ds_val = ds.get(coord)
             if ds_val is not None:
                 ds_val = ds_val.values
-            provided_val =kwargs.get(coord)
+            provided_val = kwargs.get(coord)
 
             val = provided_val
             if val is None:
                 val = ds_val
-            #val = provided_val or ds_val
+            # val = provided_val or ds_val
             if val is None:
-                raise ValueError(f"Can't find required coordinate {coord} in Dataset or in kwargs!")
+                raise ValueError(
+                    f"Can't find required coordinate {coord} in Dataset or in kwargs!"
+                )
             additional_coords[coord] = val
-
 
         # Initialize Skeleton
         points = cls(x=x, y=y, lon=lon, lat=lat, **additional_coords)
@@ -142,16 +150,17 @@ class Skeleton:
             val = ds.get(data_var)
             if val is not None:
                 points.set(data_var, val)
-
+                points.set_metadata(ds.get(data_var).attrs, data_array_name=data_var)
         points.set_metadata(ds.attrs)
 
         return points
 
     def __iter__(self):
-        return SkeletonIterator(self._ds_manager.coords_dict('all'), self._ds_manager.coords_dict('grid').keys(), self)
-
-
-
+        return SkeletonIterator(
+            self._ds_manager.coords_dict("all"),
+            self._ds_manager.coords_dict("grid").keys(),
+            self,
+        )
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
@@ -202,13 +211,15 @@ class Skeleton:
         """Absorb another object of same type. This is used e.g. when pathcing
         cached data and joining different Boundary etc. over time.
         """
-        if not self.is_gridded() and dim == 'inds':
+        if not self.is_gridded() and dim == "inds":
             inds = skeleton_to_absorb.inds() + len(self.inds())
             skeleton_to_absorb.ds()["inds"] = inds
 
-        new_skeleton = self.from_ds(xr.concat(
-                    [self.ds(), skeleton_to_absorb.ds()],  dim=dim, data_vars="minimal"
-                ).sortby(dim))
+        new_skeleton = self.from_ds(
+            xr.concat(
+                [self.ds(), skeleton_to_absorb.ds()], dim=dim, data_vars="minimal"
+            ).sortby(dim)
+        )
         return new_skeleton
 
     def _reset_masks(self) -> None:
@@ -233,27 +244,28 @@ class Skeleton:
         return self.from_ds(self.ds().isel(**kwargs))
 
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
-        """Inserts a slice of data into the Skeleton. 
-        
-        If data named 'geodata' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
+        """Inserts a slice of data into the Skeleton.
+
+        If data named 'geodata' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then
         data_slice having the threshold=0.4 and time='2023-11-08 12:00:00' having shape=(10,) can be inserted by using the values:
-        
-        .insert(name='geodata', data=data_slice, time='2023-11-08 12:00:00', threshold=0.4)"""
+
+        .insert(name='geodata', data=data_slice, time='2023-11-08 12:00:00', threshold=0.4)
+        """
         dims = self.ds().dims
         index_kwargs = {}
         for dim in dims:
             val = kwargs.get(dim)
             if val is not None:
-                index_kwargs[dim] = np.where(self.get(dim)==val)[0][0]
-        
+                index_kwargs[dim] = np.where(self.get(dim) == val)[0][0]
+
         self.ind_insert(name=name, data=data, **index_kwargs)
 
     def ind_insert(self, name: str, data: np.ndarray, **kwargs) -> None:
-        """Inserts a slice of data into the Skeleton. 
-        
-        If data named 'geodata' has dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then 
+        """Inserts a slice of data into the Skeleton.
+
+        If data named 'geodata' has dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then
         data_slice having the first threshold and first time can be inserted by using the index values:
-        
+
         .insert(name='geodata', data=data_slice, time=0, threshold=0)"""
 
         dims = self.ds().dims
@@ -267,18 +279,23 @@ class Skeleton:
 
         old_data = self.get(name)
         N = len(old_data.shape)
-        data_str = 'old_data['
+        data_str = "old_data["
         for n in range(N):
             data_str += f"{index_list[n]},"
         data_str = data_str[:-1]
-        data_str += '] = data'
+        data_str += "] = data"
         exec(data_str)
         self.set(name, old_data)
         return
-            
 
-
-    def set(self, name: str, data=None, allow_reshape: bool=False, coords: list[str]=None, silent:bool=True) -> None:
+    def set(
+        self,
+        name: str,
+        data=None,
+        allow_reshape: bool = False,
+        coords: list[str] = None,
+        silent: bool = True,
+    ) -> None:
         var_coord_type = self._coord_manager.added_vars().get(name)
         mask_coord_type = self._coord_manager.added_masks().get(name)
 
@@ -302,11 +319,17 @@ class Skeleton:
         if coords is not None:
             data_coordinates = list(self.get(name, data_array=True).dims)
             if len(data_coordinates) != len(coords):
-                allow_reshape = True # We have some trivial dimension that needs to be expanded
+                allow_reshape = (
+                    True  # We have some trivial dimension that needs to be expanded
+                )
             shape_list = [coords.index(c) for c in data_coordinates if c in coords]
-            if shape_list != [n for n in range(len(shape_list))]: # Don't reshape trivially
+            if shape_list != [
+                n for n in range(len(shape_list))
+            ]:  # Don't reshape trivially
                 if not silent:
-                    print(f'Reshaping data {data.shape} -> {np.transpose(data, tuple(shape_list)).shape}: {coords} -> {data_coordinates}')
+                    print(
+                        f"Reshaping data {data.shape} -> {np.transpose(data, tuple(shape_list)).shape}: {coords} -> {data_coordinates}"
+                    )
                 data = np.transpose(data, tuple(shape_list))
 
         try:
@@ -314,30 +337,57 @@ class Skeleton:
         except DataWrongDimensionError as data_error:
             if allow_reshape:
                 if not silent:
-                    print(f'Size of {name} does not match size of {type(self).__name__}, trying to reshape...')
-                if len(data.shape) == 2 and len(self.size(coord_type)) ==2 and sum(data.shape) == sum(self.size(coord_type)):
+                    print(
+                        f"Size of {name} does not match size of {type(self).__name__}, trying to reshape..."
+                    )
+                if (
+                    len(data.shape) == 2
+                    and len(self.size(coord_type)) == 2
+                    and sum(data.shape) == sum(self.size(coord_type))
+                ):
                     if not silent:
-                        print(f'Transposing data {data.shape} -> {data.T.shape}...')
+                        print(f"Transposing data {data.shape} -> {data.T.shape}...")
                     reshaped_data = data.T
-                elif len(data.shape) == 2 and len(self.size(coord_type, squeeze=True)) ==2 and sum(data.shape) == sum(self.size(coord_type, squeeze=True)) and data.shape != self.size(coord_type, squeeze=True):
+                elif (
+                    len(data.shape) == 2
+                    and len(self.size(coord_type, squeeze=True)) == 2
+                    and sum(data.shape) == sum(self.size(coord_type, squeeze=True))
+                    and data.shape != self.size(coord_type, squeeze=True)
+                ):
                     if not silent:
-                        print(f'Transposing and reshaping data {data.shape} -> {data.T.shape} -> {self.size(coord_type)}')
+                        print(
+                            f"Transposing and reshaping data {data.shape} -> {data.T.shape} -> {self.size(coord_type)}"
+                        )
                     reshaped_data = np.reshape(data.T, self.size(coord_type))
                 else:
-                    if len(data.shape) > len(self.size(coord_type)):   
+                    if len(data.shape) > len(self.size(coord_type)):
                         if not silent:
-                            print(f'Squeezing data {data.shape} -> {self.size(coord_type)}...')
+                            print(
+                                f"Squeezing data {data.shape} -> {self.size(coord_type)}..."
+                            )
                     else:
                         if not silent:
-                            print(f'Expanding data {data.shape} -> {self.size(coord_type)}...')
+                            print(
+                                f"Expanding data {data.shape} -> {self.size(coord_type)}..."
+                            )
                     reshaped_data = np.reshape(data, self.size(coord_type))
-                self._ds_manager.set(data=reshaped_data, data_name=name, coord_type=coord_type)
+                self._ds_manager.set(
+                    data=reshaped_data, data_name=name, coord_type=coord_type
+                )
             else:
                 raise data_error
 
         self.set_metadata(metadata)
 
-    def get(self, name, empty=False, data_array: bool=False, squeeze: bool=False, boolean_mask: bool=False, **kwargs):
+    def get(
+        self,
+        name,
+        empty=False,
+        data_array: bool = False,
+        squeeze: bool = False,
+        boolean_mask: bool = False,
+        **kwargs,
+    ):
         """Gets a mask or data variable.
 
         The ds_manager always gets what is in the Dataset (integers for masks).
@@ -470,13 +520,13 @@ class Skeleton:
 
         if not self._structure_initialized():
             return None
-        
+
         size = self._ds_manager.coords_to_size(
             self._ds_manager.coords(coords), **kwargs
         )
 
         if squeeze:
-            size = tuple([s for s in size if s >1])
+            size = tuple([s for s in size if s > 1])
         return size
 
     def inds(self, **kwargs) -> np.ndarray:
@@ -524,12 +574,12 @@ class Skeleton:
             if normalize:
                 x = x - min(x)
             return x
-    
+
         if utm is None:
             number, letter = self.utm()
         else:
             number, letter = utm
-            
+
         if (
             self.is_gridded()
         ):  # This will rotate the grid, but is best estimate to keep it strucutred
@@ -1015,6 +1065,7 @@ class Skeleton:
         else:
             raise ValueError("name needs to be a string")
 
+
 def coord_len_to_max_two(xvec):
     if xvec is not None and len(xvec) > 2:
         xvec = np.array([min(xvec), max(xvec)])
@@ -1080,6 +1131,7 @@ def get_edges_of_arrays(spatial: dict) -> dict:
 
     return spatial
 
+
 def check_that_variables_equal_length(x, y) -> bool:
     if x is None and y is None:
         return True
@@ -1096,6 +1148,7 @@ def sanitize_time_input(time):
     if not isinstance(time, Iterable):
         return pd.DatetimeIndex([time])
     return pd.DatetimeIndex(time)
+
 
 def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
     """Sanitizes input. After this all variables are either
@@ -1116,10 +1169,12 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
     if not is_gridded_format:
         spatial = sanitize_point_structure(spatial)
 
-        for x, y in [('x','y'), ('lon','lat')]:
+        for x, y in [("x", "y"), ("lon", "lat")]:
             length_ok = check_that_variables_equal_length(spatial[x], spatial[y])
             if not length_ok:
-                raise Exception(f"{x} is length {len(spatial[x])} but {y} is length {len(spatial[y])}!")
+                raise Exception(
+                    f"{x} is length {len(spatial[x])} but {y} is length {len(spatial[y])}!"
+                )
 
     if np.all([a is None for a in spatial.values()]):
         raise Exception("x, y, lon, lat cannot ALL be None!")
