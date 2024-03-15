@@ -332,8 +332,7 @@ class Skeleton:
         if self.dask:
             chunks = chunks or self.chunks
 
-        if not hasattr(data, "chunks") and chunks is not None:
-            data = dask.array.from_array(data, chunks=chunks)
+        dask_me = not hasattr(data, "chunks") and chunks is not None
 
         if coords is not None:
             data_coordinates = list(self.get(name, data_array=True).dims)
@@ -352,7 +351,14 @@ class Skeleton:
                 data = np.transpose(data, tuple(shape_list))
 
         try:
-            self._ds_manager.set(data=data, data_name=name, coord_type=coord_type)
+            if dask_me:
+                self._ds_manager.set(
+                    data=dask.array.from_array(data, chunks=chunks),
+                    data_name=name,
+                    coord_type=coord_type,
+                )
+            else:
+                self._ds_manager.set(data=data, data_name=name, coord_type=coord_type)
         except DataWrongDimensionError as data_error:
             if allow_reshape:
                 if not silent:
@@ -390,9 +396,16 @@ class Skeleton:
                                 f"Expanding data {data.shape} -> {self.size(coord_type)}..."
                             )
                     reshaped_data = np.reshape(data, self.size(coord_type))
-                self._ds_manager.set(
-                    data=reshaped_data, data_name=name, coord_type=coord_type
-                )
+                if dask_me:
+                    self._ds_manager.set(
+                        data=dask.array.from_array(reshaped_data, chunks=chunks),
+                        data_name=name,
+                        coord_type=coord_type,
+                    )
+                else:
+                    self._ds_manager.set(
+                        data=reshaped_data, data_name=name, coord_type=coord_type
+                    )
             else:
                 raise data_error
 
