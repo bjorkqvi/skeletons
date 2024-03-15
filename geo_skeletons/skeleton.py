@@ -10,6 +10,7 @@ from .errors import DataWrongDimensionError
 import itertools
 import pandas as pd
 from typing import Iterable
+import dask
 
 DEFAULT_UTM = (33, "W")
 VALID_UTM_ZONES = [
@@ -99,7 +100,17 @@ class Skeleton:
         self, x=None, y=None, lon=None, lat=None, name: str = "LonelySkeleton", **kwargs
     ) -> None:
         self.name = name
+        self.dask = False
+        self.chunks = None
         self._init_structure(x, y, lon, lat, **kwargs)
+
+    def activate_dask(self, chunks="auto") -> None:
+        self.dask = True
+        self.chunks = chunks
+
+    def deactivate_dask(self) -> None:
+        self.dask = False
+        self.chunks = None
 
     @classmethod
     def from_ds(cls, ds: xr.Dataset, **kwargs):
@@ -295,6 +306,7 @@ class Skeleton:
         allow_reshape: bool = False,
         coords: list[str] = None,
         silent: bool = True,
+        chunks: tuple | str = None,
     ) -> None:
         var_coord_type = self._coord_manager.added_vars().get(name)
         mask_coord_type = self._coord_manager.added_masks().get(name)
@@ -313,8 +325,15 @@ class Skeleton:
             data = data.astype(int)
 
         if isinstance(data, xr.DataArray):
+            chunks = chunks or data.chunks
             coords = list(data.dims)
             data = data.values
+
+        if self.dask:
+            chunks = chunks or self.chunks
+
+        if not hasattr(data, "chunks") and chunks is not None:
+            data = dask.array.from_array(data, chunks=chunks)
 
         if coords is not None:
             data_coordinates = list(self.get(name, data_array=True).dims)
