@@ -1,7 +1,7 @@
 from functools import partial
 import pandas as pd
 import numpy as np
-from .coordinate_manager import CoordinateManager
+from copy import deepcopy
 
 
 def coord_decorator(name, grid_coord, c, stash_get=False):
@@ -34,8 +34,9 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
             return data
         return data.values.copy()
 
-    if not hasattr(c, "_coord_manager"):
-        c._coord_manager = CoordinateManager()
+    if c._coord_manager.initial_state:
+        c._coord_manager = deepcopy(c._coord_manager)
+        c._coord_manager.initial_state = False
 
     c._coord_manager.add_coord(name, grid_coord)
     if stash_get:
@@ -107,8 +108,9 @@ def add_time(grid_coord: bool = False, name: str = "time"):
                 return pd.to_datetime(data.values.copy())
             return pd.to_datetime([data.values[0].copy(), data.values[0].copy()])
 
-        if not hasattr(c, "_coord_manager"):
-            c._coord_manager = CoordinateManager()
+        if c._coord_manager.initial_state:
+            c._coord_manager = deepcopy(c._coord_manager)
+            c._coord_manager.initial_state = False
 
         c._coord_manager.add_coord(name, grid_coord)
         exec(f"c.{name} = get_time")
@@ -138,8 +140,10 @@ def add_frequency(grid_coord: bool = False, name: str = "freq"):
             freq = get_freq(self, angular=angular).copy()
             return (freq[-1] - freq[0]) / (len(freq) - 1)
 
-        if not hasattr(c, "_coord_manager"):
-            c._coord_manager = CoordinateManager()
+        if c._coord_manager.initial_state:
+            c._coord_manager = deepcopy(c._coord_manager)
+            c._coord_manager.initial_state = False
+
         c._coord_manager.add_coord(name, grid_coord)
         exec(f"c.{name} = get_freq")
         c.df = df
@@ -166,8 +170,9 @@ def add_direction(grid_coord: bool = False, name: str = "dirs"):
             dmax = 2 * np.pi if radians else 360
             return dmax / len(dirs)
 
-        if not hasattr(c, "_coord_manager"):
-            c._coord_manager = CoordinateManager()
+        if c._coord_manager.initial_state:
+            c._coord_manager = deepcopy(c._coord_manager)
+            c._coord_manager.initial_state = False
         c._coord_manager.add_coord(name, grid_coord)
         exec(f"c.{name} = get_dirs")
         c.dd = ddir

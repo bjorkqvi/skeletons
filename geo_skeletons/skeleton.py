@@ -3,14 +3,15 @@ import xarray as xr
 import utm as utm_module
 from copy import copy
 from .decorators.dataset_manager import DatasetManager
-from .decorators.coordinate_manager import CoordinateManager
 from typing import Iterable, Union
 from .distance_functions import min_distance, min_cartesian_distance
 from .errors import DataWrongDimensionError
 import itertools
 import pandas as pd
 from typing import Iterable
-import dask
+import dask.array as da
+from copy import deepcopy
+from .decorators import add_datavar
 
 DEFAULT_UTM = (33, "W")
 VALID_UTM_ZONES = [
@@ -100,17 +101,52 @@ class Skeleton:
         self, x=None, y=None, lon=None, lat=None, name: str = "LonelySkeleton", **kwargs
     ) -> None:
         self.name = name
-        self.dask = False
-        self.chunks = None
-        self._init_structure(x, y, lon, lat, **kwargs)
-
-    def activate_dask(self, chunks="auto") -> None:
         self.dask = True
-        self.chunks = chunks
+        self.chunks = "auto"
+        self._init_structure(x, y, lon, lat, **kwargs)
 
     def deactivate_dask(self) -> None:
         self.dask = False
         self.chunks = None
+
+    def activate_dask(
+        self, chunks="auto", primary_dim: str = None, rechunk: bool = True
+    ) -> None:
+        self.dask = True
+        self.chunks = chunks
+        if rechunk:
+            self.rechunk(chunks, primary_dim)
+
+    def rechunk(
+        self, chunks: tuple | dict | str = "auto", primary_dim: str | list[str] = None
+    ):
+        if primary_dim:
+            if isinstance(primary_dim, str):
+                primary_dim = [primary_dim]
+            chunks = {}
+            for dim in primary_dim:
+                chunks[dim] = len(self.get(dim))
+
+        if isinstance(chunks, dict):
+            chunks = self._chunk_tuple_from_dict(chunks)
+        for var in self.data_vars():
+            data = self.get(var)
+            if hasattr(data, "chunks"):
+                data = data.rechunk(chunks)
+            else:
+                data = da.from_array(data, chunks)
+            self.set(var, data)
+
+    def _chunk_tuple_from_dict(self, chunk_dict: dict) -> tuple[int]:
+        """Determines a tuple of chunks based on a dict of coordinates and chunks"""
+        chunk_list = []
+        for coord in self.coords():
+            chunk_list.append(chunk_dict.get(coord, "auto"))
+        return tuple(chunk_list)
+
+    def add_datavar(self, name: str, coords: str = "all", default_value: float = 0.0):
+        self = add_datavar(name=name, coords=coords, default_value=default_value,append=True)(self)
+        self.set(name)
 
     @classmethod
     def from_ds(cls, ds: xr.Dataset, **kwargs):
@@ -181,25 +217,24 @@ class Skeleton:
         subclass (e.g. PointSkeleton)
         """
 
-        # Migth have been already created by decorators
-        if not hasattr(self, "_coord_manager"):
-            self._coord_manager = CoordinateManager()
-
-        # Initial values defined in subclass (e.g. GriddedSkeleton)
-        self._coord_manager.set_initial_coords(self._initial_coords())
-        self._coord_manager.set_initial_vars(self._initial_vars())
+        # Don't want to alter the CoordManager of the class
+        self._coord_manager = deepcopy(self._coord_manager)
+        self._coord_manager.initial_state = False
 
         x, y, lon, lat, kwargs = sanitize_input(
             x, y, lon, lat, self.is_gridded(), **kwargs
         )
 
         x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
-
-        # if not self._structure_initialized() and self.is_gridded():
-        #     xvec, yvec = coord_len_to_max_two(xvec), coord_len_to_max_two(yvec)
-
         self.x_str = x_str
         self.y_str = y_str
+        # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
+        self._coord_manager.set_initial_coords(
+            self._initial_coords(spherical=(x_str == "lon"))
+        )
+        self._coord_manager.set_initial_vars(
+            self._initial_vars(spherical=(x_str == "lon"))
+        )
 
         # The manager contains the Xarray Dataset
         if not self._structure_initialized():
@@ -219,9 +254,8 @@ class Skeleton:
         return len(self.ds()[self.x_str]) == 0 and len(self.ds()[self.y_str]) == 0
 
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
-        """Absorb another object of same type. This is used e.g. when pathcing
-        cached data and joining different Boundary etc. over time.
-        """
+        """Absorb another object of same type over a centrain dimension.
+        For a PointSkeleton the inds-variable reorganized if dim='inds' is given."""
         if not self.is_gridded() and dim == "inds":
             inds = skeleton_to_absorb.inds() + len(self.inds())
             skeleton_to_absorb.ds()["inds"] = inds
@@ -236,17 +270,27 @@ class Skeleton:
     def _reset_masks(self) -> None:
         """Resets the mask to default values."""
         for name in self._coord_manager.added_masks():
-            # update-method sets empty mask when no is provided
+            # update-method sets empty mask when no value is provided
             self.set(name)
 
     def _reset_datavars(self) -> None:
         """Resets the data variables to default values."""
         for name in self._coord_manager.added_vars():
-            # update-method sets empty mask when no is provided
+            # update-method sets empty data when no value is provided
             self.set(name)
 
     def data_vars(self) -> None:
         return list(self._coord_manager.added_vars().keys())
+
+    def coords(self, coords: str = "all") -> list[str]:
+        """Returns a list of the coordinates from the Dataset.
+
+        'all' [default]: all coordinates in the Dataset
+        'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
+        'grid': coordinates for the grid (e.g. z, time)
+        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        """
+        return self._coord_manager.coords(coords)
 
     def sel(self, **kwargs):
         return self.from_ds(self.ds().sel(**kwargs))
@@ -277,7 +321,7 @@ class Skeleton:
         If data named 'geodata' has dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then
         data_slice having the first threshold and first time can be inserted by using the index values:
 
-        .insert(name='geodata', data=data_slice, time=0, threshold=0)"""
+        .ind_insert(name='geodata', data=data_slice, time=0, threshold=0)"""
 
         dims = self.ds().dims
         index_list = list(np.arange(len(dims)))
@@ -303,121 +347,169 @@ class Skeleton:
         self,
         name: str,
         data=None,
-        allow_reshape: bool = False,
+        allow_reshape: bool = True,
+        allow_transpose: bool = False,
         coords: list[str] = None,
         silent: bool = True,
         chunks: tuple | str = None,
     ) -> None:
+        """Sets the data using the following logic:
+
+        Any numpy array is converted to a dask-array, unless dask-mode is deactivated with .deactivate_dask().
+        If keyword 'chunks' is set, then conversion to dask is always done.
+
+        If given data is a dask array, then it is never rechunked, but used as is.
+
+        Data is assumed to be in the right dimension, but can also be reshaped:
+
+        1) If 'coords' (e.g. ['freq',' inds']) is given, then data is reshaped assuming data is in that order.
+        2) If data is a DataArray, then 'coords' is set using the information in the DataArray.
+        3) If data has any trivial dimensions, then those are squeezed.
+        4) If data is missing any trivial dimension, then those are expanded.
+        5) If data along non-trivial dimensions is two-dimensional, then a transpose is attemted.
+
+        NB! For 1), only non-trivial dimensions need to be identified
+        """
+
+        def data_is_dask(data) -> bool:
+            """Checks if a data array is a dask array"""
+            return hasattr(data, "chunks")
+
+        def dask_me(data, chunks):
+            """Convert a numpy array to a dask array if needed and wanted"""
+            # Don't do anything if array is already dask
+            if data_is_dask(data):
+                if chunks is not None:
+                    data = data.rechunk(chunks)
+                return data
+
+            # If dask-mode is deactivated and no chunks are explicitly given, then keep the numpy array
+            if chunks is None and not self.dask:
+                return data
+
+            # Otherwise make sure to convert to a dask array
+            chunks = chunks or self.chunks
+            chunks = chunks or "auto"
+            return da.from_array(data, chunks=chunks)
+
+        def transpose_me(data, coord_order):
+            if len(data.shape) > len(coord_order):
+                data = data.squeeze()
+            if data_is_dask(data):
+                return da.transpose(data, coord_order)
+            else:
+                return np.transpose(data, coord_order)
+
+        def transpose_given_data(data):
+            """Transposes given data if it is a two dimensional transpose of the wanted size after removing all trivial dimension.
+
+            If sizes match, it just squeezes the data."""
+            # Check if the base data (ignoring any trivial dimensions is the right (or possibly transposed) dimensions
+            expected_squeeezed_shape = self.size(coord_type, squeeze=True)
+            actual_squeezed_shape = data.squeeze().shape
+
+            if expected_squeeezed_shape == actual_squeezed_shape:
+                return data.squeeze()
+
+            # If data is not 2D and doesn't match, we don't want to try to reshape
+            if len(actual_squeezed_shape) != 2 or len(expected_squeeezed_shape) != 2:
+                return None
+
+            # Is the squeezed shape a transpose of the expected squeezed shape?
+            if (
+                tuple(np.flip(actual_squeezed_shape)) == expected_squeeezed_shape
+                and allow_transpose
+            ):
+                return data.squeeze().T
+
+        # 'all', 'grid', 'spatial' or 'gridpoint'
         var_coord_type = self._coord_manager.added_vars().get(name)
         mask_coord_type = self._coord_manager.added_masks().get(name)
-
         coord_type = var_coord_type or mask_coord_type
+
         metadata = self.metadata()
+
         if coord_type is None:
             raise ValueError(
-                f"A data variable named {name} has not been defines ({list(self._coord_manager.added_vars().keys())}, {list(self._coord_manager.added_masks().keys())})"
+                f"A data variable named {name} has not been defined ({list(self._coord_manager.added_vars().keys())}, {list(self._coord_manager.added_masks().keys())})"
             )
 
         if data is None:
-            data = self.get(name, empty=True)
+            data = self.get(name, empty=True, squeeze=False)
 
+        # Masks are stored as integers
         if mask_coord_type is not None:
             data = data.astype(int)
 
+        # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
         if isinstance(data, xr.DataArray):
-            chunks = chunks or data.chunks
-            coords = list(data.dims)
-            data = data.values
+            coords = coords or list(data.dims)
+            data = data.data
 
-        if self.dask:
-            chunks = chunks or self.chunks
-
-        dask_me = not hasattr(data, "chunks") and chunks is not None
-
+        # 1 & 2)
+        # If the coordinates of the data are explicilty given as a coord-list or thorugh a DataArray, try to reshape to those
         if coords is not None:
-            data_coordinates = list(self.get(name, data_array=True).dims)
-            if len(data_coordinates) != len(coords):
-                allow_reshape = (
-                    True  # We have some trivial dimension that needs to be expanded
-                )
-            shape_list = [coords.index(c) for c in data_coordinates if c in coords]
-            if shape_list != [
-                n for n in range(len(shape_list))
-            ]:  # Don't reshape trivially
-                if not silent:
-                    print(
-                        f"Reshaping data {data.shape} -> {np.transpose(data, tuple(shape_list)).shape}: {coords} -> {data_coordinates}"
-                    )
-                data = np.transpose(data, tuple(shape_list))
+            allow_reshape = True
+            data_coordinates = list(self.get(name, data_array=True, squeeze=False).dims)
+            # Check that we don't do trivial reshape
+            if data_coordinates == coords:
+                allow_reshape = False
 
-        try:
-            if dask_me:
-                self._ds_manager.set(
-                    data=dask.array.from_array(data, chunks=chunks),
-                    data_name=name,
-                    coord_type=coord_type,
-                )
-            else:
-                self._ds_manager.set(data=data, data_name=name, coord_type=coord_type)
-        except DataWrongDimensionError as data_error:
+            # Create a list of shapes based on the given coordinates
+            coord_order = [coords.index(c) for c in data_coordinates if c in coords]
             if allow_reshape:
                 if not silent:
                     print(
-                        f"Size of {name} does not match size of {type(self).__name__}, trying to reshape..."
+                        f"Reshaping data {data.shape} -> {transpose_me(data, tuple(coord_order)).shape}: {coords} -> {data_coordinates}"
                     )
-                if (
-                    len(data.shape) == 2
-                    and len(self.size(coord_type)) == 2
-                    and sum(data.shape) == sum(self.size(coord_type))
-                ):
-                    if not silent:
-                        print(f"Transposing data {data.shape} -> {data.T.shape}...")
-                    reshaped_data = data.T
-                elif (
-                    len(data.shape) == 2
-                    and len(self.size(coord_type, squeeze=True)) == 2
-                    and sum(data.shape) == sum(self.size(coord_type, squeeze=True))
-                    and data.shape != self.size(coord_type, squeeze=True)
-                ):
-                    if not silent:
-                        print(
-                            f"Transposing and reshaping data {data.shape} -> {data.T.shape} -> {self.size(coord_type)}"
-                        )
-                    reshaped_data = np.reshape(data.T, self.size(coord_type))
-                else:
-                    if len(data.shape) > len(self.size(coord_type)):
-                        if not silent:
-                            print(
-                                f"Squeezing data {data.shape} -> {self.size(coord_type)}..."
-                            )
-                    else:
-                        if not silent:
-                            print(
-                                f"Expanding data {data.shape} -> {self.size(coord_type)}..."
-                            )
-                    reshaped_data = np.reshape(data, self.size(coord_type))
-                if dask_me:
-                    self._ds_manager.set(
-                        data=dask.array.from_array(reshaped_data, chunks=chunks),
-                        data_name=name,
-                        coord_type=coord_type,
-                    )
-                else:
-                    self._ds_manager.set(
-                        data=reshaped_data, data_name=name, coord_type=coord_type
-                    )
-            else:
+                data = transpose_me(data, tuple(coord_order))
+
+        # First try to set the data here
+        data = dask_me(data, chunks)
+        try:
+            self._ds_manager.set(data=data, data_name=name, coord_type=coord_type)
+            self.set_metadata(metadata)
+            return
+        except DataWrongDimensionError as data_error:
+            if not allow_reshape:
                 raise data_error
 
+            original_data_shape = data.shape
+            data = transpose_given_data(data)
+            if data is None:
+                raise data_error
+
+        # We now know that the data is of right size if we ignore trivial dimensions
+        # Data also has all trivial dimensions squeezed by now
+
+        if not silent:
+            print(f"Size of {name} does not match size of {type(self).__name__}...")
+
+        expected_shape = self.size(coord_type)
+        actual_shape = data.shape
+
+        if expected_shape != actual_shape:
+            trivial_places = tuple(np.where(np.array(expected_shape) == 1)[0])
+            if data_is_dask(data):
+                data = da.expand_dims(data, axis=trivial_places)
+            else:
+                data = np.expand_dims(data, axis=trivial_places)
+
+        if not silent:
+            print(f"Reshaping data {original_data_shape} -> {data.shape}...")
+
+        self._ds_manager.set(data=data, data_name=name, coord_type=coord_type)
         self.set_metadata(metadata)
+        return
 
     def get(
         self,
         name,
         empty=False,
         data_array: bool = False,
-        squeeze: bool = False,
+        squeeze: bool = True,
         boolean_mask: bool = False,
+        dask: bool = True,
         **kwargs,
     ):
         """Gets a mask or data variable.
@@ -433,18 +525,25 @@ class Skeleton:
         if not isinstance(data, xr.DataArray):
             return None
 
-        data = data.copy()
+        if boolean_mask or squeeze:
+            data = data.copy()
 
         if boolean_mask:
-            data.values = data.values.astype(bool)
+            data = data.astype(bool)
 
-        if squeeze:
+        if squeeze and data.shape != (1,):  # Don't squeeze out last dimension
             data = data.squeeze(drop=True)
 
-        if data_array:
-            return data
+        if not data_array:
+            data = data.data
+
+        if not dask:
+            try:
+                return data.compute()
+            except AttributeError:
+                return data
         else:
-            return data.values
+            return data
 
     def is_empty(self, name):
         """Checks if a Dataset variable is empty.
@@ -546,16 +645,14 @@ class Skeleton:
 
         'all' [default]: size of entire Dataset
         'spatial': size over coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': size over coordinates for the grid (e.g. z, time)
+        'grid': size over coordinates for the grid (e.g. z, time) ans the spatial coordinates
         'gridpoint': size over coordinates for a grid point (e.g. frequency, direcion or time)
         """
 
         if not self._structure_initialized():
             return None
 
-        size = self._ds_manager.coords_to_size(
-            self._ds_manager.coords(coords), **kwargs
-        )
+        size = self._ds_manager.coords_to_size(self.coords(coords), **kwargs)
 
         if squeeze:
             size = tuple([s for s in size if s > 1])

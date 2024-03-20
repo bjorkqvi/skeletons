@@ -1,18 +1,17 @@
 import numpy as np
 import xarray as xr
-from .coordinate_manager import CoordinateManager
+from .coordinate_manager import (
+    CoordinateManager,
+    SPATIAL_COORDS,
+    move_time_dim_to_front,
+)
 
-from ..errors import DataWrongDimensionError, UnknownCoordinateError, CoordinateWrongLengthError, GridError
-
-
-def move_time_dim_to_front(coord_list) -> list[str]:
-    if "time" not in coord_list:
-        return coord_list
-    coord_list.insert(0, coord_list.pop(coord_list.index("time")))
-    return coord_list
-
-
-SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
+from ..errors import (
+    DataWrongDimensionError,
+    UnknownCoordinateError,
+    CoordinateWrongLengthError,
+    GridError,
+)
 
 
 class DatasetManager:
@@ -36,16 +35,21 @@ class DatasetManager:
         def check_consistency() -> None:
             """Checks that the provided coordinates are consistent with the
             coordinates that the Skeleton is defined over."""
-            ds_coords = list(coord_dict.keys())
+            coords = list(coord_dict.keys())
             # Check spatial coordinates
-            xy_set = "x" in ds_coords and "y" in ds_coords
-            lonlat_set = "lon" in ds_coords and "lat" in ds_coords
-            inds_set = "inds" in ds_coords
+            xy_set = "x" in coords and "y" in coords
+            lonlat_set = "lon" in coords and "lat" in coords
+            inds_set = "inds" in coords
             if inds_set:
                 ind_len = len(coord_dict["inds"])
                 for key, value in var_dict.items():
                     if len(value[1]) != ind_len:
-                        raise CoordinateWrongLengthError(variable=key, len_of_variable=len(value[1]), index_variable='inds', len_of_index_variable=ind_len)
+                        raise CoordinateWrongLengthError(
+                            variable=key,
+                            len_of_variable=len(value[1]),
+                            index_variable="inds",
+                            len_of_index_variable=ind_len,
+                        )
             if not (xy_set or lonlat_set or inds_set):
                 raise GridError
             if sum([xy_set, lonlat_set, inds_set]) > 1:
@@ -53,29 +57,32 @@ class DatasetManager:
 
             # Check that all added coordinates are provided
             for coord in self.coord_manager.added_coords("all"):
-                if coord not in ds_coords:
+                if coord not in coords:
                     if self.get(coord) is not None:
                         # Add in old coordinate if it is not provided now (can happen when using set_spacing)
                         coord_dict[coord] = self.ds().get(coord).values
                     else:
-                        raise UnknownCoordinateError(f"Skeleton has coordinate '{coord}', but it was not provided on initialization: {ds_coords}!")
+                        raise UnknownCoordinateError(
+                            f"Skeleton has coordinate '{coord}', but it was not provided on initialization: {coords}!"
+                        )
 
             # Check that all provided coordinates have been added
-            for coord in set(ds_coords) - set(SPATIAL_COORDS):
+            for coord in set(coords) - set(SPATIAL_COORDS):
                 if coord not in self.coord_manager.added_coords("all"):
-                    raise UnknownCoordinateError(f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.added_coords('all')}! Missing a decorator?")
+                    raise UnknownCoordinateError(
+                        f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.added_coords('all')}! Missing a decorator?"
+                    )
 
         def determine_coords() -> dict:
             """Creates dictonary of the coordinates"""
 
             coord_dict = {}
-            if "y" in self.coord_manager.initial_coords():
-                coord_dict[y_str] = y
-            if "x" in self.coord_manager.initial_coords():
-                coord_dict[x_str] = x
+
             if "inds" in self.coord_manager.initial_coords():
                 coord_dict["inds"] = np.arange(len(x))
-
+            else:
+                coord_dict[y_str] = y
+                coord_dict[x_str] = x
             # Add in other possible coordinates that are set at initialization
             for key in self.coord_manager.added_coords():
                 value = kwargs.get(key)
@@ -84,8 +91,10 @@ class DatasetManager:
                     value = self.get(key)
 
                 if value is None:
-                    raise UnknownCoordinateError(f"Skeleton has coordinate '{key}', but it was not provided on initialization {kwargs.keys()} nor is it already set {self.coords()}!")
-                
+                    raise UnknownCoordinateError(
+                        f"Skeleton has coordinate '{key}', but it was not provided on initialization {kwargs.keys()} nor is it already set {self.coord_manager.coords()}!"
+                    )
+
                 coord_dict[key] = np.array(value)
 
             coord_dict = {
@@ -98,18 +107,20 @@ class DatasetManager:
             """Creates dictionary of variables"""
             var_dict = {}
             initial_vars = self.coord_manager.initial_vars()
-            if "y" in initial_vars.keys():
-                if initial_vars["y"] not in coord_dict.keys():
+            initial_x = "x" if initial_vars.get("x") is not None else "lon"
+            initial_y = "y" if initial_vars.get("y") is not None else "lat"
+            if initial_y in initial_vars.keys():
+                if initial_vars[initial_y] not in coord_dict.keys():
                     raise ValueError(
-                        f"Trying to make variable 'y' depend on {initial_vars['y']}, but {initial_vars['y']} is not set as a coordinate!"
+                        f"Trying to make variable '{initial_y}' depend on {initial_vars[initial_y]}, but {initial_vars[initial_y]} is not set as a coordinate!"
                     )
-                var_dict[y_str] = ([initial_vars["y"]], y)
-            if "x" in initial_vars.keys():
-                if initial_vars["x"] not in coord_dict.keys():
+                var_dict[y_str] = ([initial_vars[initial_y]], y)
+            if initial_x in initial_vars.keys():
+                if initial_vars[initial_x] not in coord_dict.keys():
                     raise ValueError(
-                        f"Trying to make variable 'x' depend on {initial_vars['x']}, but {initial_vars['x']} is not set as a coordinate!"
+                        f"Trying to make variable '{initial_x}' depend on {initial_vars[initial_x]}, but {initial_vars[initial_x]} is not set as a coordinate!"
                     )
-                var_dict[x_str] = ([initial_vars["x"]], x)
+                var_dict[x_str] = ([initial_vars[initial_x]], x)
 
             return var_dict
 
@@ -141,7 +152,9 @@ class DatasetManager:
 
         self._merge_in_ds(self.compile_to_ds(data, data_name, coord_type))
 
-    def get(self, name: str, default_data=None, empty: bool=False, **kwargs) -> xr.DataArray:
+    def get(
+        self, name: str, default_data=None, empty: bool = False, **kwargs
+    ) -> xr.DataArray:
         """Gets data from Dataset.
 
         **kwargs can be used for slicing data.
@@ -153,19 +166,25 @@ class DatasetManager:
 
         if empty:
             coords = self.coord_manager.added_vars().get(name)
-            if coords is None:
-                coords = self.coord_manager.added_masks().get(name)
-                
-            empty_data = np.full(self.coords_to_size(self.coords(coords)), self.coord_manager.default_values.get(name))
-            default_data = xr.DataArray(data=empty_data,coords=self.coords_dict(coords))
+            coords = coords or self.coord_manager.added_masks().get(name)
+
+            empty_data = np.full(
+                self.coords_to_size(self.coord_manager.coords(coords)),
+                self.coord_manager._default_values.get(name),
+            )
+            default_data = xr.DataArray(
+                data=empty_data, coords=self.coords_dict(coords)
+            )
 
         data = ds.get(name, default_data)
         if not isinstance(data, xr.DataArray):
             return data
-        
+
         data = self._slice_data(data, **kwargs)
         if empty:
-            data.values = np.full(data.shape, self.coord_manager.default_values.get(name))
+            data.values = np.full(
+                data.shape, self.coord_manager._default_values.get(name)
+            )
 
         return data
 
@@ -189,7 +208,7 @@ class DatasetManager:
                 keywords[key] = value
 
         for key, value in coordinates.items():
-            #data = eval(f"data.sel({key}={value}, **keywords)")
+            # data = eval(f"data.sel({key}={value}, **keywords)")
             data = data.sel({key: value}, **keywords)
 
         return data
@@ -218,62 +237,27 @@ class DatasetManager:
         """
         coords_dict = self.coords_dict(coord_type)
 
-        coord_shape = tuple(len(x) for x in coords_dict.values())
+        # coord_shape = tuple(len(x) for x in coords_dict.values())
+        coord_shape = self.coords_to_size(self.coord_manager.coords(coord_type))
         if coord_shape != data.shape:
-            raise DataWrongDimensionError(data_shape = data.shape, coord_shape=coord_shape)
+            raise DataWrongDimensionError(
+                data_shape=data.shape, coord_shape=coord_shape
+            )
 
         vars_dict = {data_name: (coords_dict.keys(), data)}
 
         ds = xr.Dataset(data_vars=vars_dict, coords=coords_dict)
         return ds
 
-    def vars(self) -> list[str]:
-        """Returns a list of the variables in the Dataset."""
-        if self.ds() is None:
-            return []
-        return list(self.data.keys())
-        
-    def vars_dict(self) -> list[str]:
-        """Returns a dict of the variables in the Dataset."""
-        return self.keys_to_dict(self.vars())
+    # def keys(self) -> list[str]:
+    #     """Returns a list of the variables in the Dataset."""
+    #     if self.ds() is None:
+    #         return []
+    #     return list(self.data.keys())
 
-    def coords(self, coords: str = "all") -> list[str]:
-        """Returns a list of the coordinates from the Dataset.
-
-        'all' [default]: all coordinates in the Dataset
-        'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
-        """
-
-        def list_intersection(list1, list2):
-            """Uning intersections of sets doesn't necessarily preserve order"""
-            list3 = []
-            for val in list1:
-                if val in list2:
-                    list3.append(val)
-            return list3
-
-        if coords not in ["all", "spatial", "grid", "gridpoint"]:
-            raise ValueError(
-                f"Keyword 'coords' needs to be 'all' (default), 'spatial', 'grid' or 'gridpoint', not {coords}."
-            )
-
-        if self.ds() is None:
-            return []
-
-        all_coords = list(self.ds().coords)
-
-        if coords == "all":
-            return move_time_dim_to_front(all_coords)
-        if coords == "spatial":
-            return move_time_dim_to_front(list_intersection(all_coords, SPATIAL_COORDS))
-        if coords == "grid":
-            return move_time_dim_to_front(
-                self.coords("spatial") + self.coord_manager.added_coords("grid")
-            )
-        if coords == "gridpoint":
-            return move_time_dim_to_front(self.coord_manager.added_coords("gridpoint"))
+    # def vars_dict(self) -> list[str]:
+    #     """Returns a dict of the variables in the Dataset."""
+    #     return self.keys_to_dict(self.vars())
 
     def keys_to_dict(self, coords: list[str]) -> dict:
         """Takes a list of coordinates and returns a dictionary."""
@@ -290,7 +274,7 @@ class DatasetManager:
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        return self.keys_to_dict(self.coords(type))
+        return self.keys_to_dict(self.coord_manager.coords(type))
 
     def coords_to_size(self, coords: list[str], **kwargs) -> tuple[int]:
         list = []

@@ -1,6 +1,12 @@
 import numpy as np
 from .skeleton import Skeleton
 import xarray as xr
+from .decorators.coordinate_manager import CoordinateManager
+
+INITIAL_COORDS = ["inds"]
+INITIAL_CARTESIAL_VARS = {"x": "inds", "y": "inds"}
+INITIAL_SPHERICAL_VARS = {"lat": "inds", "lon": "inds"}
+
 
 class PointSkeleton(Skeleton):
     """Gives a unstructured structure to the Skeleton.
@@ -13,15 +19,17 @@ class PointSkeleton(Skeleton):
     4) Methods xy() / lonlat() are identical to e.g. (x(), y()).
     """
 
+    _coord_manager = CoordinateManager(INITIAL_COORDS, INITIAL_CARTESIAL_VARS)
+
     @classmethod
     def from_skeleton(
         cls,
         skeleton: Skeleton,
         mask: np.ndarray = None,
     ):
-        
+
         if mask is None:
-            mask = np.full(skeleton.size('spatial'), True)
+            mask = np.full(skeleton.size("spatial"), True)
 
         lon, lat = skeleton.lonlat(strict=True, mask=mask)
         x, y = skeleton.xy(strict=True, mask=mask)
@@ -30,21 +38,26 @@ class PointSkeleton(Skeleton):
         new_skeleton.set_utm(skeleton.utm(), silent=True)
 
         return new_skeleton
-    
+
     def is_gridded(self) -> bool:
         return False
 
-    def _initial_coords(self) -> list[str]:
+    @staticmethod
+    def _initial_coords(spherical: bool = False) -> list[str]:
         """Initial coordinates used with PointSkeletons. Additional coordinates
         can be added by decorators (e.g. @add_time).
         """
-        return ["inds"]
+        return INITIAL_COORDS
 
-    def _initial_vars(self) -> dict:
+    @staticmethod
+    def _initial_vars(spherical: bool = False) -> dict:
         """Initial variables used with PointSkeletons. Additional variables
         can be added by decorator @add_datavar.
         """
-        return {"x": "inds", "y": "inds"}
+        if spherical:
+            return INITIAL_SPHERICAL_VARS
+        else:
+            return INITIAL_CARTESIAL_VARS
 
     def lonlat(
         self,
@@ -75,7 +88,12 @@ class PointSkeleton(Skeleton):
         return lon, lat
 
     def xy(
-        self, mask: np.ndarray = None, strict=False, normalize: bool = False, utm: tuple[int, str]=None, **kwargs
+        self,
+        mask: np.ndarray = None,
+        strict=False,
+        normalize: bool = False,
+        utm: tuple[int, str] = None,
+        **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of x- and y-coordinates of all points.
 
@@ -89,9 +107,9 @@ class PointSkeleton(Skeleton):
         """
 
         # Transforms x-y to lon-lat if necessary
-        x, y = super().x(strict=strict, normalize=normalize, utm=utm, **kwargs), super().y(
+        x, y = super().x(
             strict=strict, normalize=normalize, utm=utm, **kwargs
-        )
+        ), super().y(strict=strict, normalize=normalize, utm=utm, **kwargs)
 
         if x is None:
             return None, None
@@ -102,8 +120,7 @@ class PointSkeleton(Skeleton):
 
     def __repr__(self) -> str:
         string = f"<{type(self).__name__} (PointSkeleton)>\n"
-        string += "-"*34 + " Containing " + "-"*34 + "\n"
+        string += "-" * 34 + " Containing " + "-" * 34 + "\n"
         string += self.ds().__repr__()
-        string += "\n" + "-"*80
+        string += "\n" + "-" * 80
         return string
-
