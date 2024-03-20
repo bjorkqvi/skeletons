@@ -49,7 +49,7 @@ def test_add_gridpoint_coord_and_mask():
     class WaveHeight(GriddedSkeleton):
         pass
 
-    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1H")
+    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1h")
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3), time=times)
     data.set_spacing(nx=10, ny=10)
     data.set_z_spacing(nx=4)
