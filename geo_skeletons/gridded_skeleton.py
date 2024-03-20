@@ -3,6 +3,13 @@ from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
 from .distance_functions import lon_in_km, lat_in_km
 import xarray as xr
+from .decorators.coordinate_manager import CoordinateManager
+
+INITIAL_CARTESIAN_COORDS = ["y", "x"]
+INITIAL_SPERICAL_COORDS = ["lat", "lon"]
+
+INITIAL_VARS = {}
+
 
 class GriddedSkeleton(Skeleton):
     """Gives a gridded structure to the Skeleton.
@@ -15,6 +22,8 @@ class GriddedSkeleton(Skeleton):
     (i.e. raveled meshgrid).
     """
 
+    _coord_manager = CoordinateManager(INITIAL_CARTESIAN_COORDS, INITIAL_VARS)
+
     @classmethod
     def from_skeleton(
         cls,
@@ -22,11 +31,15 @@ class GriddedSkeleton(Skeleton):
         mask: np.ndarray = None,
     ):
         if not skeleton.is_gridded():
-            raise Exception("Can't create a GriddedSkeleton from a non-gridded data structure!")
-        
+            raise Exception(
+                "Can't create a GriddedSkeleton from a non-gridded data structure!"
+            )
+
         if mask is None:
-            mask = np.full(skeleton.size('spatial'), True)
-        lon, lat = skeleton.lon(strict=True, mask=mask), skeleton.lat(strict=True, mask=mask)
+            mask = np.full(skeleton.size("spatial"), True)
+        lon, lat = skeleton.lon(strict=True, mask=mask), skeleton.lat(
+            strict=True, mask=mask
+        )
         x, y = skeleton.x(strict=True, mask=mask), skeleton.y(strict=True, mask=mask)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
@@ -37,17 +50,22 @@ class GriddedSkeleton(Skeleton):
     def is_gridded(self) -> bool:
         return True
 
-    def _initial_coords(self) -> list[str]:
+    @staticmethod
+    def _initial_coords(spherical: bool = False) -> list[str]:
         """Initial coordinates used with GriddedSkeletons. Additional coordinates
         can be added by decorators (e.g. @add_time).
         """
-        return ["y", "x"]
+        if spherical:
+            return INITIAL_SPERICAL_COORDS
+        else:
+            return INITIAL_CARTESIAN_COORDS
 
-    def _initial_vars(self) -> dict:
+    @staticmethod
+    def _initial_vars(spherical: bool = False) -> dict:
         """Initial coordinates used with GriddedSkeletons. Additional variables
         can be added by decorator @add_datavar.
         """
-        return {}
+        return INITIAL_VARS
 
     def lonlat(
         self,
@@ -104,10 +122,10 @@ class GriddedSkeleton(Skeleton):
 
         if mask is None:
             mask = np.full(super().size("spatial", **kwargs), True)
+
         mask = mask.ravel()
 
         x, y = self._native_xy(utm=utm, **kwargs)
-
         if self.is_cartesian() or native:
             return x[mask], y[mask]
 
@@ -117,11 +135,14 @@ class GriddedSkeleton(Skeleton):
 
         return points.xy(mask=mask)
 
-    def _native_xy(self, utm: tuple[int, str]=None, **kwargs) -> tuple[np.ndarray, np.ndarray]:
+    def _native_xy(
+        self, utm: tuple[int, str] = None, **kwargs
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of native x and y of all points."""
 
         x, y = np.meshgrid(
-            super().x(native=True, utm=utm, **kwargs), super().y(native=True, utm=utm, **kwargs)
+            super().x(native=True, utm=utm, **kwargs),
+            super().y(native=True, utm=utm, **kwargs),
         )
 
         return x.ravel(), y.ravel()
@@ -161,10 +182,10 @@ class GriddedSkeleton(Skeleton):
         """
 
         def determine_nx(x_type: str, nx, dx, dm, dlon, dnmi):
-            if x_type == 'x':
-                lon_type = 'lon'
+            if x_type == "x":
+                lon_type = "lon"
             else:
-                lon_type = 'lat'
+                lon_type = "lat"
 
             x_end = self.edges(x_type, native=True)[1]
 
@@ -178,13 +199,16 @@ class GriddedSkeleton(Skeleton):
                     dlat = dnmi / 60
                     x_km = lon_in_km(np.median(self.lat()))
                     y_km = lat_in_km(np.median(self.lat()))
-                    if x_type == 'x':
+                    if x_type == "x":
                         dlon = dlat * (y_km / x_km)
                     else:
                         dlon = dlat
 
             if dlon:
-                nx = np.round((self.edges(lon_type)[1] - self.edges(lon_type)[0]) / dlon) + 1
+                nx = (
+                    np.round((self.edges(lon_type)[1] - self.edges(lon_type)[0]) / dlon)
+                    + 1
+                )
                 if floating_edge:
                     if self.is_cartesian():
                         raise Exception(
@@ -209,8 +233,8 @@ class GriddedSkeleton(Skeleton):
             # Nothing given
             return len(self.x()), x_end
 
-        nx, native_x_end = determine_nx('x', nx, dx, dm, dlon, dnmi)
-        ny, native_y_end = determine_nx('y', ny, dy, dm, dlat, dnmi)
+        nx, native_x_end = determine_nx("x", nx, dx, dm, dlon, dnmi)
+        ny, native_y_end = determine_nx("y", ny, dy, dm, dlat, dnmi)
 
         # Unique to not get [0,0,0] etc. arrays if nx=1
         x_native = np.unique(np.linspace(self.x(native=True)[0], native_x_end, nx))
@@ -230,7 +254,7 @@ class GriddedSkeleton(Skeleton):
 
     def __repr__(self) -> str:
         string = f"<{type(self).__name__} (GriddedSkeleton)>\n"
-        string += "-"*34 + " Containing " + "-"*34 + "\n"
+        string += "-" * 34 + " Containing " + "-" * 34 + "\n"
         string += self.ds().__repr__()
-        string += "\n" + "-"*80
+        string += "\n" + "-" * 80
         return string
