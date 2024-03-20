@@ -12,7 +12,7 @@ def test_add_z_and_time_coord():
     class TimeSeries(GriddedSkeleton):
         pass
 
-    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1H")
+    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1h")
     ts = TimeSeries(x=(0.0, 1.0), y=(10.0, 20.0), time=times, z=(10, 20))
     ts.set_spacing(nx=5, ny=6)
     ts.set_z_spacing(nx=11)

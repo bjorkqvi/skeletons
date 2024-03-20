@@ -113,7 +113,7 @@ def test_timeseries():
     class TimeSeries(PointSkeleton):
         pass
 
-    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1H")
+    times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1h")
     ts = TimeSeries(x=(0.0, 1.0), y=(10.0, 20.0), time=times)
 
     assert ts.size() == (len(times), 2)
