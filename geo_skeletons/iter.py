@@ -5,8 +5,10 @@ class SkeletonIterator:
     def __init__(
         self, dict_of_coords: dict, coords_to_iterate: list[str], skeleton
     ) -> None:
-        self.coords_to_iterate = coords_to_iterate
         self.dict_of_coords = dict_of_coords
+        self.coords_to_iterate = list(coords_to_iterate)
+        # Needed to get the ordering right with itertools
+        self.coords_to_iterate.reverse()
         self.skeleton = skeleton
         self._compile_list()
 
@@ -20,7 +22,9 @@ class SkeletonIterator:
         raise StopIteration
 
     def __call__(self, coords_to_iterate: list[str]):
-        self.coords_to_iterate = coords_to_iterate
+        self.coords_to_iterate = list(coords_to_iterate)
+        # Needed to get the ordering right with itertools
+        self.coords_to_iterate.reverse()
         self._compile_list()
         return self
 
@@ -37,15 +41,13 @@ class SkeletonIterator:
             else:
                 coord_dict[coord] = coord_value
 
-        coord_tuples = itertools.product(
-            *[val.values for __, val in coord_dict.items()]
-        )
+        coord_tuples = itertools.product(*[val for __, val in coord_dict.items()])
         list_of_skeletons = []
         for ctuple in coord_tuples:
-            arg_dict = {}
+            kwargs = {}
             for n, val in enumerate(ctuple):
-                arg_dict[list(coord_dict.keys())[n]] = val
-            list_of_skeletons.append(self.skeleton.sel(arg_dict))
+                kwargs[list(coord_dict.keys())[n]] = val
+            list_of_skeletons.append(self.skeleton.sel(**kwargs))
 
         self.list_of_skeletons = list_of_skeletons
         self.ct = -1
