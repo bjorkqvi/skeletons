@@ -18,23 +18,6 @@ def test_spherical_strict():
     assert grid.xy(strict=True) == (None, None)
 
 
-def test_spherical_global_strict():
-    grid = GriddedSkeleton(lon=(1, 2), lat=(0, 3))
-    grid.strict = True
-
-    assert grid.x(strict=False) is None
-    assert grid.y(strict=False) is None
-
-    np.testing.assert_array_almost_equal(grid.lon(strict=True), np.array([1, 2]))
-    np.testing.assert_array_almost_equal(grid.lat(strict=True), np.array([0, 3]))
-
-    np.testing.assert_array_almost_equal(
-        grid.lonlat(strict=True), (np.array([1, 2, 1, 2]), np.array([0, 0, 3, 3]))
-    )
-
-    assert grid.xy(strict=False) == (None, None)
-
-
 def test_spherical_native():
     grid = GriddedSkeleton(lon=(1, 2), lat=(0, 3))
 
@@ -65,23 +48,6 @@ def test_cartesian_strict():
     )
 
     assert grid.lonlat(strict=True) == (None, None)
-
-
-def test_cartesian_global_strict():
-    grid = GriddedSkeleton(x=(1, 2), y=(0, 3))
-    grid.strict = True
-
-    assert grid.lon(strict=False) is None
-    assert grid.lat(strict=False) is None
-
-    np.testing.assert_array_almost_equal(grid.x(strict=True), np.array([1, 2]))
-    np.testing.assert_array_almost_equal(grid.y(strict=True), np.array([0, 3]))
-
-    np.testing.assert_array_almost_equal(
-        grid.xy(strict=True), (np.array([1, 2, 1, 2]), np.array([0, 0, 3, 3]))
-    )
-
-    assert grid.lonlat(strict=False) == (None, None)
 
 
 def test_cartesian_native():

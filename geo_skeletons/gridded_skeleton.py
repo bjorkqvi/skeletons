@@ -81,7 +81,7 @@ class GriddedSkeleton(Skeleton):
         order_by = 'y' (default) or 'x'
         """
 
-        if self.is_cartesian() and (strict or self.strict) and (not native):
+        if self.is_cartesian() and strict and (not native):
             return None, None
 
         if mask is None:
@@ -116,7 +116,7 @@ class GriddedSkeleton(Skeleton):
         order_by = 'y' (default) or 'x'
         """
 
-        if not self.is_cartesian() and (strict or self.strict) and (not native):
+        if not self.is_cartesian() and strict and (not native):
             return None, None
 
         if mask is None:
