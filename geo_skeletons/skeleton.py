@@ -17,11 +17,6 @@ from .iter import SkeletonIterator
 DEFAULT_UTM = (33, "W")
 
 
-def _data_vars(self) -> None:
-    """Used for instanes instead of the class method, since data_variables can be added after initialization."""
-    return list(self._coord_manager.added_vars().keys())
-
-
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
     makes possible conversions between them.
@@ -37,45 +32,6 @@ class Skeleton:
         self.chunks = "auto"
         self._init_structure(x, y, lon, lat, **kwargs)
         self.data_vars = MethodType(_data_vars, self)
-
-    def deactivate_dask(self) -> None:
-        self.dask = False
-        self.chunks = None
-
-    def activate_dask(
-        self, chunks="auto", primary_dim: str = None, rechunk: bool = True
-    ) -> None:
-        self.dask = True
-        self.chunks = chunks
-        if rechunk:
-            self.rechunk(chunks, primary_dim)
-
-    def rechunk(
-        self, chunks: tuple | dict | str = "auto", primary_dim: str | list[str] = None
-    ):
-        if primary_dim:
-            if isinstance(primary_dim, str):
-                primary_dim = [primary_dim]
-            chunks = {}
-            for dim in primary_dim:
-                chunks[dim] = len(self.get(dim))
-
-        if isinstance(chunks, dict):
-            chunks = self._chunk_tuple_from_dict(chunks)
-        for var in self.data_vars():
-            data = self.get(var)
-            if hasattr(data, "chunks"):
-                data = data.rechunk(chunks)
-            else:
-                data = da.from_array(data, chunks)
-            self.set(var, data)
-
-    def _chunk_tuple_from_dict(self, chunk_dict: dict) -> tuple[int]:
-        """Determines a tuple of chunks based on a dict of coordinates and chunks"""
-        chunk_list = []
-        for coord in self.coords():
-            chunk_list.append(chunk_dict.get(coord, "auto"))
-        return tuple(chunk_list)
 
     def add_datavar(self, name: str, coords: str = "all", default_value: float = 0.0):
         self = add_datavar(
@@ -177,14 +133,6 @@ class Skeleton:
         self._reset_masks()
         self._reset_datavars()
 
-    def _structure_initialized(self) -> bool:
-        return hasattr(self, "_ds_manager")
-
-    def _skeleton_empty(self) -> bool:
-        if not self._structure_initialized():
-            return True
-        return len(self.ds()[self.x_str]) == 0 and len(self.ds()[self.y_str]) == 0
-
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
         """Absorb another object of same type over a centrain dimension.
         For a PointSkeleton the inds-variable reorganized if dim='inds' is given."""
@@ -198,18 +146,6 @@ class Skeleton:
             ).sortby(dim)
         )
         return new_skeleton
-
-    def _reset_masks(self) -> None:
-        """Resets the mask to default values."""
-        for name in self._coord_manager.added_masks():
-            # update-method sets empty mask when no value is provided
-            self.set(name)
-
-    def _reset_datavars(self) -> None:
-        """Resets the data variables to default values."""
-        for name in self._coord_manager.added_vars():
-            # update-method sets empty data when no value is provided
-            self.set(name)
 
     @classmethod
     def data_vars(cls) -> None:
@@ -1078,6 +1014,38 @@ class Skeleton:
                 mask_list.append(var)
         return mask_list
 
+    def activate_dask(
+        self, chunks="auto", primary_dim: str = None, rechunk: bool = True
+    ) -> None:
+        self.dask = True
+        self.chunks = chunks
+        if rechunk:
+            self.rechunk(chunks, primary_dim)
+
+    def deactivate_dask(self) -> None:
+        self.dask = False
+        self.chunks = None
+
+    def rechunk(
+        self, chunks: tuple | dict | str = "auto", primary_dim: str | list[str] = None
+    ):
+        if primary_dim:
+            if isinstance(primary_dim, str):
+                primary_dim = [primary_dim]
+            chunks = {}
+            for dim in primary_dim:
+                chunks[dim] = len(self.get(dim))
+
+        if isinstance(chunks, dict):
+            chunks = self._chunk_tuple_from_dict(chunks)
+        for var in self.data_vars():
+            data = self.get(var)
+            if hasattr(data, "chunks"):
+                data = data.rechunk(chunks)
+            else:
+                data = da.from_array(data, chunks)
+            self.set(var, data)
+
     @property
     def x_str(self) -> str:
         """Return string compatible with the type of spacing used:
@@ -1127,9 +1095,41 @@ class Skeleton:
         else:
             raise ValueError("name needs to be a string")
 
+    def _chunk_tuple_from_dict(self, chunk_dict: dict) -> tuple[int]:
+        """Determines a tuple of chunks based on a dict of coordinates and chunks"""
+        chunk_list = []
+        for coord in self.coords():
+            chunk_list.append(chunk_dict.get(coord, "auto"))
+        return tuple(chunk_list)
+
+    def _structure_initialized(self) -> bool:
+        return hasattr(self, "_ds_manager")
+
+    def _skeleton_empty(self) -> bool:
+        if not self._structure_initialized():
+            return True
+        return len(self.ds()[self.x_str]) == 0 and len(self.ds()[self.y_str]) == 0
+
+    def _reset_masks(self) -> None:
+        """Resets the mask to default values."""
+        for name in self._coord_manager.added_masks():
+            # update-method sets empty mask when no value is provided
+            self.set(name)
+
+    def _reset_datavars(self) -> None:
+        """Resets the data variables to default values."""
+        for name in self._coord_manager.added_vars():
+            # update-method sets empty data when no value is provided
+            self.set(name)
+
     def __iter__(self):
         return SkeletonIterator(
             self.coords_dict("all"),
             self.coords("grid"),
             self,
         )
+
+
+def _data_vars(self) -> None:
+    """Used for instanes instead of the class method, since data_variables can be added after initialization."""
+    return list(self._coord_manager.added_vars().keys())
