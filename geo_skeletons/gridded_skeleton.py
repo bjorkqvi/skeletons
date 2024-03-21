@@ -1,9 +1,8 @@
 import numpy as np
 from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
-from .distance_functions import lon_in_km, lat_in_km
-import xarray as xr
-from .decorators.coordinate_manager import CoordinateManager
+from .aux_funcs import distance_funcs
+from .managers.coordinate_manager import CoordinateManager
 
 INITIAL_CARTESIAN_COORDS = ["y", "x"]
 INITIAL_SPERICAL_COORDS = ["lat", "lon"]
@@ -197,8 +196,8 @@ class GriddedSkeleton(Skeleton):
                     dm = dnmi * 1850
                 else:
                     dlat = dnmi / 60
-                    x_km = lon_in_km(np.median(self.lat()))
-                    y_km = lat_in_km(np.median(self.lat()))
+                    x_km = distance_funcs.lon_in_km(np.median(self.lat()))
+                    y_km = distance_funcs.lat_in_km(np.median(self.lat()))
                     if x_type == "x":
                         dlon = dlat * (y_km / x_km)
                     else:

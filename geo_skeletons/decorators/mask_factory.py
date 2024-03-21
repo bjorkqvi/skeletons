@@ -1,5 +1,5 @@
 import numpy as np
-from .coordinate_manager import CoordinateManager
+from copy import deepcopy
 
 CARTESIAN_STRINGS = ["x", "y", "xy"]
 SPHERICAL_STRINGS = ["lon", "lat", "lonlat"]
@@ -77,8 +77,9 @@ def add_mask(
         def set_opposite_mask(self, data: np.ndarray = None) -> None:
             self.set(f"{name}_mask", np.logical_not(data))
 
-        if not hasattr(c, "_coord_manager"):
-            c._coord_manager = CoordinateManager()
+        if c._coord_manager.initial_state:
+            c._coord_manager = deepcopy(c._coord_manager)
+            c._coord_manager.initial_state = False
         c._coord_manager.add_mask(name, coords, default_value)
         exec(f"c.{name}_mask = get_mask")
         exec(f"c.{name}_points = get_masked_points")
