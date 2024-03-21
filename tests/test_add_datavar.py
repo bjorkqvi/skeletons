@@ -17,7 +17,7 @@ def test_add_datavar_on_top():
     class Expanded(PointSkeleton):
         pass
 
-    assert "hs" in list(Expanded._coord_manager.added_vars().keys())
+    assert "hs" in Expanded.data_vars()
 
     points = Expanded(x=[6, 7, 8], y=[4, 5, 6], z=[6, 7])
     points.add_datavar("tp", default_value=5.0, coords="gridpoint")
@@ -29,3 +29,6 @@ def test_add_datavar_on_top():
     np.testing.assert_almost_equal(np.mean(points.tp()), 5.0)
 
     assert points.size("gridpoint") == points.tp().shape
+
+    assert "hs" in Expanded.data_vars()
+    assert "tp" not in Expanded.data_vars()
