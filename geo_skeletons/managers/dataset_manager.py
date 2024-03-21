@@ -124,11 +124,6 @@ class DatasetManager:
 
             return var_dict
 
-        indexed = "inds" in self.coord_manager.initial_coords()
-        x, y = clean_coordinate_vectors(
-            x, y, is_cartesian=(x_str == "x"), indexed=indexed
-        )
-
         coord_dict = determine_coords()
         var_dict = determine_vars()
 
@@ -144,13 +139,13 @@ class DatasetManager:
             return None
         return self.data
 
-    def set(self, data: np.ndarray, data_name: str, coord_type: str = "all") -> None:
+    def set(self, data: np.ndarray, data_name: str, coords: str = "all") -> None:
         """Adds in new data to the Dataset.
 
         coord_type = 'all', 'spatial', 'grid' or 'gridpoint'
         """
 
-        self._merge_in_ds(self.compile_to_ds(data, data_name, coord_type))
+        self._merge_in_ds(self.compile_to_ds(data, data_name, coords))
 
     def get(
         self, name: str, default_data=None, empty: bool = False, **kwargs
@@ -172,9 +167,10 @@ class DatasetManager:
                 self.coords_to_size(self.coord_manager.coords(coords)),
                 self.coord_manager._default_values.get(name),
             )
-            default_data = xr.DataArray(
-                data=empty_data, coords=self.coords_dict(coords)
-            )
+            coords_dict = {
+                coord: self.get(coord) for coord in self.coord_manager.coords(coords)
+            }
+            default_data = xr.DataArray(data=empty_data, coords=coords_dict)
 
         data = ds.get(name, default_data)
         if not isinstance(data, xr.DataArray):
@@ -223,7 +219,7 @@ class DatasetManager:
             self.set_new_ds(ds.merge(self.ds(), compat="override"))
 
     def compile_to_ds(
-        self, data: np.ndarray, data_name: str, coord_type: str
+        self, data: np.ndarray, data_name: str, coords: str
     ) -> xr.Dataset:
         """This is used to compile a Dataset containing the given data using the
         coordinates of the Skeleton.
@@ -235,10 +231,12 @@ class DatasetManager:
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        coords_dict = self.coords_dict(coord_type)
+        coords_dict = {
+            coord: self.get(coord) for coord in self.coord_manager.coords(coords)
+        }
 
         # coord_shape = tuple(len(x) for x in coords_dict.values())
-        coord_shape = self.coords_to_size(self.coord_manager.coords(coord_type))
+        coord_shape = self.coords_to_size(self.coord_manager.coords(coords))
         if coord_shape != data.shape:
             raise DataWrongDimensionError(
                 data_shape=data.shape, coord_shape=coord_shape
@@ -249,33 +247,6 @@ class DatasetManager:
         ds = xr.Dataset(data_vars=vars_dict, coords=coords_dict)
         return ds
 
-    # def keys(self) -> list[str]:
-    #     """Returns a list of the variables in the Dataset."""
-    #     if self.ds() is None:
-    #         return []
-    #     return list(self.data.keys())
-
-    # def vars_dict(self) -> list[str]:
-    #     """Returns a dict of the variables in the Dataset."""
-    #     return self.keys_to_dict(self.vars())
-
-    def keys_to_dict(self, coords: list[str]) -> dict:
-        """Takes a list of coordinates and returns a dictionary."""
-        coords_dict = {}
-        for coord in coords:
-            coords_dict[coord] = self.get(coord)
-        return coords_dict
-
-    def coords_dict(self, type: str = "all") -> dict:
-        """Return variable dictionary of the Dataset.
-
-        'all': all coordinates in the Dataset
-        'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
-        """
-        return self.keys_to_dict(self.coord_manager.coords(type))
-
     def coords_to_size(self, coords: list[str], **kwargs) -> tuple[int]:
         list = []
         data = self._slice_data(self.ds(), **kwargs)
@@ -283,40 +254,3 @@ class DatasetManager:
             list.append(len(data.get(coord)))
 
         return tuple(list)
-
-
-def clean_coordinate_vectors(x, y, is_cartesian, indexed):
-    """Cleans up the coordinate vectors to make sure they are numpy arrays and
-    have the right dimensions in case of single points etc.
-    """
-
-    def clean_lons(lon):
-        mask = lon < -180
-        lon[mask] = lon[mask] + 360
-        mask = lon > 180
-        lon[mask] = lon[mask] - 360
-        return lon
-
-    x = np.array(x)
-    y = np.array(y)
-
-    if not x.shape:
-        x = np.array([x])
-
-    if not y.shape:
-        y = np.array([y])
-
-    if not is_cartesian:
-        # force lon to be -180, 180
-        x = clean_lons(x)
-
-    if not indexed:
-        if (
-            len(np.unique(x)) == 1 and len(x) == 2
-        ):  # e.g. lon=(4.0, 4.0) should behave like lon=4.0
-            x = np.unique(x)
-
-        if len(np.unique(y)) == 1 and len(y) == 2:
-            y = np.unique(y)
-
-    return x, y

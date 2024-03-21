@@ -103,7 +103,10 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
         else:
             other[key] = sanitize_singe_variable(key, value)
 
-    if not is_gridded_format:
+    if is_gridded_format:
+        spatial = get_unique_values(spatial)
+
+    else:
         spatial = sanitize_point_structure(spatial)
 
         for x, y in [("x", "y"), ("lon", "lat")]:
@@ -115,6 +118,9 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
 
     if np.all([a is None for a in spatial.values()]):
         raise Exception("x, y, lon, lat cannot ALL be None!")
+
+    if spatial["lon"] is not None:
+        spatial["lon"] = clean_lons(spatial["lon"])
 
     return spatial["x"], spatial["y"], spatial["lon"], spatial["lat"], other
 
@@ -130,3 +136,25 @@ def force_to_iterable(x, fmt: str = None) -> Iterable:
     x = np.array([a for a in x if a is not None])
 
     return x
+
+
+def clean_lons(lon):
+    mask = lon < -180
+    lon[mask] = lon[mask] + 360
+    mask = lon > 180
+    lon[mask] = lon[mask] - 360
+    return lon
+
+
+def get_unique_values(spatial):
+    """e.g. lon=(4.0, 4.0) should behave like lon=4.0 if data is gridded"""
+    if spatial.get("lon") is not None and spatial.get("lat") is not None:
+        coords = ["lon", "lat"]
+    elif spatial.get("x") is not None and spatial.get("y") is not None:
+        coords = ["x", "y"]
+
+    for coord in coords:
+        val = spatial.get(coord)
+        if len(np.unique(val)) == 1 and len(val) == 2:
+            spatial[coord] = np.unique(val)
+    return spatial
