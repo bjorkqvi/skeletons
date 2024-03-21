@@ -1,5 +1,7 @@
-from geo_skeletons.skeleton import sanitize_input
-from geo_skeletons.skeleton import will_grid_be_spherical_or_cartesian as func
+from geo_skeletons.aux_funcs.array_funcs import sanitize_input
+from geo_skeletons.aux_funcs.utm_funcs import (
+    will_grid_be_spherical_or_cartesian as func,
+)
 import numpy as np
 
 

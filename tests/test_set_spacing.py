@@ -1,5 +1,5 @@
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
-from geo_skeletons.distance_functions import lon_in_km, lat_in_km
+from geo_skeletons.aux_funcs.distance_funcs import lon_in_km, lat_in_km
 import numpy as np
 
 
