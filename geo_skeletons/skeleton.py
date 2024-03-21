@@ -158,6 +158,7 @@ class Skeleton:
         )
         self.x_str = x_str
         self.y_str = y_str
+
         # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
         self._coord_manager.set_initial_coords(
             self._initial_coords(spherical=(x_str == "lon"))
@@ -169,6 +170,7 @@ class Skeleton:
         # The manager contains the Xarray Dataset
         if not self._structure_initialized():
             self._ds_manager = DatasetManager(self._coord_manager)
+
         self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
         self.set_utm(silent=True)
 
@@ -222,6 +224,21 @@ class Skeleton:
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
         return self._coord_manager.coords(coords)
+
+    def coords_dict(
+        self, type: str = "all", data_array: bool = False, **kwargs
+    ) -> dict:
+        """Return variable dictionary of the Dataset.
+
+        'all': all coordinates in the Dataset
+        'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
+        'grid': coordinates for the grid (e.g. z, time)
+        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        """
+        return {
+            coord: self.get(coord, data_array=data_array, **kwargs)
+            for coord in self._coord_manager.coords(type)
+        }
 
     def sel(self, **kwargs):
         return self.from_ds(self.ds().sel(**kwargs))
@@ -398,7 +415,7 @@ class Skeleton:
         # First try to set the data here
         data = dask_me(data, chunks)
         try:
-            self._ds_manager.set(data=data, data_name=name, coord_type=coord_type)
+            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
             self.set_metadata(metadata)
             return
         except DataWrongDimensionError as data_error:
@@ -429,7 +446,7 @@ class Skeleton:
         if not silent:
             print(f"Reshaping data {original_data_shape} -> {data.shape}...")
 
-        self._ds_manager.set(data=data, data_name=name, coord_type=coord_type)
+        self._ds_manager.set(data=data, data_name=name, coords=coord_type)
         self.set_metadata(metadata)
         return
 
@@ -626,7 +643,7 @@ class Skeleton:
         if not self.is_cartesian() and native:
             return self.lon(**kwargs)
 
-        if not self.is_cartesian() and (strict or self.strict):
+        if not self.is_cartesian() and strict:
             return None
 
         if self.is_cartesian() and (self.utm() == utm or utm is None):
@@ -706,7 +723,7 @@ class Skeleton:
         if not self.is_cartesian() and native:
             return self.lat(**kwargs)
 
-        if not self.is_cartesian() and (strict or self.strict):
+        if not self.is_cartesian() and strict:
             return None
 
         if self.is_cartesian() and (self.utm() == utm or utm is None):
@@ -784,7 +801,7 @@ class Skeleton:
         if self.is_cartesian() and native:
             return self.x(**kwargs)
 
-        if self.is_cartesian() and (strict or self.strict):
+        if self.is_cartesian() and strict:
             return None
 
         if self.is_cartesian():
@@ -825,7 +842,7 @@ class Skeleton:
         if self.is_cartesian() and native:
             return self.y(**kwargs)
 
-        if self.is_cartesian() and (strict or self.strict):
+        if self.is_cartesian() and strict:
             return None
 
         if self.is_cartesian():
@@ -894,7 +911,7 @@ class Skeleton:
         if not self._structure_initialized() or self._skeleton_empty():
             return None
 
-        if not self.is_cartesian() and (strict or self.strict) and (not native):
+        if not self.is_cartesian() and strict and (not native):
             return None
 
         if self.nx() == 1:
@@ -910,7 +927,7 @@ class Skeleton:
         if not self._structure_initialized() or self._skeleton_empty():
             return None
 
-        if not self.is_cartesian() and (strict or self.strict) and (not native):
+        if not self.is_cartesian() and strict and (not native):
             return None
 
         if self.ny() == 1:
@@ -926,7 +943,7 @@ class Skeleton:
         if not self._structure_initialized() or self._skeleton_empty():
             return None
 
-        if self.is_cartesian() and (strict or self.strict) and (not native):
+        if self.is_cartesian() and strict and (not native):
             return None
         if self.nx() == 1:
             return 0.0
@@ -941,7 +958,7 @@ class Skeleton:
         if not self._structure_initialized() or self._skeleton_empty():
             return None
 
-        if self.is_cartesian() and (strict or self.strict) and (not native):
+        if self.is_cartesian() and strict and (not native):
             return None
         if self.ny() == 1:
             return 0.0
@@ -1098,21 +1115,6 @@ class Skeleton:
             raise ValueError("y_str need to be 'y' or 'lat'")
 
     @property
-    def strict(self) -> bool:
-        """If this is set to true, then no coordinate conversion will ever be
-        made when requesting lon, lat, x, y etc."""
-        if not hasattr(self, "_strict"):
-            return False
-        return self._strict
-
-    @strict.setter
-    def strict(self, strict: bool) -> None:
-        if isinstance(strict, bool):
-            self._strict = strict
-        else:
-            raise ValueError("strict needs to be a bool")
-
-    @property
     def name(self) -> str:
         if not hasattr(self, "_name"):
             return "LonelySkeleton"
@@ -1127,7 +1129,7 @@ class Skeleton:
 
     def __iter__(self):
         return SkeletonIterator(
-            self._ds_manager.coords_dict("all"),
-            self._ds_manager.coords_dict("grid").keys(),
+            self.coords_dict("all"),
+            self.coords("grid"),
             self,
         )
