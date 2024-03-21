@@ -1,7 +1,6 @@
 import numpy as np
 from .skeleton import Skeleton
-import xarray as xr
-from .decorators.coordinate_manager import CoordinateManager
+from .managers.coordinate_manager import CoordinateManager
 
 INITIAL_COORDS = ["inds"]
 INITIAL_CARTESIAL_VARS = {"x": "inds", "y": "inds"}

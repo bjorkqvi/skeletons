@@ -2,92 +2,24 @@ import numpy as np
 import xarray as xr
 import utm as utm_module
 from copy import copy
-from .decorators.dataset_manager import DatasetManager
+from .managers.dataset_manager import DatasetManager
 from typing import Iterable, Union
-from .distance_functions import min_distance, min_cartesian_distance
+from .aux_funcs import distance_funcs, array_funcs, utm_funcs
 from .errors import DataWrongDimensionError
-import itertools
-import pandas as pd
+
 from typing import Iterable
 import dask.array as da
 from copy import deepcopy
 from .decorators import add_datavar
+from types import MethodType
+from .iter import SkeletonIterator
 
 DEFAULT_UTM = (33, "W")
-VALID_UTM_ZONES = [
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "H",
-    "J",
-    "K",
-    "L",
-    "M",
-    "N",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
-    "U",
-    "V",
-    "W",
-    "X",
-]
-
-VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
 
 
-class SkeletonIterator:
-    def __init__(
-        self, dict_of_coords: dict, coords_to_iterate: list[str], skeleton
-    ) -> None:
-        self.coords_to_iterate = coords_to_iterate
-        self.dict_of_coords = dict_of_coords
-        self.skeleton = skeleton
-        self._compile_list()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.ct += 1
-        if self.ct < len(self.list_of_skeletons):
-            return self.list_of_skeletons[self.ct]
-        raise StopIteration
-
-    def __call__(self, coords_to_iterate: list[str]):
-        self.coords_to_iterate = coords_to_iterate
-        self._compile_list()
-        return self
-
-    def _compile_list(self):
-        coord_dict = {}
-        for coord in self.coords_to_iterate:
-
-            coord_value = self.dict_of_coords.get(coord)
-
-            if coord_value is None:
-                print(
-                    f"Cannot iterate over coord {coord}, since it does not exist: {self.dict_of_coords.keys()}"
-                )
-            else:
-                coord_dict[coord] = coord_value
-
-        coord_tuples = itertools.product(
-            *[val.values for __, val in coord_dict.items()]
-        )
-        list_of_skeletons = []
-        for ctuple in coord_tuples:
-            arg_dict = {}
-            for n, val in enumerate(ctuple):
-                arg_dict[list(coord_dict.keys())[n]] = val
-            list_of_skeletons.append(self.skeleton.sel(arg_dict))
-
-        self.list_of_skeletons = list_of_skeletons
-        self.ct = -1
+def _data_vars(self) -> None:
+    """Used for instanes instead of the class method, since data_variables can be added after initialization."""
+    return list(self._coord_manager.added_vars().keys())
 
 
 class Skeleton:
@@ -104,6 +36,7 @@ class Skeleton:
         self.dask = True
         self.chunks = "auto"
         self._init_structure(x, y, lon, lat, **kwargs)
+        self.data_vars = MethodType(_data_vars, self)
 
     def deactivate_dask(self) -> None:
         self.dask = False
@@ -145,7 +78,9 @@ class Skeleton:
         return tuple(chunk_list)
 
     def add_datavar(self, name: str, coords: str = "all", default_value: float = 0.0):
-        self = add_datavar(name=name, coords=coords, default_value=default_value,append=True)(self)
+        self = add_datavar(
+            name=name, coords=coords, default_value=default_value, append=True
+        )(self)
         self.set(name)
 
     @classmethod
@@ -202,13 +137,6 @@ class Skeleton:
 
         return points
 
-    def __iter__(self):
-        return SkeletonIterator(
-            self._ds_manager.coords_dict("all"),
-            self._ds_manager.coords_dict("grid").keys(),
-            self,
-        )
-
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
         and initializes the Xarray dataset within the DatasetManager.
@@ -221,11 +149,13 @@ class Skeleton:
         self._coord_manager = deepcopy(self._coord_manager)
         self._coord_manager.initial_state = False
 
-        x, y, lon, lat, kwargs = sanitize_input(
+        x, y, lon, lat, kwargs = array_funcs.sanitize_input(
             x, y, lon, lat, self.is_gridded(), **kwargs
         )
 
-        x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
+        x_str, y_str, xvec, yvec = utm_funcs.will_grid_be_spherical_or_cartesian(
+            x, y, lon, lat
+        )
         self.x_str = x_str
         self.y_str = y_str
         # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
@@ -279,8 +209,9 @@ class Skeleton:
             # update-method sets empty data when no value is provided
             self.set(name)
 
-    def data_vars(self) -> None:
-        return list(self._coord_manager.added_vars().keys())
+    @classmethod
+    def data_vars(cls) -> None:
+        return list(cls._coord_manager.added_vars().keys())
 
     def coords(self, coords: str = "all") -> list[str]:
         """Returns a list of the coordinates from the Dataset.
@@ -613,7 +544,7 @@ class Skeleton:
         else:
             raise ValueError("zone_number needs to be an integer")
 
-        if not valid_utm_zone((number, letter)):
+        if not utm_funcs.valid_utm_zone((number, letter)):
             raise ValueError(f"({number}, {letter}) is not a valid UTM zone!")
 
         self._zone_number = number
@@ -724,7 +655,7 @@ class Skeleton:
             )
         else:
             lat = self.lat(**kwargs)
-            lat = cap_lat_for_utm(lat)
+            lat = utm_funcs.cap_lat_for_utm(lat)
 
             posmask = lat >= 0
             negmask = lat < 0
@@ -814,7 +745,7 @@ class Skeleton:
                 )
                 y[negmask] = -y[negmask]
         else:
-            lat = cap_lat_for_utm(self.lat(**kwargs))
+            lat = utm_funcs.cap_lat_for_utm(self.lat(**kwargs))
             y = np.zeros(len(self.lat(**kwargs)))
             if np.any(posmask):
                 _, y[posmask], __, __ = utm_module.from_latlon(
@@ -1042,10 +973,10 @@ class Skeleton:
             fast = True
 
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
-        x = force_to_iterable(x)
-        y = force_to_iterable(y)
-        lon = force_to_iterable(lon)
-        lat = force_to_iterable(lat)
+        x = array_funcs.force_to_iterable(x)
+        y = array_funcs.force_to_iterable(y)
+        lon = array_funcs.force_to_iterable(lon)
+        lat = array_funcs.force_to_iterable(lat)
 
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
@@ -1079,11 +1010,11 @@ class Skeleton:
         lonlist, latlist = self.lonlat()
         for xx, yy, llon, llat, mask in zip(x, y, lon, lat, posmask):
             if mask or not fast:
-                dxx, ii = min_distance(
+                dxx, ii = distance_funcs.min_distance(
                     llon, llat, lonlist, latlist
                 )  # Slower, but works for high/low latitudes and is exact
             else:
-                dxx, ii = min_cartesian_distance(xx, yy, xlist, ylist)
+                dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
             inds.append(ii)
             dx.append(dxx)
         self.set_utm(orig_zone, silent=True)  # Reset UTM zone
@@ -1194,211 +1125,9 @@ class Skeleton:
         else:
             raise ValueError("name needs to be a string")
 
-
-def coord_len_to_max_two(xvec):
-    if xvec is not None and len(xvec) > 2:
-        xvec = np.array([min(xvec), max(xvec)])
-    return xvec
-
-
-def sanitize_singe_variable(name: str, x):
-    """Forces to nump array and checks dimensions etc"""
-    x = force_to_iterable(x)
-
-    # np.array([None, None]) -> None
-    if x is None or all(v is None for v in x):
-        x = None
-
-    if x is not None and len(x.shape) > 1:
-        raise Exception(
-            f"Vector {name} should have one dimension, but it has dimensions {x.shape}!"
+    def __iter__(self):
+        return SkeletonIterator(
+            self._ds_manager.coords_dict("all"),
+            self._ds_manager.coords_dict("grid").keys(),
+            self,
         )
-
-    # Set np.array([]) to None
-    if x is not None and x.shape == (0,):
-        x = None
-
-    return x
-
-
-def sanitize_point_structure(spatial: dict) -> dict:
-    """Repeats a single value to match lenths of arrays"""
-    x = spatial.get("x")
-    y = spatial.get("y")
-    lon = spatial.get("lon")
-    lat = spatial.get("lat")
-
-    if x is not None and y is not None:
-        if len(x) != len(y):
-            if len(x) == 1:
-                spatial["x"] = np.repeat(x[0], len(y))
-            elif len(y) == 1:
-                spatial["y"] = np.repeat(y[0], len(x))
-            else:
-                raise Exception(
-                    f"x-vector is {len(x)} long but y-vecor is {len(y)} long!"
-                )
-    if lon is not None and lat is not None:
-        if len(lon) != len(lat):
-            if len(lon) == 1:
-                spatial["lon"] = np.repeat(lon[0], len(lat))
-            elif len(lat) == 1:
-                spatial["lat"] = np.repeat(lat[0], len(lon))
-            else:
-                raise Exception(
-                    f"x-vector is {len(lon)} long but y-vecor is {len(lat)} long!"
-                )
-
-    return spatial
-
-
-def get_edges_of_arrays(spatial: dict) -> dict:
-    """Takes only edges of arrays, so [1,2,3] -> [1,3]"""
-    for key, value in spatial.items():
-        if value is not None:
-            spatial[key] = coord_len_to_max_two(value)
-
-    return spatial
-
-
-def check_that_variables_equal_length(x, y) -> bool:
-    if x is None and y is None:
-        return True
-    if x is None:
-        raise ValueError(f"x/lon variable None even though y/lat variable is not!")
-    if y is None:
-        raise ValueError(f"y/lat variable None even though x/lon variable is not!")
-    return len(x) == len(y)
-
-
-def sanitize_time_input(time):
-    if isinstance(time, str):
-        return pd.DatetimeIndex([time])
-    if not isinstance(time, Iterable):
-        return pd.DatetimeIndex([time])
-    return pd.DatetimeIndex(time)
-
-
-def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
-    """Sanitizes input. After this all variables are either
-    non-empty np.ndarrays with len >= 1 or None"""
-
-    spatial = {"x": x, "y": y, "lon": lon, "lat": lat}
-    for key, value in spatial.items():
-        spatial[key] = sanitize_singe_variable(key, value)
-
-    other = {}
-    for key, value in kwargs.items():
-        if key == "time":
-            # other[key] = sanitize_singe_variable(key, value, fmt="datetime")
-            other[key] = sanitize_time_input(value)
-        else:
-            other[key] = sanitize_singe_variable(key, value)
-
-    if not is_gridded_format:
-        spatial = sanitize_point_structure(spatial)
-
-        for x, y in [("x", "y"), ("lon", "lat")]:
-            length_ok = check_that_variables_equal_length(spatial[x], spatial[y])
-            if not length_ok:
-                raise Exception(
-                    f"{x} is length {len(spatial[x])} but {y} is length {len(spatial[y])}!"
-                )
-
-    if np.all([a is None for a in spatial.values()]):
-        raise Exception("x, y, lon, lat cannot ALL be None!")
-
-    return spatial["x"], spatial["y"], spatial["lon"], spatial["lat"], other
-
-
-def will_grid_be_spherical_or_cartesian(x, y, lon, lat):
-    """Determines if the grid will be spherical or cartesian based on which
-    inputs are given and which are None.
-
-    Returns the ringth vector and string to identify the native values.
-    """
-
-    # Check for empty grid
-    if (
-        (lon is None or len(lon) == 0)
-        and (lat is None or len(lat) == 0)
-        and (x is None or len(x) == 0)
-        and (y is None or len(y) == 0)
-    ):
-        native_x = "x"
-        native_y = "y"
-        xvec = np.array([])
-        yvec = np.array([])
-        return native_x, native_y, xvec, yvec
-
-    xy = False
-    lonlat = False
-
-    if (x is not None) and (y is not None):
-        xy = True
-        native_x = "x"
-        native_y = "y"
-        xvec = x
-        yvec = y
-
-    if (lon is not None) and (lat is not None):
-        lonlat = True
-        native_x = "lon"
-        native_y = "lat"
-        xvec = lon
-        yvec = lat
-
-    if xy and lonlat:
-        raise ValueError("Can't set both lon/lat and x/y!")
-
-    # Empty grid will be cartesian
-    if not xy and not lonlat:
-        native_x = "x"
-        native_y = "y"
-        xvec = np.array([])
-        yvec = np.array([])
-
-    return native_x, native_y, xvec, yvec
-
-
-def cap_lat_for_utm(lat):
-    if isinstance(lat, float):
-        lat = np.array([lat])
-    if len(lat) > 0 and max(lat) > 84:
-        print(
-            f"Max latitude {max(lat)}>84. These points well be capped to 84 deg in UTM conversion!"
-        )
-        lat[lat > 84.0] = 84.0
-    if len(lat) > 0 and min(lat) < -80:
-        lat[lat < -80.0] = -80.0
-        print(
-            f"Min latitude {min(lat)}<-80. These points well be capped to -80 deg in UTM conversion!"
-        )
-    return lat
-
-
-def force_to_iterable(x, fmt: str = None) -> Iterable:
-    """Returns an numpy array with at least one dimension and Nones removed
-
-    Will return None if given None."""
-    if x is None:
-        return None
-
-    x = np.atleast_1d(x)
-    x = np.array([a for a in x if a is not None])
-
-    return x
-
-
-def valid_utm_zone(utm_zone: tuple[int, str]) -> bool:
-    """Checks that a UTM zone, e.g. (33, 'V') is valid."""
-
-    zone_number, zone_letter = utm_zone
-
-    if zone_number not in VALID_UTM_NUMBERS:
-        return False
-
-    if zone_letter not in VALID_UTM_ZONES:
-        return False
-
-    return True
