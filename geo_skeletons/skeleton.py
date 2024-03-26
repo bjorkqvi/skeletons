@@ -41,7 +41,9 @@ class Skeleton:
 
     @classmethod
     def from_ds(cls, ds: xr.Dataset, **kwargs):
-        """Generats a PointSkeleton from an xarray Dataset. All coordinates must be present, but only matching data variables included."""
+        """Generats a PointSkeleton from an xarray Dataset. All coordinates must be present, but only matching data variables included.
+
+        Missing coordinates can be provided as kwargs."""
         coords = list(ds.coords) + list(kwargs.keys())
 
         # Getting mandatory spatial variables
@@ -1122,7 +1124,12 @@ class Skeleton:
             # update-method sets empty data when no value is provided
             self.set(name)
 
+    def iterate(self, coords: list[str] = None):
+        coords = coords or self.coords("grid")
+        return iter(self)(coords)
+
     def __iter__(self):
+
         return SkeletonIterator(
             self.coords_dict("all"),
             self.coords("grid"),
