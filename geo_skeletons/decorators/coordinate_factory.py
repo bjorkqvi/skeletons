@@ -98,15 +98,28 @@ def add_time(grid_coord: bool = False, name: str = "time"):
             else:
                 return list(unique_times(times, fmt))
 
-        def get_time(self, data_array=False, **kwargs):
+        def get_time(
+            self,
+            data_array=False,
+            datetime: bool = True,
+            fmt="%Y-%m-%d %H:%M:00",
+            **kwargs,
+        ):
             if not self._structure_initialized():
                 return (None, None)
             data = self._ds_manager.get(name, **kwargs)
             if data_array:
                 return data
-            if len(data.values) > 1:
-                return pd.to_datetime(data.values.copy())
-            return pd.to_datetime([data.values[0].copy(), data.values[0].copy()])
+
+            # if len(data.values) > 1:
+            times = pd.to_datetime(data.values.copy())
+            # else:
+            #     times = pd.to_datetime([data.values[0].copy(), data.values[0].copy()])
+
+            if not datetime:
+                times = times.strftime(fmt).to_list()
+
+            return times
 
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
