@@ -22,7 +22,7 @@ def test_add_z_and_time_coord():
     )
     np.testing.assert_array_almost_equal(ts.y(y=slice(12, 14)), np.array([12, 14]))
     np.testing.assert_array_almost_equal(ts.z(z=slice(12, 14)), np.array([12, 13, 14]))
-
+    ts.set_hs(0)
     assert ts.hs().shape == (len(ts.time()), len(ts.y()), len(ts.x()), len(ts.z()))
     assert ts.hs(x=0).shape == (len(ts.time()), len(ts.y()), len(ts.z()))
     assert ts.hs(y=10).shape == (len(ts.time()), len(ts.x()), len(ts.z()))

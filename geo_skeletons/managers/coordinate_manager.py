@@ -24,6 +24,7 @@ class CoordinateManager:
 
         self._masks = {}
         self._masks["added"] = {}
+        self._masks["opposite"] = {}
 
         self._default_values = {}
 
@@ -38,9 +39,12 @@ class CoordinateManager:
         self._vars["added"][name] = coords
         self._default_values[name] = default_value
 
-    def add_mask(self, name: str, coords: str, default_value: int) -> None:
+    def add_mask(
+        self, name: str, coords: str, default_value: int, opposite_name: str
+    ) -> None:
         """Add a mask that the Skeleton will use."""
         self._masks["added"][f"{name}_mask"] = coords
+        self._masks["opposite"][f"{opposite_name}_mask"] = f"{name}_mask"
         self._default_values[f"{name}_mask"] = default_value
 
     def add_coord(self, name: str, grid_coord: bool) -> None:
@@ -83,6 +87,9 @@ class CoordinateManager:
 
     def added_masks(self) -> dict:
         return self._masks["added"]
+
+    def opposite_masks(self) -> dict:
+        return self._masks["opposite"]
 
     def added_coords(self, coords: str = "all") -> list[str]:
         """Returns list of coordinates that have been added to the fixed

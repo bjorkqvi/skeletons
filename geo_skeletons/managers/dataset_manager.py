@@ -13,6 +13,8 @@ from ..errors import (
     GridError,
 )
 
+import dask
+
 
 class DatasetManager:
     """Contains methods related to the creation and handling of the Xarray
@@ -147,8 +149,28 @@ class DatasetManager:
 
         self._merge_in_ds(self.compile_to_ds(data, data_name, coords))
 
+    def empty_vars(self) -> list[str]:
+        """Get a list of empty variables"""
+        empty_vars = []
+        for var in self.coord_manager.added_vars():
+            if self.get(var) is None:
+                empty_vars.append(var)
+        return empty_vars
+
+    def empty_masks(self) -> list[str]:
+        """Get a list of empty masks"""
+        empty_masks = []
+        for mask in self.coord_manager.added_masks():
+            if self.get(mask) is None:
+                empty_masks.append(mask)
+        return empty_masks
+
     def get(
-        self, name: str, default_data=None, empty: bool = False, **kwargs
+        self,
+        name: str,
+        empty: bool = False,
+        chunks: str = "auto",
+        **kwargs,
     ) -> xr.DataArray:
         """Gets data from Dataset.
 
@@ -162,27 +184,24 @@ class DatasetManager:
         if empty:
             coords = self.coord_manager.added_vars().get(name)
             coords = coords or self.coord_manager.added_masks().get(name)
-
-            empty_data = np.full(
+            empty_data = dask.array.full(
                 self.coords_to_size(self.coord_manager.coords(coords)),
                 self.coord_manager._default_values.get(name),
+                chunks=chunks,
             )
+
             coords_dict = {
                 coord: self.get(coord) for coord in self.coord_manager.coords(coords)
             }
-            default_data = xr.DataArray(data=empty_data, coords=coords_dict)
 
-        data = ds.get(name, default_data)
-        if not isinstance(data, xr.DataArray):
-            return data
-
-        data = self._slice_data(data, **kwargs)
-        if empty:
-            data.values = np.full(
-                data.shape, self.coord_manager._default_values.get(name)
+            return self._slice_data(
+                xr.DataArray(data=empty_data, coords=coords_dict), **kwargs
             )
 
-        return data
+        if ds.get(name) is None:
+            return None
+        else:
+            return self._slice_data(ds.get(name), **kwargs)
 
     def set_attrs(self, attributes: dict, data_array_name: str = None) -> None:
         """Sets attributes to DataArray da_name.
