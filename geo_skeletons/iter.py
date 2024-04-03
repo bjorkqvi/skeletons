@@ -30,12 +30,11 @@ class SkeletonIterator:
 
     def _compile_list(self):
         coord_dict = {}
+
         for coord in self.coords_to_iterate:
-
             coord_value = self.dict_of_coords.get(coord)
-
             if coord_value is None:
-                print(
+                raise KeyError(
                     f"Cannot iterate over coord {coord}, since it does not exist: {self.dict_of_coords.keys()}"
                 )
             else:
