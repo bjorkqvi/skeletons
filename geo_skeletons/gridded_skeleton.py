@@ -85,9 +85,13 @@ class GriddedSkeleton(Skeleton):
             return None, None
 
         if mask is None:
-            mask = np.full(super().size("spatial", **kwargs), True)
-        mask = mask.ravel()
 
+            mask = np.full(super().size("spatial", **kwargs), True)
+
+        try:
+            mask = mask.ravel()
+        except AttributeError:
+            breakpoint()
         x, y = self._native_xy(**kwargs)
 
         if not self.is_cartesian() or native:
@@ -251,9 +255,5 @@ class GriddedSkeleton(Skeleton):
             y = None
         self._init_structure(x, y, lon, lat)
 
-    def __repr__(self) -> str:
-        string = f"<{type(self).__name__} (GriddedSkeleton)>\n"
-        string += "-" * 34 + " Containing " + "-" * 34 + "\n"
-        string += self.ds().__repr__()
-        string += "\n" + "-" * 80
-        return string
+
+# dummy(time, y, x)

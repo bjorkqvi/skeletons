@@ -153,10 +153,10 @@ def test_gridded_added_coord_and_var():
         "eta_gridpoint": "gridpoint",
         "eta_spatial": "spatial",
     }
-    assert points.eta_all().shape == (3, 2, 4, 5)
-    assert points.eta_grid().shape == (3, 2, 4)
-    assert points.eta_gridpoint().shape == (5,)
-    assert points.eta_spatial().shape == (3, 2)
+    assert points.eta_all(empty=True).shape == (3, 2, 4, 5)
+    assert points.eta_grid(empty=True).shape == (3, 2, 4)
+    assert points.eta_gridpoint(empty=True).shape == (5,)
+    assert points.eta_spatial(empty=True).shape == (3, 2)
 
     points2 = Expanded(lon=[1, 2], lat=[2, 3, 4], z=[1, 2, 3, 4], w=[6, 7, 8, 9, 10])
     assert points2._coord_manager.initial_coords() == ["lat", "lon"]
@@ -171,10 +171,10 @@ def test_gridded_added_coord_and_var():
         "eta_spatial": "spatial",
     }
 
-    assert points2.eta_all().shape == (3, 2, 4, 5)
-    assert points2.eta_grid().shape == (3, 2, 4)
-    assert points2.eta_gridpoint().shape == (5,)
-    assert points2.eta_spatial().shape == (3, 2)
+    assert points2.size("eta_all") == (3, 2, 4, 5)
+    assert points2.size("eta_grid") == (3, 2, 4)
+    assert points2.size("eta_gridpoint") == (5,)
+    assert points2.size("eta_spatial") == (3, 2)
 
     # Check that deepcopy of coord_manager works and these are not altered
     assert GriddedSkeleton._coord_manager.initial_coords() == ["y", "x"]

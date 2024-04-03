@@ -13,12 +13,15 @@ def test_add_mask():
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40))
     data.set_spacing(nx=10, ny=10)
-    np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), True))
-    np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), False))
-    data.set_sea_mask(data.hs() > 0)
+
+    np.testing.assert_array_equal(data.sea_mask(empty=True), np.full(data.size(), True))
+
+    np.testing.assert_array_equal(
+        data.land_mask(empty=True), np.full(data.size(), False)
+    )
+    data.set_sea_mask(data.hs(empty=True) > 0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
-
     assert data.masks()[0] == "sea_mask"
 
 
@@ -32,9 +35,11 @@ def test_add_coord_and_mask():
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
     data.set_spacing(nx=10, ny=10)
     data.set_z_spacing(nx=4)
-    np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), True))
-    np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), False))
-    data.set_sea_mask(data.hs() > 0)
+    np.testing.assert_array_equal(data.sea_mask(empty=True), np.full(data.size(), True))
+    np.testing.assert_array_equal(
+        data.land_mask(empty=True), np.full(data.size(), False)
+    )
+    data.set_sea_mask(data.hs(empty=True) > 0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
 
@@ -53,6 +58,7 @@ def test_add_gridpoint_coord_and_mask():
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3), time=times)
     data.set_spacing(nx=10, ny=10)
     data.set_z_spacing(nx=4)
+    data.set_sea_mask()
 
     np.testing.assert_array_equal(
         data.sea_mask(), np.full(data.size(coords="grid"), True)
@@ -60,7 +66,7 @@ def test_add_gridpoint_coord_and_mask():
     np.testing.assert_array_equal(
         data.land_mask(), np.full(data.size(coords="grid"), False)
     )
-    data.set_sea_mask(data.hs()[0, :] > 0)
+    data.set_sea_mask(data.hs(empty=True)[0, :] > 0)
     np.testing.assert_array_equal(
         data.sea_mask(), np.full(data.size(coords="grid"), False)
     )
@@ -77,7 +83,7 @@ def test_get_points():
 
     data = WaveHeight(lon=(10, 30), lat=(30, 50))
     data.set_spacing(nx=3, ny=3)
-    mask = data.sea_mask()
+    mask = data.sea_mask(empty=True)
 
     lon, lat = data.sea_points()
     lon_all, lat_all = data.lonlat()

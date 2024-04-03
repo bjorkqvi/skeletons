@@ -8,6 +8,8 @@ def test_add_datavar():
     points.add_datavar("hs")
 
     assert "hs" in points.data_vars()
+    assert "hs" not in list(points.ds().keys())
+    points.set_hs()
     assert "hs" in list(points.ds().keys())
 
 
@@ -22,10 +24,15 @@ def test_add_datavar_on_top():
     points = Expanded(x=[6, 7, 8], y=[4, 5, 6], z=[6, 7])
     points.add_datavar("tp", default_value=5.0, coords="gridpoint")
     assert "hs" in points.data_vars()
-    assert "hs" in list(points.ds().keys())
     assert "tp" in points.data_vars()
-    assert "tp" in list(points.ds().keys())
 
+    assert "hs" not in list(points.ds().keys())
+    assert "tp" not in list(points.ds().keys())
+
+    points.set_hs()
+    points.set_tp()
+    assert "hs" in list(points.ds().keys())
+    assert "tp" in list(points.ds().keys())
     np.testing.assert_almost_equal(np.mean(points.tp()), 5.0)
 
     assert points.size("gridpoint") == points.tp().shape

@@ -33,11 +33,12 @@ class Skeleton:
         self._init_structure(x, y, lon, lat, **kwargs)
         self.data_vars = MethodType(_data_vars, self)
 
-    def add_datavar(self, name: str, coords: str = "all", default_value: float = 0.0):
+    def add_datavar(
+        self, name: str, coords: str = "all", default_value: float = 0.0
+    ) -> None:
         self = add_datavar(
             name=name, coords=coords, default_value=default_value, append=True
         )(self)
-        self.set(name)
 
     @classmethod
     def from_ds(cls, ds: xr.Dataset, **kwargs):
@@ -84,7 +85,6 @@ class Skeleton:
 
         # Initialize Skeleton
         points = cls(x=x, y=y, lon=lon, lat=lat, **additional_coords)
-
         # Set data variables and masks that exist
         for data_var in points.data_vars():
             val = ds.get(data_var)
@@ -132,8 +132,8 @@ class Skeleton:
         self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
         self.set_utm(silent=True)
 
-        self._reset_masks()
-        self._reset_datavars()
+        # self._reset_masks()
+        # self._reset_datavars()
 
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
         """Absorb another object of same type over a centrain dimension.
@@ -311,6 +311,9 @@ class Skeleton:
         # 'all', 'grid', 'spatial' or 'gridpoint'
         var_coord_type = self._coord_manager.added_vars().get(name)
         mask_coord_type = self._coord_manager.added_masks().get(name)
+        if mask_coord_type is None:
+            opposite_name = self._coord_manager.opposite_masks().get(name)
+            mask_coord_type = self._coord_manager.added_masks().get(opposite_name)
         coord_type = var_coord_type or mask_coord_type
 
         metadata = self.metadata()
@@ -336,7 +339,9 @@ class Skeleton:
         # If the coordinates of the data are explicilty given as a coord-list or thorugh a DataArray, try to reshape to those
         if coords is not None:
             allow_reshape = True
-            data_coordinates = list(self.get(name, data_array=True, squeeze=False).dims)
+            data_coordinates = list(
+                self.get(name, empty=True, data_array=True, squeeze=False).dims
+            )
             # Check that we don't do trivial reshape
             if data_coordinates == coords:
                 allow_reshape = False
@@ -406,7 +411,9 @@ class Skeleton:
         if not self._structure_initialized():
             return None
 
-        data = self._ds_manager.get(name, empty=empty, **kwargs)
+        data = self._ds_manager.get(
+            name, empty=empty, chunks=self.chunks or "auto", **kwargs
+        )
 
         if not isinstance(data, xr.DataArray):
             return None
@@ -431,19 +438,19 @@ class Skeleton:
         else:
             return data
 
-    def is_empty(self, name):
-        """Checks if a Dataset variable is empty.
+    # def is_empty(self, name):
+    #     """Checks if a Dataset variable is empty.
 
-        Empty means all initial values OR all 0 values."""
-        data = self.get(name)
-        if data is None:
-            return False
-        empty_data = self.get(name, empty=True)
-        land_data = data * 0
-        is_empty = np.allclose(
-            data.astype(float), empty_data.astype(float)
-        ) or np.allclose(data.astype(float), land_data.astype(float))
-        return is_empty
+    #     Empty means all initial values OR all 0 values."""
+    #     data = self.get(name)
+    #     if data is None:
+    #         return False
+    #     empty_data = self.get(name, empty=True)
+    #     land_data = data * 0
+    #     is_empty = np.allclose(
+    #         data.astype(float), empty_data.astype(float)
+    #     ) or np.allclose(data.astype(float), land_data.astype(float))
+    #     return is_empty
 
     def is_initialized(self) -> bool:
         return hasattr(self, "x_str") and hasattr(self, "y_str")
@@ -537,6 +544,11 @@ class Skeleton:
 
         if not self._structure_initialized():
             return None
+
+        if coords not in ["all", "spatial", "grid", "gridpoint"]:
+            coords = self._coord_manager.added_vars().get(
+                coords
+            ) or self._coord_manager.added_masks().get(coords)
 
         size = self._ds_manager.coords_to_size(self.coords(coords), **kwargs)
 
@@ -1042,11 +1054,14 @@ class Skeleton:
             chunks = self._chunk_tuple_from_dict(chunks)
         for var in self.data_vars():
             data = self.get(var)
-            if hasattr(data, "chunks"):
-                data = data.rechunk(chunks)
-            else:
-                data = da.from_array(data, chunks)
-            self.set(var, data)
+            if data is not None:
+                if hasattr(data, "chunks"):
+                    data = data.rechunk(chunks)
+                else:
+                    data = da.from_array(data, chunks)
+                self.set(var, data)
+
+        self.chunks = chunks
 
     @property
     def x_str(self) -> str:
@@ -1135,6 +1150,47 @@ class Skeleton:
             self.coords("grid"),
             self,
         )
+
+    def __repr__(self) -> str:
+        string = f"<{type(self).__name__} ({self.__class__.__base__.__name__})>\n"
+        string += "-" * 34 + " Containing " + "-" * 34 + "\n"
+        string += self.ds().__repr__()
+
+        empty_vars = self._ds_manager.empty_vars()
+        if empty_vars:
+            string += "\n" + "Empty variables:\n"
+            for var in empty_vars:
+                string += f"    {var}  "
+                coords = self._coord_manager.coords(
+                    self._coord_manager.added_vars()[var]
+                )
+                string += "("
+                for coord in coords:
+                    string += f"{coord}, "
+                string = string[:-2]
+                string += ")"
+                string += f":  {self._coord_manager._default_values.get(var)}"
+
+                empty_vars = self._ds_manager.empty_vars()
+
+        empty_masks = self._ds_manager.empty_masks()
+        if empty_masks:
+            string += "\n" + "Empty masks:\n"
+            for mask in empty_masks:
+                string += f"    {mask}  "
+                coords = self._coord_manager.coords(
+                    self._coord_manager.added_masks()[mask]
+                )
+                string += "("
+                for coord in coords:
+                    string += f"{coord}, "
+                string = string[:-2]
+                string += ")"
+                string += f":  {bool(self._coord_manager._default_values.get(mask))}"
+
+        string += "\n" + "-" * 80
+
+        return string
 
 
 def _data_vars(self) -> None:

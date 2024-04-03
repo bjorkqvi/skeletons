@@ -16,7 +16,7 @@ def test_set_chunks():
         pass
 
     points = DummySkeleton(lon=range(500), lat=range(400), z=range(100))
-
+    points.set_dummy()
     chunks = (100, 100, 100)
     points.set_dummy(points.dummy().compute(), chunks=chunks)
     validate_chunks(chunks, ["lat", "lon", "z"], points.dummy(data_array=True))
@@ -29,7 +29,7 @@ def test_rechunk():
         pass
 
     points = DummySkeleton(lon=range(500), lat=range(400), z=range(100))
-
+    points.set_dummy()
     chunks = (100, 100, 50)
     points.rechunk(chunks)
     validate_chunks(chunks, ["lat", "lon", "z"], points.dummy(data_array=True))
@@ -42,7 +42,7 @@ def test_rechunk_using_dict():
         pass
 
     points = DummySkeleton(lon=range(500), lat=range(400), z=range(100))
-
+    points.set_dummy()
     chunks = {"z": 50, "lat": 80, "lon": 100}
     points.rechunk(chunks)
     validate_chunks(list(chunks.values()), chunks.keys(), points.dummy(data_array=True))
@@ -55,7 +55,7 @@ def test_rechunk_primary_dim():
         pass
 
     points = DummySkeleton(x=range(500), y=range(400), z=range(100))
-
+    points.set_dummy()
     points.rechunk(primary_dim="z")
     validate_chunks([100], ["z"], points.dummy(data_array=True))
 
@@ -73,7 +73,7 @@ def test_rechunk_primary_dims():
         pass
 
     points = DummySkeleton(x=range(20), y=range(40), z=range(1000))
-
+    points.set_dummy()
     points.rechunk(primary_dim=["z", "x"])
     validate_chunks([1000, 20], ["z", "x"], points.dummy(data_array=True))
 
@@ -91,6 +91,7 @@ def test_rechunk_set_method():
         pass
 
     points = DummySkeleton(x=range(20), y=range(40), z=range(1000))
+    points.set_dummy()
     points.rechunk(chunks=(5, 10, 20))
     validate_chunks([5, 10, 20], ["y", "x", "z"], points.dummy(data_array=True))
     points.set_dummy(chunks=(10, 20, 30))

@@ -76,7 +76,6 @@ def test_absorb_point_skeleton_along_new_coordinate():
     points2 = TestSkeleton(x=(1, 2), y=(3, 4), z=(5, 6, 7))
     data2 = np.full(points2.size(), 2)
     points2.set_test(data2)
-
     points3 = points1.absorb(points2, dim="z")
     np.testing.assert_array_almost_equal(points3.z(), np.arange(8))
     assert np.all(points3.test(z=slice(0, 4)) == points1.test())

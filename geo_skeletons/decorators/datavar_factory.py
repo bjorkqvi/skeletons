@@ -52,7 +52,7 @@ def add_datavar(
             silent: bool = True,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
-                data = np.full(self._ds_manager.get(name).shape, data)
+                data = np.full(self.size(name), data)
             self.set(
                 name,
                 data,

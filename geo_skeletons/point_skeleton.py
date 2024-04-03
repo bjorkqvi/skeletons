@@ -117,9 +117,9 @@ class PointSkeleton(Skeleton):
             return x[mask], y[mask]
         return x, y
 
-    def __repr__(self) -> str:
-        string = f"<{type(self).__name__} (PointSkeleton)>\n"
-        string += "-" * 34 + " Containing " + "-" * 34 + "\n"
-        string += self.ds().__repr__()
-        string += "\n" + "-" * 80
-        return string
+    # def __repr__(self) -> str:
+    #     string = f"<{type(self).__name__} (PointSkeleton)>\n"
+    #     string += "-" * 34 + " Containing " + "-" * 34 + "\n"
+    #     string += self.ds().__repr__()
+    #     string += "\n" + "-" * 80
+    #     return string
