@@ -5,7 +5,7 @@ import numpy as np
 
 def test_magnitude():
 
-    @add_magnitude(name="wind", x="u", y="v")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
     @add_datavar("v")
     @add_datavar("u")
     class Magnitude(PointSkeleton):
@@ -16,3 +16,4 @@ def test_magnitude():
     points.set_v(1)
     wind = (points.u(dask=False) ** 2 + points.v(dask=False) ** 2) ** 0.5
     np.testing.assert_almost_equal(points.wind(dask=False), wind)
+    breakpoint()
