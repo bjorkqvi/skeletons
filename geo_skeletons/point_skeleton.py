@@ -3,7 +3,7 @@ from .skeleton import Skeleton
 from .managers.coordinate_manager import CoordinateManager
 
 INITIAL_COORDS = ["inds"]
-INITIAL_CARTESIAL_VARS = {"x": "inds", "y": "inds"}
+INITIAL_CARTESIAN_VARS = {"x": "inds", "y": "inds"}
 INITIAL_SPHERICAL_VARS = {"lat": "inds", "lon": "inds"}
 
 
@@ -18,7 +18,7 @@ class PointSkeleton(Skeleton):
     4) Methods xy() / lonlat() are identical to e.g. (x(), y()).
     """
 
-    _coord_manager = CoordinateManager(INITIAL_COORDS, INITIAL_CARTESIAL_VARS)
+    _coord_manager = CoordinateManager(INITIAL_COORDS, INITIAL_CARTESIAN_VARS)
 
     @classmethod
     def from_skeleton(
@@ -56,7 +56,7 @@ class PointSkeleton(Skeleton):
         if spherical:
             return INITIAL_SPHERICAL_VARS
         else:
-            return INITIAL_CARTESIAL_VARS
+            return INITIAL_CARTESIAN_VARS
 
     def lonlat(
         self,
@@ -116,10 +116,3 @@ class PointSkeleton(Skeleton):
         if mask is not None:
             return x[mask], y[mask]
         return x, y
-
-    # def __repr__(self) -> str:
-    #     string = f"<{type(self).__name__} (PointSkeleton)>\n"
-    #     string += "-" * 34 + " Containing " + "-" * 34 + "\n"
-    #     string += self.ds().__repr__()
-    #     string += "\n" + "-" * 80
-    #     return string
