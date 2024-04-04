@@ -3,6 +3,7 @@ import xarray as xr
 import utm as utm_module
 from copy import copy
 from .managers.dataset_manager import DatasetManager
+from .managers.dask_manager import DaskManager
 from typing import Iterable, Union
 from .aux_funcs import distance_funcs, array_funcs, utm_funcs
 from .errors import DataWrongDimensionError
@@ -171,7 +172,19 @@ class Skeleton:
             mask_name = self._coord_manager.opposite_masks().get(var)
             mask_coords = self._coord_manager.added_masks().get(mask_name)
 
-        coord_group = var_coords or mask_coords
+        mag = self._coord_manager.magnitudes.get(var)
+        if mag is not None:
+            mag_coords = self._coord_manager.added_vars().get(mag["x"])
+        else:
+            mag_coords = None
+
+        dir = self._coord_manager.directions.get(var)
+        if dir is not None:
+            dir_coords = self._coord_manager.added_vars().get(dir["x"])
+        else:
+            dir_coords = None
+
+        coord_group = var_coords or mask_coords or mag_coords or dir_coords
         if coord_group is None:
             raise KeyError(f"Cannot find the data {var}!")
 
@@ -342,9 +355,7 @@ class Skeleton:
         # If the coordinates of the data are explicilty given as a coord-list or thorugh a DataArray, try to reshape to those
         if coords is not None:
             allow_reshape = True
-            data_coordinates = list(
-                self.get(name, empty=True, data_array=True, squeeze=False).dims
-            )
+            data_coordinates = self.coords(self.coord_group(name))
             # Check that we don't do trivial reshape
             if data_coordinates == coords:
                 allow_reshape = False
@@ -403,14 +414,14 @@ class Skeleton:
         data_array: bool = False,
         squeeze: bool = True,
         boolean_mask: bool = False,
-        dask: bool = True,
+        dask: bool = None,
         **kwargs,
     ):
         """Gets a mask or data variable.
 
-        The ds_manager always gets what is in the Dataset (integers for masks).
-        The Skeletons get-method gives boolen masks, and you can also
-        request empty masks that will be return even if data doesn't exist."""
+        Masks
+        You can also request empty masks that will be return even if data doesn't exist.
+        """
         if not self._structure_initialized():
             return None
 
@@ -418,8 +429,14 @@ class Skeleton:
             name, empty=empty, chunks=self.chunks or "auto", **kwargs
         )
 
+        if name in self.coords("all"):
+            dask = False
+
         if not isinstance(data, xr.DataArray):
             return None
+
+        if name[-5:] == "_mask":
+            boolean_mask = True
 
         if boolean_mask or squeeze:
             data = data.copy()
@@ -430,30 +447,21 @@ class Skeleton:
         if squeeze and data.shape != (1,):  # Don't squeeze out last dimension
             data = data.squeeze(drop=True)
 
+        # Use dask mode default if not explicitly overridden
+        if dask is None:
+            dask = self.dask
+
+        dask_manager = DaskManager(self.chunks)
+
+        if dask:
+            data = dask_manager.dask_me(data)
+        else:
+            data = dask_manager.undask_me(data)
+
         if not data_array:
             data = data.data
 
-        if not dask:
-            try:
-                return data.compute()
-            except AttributeError:
-                return data
-        else:
-            return data
-
-    # def is_empty(self, name):
-    #     """Checks if a Dataset variable is empty.
-
-    #     Empty means all initial values OR all 0 values."""
-    #     data = self.get(name)
-    #     if data is None:
-    #         return False
-    #     empty_data = self.get(name, empty=True)
-    #     land_data = data * 0
-    #     is_empty = np.allclose(
-    #         data.astype(float), empty_data.astype(float)
-    #     ) or np.allclose(data.astype(float), land_data.astype(float))
-    #     return is_empty
+        return data
 
     def is_initialized(self) -> bool:
         return hasattr(self, "x_str") and hasattr(self, "y_str")
@@ -1044,9 +1052,21 @@ class Skeleton:
         if rechunk:
             self.rechunk(chunks, primary_dim)
 
-    def deactivate_dask(self) -> None:
+    def deactivate_dask(self, unchunk: bool = False) -> None:
+        """Deactivates the use of dask, meaning:
+
+        1) Data will not be converted to dask-arrays when set, unless chunks provided
+        2) Data will be converted from dask-arrays to numpy arrays when get
+        3) All data will be converted to numpy arrays if unchunk=True"""
         self.dask = False
         self.chunks = None
+        if unchunk:
+            for var in self.data_vars():
+                data = self.get(var)
+                if data is not None:
+                    if hasattr(data, "chunks"):
+                        data = data.compute()
+                    self.set(var, data)
 
     def rechunk(
         self, chunks: tuple | dict | str = "auto", primary_dim: str | list[str] = None
@@ -1060,16 +1080,12 @@ class Skeleton:
 
         if isinstance(chunks, dict):
             chunks = self._chunk_tuple_from_dict(chunks)
+        self.chunks = chunks
+        dask_manager = DaskManager(self.chunks)
         for var in self.data_vars():
             data = self.get(var)
             if data is not None:
-                if hasattr(data, "chunks"):
-                    data = data.rechunk(chunks)
-                else:
-                    data = da.from_array(data, chunks)
-                self.set(var, data)
-
-        self.chunks = chunks
+                self.set(var, dask_manager.dask_me(data, chunks))
 
     @property
     def x_str(self) -> str:
@@ -1216,10 +1232,14 @@ class Skeleton:
         magnitudes = self._coord_manager.magnitudes
 
         if magnitudes:
-            string += "\n" + "-" * 34 + " Magnitudes " + "-" * 34
+            string += "\n" + "-" * 27 + " Magnitudes and directions" + "-" * 27
             for key, value in magnitudes.items():
                 string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
 
+        directions = self._coord_manager.directions
+        if directions:
+            for key, value in directions.items():
+                string += f"\n  {key}: direction of ({value['x']},{value['y']})"
         string += "\n" + "-" * 80
 
         return string
