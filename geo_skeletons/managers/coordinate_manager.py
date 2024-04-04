@@ -29,6 +29,7 @@ class CoordinateManager:
         self._default_values = {}
 
         self.magnitudes = {}
+        self.directions = {}
 
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
@@ -68,6 +69,9 @@ class CoordinateManager:
 
     def add_magnitude(self, name: str, x: str, y: str):
         self.magnitudes[name] = {"x": x, "y": y}
+
+    def add_direction(self, name: str, x: str, y: str):
+        self.directions[name] = {"x": x, "y": y}
 
     def set_initial_vars(self, initial_vars: dict) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
@@ -113,7 +117,7 @@ class CoordinateManager:
         return self._coords[coords]
 
     def coords(self, coords: str = "all") -> list[str]:
-        """Returns a list of the coordinates from the Dataset.
+        """Returns a list of the coordinates.
 
         'all' [default]: all coordinates in the Dataset
         'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)

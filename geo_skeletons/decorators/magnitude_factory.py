@@ -23,7 +23,7 @@ def add_magnitude(
             empty: bool = False,
             data_array: bool = False,
             squeeze: bool = False,
-            dask: bool = True,
+            dask: bool = None,
             angular: bool = False,
             **kwargs,
         ) -> np.ndarray:
@@ -54,6 +54,29 @@ def add_magnitude(
                 **kwargs,
             )
 
+            if not empty and x is None or y is None:
+                return None
+
+            if x is None:
+                x = self.get(
+                    xvar,
+                    empty=True,
+                    data_array=data_array,
+                    squeeze=squeeze,
+                    dask=dask,
+                    **kwargs,
+                )
+
+            if y is None:
+                y = self.get(
+                    yvar,
+                    empty=True,
+                    data_array=data_array,
+                    squeeze=squeeze,
+                    dask=dask,
+                    **kwargs,
+                )
+
             if dask:
                 dirs = da.arctan2(y, x)
             else:
@@ -61,7 +84,10 @@ def add_magnitude(
 
             if not angular:
                 dirs = 90 - dirs * 180 / np.pi
-
+                if dask:
+                    dirs = da.mod(dirs, 360)
+                else:
+                    dirs = np.mod(dirs, 360)
             return dirs
 
         def get_magnitude(
@@ -69,7 +95,7 @@ def add_magnitude(
             empty: bool = False,
             data_array: bool = False,
             squeeze: bool = False,
-            dask: bool = True,
+            dask: bool = None,
             **kwargs,
         ) -> np.ndarray:
             """Returns the magnitude.
@@ -99,6 +125,29 @@ def add_magnitude(
                 **kwargs,
             )
 
+            if not empty and x is None or y is None:
+                return None
+
+            if x is None:
+                x = self.get(
+                    xvar,
+                    empty=True,
+                    data_array=data_array,
+                    squeeze=squeeze,
+                    dask=dask,
+                    **kwargs,
+                )
+
+            if y is None:
+                y = self.get(
+                    yvar,
+                    empty=True,
+                    data_array=data_array,
+                    squeeze=squeeze,
+                    dask=dask,
+                    **kwargs,
+                )
+
             return (x**2 + y**2) ** 0.5
 
         if c._coord_manager.initial_state:
@@ -113,6 +162,7 @@ def add_magnitude(
             exec(f"c.{name} = get_magnitude")
 
         if direction is not None:
+            c._coord_manager.add_direction(direction, x=x, y=y)
             if append:
                 exec(f"c.{direction} = partial(get_direction, c)")
             else:

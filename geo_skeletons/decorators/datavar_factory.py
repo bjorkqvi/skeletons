@@ -21,6 +21,7 @@ def add_datavar(
             empty: bool = False,
             data_array: bool = False,
             squeeze: bool = False,
+            dask: bool = None,
             **kwargs,
         ) -> np.ndarray:
             """Returns the data variable.
@@ -32,7 +33,12 @@ def add_datavar(
             if not self._structure_initialized():
                 return None
             return self.get(
-                name, empty=empty, data_array=data_array, squeeze=squeeze, **kwargs
+                name,
+                empty=empty,
+                data_array=data_array,
+                squeeze=squeeze,
+                dask=dask,
+                **kwargs,
             )
 
         def set_var(
