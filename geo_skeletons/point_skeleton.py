@@ -58,6 +58,22 @@ class PointSkeleton(Skeleton):
         else:
             return INITIAL_CARTESIAN_VARS
 
+    def xgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        x, _ = self.xy(native=native, strict=strict)
+        return x
+
+    def ygrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        _, y = self.xy(native=native, strict=strict)
+        return y
+
+    def longrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        lon, _ = self.lonlat(native=native, strict=strict)
+        return lon
+
+    def latgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        _, lat = self.lonlat(native=native, strict=strict)
+        return lat
+
     def lonlat(
         self,
         mask: np.ndarray = None,
