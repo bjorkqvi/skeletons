@@ -1186,26 +1186,39 @@ class Skeleton:
 
         string += "\n" + "-" * 36 + " Xarray " + "-" * 36 + "\n"
         string += self.ds().__repr__()
-        string += "\n" + "-" * 34 + " Empty data " + "-" * 34
+
         empty_vars = self._ds_manager.empty_vars()
-        if empty_vars:
-            string += "\n" + "Empty variables:"
-            max_len = len(max(empty_vars, key=len))
-            for var in empty_vars:
-                string += f"\n    {var:{max_len+2}}"
-                string = add_coords(self.coords(self.coord_group(var)), string)
-                string += f":  {self._coord_manager._default_values.get(var)}"
-
-                empty_vars = self._ds_manager.empty_vars()
-
         empty_masks = self._ds_manager.empty_masks()
-        if empty_masks:
-            string += "\n" + "Empty masks:"
-            max_len = len(max(empty_masks, key=len))
-            for mask in empty_masks:
-                string += f"\n    {mask:{max_len+2}}"
-                string = add_coords(self.coords(self.coord_group(mask)), string)
-                string += f":  {bool(self._coord_manager._default_values.get(mask))}"
+
+        if empty_masks or empty_vars:
+            string += "\n" + "-" * 34 + " Empty data " + "-" * 34
+
+            if empty_vars:
+                string += "\n" + "Empty variables:"
+                max_len = len(max(empty_vars, key=len))
+                for var in empty_vars:
+                    string += f"\n    {var:{max_len+2}}"
+                    string = add_coords(self.coords(self.coord_group(var)), string)
+                    string += f":  {self._coord_manager._default_values.get(var)}"
+
+                    empty_vars = self._ds_manager.empty_vars()
+
+            if empty_masks:
+                string += "\n" + "Empty masks:"
+                max_len = len(max(empty_masks, key=len))
+                for mask in empty_masks:
+                    string += f"\n    {mask:{max_len+2}}"
+                    string = add_coords(self.coords(self.coord_group(mask)), string)
+                    string += (
+                        f":  {bool(self._coord_manager._default_values.get(mask))}"
+                    )
+
+        magnitudes = self._coord_manager.magnitudes
+
+        if magnitudes:
+            string += "\n" + "-" * 34 + " Magnitudes " + "-" * 34
+            for key, value in magnitudes.items():
+                string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
 
         string += "\n" + "-" * 80
 
