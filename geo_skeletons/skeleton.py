@@ -269,7 +269,7 @@ class Skeleton:
         allow_transpose: bool = False,
         coords: list[str] = None,
         silent: bool = True,
-        chunks: tuple | str = None,
+        chunks: Union[tuple, str] = None,
     ) -> None:
         """Sets the data using the following logic:
 
@@ -1055,7 +1055,7 @@ class Skeleton:
                     self.set(var, data)
 
     def rechunk(
-        self, chunks: tuple | dict | str = "auto", primary_dim: str | list[str] = None
+        self, chunks: Union[tuple, dict, str] = "auto", primary_dim: Union[str,list[str]] = None
     ):
         if primary_dim:
             if isinstance(primary_dim, str):

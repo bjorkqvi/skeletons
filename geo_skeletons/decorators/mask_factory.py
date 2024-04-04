@@ -83,7 +83,7 @@ def add_mask(
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: list[str] = None,
-            chunks: tuple | str = None,
+            chunks: Union[tuple, str] = None,
             silent: bool = True,
         ) -> None:
             if isinstance(data, int) or isinstance(data, bool):
@@ -106,7 +106,7 @@ def add_mask(
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: list[str] = None,
-            chunks: tuple | str = None,
+            chunks: Union[tuple, str] = None,
             silent: bool = True,
         ) -> None:
             if data is not None:
