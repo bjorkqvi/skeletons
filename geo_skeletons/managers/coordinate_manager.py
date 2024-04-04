@@ -28,6 +28,8 @@ class CoordinateManager:
 
         self._default_values = {}
 
+        self.magnitudes = {}
+
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
@@ -63,6 +65,9 @@ class CoordinateManager:
             self._coords["grid"].append(name)
         else:
             self._coords["gridpoint"].append(name)
+
+    def add_magnitude(self, name: str, x: str, y: str):
+        self.magnitudes[name] = {"x": x, "y": y}
 
     def set_initial_vars(self, initial_vars: dict) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
