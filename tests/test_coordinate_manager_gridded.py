@@ -171,10 +171,10 @@ def test_gridded_added_coord_and_var():
         "eta_spatial": "spatial",
     }
 
-    assert points2.size("eta_all") == (3, 2, 4, 5)
-    assert points2.size("eta_grid") == (3, 2, 4)
-    assert points2.size("eta_gridpoint") == (5,)
-    assert points2.size("eta_spatial") == (3, 2)
+    assert points2.shape("eta_all") == (3, 2, 4, 5)
+    assert points2.shape("eta_grid") == (3, 2, 4)
+    assert points2.shape("eta_gridpoint") == (5,)
+    assert points2.shape("eta_spatial") == (3, 2)
 
     # Check that deepcopy of coord_manager works and these are not altered
     assert GriddedSkeleton._coord_manager.initial_coords() == ["y", "x"]

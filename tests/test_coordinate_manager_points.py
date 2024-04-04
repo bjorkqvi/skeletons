@@ -172,10 +172,10 @@ def test_point_added_coord_and_var():
         "eta_spatial": "spatial",
     }
 
-    assert points2.size("eta_all") == (2, 4, 5)
-    assert points2.size("eta_grid") == (2, 4)
-    assert points2.size("eta_gridpoint") == (5,)
-    assert points2.size("eta_spatial") == (2,)
+    assert points2.shape("eta_all") == (2, 4, 5)
+    assert points2.shape("eta_grid") == (2, 4)
+    assert points2.shape("eta_gridpoint") == (5,)
+    assert points2.shape("eta_spatial") == (2,)
 
     # Check that deepcopy of coord_manager works and these are not altered
     assert PointSkeleton._coord_manager.initial_coords() == ["inds"]

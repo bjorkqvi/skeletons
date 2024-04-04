@@ -158,10 +158,24 @@ class Skeleton:
 
         'all' [default]: all coordinates in the Dataset
         'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': coordinates for the grid (e.g. z, time)
+        'grid': coordinates for the grid (spatial and e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
         return self._coord_manager.coords(coords)
+
+    def coord_group(self, var: str) -> str:
+        """Returns the coordinate group that a variable/mask is defined over. The coordinates can then be retrived using the group by the method .coords()"""
+        var_coords = self._coord_manager.added_vars().get(var)
+        mask_coords = self._coord_manager.added_masks().get(var)
+        if mask_coords is None:
+            mask_name = self._coord_manager.opposite_masks().get(var)
+            mask_coords = self._coord_manager.added_masks().get(mask_name)
+
+        coord_group = var_coords or mask_coords
+        if coord_group is None:
+            raise KeyError(f"Cannot find the data {var}!")
+
+        return coord_group
 
     def coords_dict(
         self, type: str = "all", data_array: bool = False, **kwargs
@@ -175,7 +189,7 @@ class Skeleton:
         """
         return {
             coord: self.get(coord, data_array=data_array, **kwargs)
-            for coord in self._coord_manager.coords(type)
+            for coord in self.coords(type)
         }
 
     def sel(self, **kwargs):
@@ -308,26 +322,15 @@ class Skeleton:
             ):
                 return data.squeeze().T
 
-        # 'all', 'grid', 'spatial' or 'gridpoint'
-        var_coord_type = self._coord_manager.added_vars().get(name)
-        mask_coord_type = self._coord_manager.added_masks().get(name)
-        if mask_coord_type is None:
-            opposite_name = self._coord_manager.opposite_masks().get(name)
-            mask_coord_type = self._coord_manager.added_masks().get(opposite_name)
-        coord_type = var_coord_type or mask_coord_type
+        coord_type = self.coord_group(name)
 
         metadata = self.metadata()
-
-        if coord_type is None:
-            raise ValueError(
-                f"A data variable named {name} has not been defined ({list(self._coord_manager.added_vars().keys())}, {list(self._coord_manager.added_masks().keys())})"
-            )
 
         if data is None:
             data = self.get(name, empty=True, squeeze=False)
 
         # Masks are stored as integers
-        if mask_coord_type is not None:
+        if name[-5:] == "_mask":
             data = data.astype(int)
 
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
@@ -546,15 +549,20 @@ class Skeleton:
             return None
 
         if coords not in ["all", "spatial", "grid", "gridpoint"]:
-            coords = self._coord_manager.added_vars().get(
-                coords
-            ) or self._coord_manager.added_masks().get(coords)
+            raise KeyError(
+                f"coords should be 'all', 'spatial', 'grid' or 'gridpoint', not {coords}!"
+            )
 
         size = self._ds_manager.coords_to_size(self.coords(coords), **kwargs)
 
         if squeeze:
             size = tuple([s for s in size if s > 1])
         return size
+
+    def shape(self, var, squeeze: bool = False, **kwargs) -> tuple[int]:
+        """Returns the size of one specific data variable"""
+        coords = self.coord_group(var)
+        return self.size(coords=coords, squeeze=squeeze, **kwargs)
 
     def inds(self, **kwargs) -> np.ndarray:
         if not self._structure_initialized():
@@ -1152,40 +1160,51 @@ class Skeleton:
         )
 
     def __repr__(self) -> str:
-        string = f"<{type(self).__name__} ({self.__class__.__base__.__name__})>\n"
-        string += "-" * 34 + " Containing " + "-" * 34 + "\n"
-        string += self.ds().__repr__()
+        def add_coords(list_of_coords, string, empty_list_string="") -> str:
+            if not list_of_coords:
+                return string + empty_list_string
+            string += "("
+            for c in list_of_coords:
+                string += f"{c}, "
+            string = string[:-2]
+            string += ")"
+            return string
 
+        string = f"<{type(self).__name__} ({self.__class__.__base__.__name__})>\n"
+
+        string += "-" * 31 + " Coordinate groups " + "-" * 30 + "\n"
+        string += f"{'Spatial:':12}"
+
+        string = add_coords(self.coords("spatial"), string, "*empty*")
+        string += f"\n{'Grid:':12}"
+        string = add_coords(self.coords("grid"), string, "*empty*")
+        string += f"\n{'Gridpoint:':12}"
+        string = add_coords(self.coords("gridpoint"), string, "*empty*")
+
+        string += f"\n{'All:':12}"
+        string = add_coords(self.coords("all"), string, "*empty*")
+
+        string += "\n" + "-" * 36 + " Xarray " + "-" * 36 + "\n"
+        string += self.ds().__repr__()
+        string += "\n" + "-" * 34 + " Empty data " + "-" * 34
         empty_vars = self._ds_manager.empty_vars()
         if empty_vars:
-            string += "\n" + "Empty variables:\n"
+            string += "\n" + "Empty variables:"
+            max_len = len(max(empty_vars, key=len))
             for var in empty_vars:
-                string += f"    {var}  "
-                coords = self._coord_manager.coords(
-                    self._coord_manager.added_vars()[var]
-                )
-                string += "("
-                for coord in coords:
-                    string += f"{coord}, "
-                string = string[:-2]
-                string += ")"
+                string += f"\n    {var:{max_len+2}}"
+                string = add_coords(self.coords(self.coord_group(var)), string)
                 string += f":  {self._coord_manager._default_values.get(var)}"
 
                 empty_vars = self._ds_manager.empty_vars()
 
         empty_masks = self._ds_manager.empty_masks()
         if empty_masks:
-            string += "\n" + "Empty masks:\n"
+            string += "\n" + "Empty masks:"
+            max_len = len(max(empty_masks, key=len))
             for mask in empty_masks:
-                string += f"    {mask}  "
-                coords = self._coord_manager.coords(
-                    self._coord_manager.added_masks()[mask]
-                )
-                string += "("
-                for coord in coords:
-                    string += f"{coord}, "
-                string = string[:-2]
-                string += ")"
+                string += f"\n    {mask:{max_len+2}}"
+                string = add_coords(self.coords(self.coord_group(mask)), string)
                 string += f":  {bool(self._coord_manager._default_values.get(mask))}"
 
         string += "\n" + "-" * 80
