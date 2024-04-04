@@ -11,7 +11,7 @@ from .errors import DataWrongDimensionError
 from typing import Iterable
 import dask.array as da
 from copy import deepcopy
-from .decorators import add_datavar
+from .decorators import add_datavar, add_magnitude
 from types import MethodType
 from .iter import SkeletonIterator
 
@@ -40,6 +40,11 @@ class Skeleton:
         self = add_datavar(
             name=name, coords=coords, default_value=default_value, append=True
         )(self)
+
+    def add_magnitude(self, name: str, x: str, y: str, direction: str = None) -> None:
+        self = add_magnitude(name=name, x=x, y=y, direction=direction, append=True)(
+            self
+        )
 
     @classmethod
     def from_ds(cls, ds: xr.Dataset, **kwargs):
@@ -284,31 +289,10 @@ class Skeleton:
         NB! For 1), only non-trivial dimensions need to be identified
         """
 
-        def data_is_dask(data) -> bool:
-            """Checks if a data array is a dask array"""
-            return hasattr(data, "chunks")
-
-        def dask_me(data, chunks):
-            """Convert a numpy array to a dask array if needed and wanted"""
-            # Don't do anything if array is already dask
-            if data_is_dask(data):
-                if chunks is not None:
-                    data = data.rechunk(chunks)
-                return data
-
-            # If dask-mode is deactivated and no chunks are explicitly given, then keep the numpy array
-            if chunks is None and not self.dask:
-                return data
-
-            # Otherwise make sure to convert to a dask array
-            chunks = chunks or self.chunks
-            chunks = chunks or "auto"
-            return da.from_array(data, chunks=chunks)
-
         def transpose_me(data, coord_order):
             if len(data.shape) > len(coord_order):
                 data = data.squeeze()
-            if data_is_dask(data):
+            if dask_manager.data_is_dask(data):
                 return da.transpose(data, coord_order)
             else:
                 return np.transpose(data, coord_order)
@@ -351,6 +335,7 @@ class Skeleton:
             coords = coords or list(data.dims)
             data = data.data
 
+        dask_manager = DaskManager()
         # 1 & 2)
         # If the coordinates of the data are explicilty given as a coord-list or thorugh a DataArray, try to reshape to those
         if coords is not None:
@@ -370,7 +355,8 @@ class Skeleton:
                 data = transpose_me(data, tuple(coord_order))
 
         # First try to set the data here
-        data = dask_me(data, chunks)
+        if self.dask or chunks is not None:
+            data = dask_manager.dask_me(data, chunks)
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
             self.set_metadata(metadata)
@@ -395,7 +381,7 @@ class Skeleton:
 
         if expected_shape != actual_shape:
             trivial_places = tuple(np.where(np.array(expected_shape) == 1)[0])
-            if data_is_dask(data):
+            if dask_manager.data_is_dask(data):
                 data = da.expand_dims(data, axis=trivial_places)
             else:
                 data = np.expand_dims(data, axis=trivial_places)
@@ -837,7 +823,7 @@ class Skeleton:
         self, coord: str, native: bool = False, strict=False
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
-        if not self._structure_initialized() or self._skeleton_empty():
+        if not self._structure_initialized():
             return (None, None)
 
         if coord not in ["x", "y", "lon", "lat"]:
@@ -861,20 +847,20 @@ class Skeleton:
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
-        if not self._structure_initialized() or self._skeleton_empty():
+        if not self._structure_initialized():
             return 0
         return len(self.x(native=True))
 
     def ny(self):
         """Length of y/lat-vector."""
-        if not self._structure_initialized() or self._skeleton_empty():
+        if not self._structure_initialized():
             return 0
         return len(self.y(native=True))
 
     def dx(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the x vector. Conversion made for
         spherical grids."""
-        if not self._structure_initialized() or self._skeleton_empty():
+        if not self._structure_initialized():
             return None
 
         if not self.is_cartesian() and strict and (not native):
@@ -890,7 +876,7 @@ class Skeleton:
     def dy(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the y vector. Conversion made for
         spherical grids."""
-        if not self._structure_initialized() or self._skeleton_empty():
+        if not self._structure_initialized():
             return None
 
         if not self.is_cartesian() and strict and (not native):
@@ -906,7 +892,7 @@ class Skeleton:
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the longitude vector. Conversion made for
         cartesian grids."""
-        if not self._structure_initialized() or self._skeleton_empty():
+        if not self._structure_initialized():
             return None
 
         if self.is_cartesian() and strict and (not native):
@@ -921,7 +907,7 @@ class Skeleton:
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""
-        if not self._structure_initialized() or self._skeleton_empty():
+        if not self._structure_initialized():
             return None
 
         if self.is_cartesian() and strict and (not native):
@@ -1146,29 +1132,11 @@ class Skeleton:
     def _structure_initialized(self) -> bool:
         return hasattr(self, "_ds_manager")
 
-    def _skeleton_empty(self) -> bool:
-        if not self._structure_initialized():
-            return True
-        return len(self.ds()[self.x_str]) == 0 and len(self.ds()[self.y_str]) == 0
-
-    def _reset_masks(self) -> None:
-        """Resets the mask to default values."""
-        for name in self._coord_manager.added_masks():
-            # update-method sets empty mask when no value is provided
-            self.set(name)
-
-    def _reset_datavars(self) -> None:
-        """Resets the data variables to default values."""
-        for name in self._coord_manager.added_vars():
-            # update-method sets empty data when no value is provided
-            self.set(name)
-
     def iterate(self, coords: list[str] = None):
         coords = coords or self.coords("grid")
         return iter(self)(coords)
 
     def __iter__(self):
-
         return SkeletonIterator(
             self.coords_dict("all"),
             self.coords("grid"),
