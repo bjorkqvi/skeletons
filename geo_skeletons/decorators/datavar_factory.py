@@ -34,13 +34,6 @@ def add_datavar(
             return self.get(
                 name, empty=empty, data_array=data_array, squeeze=squeeze, **kwargs
             )
-            # if empty:
-            #     return np.full(self.size(coords, **kwargs), default_value)
-
-            # data = self._ds_manager.get(name, **kwargs)
-            # if data_array:
-            #     return data.copy()
-            # return data.values.copy()
 
         def set_var(
             self,
