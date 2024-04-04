@@ -47,7 +47,7 @@ def add_datavar(
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: list[str] = None,
-            chunks: tuple | str = None,
+            chunks: Union[tuple, str] = None,
             silent: bool = True,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
