@@ -66,6 +66,34 @@ class GriddedSkeleton(Skeleton):
         """
         return INITIAL_VARS
 
+    def xgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        """Returns a meshgrid of x-values"""
+        if self.x(strict=strict) is None:
+            return None
+        X, _ = np.meshgrid(self.x(native=native), self.y(native=native))
+        return X
+
+    def ygrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        """Returns a meshgrid of y-values"""
+        if self.y(strict=strict) is None:
+            return None
+        _, Y = np.meshgrid(self.x(native=native), self.y(native=native))
+        return Y
+
+    def longrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        """Returns a meshgrid of x-values"""
+        if self.lon(strict=strict) is None:
+            return None
+        LON, _ = np.meshgrid(self.lon(native=native), self.lat(native=native))
+        return LON
+
+    def latgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+        """Returns a meshgrid of y-values"""
+        if self.lat(strict=strict) is None:
+            return None
+        _, LAT = np.meshgrid(self.lon(native=native), self.lat(native=native))
+        return LAT
+
     def lonlat(
         self,
         mask: np.ndarray = None,
