@@ -31,16 +31,19 @@ class CoordinateManager:
         self.magnitudes = {}
         self.directions = {}
 
+        self.meta_vars = {}
+
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
         # This will be used by decorators to make a deepcopy of the manager for different classes
         self.initial_state = True
 
-    def add_var(self, name: str, coords: str, default_value: float) -> None:
+    def add_var(self, name: str, coords: str, default_value: float, meta=None) -> None:
         """Add a variable that the Skeleton will use."""
         self._vars["added"][name] = coords
         self._default_values[name] = default_value
+        self.meta_vars[name] = meta
 
     def add_mask(
         self, name: str, coords: str, default_value: int, opposite_name: str

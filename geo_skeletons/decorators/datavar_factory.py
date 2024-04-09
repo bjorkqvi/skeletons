@@ -2,13 +2,15 @@ import numpy as np
 from typing import Union
 from copy import deepcopy
 from functools import partial
+from geo_parameters.metaparameter import MetaParameter
 
 
 def add_datavar(
     name,
-    coords="all",
-    default_value=0.0,
-    append=False,
+    coords: str = "all",
+    default_value: float = 0.0,
+    meta: MetaParameter = None,
+    append: bool = False,
 ):
     """stash_get = True means that the coordinate data can be accessed
     by method ._{name}() instead of .{name}()
@@ -66,7 +68,7 @@ def add_datavar(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        c._coord_manager.add_var(name, coords, default_value)
+        c._coord_manager.add_var(name, coords, default_value, meta)
 
         if append:
             exec(f"c.{name} = partial(get_var, c)")
