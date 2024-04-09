@@ -7,12 +7,10 @@ from geo_parameters.metaparameter import MetaParameter
 
 
 def add_magnitude(
-    name,
+    name: Union[str, MetaParameter],
     x: str,
     y: str,
-    direction: str = None,
-    meta: MetaParameter = None,
-    meta_direction: MetaParameter = None,
+    direction: Union[str, MetaParameter] = None,
     append=False,
 ):
     """stash_get = True means that the coordinate data can be accessed
@@ -157,19 +155,19 @@ def add_magnitude(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        c._coord_manager.add_magnitude(name, x=x, y=y, meta=meta)
+        name_str = c._coord_manager.add_magnitude(name, x=x, y=y)
 
         if append:
-            exec(f"c.{name} = partial(get_magnitude, c)")
+            exec(f"c.{name_str} = partial(get_magnitude, c)")
         else:
-            exec(f"c.{name} = get_magnitude")
+            exec(f"c.{name_str} = get_magnitude")
 
         if direction is not None:
-            c._coord_manager.add_direction(direction, x=x, y=y, meta=meta_direction)
+            dir_str = c._coord_manager.add_direction(direction, x=x, y=y)
             if append:
-                exec(f"c.{direction} = partial(get_direction, c)")
+                exec(f"c.{dir_str} = partial(get_direction, c)")
             else:
-                exec(f"c.{direction} = get_direction")
+                exec(f"c.{dir_str} = get_direction")
 
         return c
 
