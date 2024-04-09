@@ -318,7 +318,7 @@ class Skeleton:
 
         coord_type = self.coord_group(name)
 
-        metadata = self.metadata()
+        metadata = self.metadata(name)
 
         if data is None:
             data = self.get(name, empty=True, squeeze=False)
@@ -356,7 +356,10 @@ class Skeleton:
             data = dask_manager.dask_me(data, chunks)
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-            self.set_metadata(metadata)
+            self.set_metadata(metadata, name, append=False)
+            meta_parameter = self._coord_manager.meta_vars.get(name)
+            if meta_parameter is not None:
+                self.set_metadata(meta_parameter.meta_dict(), name)
             return
         except DataWrongDimensionError as data_error:
             if not allow_reshape:
@@ -387,7 +390,10 @@ class Skeleton:
             print(f"Reshaping data {original_data_shape} -> {data.shape}...")
 
         self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-        self.set_metadata(metadata)
+        self.set_metadata(metadata, name, append=False)
+        if meta_parameter is not None:
+            self.set_metadata(meta_parameter.meta_dict(), name)
+        
         return
 
     def get(
@@ -1003,22 +1009,39 @@ class Skeleton:
         else:
             return {"inds": np.array(inds), "dx": np.array(dx)}
 
-    def metadata(self) -> dict:
+    def metadata(self, name:str = None) -> dict:
         """Return metadata of the dataset:"""
         if not self._structure_initialized():
             return None
-        return self.ds().attrs.copy()
-
+        if name is None:
+            return self.ds().attrs.copy()
+        
+        data_array = self.get(name, data_array=True)
+        if data_array is not None:
+            return data_array.attrs.copy()
+        
+        meta_parameter = self._coord_manager.meta_vars.get(name)
+        if meta_parameter is not None:
+            return meta_parameter.meta_dict()
+        return {}
+        
     def set_metadata(
-        self, metadata: dict, append=False, data_array_name: str = None
+        self, metadata: dict, name: str = None, append=True,
     ) -> None:
+        if not isinstance(metadata,dict):
+            raise TypeError(f"metadata needs to be a dict, not '{metadata}'!")
+                
         if not self._structure_initialized():
-            return None
+            return
+        
+        if name in self._ds_manager.empty_vars():
+            print(f"Cannot set metadata to variable '{name}' before it has been initialized using 'skeleton.set_{name}()'!")
+            return 
         if append:
-            old_metadata = self.metadata()
+            old_metadata = self.metadata(name)
             old_metadata.update(metadata)
             metadata = old_metadata
-        self._ds_manager.set_attrs(metadata, data_array_name)
+        self._ds_manager.set_attrs(metadata, name)
 
     def masks(self):
         mask_list = []
@@ -1181,8 +1204,10 @@ class Skeleton:
                     string += f"\n    {var:{max_len+2}}"
                     string += string_of_coords(self.coords(self.coord_group(var)))
                     string += f":  {self._coord_manager._default_values.get(var)}"
-
-                    empty_vars = self._ds_manager.empty_vars()
+                    meta_parameter = self._coord_manager.meta_vars.get(var)
+                    if meta_parameter is not None:
+                        string += f" [{meta_parameter.unit()}]"
+                        string += f" {meta_parameter.standard_name()}"
 
             if empty_masks:
                 string += "\n" + "Empty masks:"

@@ -146,8 +146,13 @@ class DatasetManager:
 
         coord_type = 'all', 'spatial', 'grid' or 'gridpoint'
         """
-
+        all_metadata = self.get_attrs()
         self._merge_in_ds(self.compile_to_ds(data, data_name, coords))
+        for var, metadata in all_metadata.items():
+            if var == "_global_":
+                self.set_attrs(metadata)
+            else:
+                self.set_attrs(metadata, var)
 
     def empty_vars(self) -> list[str]:
         """Get a list of empty variables"""
@@ -203,6 +208,17 @@ class DatasetManager:
         else:
             return self._slice_data(ds.get(name), **kwargs)
 
+    def get_attrs(self) -> dict:
+        """Gets a dictionary of all the data variable and global atributes.
+        General attributes has key '_global_'"""
+        meta_dict = {}
+        meta_dict["_global_"] = self.data.attrs
+
+        for var in self.data.data_vars:
+            meta_dict[var] = self.data.get(var).attrs
+
+        return meta_dict
+
     def set_attrs(self, attributes: dict, data_array_name: str = None) -> None:
         """Sets attributes to DataArray da_name.
 
@@ -248,13 +264,13 @@ class DatasetManager:
         'all': all coordinates in the Dataset
         'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
         'grid': coordinates for the grid (e.g. z, time)
+
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
         coords_dict = {
             coord: self.get(coord) for coord in self.coord_manager.coords(coords)
         }
 
-        # coord_shape = tuple(len(x) for x in coords_dict.values())
         coord_shape = self.coords_to_size(self.coord_manager.coords(coords))
         if coord_shape != data.shape:
             raise DataWrongDimensionError(
