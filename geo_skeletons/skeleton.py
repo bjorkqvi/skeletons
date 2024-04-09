@@ -138,9 +138,6 @@ class Skeleton:
         self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
         self.set_utm(silent=True)
 
-        # self._reset_masks()
-        # self._reset_datavars()
-
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
         """Absorb another object of same type over a centrain dimension.
         For a PointSkeleton the inds-variable reorganized if dim='inds' is given."""
@@ -613,9 +610,9 @@ class Skeleton:
             self.is_gridded()
         ):  # This will rotate the grid, but is best estimate to keep it strucutred
             lat = np.median(self.lat(**kwargs))
-            # print(
-            #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-            # )
+            print(
+               "Regridding spherical grid to cartesian coordinates will cause a rotation! Use 'x, _ = skeleton.xy()' to get a list of all points."
+            )
             x, __, __, __ = utm_module.from_latlon(
                 lat,
                 self.lon(**kwargs),
@@ -694,9 +691,9 @@ class Skeleton:
             self.is_gridded()
         ):  # This will rotate the grid, but is best estimate to keep it strucutred
             lon = np.median(self.lon(**kwargs))
-            # print(
-            #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-            # )
+            print(
+               "Regridding spherical grid to cartesian coordinates will cause a rotation! Use '_, y = skeleton.xy()' to get a list of all points."
+            )
             y = np.zeros(len(self.lat(**kwargs)))
             if np.any(posmask):
                 _, y[posmask], __, __ = utm_module.from_latlon(
@@ -761,9 +758,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 y = np.median(self.y(**kwargs))
-                # print(
-                #    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
-                # )
+                print(
+                   "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
+                )
             else:
                 y = self.y(**kwargs)
             number, letter = self.utm()
@@ -802,9 +799,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 x = np.median(self.x(**kwargs))
-                # print(
-                #    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
-                # )
+                print(
+                   "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
+                )
             else:
                 x = self.x(**kwargs)
             number, letter = self.utm()
