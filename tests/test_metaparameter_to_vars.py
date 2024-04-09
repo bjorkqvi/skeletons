@@ -4,7 +4,13 @@ import geo_parameters as gp
 
 
 def test_add_magnitude():
-
+    @add_magnitude(
+        name="wind",
+        x="u",
+        y="v",
+        meta=gp.wind.Wind,
+        direction="wdir",
+    )
     @add_datavar("v", default_value=1, meta=gp.wind.YWind)
     @add_datavar("u", default_value=1, meta=gp.wind.XWind)
     class Magnitude(PointSkeleton):
