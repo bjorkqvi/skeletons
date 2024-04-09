@@ -1226,10 +1226,21 @@ class Skeleton:
             for key, value in magnitudes.items():
                 string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
 
+                meta_parameter = self._coord_manager.meta_magnitudes.get(key)
+                if meta_parameter is not None:
+                    string += f" [{meta_parameter.unit()}]"
+                    string += f" {meta_parameter.standard_name()}"
+
+
         directions = self._coord_manager.directions
         if directions:
             for key, value in directions.items():
                 string += f"\n  {key}: direction of ({value['x']},{value['y']})"
+                meta_parameter = self._coord_manager.meta_directions.get(key)
+                if meta_parameter is not None:
+                    string += f" [{meta_parameter.unit()}]"
+                    string += f" {meta_parameter.standard_name()}"
+        
         string += "\n" + "-" * 80
 
         return string

@@ -35,6 +35,8 @@ class CoordinateManager:
         self.directions = {}
 
         self.meta_vars: dict[str, MetaParameter] = {}
+        self.meta_magnitudes: dict[str, MetaParameter] = {}
+        self.meta_directions: dict[str, MetaParameter] = {}
 
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
@@ -75,11 +77,13 @@ class CoordinateManager:
         else:
             self._coords["gridpoint"].append(name)
 
-    def add_magnitude(self, name: str, x: str, y: str):
+    def add_magnitude(self, name: str, x: str, y: str, meta: MetaParameter = None):
         self.magnitudes[name] = {"x": x, "y": y}
+        self.meta_magnitudes[name] = meta
 
-    def add_direction(self, name: str, x: str, y: str):
+    def add_direction(self, name: str, x: str, y: str, meta: MetaParameter = None):
         self.directions[name] = {"x": x, "y": y}
+        self.meta_directions[name] = meta
 
     def set_initial_vars(self, initial_vars: dict) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""

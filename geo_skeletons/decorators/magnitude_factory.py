@@ -3,6 +3,7 @@ from typing import Union
 from copy import deepcopy
 from functools import partial
 import dask.array as da
+from geo_parameters.metaparameter import MetaParameter
 
 
 def add_magnitude(
@@ -10,6 +11,8 @@ def add_magnitude(
     x: str,
     y: str,
     direction: str = None,
+    meta: MetaParameter = None,
+    meta_direction: MetaParameter = None,
     append=False,
 ):
     """stash_get = True means that the coordinate data can be accessed
@@ -154,7 +157,7 @@ def add_magnitude(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        c._coord_manager.add_magnitude(name, x=x, y=y)
+        c._coord_manager.add_magnitude(name, x=x, y=y, meta=meta)
 
         if append:
             exec(f"c.{name} = partial(get_magnitude, c)")
@@ -162,7 +165,7 @@ def add_magnitude(
             exec(f"c.{name} = get_magnitude")
 
         if direction is not None:
-            c._coord_manager.add_direction(direction, x=x, y=y)
+            c._coord_manager.add_direction(direction, x=x, y=y, meta=meta_direction)
             if append:
                 exec(f"c.{direction} = partial(get_direction, c)")
             else:
