@@ -96,7 +96,7 @@ class Skeleton:
             val = ds.get(data_var)
             if val is not None:
                 points.set(data_var, val)
-                points.set_metadata(ds.get(data_var).attrs, data_array_name=data_var)
+                points.set_metadata(ds.get(data_var).attrs, name=data_var)
         points.set_metadata(ds.attrs)
 
         return points
@@ -167,7 +167,8 @@ class Skeleton:
         return self._coord_manager.coords(coords)
 
     def coord_group(self, var: str) -> str:
-        """Returns the coordinate group that a variable/mask is defined over. The coordinates can then be retrived using the group by the method .coords()"""
+        """Returns the coordinate group that a variable/mask is defined over. 
+        The coordinates can then be retrived using the group by the method .coords()"""
         var_coords = self._coord_manager.added_vars().get(var)
         mask_coords = self._coord_manager.added_masks().get(var)
         if mask_coords is None:
@@ -207,6 +208,14 @@ class Skeleton:
             for coord in self.coords(type)
         }
 
+    def magnitudes(self) -> list[str]:
+        """Returns the names of all defined magnitudes"""
+        return list(self._coord_manager.magnitudes.keys())
+    
+    def directions(self) -> list[str]:
+        """Returns the names of all defined magnitudes"""
+        return list(self._coord_manager.directions.keys())
+    
     def sel(self, **kwargs):
         return self.from_ds(self.ds().sel(**kwargs))
 
@@ -315,6 +324,12 @@ class Skeleton:
                 and allow_transpose
             ):
                 return data.squeeze().T
+        if isinstance(data, int) or isinstance(data, float) or isinstance(data, bool):
+            data = np.full(self.shape(name), data)
+        if data is not None and data.shape == ():
+            data = np.full(self.shape(name), data)
+        if not self._coord_manager.is_settable(name):
+            raise KeyError(f"'{name}' is not a variable that can be set!")
 
         coord_type = self.coord_group(name)
 
@@ -391,6 +406,7 @@ class Skeleton:
 
         self._ds_manager.set(data=data, data_name=name, coords=coord_type)
         self.set_metadata(metadata, name, append=False)
+        meta_parameter = self._coord_manager.meta_vars.get(name)
         if meta_parameter is not None:
             self.set_metadata(meta_parameter.meta_dict(), name)
         
@@ -1058,7 +1074,7 @@ class Skeleton:
         if rechunk:
             self.rechunk(chunks, primary_dim)
 
-    def deactivate_dask(self, unchunk: bool = False) -> None:
+    def deactivate_dask(self, dechunk: bool = False) -> None:
         """Deactivates the use of dask, meaning:
 
         1) Data will not be converted to dask-arrays when set, unless chunks provided
@@ -1066,17 +1082,13 @@ class Skeleton:
         3) All data will be converted to numpy arrays if unchunk=True"""
         self.dask = False
         self.chunks = None
-        if unchunk:
-            for var in self.data_vars():
-                data = self.get(var)
-                if data is not None:
-                    if hasattr(data, "chunks"):
-                        data = data.compute()
-                    self.set(var, data)
+
+        if dechunk:
+            self._dechunk()
 
     def rechunk(
         self, chunks: Union[tuple, dict, str] = "auto", primary_dim: Union[str,list[str]] = None
-    ):
+    ) -> None:
         if primary_dim:
             if isinstance(primary_dim, str):
                 primary_dim = [primary_dim]
@@ -1092,6 +1104,27 @@ class Skeleton:
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.dask_me(data, chunks))
+        for var in self.masks():
+            data = self.get(var)
+            if data is not None:
+                self.set(var, dask_manager.dask_me(data, chunks))
+
+
+
+    def _dechunk(self) -> None:
+        """Computes all dask arrays and coverts them to numpy arrays.
+        
+        If data is big this might taka a long time or kill Python."""
+        dask_manager = DaskManager()
+        for var in self.data_vars():
+            data = self.get(var)
+            if data is not None:
+                self.set(var, dask_manager.undask_me(data))
+        for var in self.masks():
+            data = self.get(var)
+            if data is not None:
+                self.set(var, dask_manager.undask_me(data))
+
 
     @property
     def x_str(self) -> str:

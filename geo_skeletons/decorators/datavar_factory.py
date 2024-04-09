@@ -6,10 +6,9 @@ from geo_parameters.metaparameter import MetaParameter
 
 
 def add_datavar(
-    name,
+    name: Union[str, MetaParameter],
     coords: str = "all",
     default_value: float = 0.0,
-    meta: MetaParameter = None,
     append: bool = False,
 ):
     """stash_get = True means that the coordinate data can be accessed
@@ -53,9 +52,9 @@ def add_datavar(
             silent: bool = True,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
-                data = np.full(self.shape(name), data)
+                data = np.full(self.shape(name_str), data)
             self.set(
-                name,
+                name_str,
                 data,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
@@ -68,14 +67,14 @@ def add_datavar(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        c._coord_manager.add_var(name, coords, default_value, meta)
+        name_str = c._coord_manager.add_var(name, coords, default_value)
 
         if append:
-            exec(f"c.{name} = partial(get_var, c)")
-            exec(f"c.set_{name} = partial(set_var, c)")
+            exec(f"c.{name_str} = partial(get_var, c)")
+            exec(f"c.set_{name_str} = partial(set_var, c)")
         else:
-            exec(f"c.{name} = get_var")
-            exec(f"c.set_{name} = set_var")
+            exec(f"c.{name_str} = get_var")
+            exec(f"c.set_{name_str} = set_var")
 
         return c
 

@@ -1,14 +1,7 @@
 from geo_parameters.metaparameter import MetaParameter
-
+from typing import Union
 
 SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
-
-
-def move_time_dim_to_front(coord_list) -> list[str]:
-    if "time" not in coord_list:
-        return coord_list
-    coord_list.insert(0, coord_list.pop(coord_list.index("time")))
-    return coord_list
 
 
 class CoordinateManager:
@@ -35,6 +28,7 @@ class CoordinateManager:
         self.directions = {}
 
         self.meta_vars: dict[str, MetaParameter] = {}
+        self.meta_masks: dict[str, MetaParameter] = {}
         self.meta_magnitudes: dict[str, MetaParameter] = {}
         self.meta_directions: dict[str, MetaParameter] = {}
 
@@ -48,17 +42,27 @@ class CoordinateManager:
         self, name: str, coords: str, default_value: float, meta: MetaParameter = None
     ) -> None:
         """Add a variable that the Skeleton will use."""
+        name, meta = get_name_str_and_meta(name)
         self._vars["added"][name] = coords
         self._default_values[name] = default_value
         self.meta_vars[name] = meta
+        return name
 
     def add_mask(
         self, name: str, coords: str, default_value: int, opposite_name: str
     ) -> None:
         """Add a mask that the Skeleton will use."""
+        name, meta = get_name_str_and_meta(name)
         self._masks["added"][f"{name}_mask"] = coords
-        self._masks["opposite"][f"{opposite_name}_mask"] = f"{name}_mask"
+
         self._default_values[f"{name}_mask"] = default_value
+        self.meta_masks[name] = meta
+
+        if opposite_name is not None:
+            opposite_name, meta = get_name_str_and_meta(opposite_name)
+            self._masks["opposite"][f"{opposite_name}_mask"] = f"{name}_mask"
+
+        return name, opposite_name
 
     def add_coord(self, name: str, grid_coord: bool) -> None:
         """Add a coordinate that the Skeleton will use.
@@ -77,13 +81,19 @@ class CoordinateManager:
         else:
             self._coords["gridpoint"].append(name)
 
-    def add_magnitude(self, name: str, x: str, y: str, meta: MetaParameter = None):
+    def add_magnitude(self, name: str, x: str, y: str) -> str:
+        name, meta = get_name_str_and_meta(name)
         self.magnitudes[name] = {"x": x, "y": y}
         self.meta_magnitudes[name] = meta
+        return name
 
-    def add_direction(self, name: str, x: str, y: str, meta: MetaParameter = None):
+    def add_direction(
+        self, name: str, x: str, y: str, meta: MetaParameter = None
+    ) -> str:
+        name, meta = get_name_str_and_meta(name)
         self.directions[name] = {"x": x, "y": y}
         self.meta_directions[name] = meta
+        return name
 
     def set_initial_vars(self, initial_vars: dict) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
@@ -166,3 +176,35 @@ class CoordinateManager:
             return move_time_dim_to_front(
                 self.initial_coords() + self.added_coords("all")
             )
+
+    def is_settable(self, name: str) -> bool:
+        """Check if the variable etc. is allowed to be set (i.e. is not a magnitude, opposite mask etc.)"""
+        return (
+            self.added_vars().get(name) is not None
+            or self.added_masks().get(name) is not None
+        )
+
+
+def move_time_dim_to_front(coord_list) -> list[str]:
+    if "time" not in coord_list:
+        return coord_list
+    coord_list.insert(0, coord_list.pop(coord_list.index("time")))
+    return coord_list
+
+
+def get_name_str_and_meta(
+    name: Union[str, MetaParameter]
+) -> tuple[str, Union[MetaParameter, None]]:
+    """Takes in a string, MetaParameter class or an instamce.
+    Returns a string valued name and an instance (if possilbe, otherwise None)"""
+    if isinstance(name, str):
+        return name, None
+
+    try:
+        name = name()
+    except TypeError:
+        pass
+    name_str = name.name()  # 'hsig'
+    meta = name  # Hs('hsig')
+
+    return name_str, meta
