@@ -1144,10 +1144,10 @@ class Skeleton:
         )
 
     def __repr__(self) -> str:
-        def add_coords(list_of_coords, string, empty_list_string="") -> str:
+        def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:
-                return string + empty_list_string
-            string += "("
+                return ""
+            string = "("
             for c in list_of_coords:
                 string += f"{c}, "
             string = string[:-2]
@@ -1156,33 +1156,33 @@ class Skeleton:
 
         string = f"<{type(self).__name__} ({self.__class__.__base__.__name__})>\n"
 
-        string += "-" * 31 + " Coordinate groups " + "-" * 30 + "\n"
+        string += f"{" Coordinate groups ":-^80}" + "\n"
         string += f"{'Spatial:':12}"
 
-        string = add_coords(self.coords("spatial"), string, "*empty*")
+        string += string_of_coords(self.coords("spatial")) or "*empty*"
         string += f"\n{'Grid:':12}"
-        string = add_coords(self.coords("grid"), string, "*empty*")
+        string += string_of_coords(self.coords("grid")) or  "*empty*"
         string += f"\n{'Gridpoint:':12}"
-        string = add_coords(self.coords("gridpoint"), string, "*empty*")
+        string += string_of_coords(self.coords("gridpoint")) or "*empty*"
 
         string += f"\n{'All:':12}"
-        string = add_coords(self.coords("all"), string, "*empty*")
+        string += string_of_coords(self.coords("all")) or "*empty*"
 
-        string += "\n" + "-" * 36 + " Xarray " + "-" * 36 + "\n"
+        string += "\n" + f"{" Xarray ":-^80}" + "\n"
         string += self.ds().__repr__()
 
         empty_vars = self._ds_manager.empty_vars()
         empty_masks = self._ds_manager.empty_masks()
 
         if empty_masks or empty_vars:
-            string += "\n" + "-" * 34 + " Empty data " + "-" * 34
+            string += "\n" + f"{" Empty data ":-^80}"
 
             if empty_vars:
                 string += "\n" + "Empty variables:"
                 max_len = len(max(empty_vars, key=len))
                 for var in empty_vars:
                     string += f"\n    {var:{max_len+2}}"
-                    string = add_coords(self.coords(self.coord_group(var)), string)
+                    string += string_of_coords(self.coords(self.coord_group(var)))
                     string += f":  {self._coord_manager._default_values.get(var)}"
 
                     empty_vars = self._ds_manager.empty_vars()
@@ -1192,7 +1192,7 @@ class Skeleton:
                 max_len = len(max(empty_masks, key=len))
                 for mask in empty_masks:
                     string += f"\n    {mask:{max_len+2}}"
-                    string = add_coords(self.coords(self.coord_group(mask)), string)
+                    string += string_of_coords(self.coords(self.coord_group(mask)))
                     string += (
                         f":  {bool(self._coord_manager._default_values.get(mask))}"
                     )
@@ -1200,7 +1200,7 @@ class Skeleton:
         magnitudes = self._coord_manager.magnitudes
 
         if magnitudes:
-            string += "\n" + "-" * 27 + " Magnitudes and directions" + "-" * 27
+            string += "\n" + f"{" Magnitudes and directions ":-^80}"
             for key, value in magnitudes.items():
                 string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
 
