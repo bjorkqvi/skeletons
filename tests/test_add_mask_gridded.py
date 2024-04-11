@@ -49,7 +49,7 @@ def test_add_coord_and_mask():
 def test_add_gridpoint_coord_and_mask():
     @add_mask(name="sea", default_value=1.0, opposite_name="land", coords="grid")
     @add_datavar(name="hs", default_value=0.0)
-    @add_time(name="time", grid_coord=False)
+    @add_time(grid_coord=False)
     @add_coord(name="z", grid_coord=True)
     class WaveHeight(GriddedSkeleton):
         pass
