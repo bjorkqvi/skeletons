@@ -343,10 +343,9 @@ class Skeleton:
                 and allow_transpose
             ):
                 return data.squeeze().T
-        if isinstance(data, int) or isinstance(data, float) or isinstance(data, bool):
-            data = np.full(self.shape(name), data)
-        if data is not None and data.shape == ():
-            data = np.full(self.shape(name), data)
+        dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
+        # Make constant array if given data has no shape
+        data = dask_manager.constant_array(data, self.shape(name), dask=(self.dask or chunks is not None))
         if not self._coord_manager.is_settable(name):
             raise KeyError(f"'{name}' is not a variable that can be set!")
 
@@ -366,7 +365,7 @@ class Skeleton:
             coords = coords or list(data.dims)
             data = data.data
 
-        dask_manager = DaskManager()
+        
         # 1 & 2)
         # If the coordinates of the data are explicilty given as a coord-list or thorugh a DataArray, try to reshape to those
         if coords is not None:
@@ -439,6 +438,7 @@ class Skeleton:
         squeeze: bool = True,
         boolean_mask: bool = False,
         dask: bool = None,
+        angular: bool=False,
         **kwargs,
     ):
         """Gets a mask or data variable.
@@ -449,10 +449,30 @@ class Skeleton:
         if not self._structure_initialized():
             return None
 
-        data = self._ds_manager.get(
-            name, empty=empty, chunks=self.chunks or "auto", **kwargs
-        )
+        if name in self._coord_manager.magnitudes.keys():
+            x = self.get(self._coord_manager.magnitudes[name].get('x'), 
+                         empty=empty, data_array=True, squeeze=squeeze, 
+                         boolean_mask=boolean_mask, dask=dask)
+            y = self.get(self._coord_manager.magnitudes[name].get('y'), 
+                         empty=empty, data_array=True, squeeze=squeeze, 
+                         boolean_mask=boolean_mask, dask=dask)
+            data = self._coord_manager.compute_magnitude(x,y)
+        elif name in self._coord_manager.directions.keys():
+            x = self.get(self._coord_manager.directions[name].get('x'), 
+                         empty=empty, data_array=True, squeeze=squeeze, 
+                         boolean_mask=boolean_mask, dask=dask)
+            y = self.get(self._coord_manager.directions[name].get('y'), 
+                         empty=empty, data_array=True, squeeze=squeeze, 
+                         boolean_mask=boolean_mask, dask=dask)
+            data = self._coord_manager.compute_direction(x,y, angular=angular, dask=dask)
+        else:
+            data = self._ds_manager.get(
+                name, empty=empty, chunks=self.chunks or "auto", **kwargs
+            )
 
+        
+
+        # The coordinates are never given as dask arrays
         if name in self.coords("all"):
             dask = False
 
