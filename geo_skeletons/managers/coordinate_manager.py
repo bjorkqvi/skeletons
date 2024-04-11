@@ -1,7 +1,8 @@
 from geo_parameters.metaparameter import MetaParameter
 from typing import Union
 from geo_parameters.grid import Lon, Lat, X, Y, Inds
-
+import numpy as np
+import dask.array as da
 
 meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
 
@@ -198,6 +199,23 @@ class CoordinateManager:
             self.added_vars().get(name) is not None
             or self.added_masks().get(name) is not None
         )
+
+    def compute_magnitude(self, x, y):
+        return (x**2 + y**2) ** 0.5
+
+    def compute_direction(self, x, y, angular: bool = False, dask: bool = True):
+        if dask or hasattr(x, "chunks"):
+            dirs = da.arctan2(y, x)
+        else:
+            dirs = np.arctan2(y, x)
+
+        if not angular:
+            dirs = 90 - dirs * 180 / np.pi + 180
+            if dask or hasattr(x, "chunks"):
+                dirs = da.mod(dirs, 360)
+            else:
+                dirs = np.mod(dirs, 360)
+        return dirs
 
 
 def move_time_dim_to_front(coord_list) -> list[str]:
