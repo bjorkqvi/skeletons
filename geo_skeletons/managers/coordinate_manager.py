@@ -1,5 +1,37 @@
 from geo_parameters.metaparameter import MetaParameter
 from typing import Union
+from geo_parameters.grid import Lon, Lat
+import pint
+
+ureg = pint.UnitRegistry()
+ureg.default_format = "~C"
+
+
+class X(MetaParameter):
+    name = "x"
+    _long_name = "x_distance"
+    _standard_name = "distance_in_x_direction"
+    _unit = ureg.m
+    _cf = False
+
+
+class Y(MetaParameter):
+    name = "y"
+    _long_name = "y_distance"
+    _standard_name = "distance_in_y_direction"
+    _unit = ureg.m
+    _cf = False
+
+
+class Inds(MetaParameter):
+    name = "inds"
+    _long_name = "index_of_points"
+    _standard_name = "index_of_geophysical_points"
+    _unit = "-"
+    _cf = False
+
+
+meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
 
 SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
 
@@ -27,6 +59,7 @@ class CoordinateManager:
         self.magnitudes = {}
         self.directions = {}
 
+        self.meta_coords: dict[str, MetaParameter] = {}
         self.meta_vars: dict[str, MetaParameter] = {}
         self.meta_masks: dict[str, MetaParameter] = {}
         self.meta_magnitudes: dict[str, MetaParameter] = {}
@@ -40,7 +73,7 @@ class CoordinateManager:
 
     def add_var(
         self, name: str, coords: str, default_value: float, meta: MetaParameter = None
-    ) -> None:
+    ) -> str:
         """Add a variable that the Skeleton will use."""
         name, meta = get_name_str_and_meta(name)
         self._vars["added"][name] = coords
@@ -50,7 +83,7 @@ class CoordinateManager:
 
     def add_mask(
         self, name: str, coords: str, default_value: int, opposite_name: str
-    ) -> None:
+    ) -> tuple[str, str]:
         """Add a mask that the Skeleton will use."""
         name, meta = get_name_str_and_meta(name)
         self._masks["added"][f"{name}_mask"] = coords
@@ -64,7 +97,7 @@ class CoordinateManager:
 
         return name, opposite_name
 
-    def add_coord(self, name: str, grid_coord: bool) -> None:
+    def add_coord(self, name: str, grid_coord: bool) -> str:
         """Add a coordinate that the Skeleton will use.
 
         grid_coord = True means that the coordinate describes the outer
@@ -76,10 +109,14 @@ class CoordinateManager:
         E.g. time can be either one (outer dimesnion in spectra, but inner
         dimension in time series)
         """
+        name, meta = get_name_str_and_meta(name)
+        self.meta_coords[name] = meta
         if grid_coord:
             self._coords["grid"].append(name)
         else:
             self._coords["gridpoint"].append(name)
+
+        return name
 
     def add_magnitude(self, name: str, x: str, y: str) -> str:
         name, meta = get_name_str_and_meta(name)
@@ -99,13 +136,19 @@ class CoordinateManager:
         """Set dictionary containing the initial variables of the Skeleton"""
         if not isinstance(initial_vars, dict):
             raise ValueError("initial_vars needs to be a dict of tuples!")
+        for var in self.initial_vars():
+            del self.meta_vars[var]
         self._vars["initial"] = initial_vars
+        for var in initial_vars:
+            self.meta_vars[var] = meta_parameters.get(var)
 
     def set_initial_coords(self, initial_coords: dict) -> None:
         """Set dictionary containing the initial coordinates of the Skeleton"""
         if not isinstance(initial_coords, list):
             raise ValueError("initial_coords needs to be a list of strings!")
         self._coords["initial"] = initial_coords
+        for coord in initial_coords:
+            self.meta_coords[coord] = meta_parameters.get(coord)
 
     def initial_vars(self) -> dict:
         return self._vars["initial"]
@@ -204,7 +247,7 @@ def get_name_str_and_meta(
         name = name()
     except TypeError:
         pass
-    name_str = name.name()  # 'hsig'
+    name_str = name.name  # 'hsig'
     meta = name  # Hs('hsig')
 
     return name_str, meta

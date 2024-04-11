@@ -51,9 +51,9 @@ def test_2d_spectrum():
     np.testing.assert_array_almost_equal(spec.freq(), freqs)
     np.testing.assert_array_almost_equal(spec.dirs(), dirs)
     np.testing.assert_array_almost_equal(spec.freq(angular=True), freqs * 2 * np.pi)
-    np.testing.assert_array_almost_equal(spec.dirs(radians=True), dirs * np.pi / 180)
+    np.testing.assert_array_almost_equal(spec.dirs(angular=True), dirs * np.pi / 180)
     np.testing.assert_almost_equal(spec.dd(), 10)
-    np.testing.assert_almost_equal(spec.dd(radians=True), 10 * np.pi / 180)
+    np.testing.assert_almost_equal(spec.dd(angular=True), 10 * np.pi / 180)
     np.testing.assert_almost_equal(spec.df(angular=True), 0.1 * 2 * np.pi)
 
     assert spec.size() == (2, len(freqs), len(dirs))
@@ -75,7 +75,7 @@ def test_2d_spectrum_new_names():
     np.testing.assert_array_almost_equal(spec.f(), freqs)
     np.testing.assert_array_almost_equal(spec.D(), dirs)
     np.testing.assert_array_almost_equal(spec.f(angular=True), freqs * 2 * np.pi)
-    np.testing.assert_array_almost_equal(spec.D(radians=True), dirs * np.pi / 180)
+    np.testing.assert_array_almost_equal(spec.D(angular=True), dirs * np.pi / 180)
 
     assert spec.size() == (2, len(dirs), len(freqs))
     assert spec.size(coords="all") == (2, len(dirs), len(freqs))
