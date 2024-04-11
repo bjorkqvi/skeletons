@@ -1,34 +1,6 @@
 from geo_parameters.metaparameter import MetaParameter
 from typing import Union
-from geo_parameters.grid import Lon, Lat
-import pint
-
-ureg = pint.UnitRegistry()
-ureg.default_format = "~C"
-
-
-class X(MetaParameter):
-    name = "x"
-    _long_name = "x_distance"
-    _standard_name = "distance_in_x_direction"
-    _unit = ureg.m
-    _cf = False
-
-
-class Y(MetaParameter):
-    name = "y"
-    _long_name = "y_distance"
-    _standard_name = "distance_in_y_direction"
-    _unit = ureg.m
-    _cf = False
-
-
-class Inds(MetaParameter):
-    name = "inds"
-    _long_name = "index_of_points"
-    _standard_name = "index_of_geophysical_points"
-    _unit = "-"
-    _cf = False
+from geo_parameters.grid import Lon, Lat, X, Y, Inds
 
 
 meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
