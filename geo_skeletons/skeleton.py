@@ -138,6 +138,8 @@ class Skeleton:
         self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
         self.set_utm(silent=True)
 
+        
+
         # Set metadata
         for var in self._coord_manager.initial_vars():
             metavar = self._coord_manager.meta_vars.get(var)
@@ -148,6 +150,12 @@ class Skeleton:
             metavar = self._coord_manager.meta_coords.get(coord)
             if metavar is not None:
                 self.set_metadata(metavar.meta_dict(), coord)
+        
+        for coord in self._coord_manager.added_coords():
+            metavar = self._coord_manager.meta_coords.get(coord)
+            if metavar is not None:
+                self.set_metadata(metavar.meta_dict(), coord)
+
 
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
         """Absorb another object of same type over a centrain dimension.
