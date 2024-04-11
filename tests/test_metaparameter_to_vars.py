@@ -1,6 +1,15 @@
 from geo_skeletons import GriddedSkeleton, PointSkeleton
-from geo_skeletons.decorators import add_datavar, add_magnitude, add_mask
+from geo_skeletons.decorators import (
+    add_datavar,
+    add_magnitude,
+    add_mask,
+    add_frequency,
+    add_time,
+    add_direction,
+)
 import geo_parameters as gp
+
+import pandas as pd
 
 
 def test_lonlat():
@@ -64,6 +73,52 @@ def test_lonlat_gridded():
         "unit": "degrees_north",
     }
     assert points.metadata("inds") == {}
+
+
+def test_freq_dir_time():
+    @add_time()
+    @add_direction()
+    @add_frequency()
+    class Expanded(PointSkeleton):
+        pass
+
+    points = Expanded(
+        lon=[1, 2],
+        lat=[4, 5],
+        freq=range(10),
+        dirs=range(360),
+        time=pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="h"),
+    )
+    assert points.metadata("freq") == {
+        "short_name": "freq",
+        "long_name": "frequency",
+        "standard_name": "wave_frequency",
+        "unit": "1/s",
+    }
+
+    assert points.metadata("dirs") == {
+        "short_name": "dirs",
+        "long_name": "wave_direction",
+        "standard_name": "sea_surface_wave_from_direction",
+        "unit": "deg",
+    }
+    assert points.metadata("time") == {}
+
+
+def test_dirto():
+
+    @add_direction(direction_from=False)
+    class Expanded(PointSkeleton):
+        pass
+
+    points = Expanded(lon=[1, 2], lat=[4, 5], dirs=range(360))
+
+    assert points.metadata("dirs") == {
+        "short_name": "dirs",
+        "long_name": "wave_direction",
+        "standard_name": "sea_surface_wave_to_direction",
+        "unit": "deg",
+    }
 
 
 def test_add_datavar():
