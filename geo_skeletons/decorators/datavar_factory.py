@@ -9,6 +9,7 @@ def add_datavar(
     name: Union[str, MetaParameter],
     coords: str = "all",
     default_value: float = 0.0,
+    direction_from: bool = None,
     append: bool = False,
 ):
     """stash_get = True means that the coordinate data can be accessed
@@ -23,6 +24,7 @@ def add_datavar(
             data_array: bool = False,
             squeeze: bool = False,
             dask: bool = None,
+            angular: bool = False,
             **kwargs,
         ) -> np.ndarray:
             """Returns the data variable.
@@ -33,14 +35,21 @@ def add_datavar(
             """
             if not self._structure_initialized():
                 return None
-            return self.get(
-                name,
+            var = self.get(
+                name_str,
                 empty=empty,
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
                 **kwargs,
             )
+            if angular:
+                if offset is None:
+                    raise ValueError(
+                        "Cannot ask angular values for a non-directional variable!"
+                    )
+                var = (90 - var + offset) * np.pi / 180
+            return var
 
         def set_var(
             self,
@@ -78,4 +87,29 @@ def add_datavar(
 
         return c
 
+    # If the direction_from flag is set (True/False) or name is a MetaParameter with directional info
+    # then the data variable is assumed to be a directional one
+    # and conversion to mathematical direction can be made
+
+    if direction_from is None:
+        if not isinstance(name, str):
+            direction_to = (
+                "to_direction" in name.standard_name()
+                or "to_direction" in name.standard_name(alias=True)
+            )
+            direction_from = (
+                "from_direction" in name.standard_name()
+                or "from_direction" in name.standard_name(alias=True)
+            )
+        else:
+            direction_to = None
+    else:
+        direction_to = not direction_from
+
+    if direction_from:
+        offset = 180
+    elif direction_to:
+        offset = 0
+    else:
+        offset = None
     return datavar_decorator
