@@ -21,7 +21,6 @@ def test_magnitude_point():
 
     wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
-
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 45 + 180)
     np.testing.assert_almost_equal(
         np.median(points.wdir(empty=True, angular=True)), np.pi / 4

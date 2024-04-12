@@ -12,6 +12,7 @@ def add_magnitude(
     x: str,
     y: str,
     direction: Union[str, MetaParameter] = None,
+    direction_from: bool = None,
     append=False,
 ):
     """stash_get = True means that the coordinate data can be accessed
@@ -37,8 +38,8 @@ def add_magnitude(
             """
             if not self._structure_initialized():
                 return None
-            xvar = self._coord_manager.magnitudes.get(name)["x"]
-            yvar = self._coord_manager.magnitudes.get(name)["y"]
+            xvar = self._coord_manager.magnitudes.get(name_str)["x"]
+            yvar = self._coord_manager.magnitudes.get(name_str)["y"]
             x = self.get(
                 xvar,
                 empty=empty,
@@ -85,7 +86,7 @@ def add_magnitude(
                 dirs = np.arctan2(y, x)
 
             if not angular:
-                dirs = 90 - dirs * 180 / np.pi + 180
+                dirs = 90 - dirs * 180 / np.pi + offset
                 if dask:
                     dirs = da.mod(dirs, 360)
                 else:
@@ -109,8 +110,9 @@ def add_magnitude(
             """
             if not self._structure_initialized():
                 return None
-            xvar = self._coord_manager.magnitudes.get(name)["x"]
-            yvar = self._coord_manager.magnitudes.get(name)["y"]
+
+            xvar = self._coord_manager.magnitudes.get(name_str)["x"]
+            yvar = self._coord_manager.magnitudes.get(name_str)["y"]
             x = self.get(
                 xvar,
                 empty=empty,
@@ -178,7 +180,9 @@ def add_magnitude(
                     dask=(self.dask or chunks is not None),
                 )
             if direction is None:
-                direction = eval(f"self.{dir_str}(angular={angular})")
+                direction = get_direction(
+                    self, angular=angular
+                )  # eval(f"self.{dir_str}(angular={angular})")
             else:
                 direction = dask_manager.constant_array(
                     direction,
@@ -189,7 +193,7 @@ def add_magnitude(
                 raise ValueError("Cannot set x- and y-components without a direction!")
 
             if not angular:  # Convert to mathematical convention
-                direction = (90 - direction + 180) * np.pi / 180
+                direction = (90 - direction + offset) * np.pi / 180
 
             if dask_manager.data_is_dask(direction):
                 s = da.sin(direction)
@@ -241,4 +245,16 @@ def add_magnitude(
 
         return c
 
+    # Always respect explicitly set directional convention
+    # Otherwise parse from MetaParameter is possible
+    # Default to direction_from
+    if direction_from is None:
+        if not isinstance(direction, str):
+            direction_from = not (
+                "to_direction" in direction.standard_name()
+                or "to_direction" in direction.standard_name(alias=True)
+            )
+        else:
+            direction_from = True
+    offset = 180 if direction_from else 0
     return magnitude_decorator
