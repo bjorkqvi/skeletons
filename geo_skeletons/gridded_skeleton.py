@@ -116,10 +116,7 @@ class GriddedSkeleton(Skeleton):
 
             mask = np.full(super().size("spatial", **kwargs), True)
 
-        try:
-            mask = mask.ravel()
-        except AttributeError:
-            breakpoint()
+        mask = mask.ravel()
         x, y = self._native_xy(**kwargs)
 
         if not self.is_cartesian() or native:
@@ -281,7 +278,8 @@ class GriddedSkeleton(Skeleton):
             lat = y_native
             x = None
             y = None
-        self._init_structure(x, y, lon, lat)
+
+        self._init_structure(x, y, lon, lat, utm=self.utm())
 
 
 # dummy(time, y, x)

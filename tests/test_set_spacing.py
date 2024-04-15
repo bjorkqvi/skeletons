@@ -70,6 +70,7 @@ def test_dx_dy_spherical():
 
 def test_dlon_dlat_cartesian():
     grid = GriddedSkeleton(x=(0, 150_000), y=(6_700_000, 6_800_000))
+    grid.set_utm((33, "W"))
     grid.set_spacing(dlon=0.02, dlat=0.01)
     np.testing.assert_array_almost_equal(grid.dlat(), 0.01, decimal=2)
     np.testing.assert_array_almost_equal(grid.dlon(), 0.02, decimal=2)
@@ -121,6 +122,7 @@ def test_dnmi_spherical():
 
 def test_dnmi_cartesian():
     grid = GriddedSkeleton(x=(0, 150_000), y=(6_700_000, 6_800_000))
+    grid.set_utm((33, "W"))
     grid.set_spacing(dnmi=0.5)
     np.testing.assert_array_almost_equal(grid.dy() / 1000, 1.85 / 2, decimal=2)
     np.testing.assert_array_almost_equal(grid.dx() / 1000, 1.85 / 2, decimal=2)
