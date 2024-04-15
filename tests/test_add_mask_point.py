@@ -4,6 +4,25 @@ import numpy as np
 import pandas as pd
 
 
+def test_add_mask_one_point():
+    @add_mask(name="sea", default_value=1.0, opposite_name="land")
+    @add_datavar(name="hs", default_value=0)
+    class WaveHeight(PointSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10), lat=(30))
+    data.set_sea_mask()
+    data.set_hs()
+    np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), True))
+    np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), False))
+    assert data.sea_mask(empty=True).shape == data.size()
+    data.set_sea_mask(data.hs() > 0)
+    np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
+    np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
+    assert data.land_mask(empty=True).shape == data.size()
+    assert data.sea_mask(empty=True).shape == data.size()
+
+
 def test_add_mask():
     @add_mask(name="sea", default_value=1.0, opposite_name="land")
     @add_datavar(name="hs", default_value=0)
