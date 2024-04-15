@@ -40,13 +40,15 @@ def test_add_coord_and_mask():
 def test_add_gridpoint_coord_and_mask():
     @add_mask(name="sea", default_value=1.0, opposite_name="land", coords="grid")
     @add_datavar(name="hs", default_value=0.0)
-    @add_time(name="time", grid_coord=False)
+    @add_time(grid_coord=False)
     @add_coord(name="z", grid_coord=True)
     class WaveHeight(PointSkeleton):
         pass
 
     times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1h")
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3), time=times)
+    data.set_land_mask(0)
+
     data.set_sea_mask()
     data.set_hs()
     np.testing.assert_array_equal(

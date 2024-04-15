@@ -1,11 +1,12 @@
+from geo_parameters.metaparameter import MetaParameter
+from typing import Union
+from geo_parameters.grid import Lon, Lat, X, Y, Inds
+import numpy as np
+import dask.array as da
+
+meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
+
 SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
-
-
-def move_time_dim_to_front(coord_list) -> list[str]:
-    if "time" not in coord_list:
-        return coord_list
-    coord_list.insert(0, coord_list.pop(coord_list.index("time")))
-    return coord_list
 
 
 class CoordinateManager:
@@ -31,26 +32,45 @@ class CoordinateManager:
         self.magnitudes = {}
         self.directions = {}
 
+        self.meta_coords: dict[str, MetaParameter] = {}
+        self.meta_vars: dict[str, MetaParameter] = {}
+        self.meta_masks: dict[str, MetaParameter] = {}
+        self.meta_magnitudes: dict[str, MetaParameter] = {}
+        self.meta_directions: dict[str, MetaParameter] = {}
+
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
         # This will be used by decorators to make a deepcopy of the manager for different classes
         self.initial_state = True
 
-    def add_var(self, name: str, coords: str, default_value: float) -> None:
+    def add_var(
+        self, name: str, coords: str, default_value: float, meta: MetaParameter = None
+    ) -> str:
         """Add a variable that the Skeleton will use."""
+        name, meta = get_name_str_and_meta(name)
         self._vars["added"][name] = coords
         self._default_values[name] = default_value
+        self.meta_vars[name] = meta
+        return name
 
     def add_mask(
         self, name: str, coords: str, default_value: int, opposite_name: str
-    ) -> None:
+    ) -> tuple[str, str]:
         """Add a mask that the Skeleton will use."""
+        name, meta = get_name_str_and_meta(name)
         self._masks["added"][f"{name}_mask"] = coords
-        self._masks["opposite"][f"{opposite_name}_mask"] = f"{name}_mask"
-        self._default_values[f"{name}_mask"] = default_value
 
-    def add_coord(self, name: str, grid_coord: bool) -> None:
+        self._default_values[f"{name}_mask"] = default_value
+        self.meta_masks[name] = meta
+
+        if opposite_name is not None:
+            opposite_name, meta = get_name_str_and_meta(opposite_name)
+            self._masks["opposite"][f"{opposite_name}_mask"] = f"{name}_mask"
+
+        return name, opposite_name
+
+    def add_coord(self, name: str, grid_coord: bool) -> str:
         """Add a coordinate that the Skeleton will use.
 
         grid_coord = True means that the coordinate describes the outer
@@ -62,28 +82,46 @@ class CoordinateManager:
         E.g. time can be either one (outer dimesnion in spectra, but inner
         dimension in time series)
         """
+        name, meta = get_name_str_and_meta(name)
+        self.meta_coords[name] = meta
         if grid_coord:
             self._coords["grid"].append(name)
         else:
             self._coords["gridpoint"].append(name)
 
-    def add_magnitude(self, name: str, x: str, y: str):
-        self.magnitudes[name] = {"x": x, "y": y}
+        return name
 
-    def add_direction(self, name: str, x: str, y: str):
+    def add_magnitude(self, name: str, x: str, y: str) -> str:
+        name, meta = get_name_str_and_meta(name)
+        self.magnitudes[name] = {"x": x, "y": y}
+        self.meta_magnitudes[name] = meta
+        return name
+
+    def add_direction(
+        self, name: str, x: str, y: str, meta: MetaParameter = None
+    ) -> str:
+        name, meta = get_name_str_and_meta(name)
         self.directions[name] = {"x": x, "y": y}
+        self.meta_directions[name] = meta
+        return name
 
     def set_initial_vars(self, initial_vars: dict) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
         if not isinstance(initial_vars, dict):
             raise ValueError("initial_vars needs to be a dict of tuples!")
+        for var in self.initial_vars():
+            del self.meta_vars[var]
         self._vars["initial"] = initial_vars
+        for var in initial_vars:
+            self.meta_vars[var] = meta_parameters.get(var)
 
     def set_initial_coords(self, initial_coords: dict) -> None:
         """Set dictionary containing the initial coordinates of the Skeleton"""
         if not isinstance(initial_coords, list):
             raise ValueError("initial_coords needs to be a list of strings!")
         self._coords["initial"] = initial_coords
+        for coord in initial_coords:
+            self.meta_coords[coord] = meta_parameters.get(coord)
 
     def initial_vars(self) -> dict:
         return self._vars["initial"]
@@ -154,3 +192,52 @@ class CoordinateManager:
             return move_time_dim_to_front(
                 self.initial_coords() + self.added_coords("all")
             )
+
+    def is_settable(self, name: str) -> bool:
+        """Check if the variable etc. is allowed to be set (i.e. is not a magnitude, opposite mask etc.)"""
+        return (
+            self.added_vars().get(name) is not None
+            or self.added_masks().get(name) is not None
+        )
+
+    def compute_magnitude(self, x, y):
+        return (x**2 + y**2) ** 0.5
+
+    def compute_direction(self, x, y, angular: bool = False, dask: bool = True):
+        if dask or hasattr(x, "chunks"):
+            dirs = da.arctan2(y, x)
+        else:
+            dirs = np.arctan2(y, x)
+
+        if not angular:
+            dirs = 90 - dirs * 180 / np.pi + 180
+            if dask or hasattr(x, "chunks"):
+                dirs = da.mod(dirs, 360)
+            else:
+                dirs = np.mod(dirs, 360)
+        return dirs
+
+
+def move_time_dim_to_front(coord_list) -> list[str]:
+    if "time" not in coord_list:
+        return coord_list
+    coord_list.insert(0, coord_list.pop(coord_list.index("time")))
+    return coord_list
+
+
+def get_name_str_and_meta(
+    name: Union[str, MetaParameter]
+) -> tuple[str, Union[MetaParameter, None]]:
+    """Takes in a string, MetaParameter class or an instamce.
+    Returns a string valued name and an instance (if possilbe, otherwise None)"""
+    if isinstance(name, str):
+        return name, None
+
+    try:
+        name = name()
+    except TypeError:
+        pass
+    name_str = name.name  # 'hsig'
+    meta = name  # Hs('hsig')
+
+    return name_str, meta

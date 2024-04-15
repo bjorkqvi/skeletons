@@ -6,13 +6,16 @@ SPHERICAL_STRINGS = ["lon", "lat", "lonlat"]
 
 from typing import Union
 import dask
+from geo_parameters.metaparameter import MetaParameter
+
+from ..managers.dask_manager import DaskManager
 
 
 def add_mask(
-    name: str,
+    name: Union[str, MetaParameter],
     default_value: int,
     coords: str = "grid",
-    opposite_name: str = None,
+    opposite_name: Union[str, MetaParameter] = None,
 ):
     """coord_type = 'all', 'spatial', 'grid' or 'gridpoint'"""
 
@@ -25,7 +28,9 @@ def add_mask(
             **kwargs can be used for slicing data.
             """
 
-            mask = self.get(f"{name}_mask", boolean_mask=True, empty=empty, **kwargs)
+            mask = self.get(
+                f"{name_str}_mask", boolean_mask=True, empty=empty, **kwargs
+            )
 
             return mask
 
@@ -86,12 +91,8 @@ def add_mask(
             chunks: Union[tuple, str] = None,
             silent: bool = True,
         ) -> None:
-            if isinstance(data, int) or isinstance(data, bool):
-                data = np.full(self.size(f"{name}_mask"), data)
-            if data is not None:
-                data = data.astype(int)
             self.set(
-                f"{name}_mask",
+                f"{name_str}_mask",
                 data,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
@@ -109,14 +110,14 @@ def add_mask(
             chunks: Union[tuple, str] = None,
             silent: bool = True,
         ) -> None:
+
+            dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
+            data = dask_manager.dask_me(data)
             if data is not None:
-                try:
-                    data = dask.array.from_array(data)
-                except ValueError:
-                    pass
                 data = dask.array.logical_not(data)
+
             self.set(
-                f"{opposite_name}_mask",
+                f"{name_str}_mask",
                 data,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
@@ -128,14 +129,16 @@ def add_mask(
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
-        c._coord_manager.add_mask(name, coords, default_value, opposite_name)
-        exec(f"c.{name}_mask = get_mask")
-        exec(f"c.{name}_points = get_masked_points")
-        exec(f"c.set_{name}_mask = set_mask")
-        if opposite_name is not None:
-            exec(f"c.{opposite_name}_mask = get_not_mask")
-            exec(f"c.{opposite_name}_points = get_not_points")
-            exec(f"c.set_{opposite_name}_mask = set_opposite_mask")
+        name_str, opposite_name_str = c._coord_manager.add_mask(
+            name, coords, default_value, opposite_name
+        )
+        exec(f"c.{name_str}_mask = get_mask")
+        exec(f"c.{name_str}_points = get_masked_points")
+        exec(f"c.set_{name_str}_mask = set_mask")
+        if opposite_name_str is not None:
+            exec(f"c.{opposite_name_str}_mask = get_not_mask")
+            exec(f"c.{opposite_name_str}_points = get_not_points")
+            exec(f"c.set_{opposite_name_str}_mask = set_opposite_mask")
 
         return c
 

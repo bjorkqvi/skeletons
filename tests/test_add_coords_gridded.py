@@ -38,7 +38,7 @@ def test_2d_spectrum():
     np.testing.assert_array_almost_equal(spec.freq(), freqs)
     np.testing.assert_array_almost_equal(spec.dirs(), dirs)
     np.testing.assert_array_almost_equal(spec.freq(angular=True), freqs * 2 * np.pi)
-    np.testing.assert_array_almost_equal(spec.dirs(radians=True), dirs * np.pi / 180)
+    np.testing.assert_array_almost_equal(spec.dirs(angular=True), dirs * np.pi / 180)
 
 
 def test_2d_spectrum_new_names():
@@ -53,7 +53,7 @@ def test_2d_spectrum_new_names():
     np.testing.assert_array_almost_equal(spec.f(), freqs)
     np.testing.assert_array_almost_equal(spec.D(), dirs)
     np.testing.assert_array_almost_equal(spec.f(angular=True), freqs * 2 * np.pi)
-    np.testing.assert_array_almost_equal(spec.D(radians=True), dirs * np.pi / 180)
+    np.testing.assert_array_almost_equal(spec.D(angular=True), dirs * np.pi / 180)
 
 
 def test_add_z_coord():
