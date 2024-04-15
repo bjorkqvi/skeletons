@@ -8,6 +8,8 @@ from typing import Union
 import dask
 from geo_parameters.metaparameter import MetaParameter
 
+from ..managers.dask_manager import DaskManager
+
 
 def add_mask(
     name: Union[str, MetaParameter],
@@ -108,11 +110,10 @@ def add_mask(
             chunks: Union[tuple, str] = None,
             silent: bool = True,
         ) -> None:
+
+            dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
+            data = dask_manager.dask_me(data)
             if data is not None:
-                try:
-                    data = dask.array.from_array(data)
-                except ValueError:
-                    pass
                 data = dask.array.logical_not(data)
 
             self.set(
