@@ -3,6 +3,7 @@ from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
 from .aux_funcs import distance_funcs
 from .managers.coordinate_manager import CoordinateManager
+from .managers.dask_manager import DaskManager
 
 INITIAL_CARTESIAN_COORDS = ["y", "x"]
 INITIAL_SPERICAL_COORDS = ["lat", "lon"]
@@ -36,6 +37,9 @@ class GriddedSkeleton(Skeleton):
 
         if mask is None:
             mask = np.full(skeleton.size("spatial"), True)
+        dask_manager = DaskManager()
+        mask = dask_manager.undask_me(mask)
+
         lon, lat = skeleton.lon(strict=True, mask=mask), skeleton.lat(
             strict=True, mask=mask
         )

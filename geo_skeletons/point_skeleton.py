@@ -1,6 +1,7 @@
 import numpy as np
 from .skeleton import Skeleton
 from .managers.coordinate_manager import CoordinateManager
+from .managers.dask_manager import DaskManager
 
 INITIAL_COORDS = ["inds"]
 INITIAL_CARTESIAN_VARS = {"x": "inds", "y": "inds"}
@@ -29,7 +30,8 @@ class PointSkeleton(Skeleton):
 
         if mask is None:
             mask = np.full(skeleton.size("spatial"), True)
-
+        dask_manager = DaskManager()
+        mask = dask_manager.undask_me(mask)
         lon, lat = skeleton.lonlat(strict=True, mask=mask)
         x, y = skeleton.xy(strict=True, mask=mask)
 
