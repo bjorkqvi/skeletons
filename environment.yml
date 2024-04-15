@@ -11,5 +11,5 @@ dependencies:
   - geopy
   - pylint
   - dask
-  - pip
+  - pip:
     - geo-parameters
