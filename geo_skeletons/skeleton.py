@@ -418,9 +418,7 @@ class Skeleton:
                          boolean_mask=boolean_mask, dask=dask)
             data = self._coord_manager.compute_direction(x,y, angular=angular, dask=dask)
         else:
-            data = self._ds_manager.get(
-                name, empty=empty, chunks=self.chunks or "auto", **kwargs
-            )
+            data = self._ds_manager.get(name, empty=empty, **kwargs)
 
         
 

@@ -174,7 +174,6 @@ class DatasetManager:
         self,
         name: str,
         empty: bool = False,
-        chunks: str = "auto",
         **kwargs,
     ) -> xr.DataArray:
         """Gets data from Dataset.
@@ -192,7 +191,6 @@ class DatasetManager:
             empty_data = dask.array.full(
                 self.coords_to_size(self.coord_manager.coords(coords)),
                 self.coord_manager._default_values.get(name),
-                chunks=chunks,
             )
 
             coords_dict = {
