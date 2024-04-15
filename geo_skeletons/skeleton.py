@@ -1198,7 +1198,7 @@ class Skeleton:
 
         string = f"<{type(self).__name__} ({self.__class__.__base__.__name__})>\n"
 
-        string += f"{" Coordinate groups ":-^80}" + "\n"
+        string += f"{' Coordinate groups ':-^80}" + "\n"
         string += f"{'Spatial:':12}"
 
         string += string_of_coords(self.coords("spatial")) or "*empty*"
@@ -1244,7 +1244,7 @@ class Skeleton:
         magnitudes = self._coord_manager.magnitudes
 
         if magnitudes:
-            string += "\n" + f"{" Magnitudes and directions ":-^80}"
+            string += "\n" + f"{' Magnitudes and directions ':-^80}"
             for key, value in magnitudes.items():
                 string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
 
