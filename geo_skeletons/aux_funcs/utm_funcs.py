@@ -28,9 +28,12 @@ VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
 
 
 def valid_utm_zone(utm_zone: tuple[int, str]) -> bool:
-    """Checks that a UTM zone, e.g. (33, 'V') is valid."""
+    """Checks that a UTM zone, e.g. (33, 'V') is valid. (None, None) is excepted."""
 
     zone_number, zone_letter = utm_zone
+
+    if zone_number is None and zone_letter is None:
+        return True
 
     if zone_number not in VALID_UTM_NUMBERS:
         return False
