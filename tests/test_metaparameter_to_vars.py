@@ -129,6 +129,8 @@ def test_add_datavar():
 
     points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
 
+    assert points.metadata() == {}
+    points.set_utm((33, "W"))
     assert points.metadata() == {"utm_zone": "33W"}
     points.set_metadata({"general_info": "who knew!?"})
     assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
@@ -161,6 +163,8 @@ def test_add_magnitude():
 
     points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
 
+    assert points.metadata() == {}
+    points.set_utm((33, "W"))
     assert points.metadata() == {"utm_zone": "33W"}
     points.set_metadata({"general_info": "who knew!?"})
     assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
@@ -190,6 +194,8 @@ def test_add_mask():
 
     points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
     points.set_land_mask(0)
+    assert points.metadata() == {}
+    points.set_utm((33, "W"))
     assert points.metadata() == {"utm_zone": "33W"}
     points.set_metadata({"general_info": "who knew!?"})
     assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
