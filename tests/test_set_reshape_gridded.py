@@ -252,6 +252,7 @@ def test_transpose_with_trivial_dim_starting_with_numpy():
 
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2)
+
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2, allow_transpose=True, allow_reshape=False)
 
