@@ -6,7 +6,7 @@ import numpy as np
 
 class DaskManager:
     def __init__(self, chunks="auto"):
-        self.chunks = chunks
+        self.chunks = chunks or "auto"
 
     @staticmethod
     def data_is_dask(data) -> bool:

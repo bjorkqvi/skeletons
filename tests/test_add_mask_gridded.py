@@ -5,6 +5,28 @@ import numpy as np
 import pandas as pd
 
 
+def test_add_mask_one_point():
+    @add_mask(name="sea", default_value=1.0, opposite_name="land")
+    @add_datavar(name="hs", default_value=0)
+    class WaveHeight(GriddedSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10), lat=(30))
+
+    data.set_spacing(nx=10, ny=10)
+
+    np.testing.assert_array_equal(data.sea_mask(empty=True), np.full(data.size(), True))
+    assert data.sea_mask(empty=True).shape == data.size()
+
+    np.testing.assert_array_equal(
+        data.land_mask(empty=True), np.full(data.size(), False)
+    )
+    data.set_sea_mask(data.hs(empty=True) > 0)
+    np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
+    np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
+    assert data.masks()[0] == "sea_mask"
+
+
 def test_add_mask():
     @add_mask(name="sea", default_value=1.0, opposite_name="land")
     @add_datavar(name="hs", default_value=0)

@@ -324,7 +324,7 @@ class Skeleton:
         """
 
         # Takes care of dask/numpy operations so we don't have to check every tim
-        dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
+        dask_manager = DaskManager(chunks=chunks or self.chunks)
 
         if data is None:
             data = self.get(name, empty=True, squeeze=False)
@@ -473,14 +473,27 @@ class Skeleton:
         if boolean_mask:
             data = data.astype(bool)
 
-        if squeeze and data.shape != (1,):  # Don't squeeze out last dimension
-            data = data.squeeze(drop=True)
+        if squeeze:
+            dims_to_drop = set(self.coords("all")) - set(self.coords("spatial"))
+            dims_to_drop = [
+                dim
+                for dim in dims_to_drop
+                if self.shape(dim)[0] == 1 and dim in data.coords
+            ]
+            if dims_to_drop:
+                data = data.squeeze(dim=dims_to_drop, drop=True)
+
+        dask_manager = DaskManager(self.chunks)
+        # if data.shape == ():  # Always keep at least the spatial dimensions
+        #     reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=True)
+        #     breakpoint()
+        #     data = reshape_manager.unsqueeze(
+        #         data, expected_shape=self.coords("spatial")
+        #     )
 
         # Use dask mode default if not explicitly overridden
         if dask is None:
             dask = self.dask
-
-        dask_manager = DaskManager(self.chunks)
 
         if dask:
             data = dask_manager.dask_me(data)
@@ -602,6 +615,8 @@ class Skeleton:
 
     def shape(self, var, squeeze: bool = False, **kwargs) -> tuple[int]:
         """Returns the size of one specific data variable"""
+        if var in self.coords("all"):
+            return self.get(var, squeeze=False).shape
         coords = self.coord_group(var)
         return self.size(coords=coords, squeeze=squeeze, **kwargs)
 
