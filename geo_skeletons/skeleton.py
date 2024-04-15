@@ -4,6 +4,7 @@ import utm as utm_module
 from copy import copy
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
+from .managers.reshape_manager import ReshapeManager
 from typing import Iterable, Union
 from .aux_funcs import distance_funcs, array_funcs, utm_funcs
 from .errors import DataWrongDimensionError
@@ -96,7 +97,7 @@ class Skeleton:
             val = ds.get(data_var)
             if val is not None:
                 points.set(data_var, val)
-                points.set_metadata(ds.get(data_var).attrs, data_array_name=data_var)
+                points.set_metadata(ds.get(data_var).attrs, name=data_var)
         points.set_metadata(ds.attrs)
 
         return points
@@ -138,8 +139,21 @@ class Skeleton:
         self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
         self.set_utm(silent=True)
 
-        # self._reset_masks()
-        # self._reset_datavars()
+        # Set metadata
+        for var in self._coord_manager.initial_vars():
+            metavar = self._coord_manager.meta_vars.get(var)
+            if metavar is not None:
+                self.set_metadata(metavar.meta_dict(), var)
+
+        for coord in self._coord_manager.initial_coords():
+            metavar = self._coord_manager.meta_coords.get(coord)
+            if metavar is not None:
+                self.set_metadata(metavar.meta_dict(), coord)
+
+        for coord in self._coord_manager.added_coords():
+            metavar = self._coord_manager.meta_coords.get(coord)
+            if metavar is not None:
+                self.set_metadata(metavar.meta_dict(), coord)
 
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
         """Absorb another object of same type over a centrain dimension.
@@ -170,7 +184,8 @@ class Skeleton:
         return self._coord_manager.coords(coords)
 
     def coord_group(self, var: str) -> str:
-        """Returns the coordinate group that a variable/mask is defined over. The coordinates can then be retrived using the group by the method .coords()"""
+        """Returns the coordinate group that a variable/mask is defined over.
+        The coordinates can then be retrived using the group by the method .coords()"""
         var_coords = self._coord_manager.added_vars().get(var)
         mask_coords = self._coord_manager.added_masks().get(var)
         if mask_coords is None:
@@ -209,6 +224,14 @@ class Skeleton:
             coord: self.get(coord, data_array=data_array, **kwargs)
             for coord in self.coords(type)
         }
+
+    def magnitudes(self) -> list[str]:
+        """Returns the names of all defined magnitudes"""
+        return list(self._coord_manager.magnitudes.keys())
+
+    def directions(self) -> list[str]:
+        """Returns the names of all defined magnitudes"""
+        return list(self._coord_manager.directions.keys())
 
     def sel(self, **kwargs):
         return self.from_ds(self.ds().sel(**kwargs))
@@ -289,108 +312,78 @@ class Skeleton:
         NB! For 1), only non-trivial dimensions need to be identified
         """
 
-        def transpose_me(data, coord_order):
-            if len(data.shape) > len(coord_order):
-                data = data.squeeze()
-            if dask_manager.data_is_dask(data):
-                return da.transpose(data, coord_order)
-            else:
-                return np.transpose(data, coord_order)
-
-        def transpose_given_data(data):
-            """Transposes given data if it is a two dimensional transpose of the wanted size after removing all trivial dimension.
-
-            If sizes match, it just squeezes the data."""
-            # Check if the base data (ignoring any trivial dimensions is the right (or possibly transposed) dimensions
-            expected_squeeezed_shape = self.size(coord_type, squeeze=True)
-            actual_squeezed_shape = data.squeeze().shape
-
-            if expected_squeeezed_shape == actual_squeezed_shape:
-                return data.squeeze()
-
-            # If data is not 2D and doesn't match, we don't want to try to reshape
-            if len(actual_squeezed_shape) != 2 or len(expected_squeeezed_shape) != 2:
-                return None
-
-            # Is the squeezed shape a transpose of the expected squeezed shape?
-            if (
-                tuple(np.flip(actual_squeezed_shape)) == expected_squeeezed_shape
-                and allow_transpose
-            ):
-                return data.squeeze().T
-
-        coord_type = self.coord_group(name)
-
-        metadata = self.metadata()
+        # Takes care of dask/numpy operations so we don't have to check every tim
+        dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
 
         if data is None:
             data = self.get(name, empty=True, squeeze=False)
 
-        # Masks are stored as integers
-        if name[-5:] == "_mask":
-            data = data.astype(int)
+        # Make constant array if given data has no shape
+        data = dask_manager.constant_array(
+            data, self.shape(name), dask=(self.dask or chunks is not None)
+        )
+        if not self._coord_manager.is_settable(name):
+            raise KeyError(f"'{name}' is not a variable that can be set!")
 
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
         if isinstance(data, xr.DataArray):
             coords = coords or list(data.dims)
             data = data.data
 
-        dask_manager = DaskManager()
-        # 1 & 2)
-        # If the coordinates of the data are explicilty given as a coord-list or thorugh a DataArray, try to reshape to those
-        if coords is not None:
-            allow_reshape = True
-            data_coordinates = self.coords(self.coord_group(name))
-            # Check that we don't do trivial reshape
-            if data_coordinates == coords:
-                allow_reshape = False
-
-            # Create a list of shapes based on the given coordinates
-            coord_order = [coords.index(c) for c in data_coordinates if c in coords]
-            if allow_reshape:
-                if not silent:
-                    print(
-                        f"Reshaping data {data.shape} -> {transpose_me(data, tuple(coord_order)).shape}: {coords} -> {data_coordinates}"
-                    )
-                data = transpose_me(data, tuple(coord_order))
-
-        # First try to set the data here
         if self.dask or chunks is not None:
-            data = dask_manager.dask_me(data, chunks)
+            data = dask_manager.dask_me(data, chunks=chunks)
+
+        # Masks are stored as integers
+        if name[-5:] == "_mask":
+            data = data.astype(int)
+
+        # Reshaping
+        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
+
+        # Explicit (1) or explicit though DataArray (2)
+        data_coords = self.coords(self.coord_group(name))
+        data = reshape_manager.explicit_reshape(
+            data, data_coords=data_coords, expected_coords=coords
+        )
+
+        # Try to set the data
+
+        coord_type = self.coord_group(name)
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-            self.set_metadata(metadata)
-            return
         except DataWrongDimensionError as data_error:
-            if not allow_reshape:
+            if not (allow_reshape or allow_transpose):
                 raise data_error
 
+            # If we are here then the data could not be set, but we are allowed to try to reshape
+            if not silent:
+                print(f"Size of {name} does not match size of {type(self).__name__}...")
+
+            # Save this for messages
             original_data_shape = data.shape
-            data = transpose_given_data(data)
+
+            if allow_transpose:
+                data = reshape_manager.transpose_2d(
+                    data, expected_squeezed_shape=self.size(coord_type, squeeze=True)
+                )
+            if allow_reshape:
+                data = reshape_manager.unsqueeze(
+                    data, expected_shape=self.size(coord_type)
+                )
             if data is None:
-                raise data_error
+                raise data_error  # Reshapes have failed
 
-        # We now know that the data is of right size if we ignore trivial dimensions
-        # Data also has all trivial dimensions squeezed by now
+            if not silent:
+                print(f"Reshaping data {original_data_shape} -> {data.shape}...")
 
-        if not silent:
-            print(f"Size of {name} does not match size of {type(self).__name__}...")
+            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
 
-        expected_shape = self.size(coord_type)
-        actual_shape = data.shape
-
-        if expected_shape != actual_shape:
-            trivial_places = tuple(np.where(np.array(expected_shape) == 1)[0])
-            if dask_manager.data_is_dask(data):
-                data = da.expand_dims(data, axis=trivial_places)
-            else:
-                data = np.expand_dims(data, axis=trivial_places)
-
-        if not silent:
-            print(f"Reshaping data {original_data_shape} -> {data.shape}...")
-
-        self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-        self.set_metadata(metadata)
+        # Set the metadata
+        metadata = self.metadata(name)
+        self.set_metadata(metadata, name, append=False)
+        meta_parameter = self._coord_manager.meta_vars.get(name)
+        if meta_parameter is not None:
+            self.set_metadata(meta_parameter.meta_dict(), name)
         return
 
     def get(
@@ -401,6 +394,7 @@ class Skeleton:
         squeeze: bool = True,
         boolean_mask: bool = False,
         dask: bool = None,
+        angular: bool = False,
         **kwargs,
     ):
         """Gets a mask or data variable.
@@ -411,10 +405,48 @@ class Skeleton:
         if not self._structure_initialized():
             return None
 
-        data = self._ds_manager.get(
-            name, empty=empty, chunks=self.chunks or "auto", **kwargs
-        )
+        if name in self._coord_manager.magnitudes.keys():
+            x = self.get(
+                self._coord_manager.magnitudes[name].get("x"),
+                empty=empty,
+                data_array=True,
+                squeeze=squeeze,
+                boolean_mask=boolean_mask,
+                dask=dask,
+            )
+            y = self.get(
+                self._coord_manager.magnitudes[name].get("y"),
+                empty=empty,
+                data_array=True,
+                squeeze=squeeze,
+                boolean_mask=boolean_mask,
+                dask=dask,
+            )
+            data = self._coord_manager.compute_magnitude(x, y)
+        elif name in self._coord_manager.directions.keys():
+            x = self.get(
+                self._coord_manager.directions[name].get("x"),
+                empty=empty,
+                data_array=True,
+                squeeze=squeeze,
+                boolean_mask=boolean_mask,
+                dask=dask,
+            )
+            y = self.get(
+                self._coord_manager.directions[name].get("y"),
+                empty=empty,
+                data_array=True,
+                squeeze=squeeze,
+                boolean_mask=boolean_mask,
+                dask=dask,
+            )
+            data = self._coord_manager.compute_direction(
+                x, y, angular=angular, dask=dask
+            )
+        else:
+            data = self._ds_manager.get(name, empty=empty, **kwargs)
 
+        # The coordinates are never given as dask arrays
         if name in self.coords("all"):
             dask = False
 
@@ -613,9 +645,9 @@ class Skeleton:
             self.is_gridded()
         ):  # This will rotate the grid, but is best estimate to keep it strucutred
             lat = np.median(self.lat(**kwargs))
-            # print(
-            #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-            # )
+            print(
+                "Regridding spherical grid to cartesian coordinates will cause a rotation! Use 'x, _ = skeleton.xy()' to get a list of all points."
+            )
             x, __, __, __ = utm_module.from_latlon(
                 lat,
                 self.lon(**kwargs),
@@ -694,9 +726,9 @@ class Skeleton:
             self.is_gridded()
         ):  # This will rotate the grid, but is best estimate to keep it strucutred
             lon = np.median(self.lon(**kwargs))
-            # print(
-            #    "Regridding spherical grid to cartesian coordinates. This will cause a rotation!"
-            # )
+            print(
+                "Regridding spherical grid to cartesian coordinates will cause a rotation! Use '_, y = skeleton.xy()' to get a list of all points."
+            )
             y = np.zeros(len(self.lat(**kwargs)))
             if np.any(posmask):
                 _, y[posmask], __, __ = utm_module.from_latlon(
@@ -761,9 +793,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 y = np.median(self.y(**kwargs))
-                # print(
-                #    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
-                # )
+                print(
+                    "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
+                )
             else:
                 y = self.y(**kwargs)
             number, letter = self.utm()
@@ -802,9 +834,9 @@ class Skeleton:
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
                 x = np.median(self.x(**kwargs))
-                # print(
-                #    "Regridding cartesian grid to spherical coordinates. This will cause a rotation!"
-                # )
+                print(
+                    "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
+                )
             else:
                 x = self.x(**kwargs)
             number, letter = self.utm()
@@ -1006,22 +1038,44 @@ class Skeleton:
         else:
             return {"inds": np.array(inds), "dx": np.array(dx)}
 
-    def metadata(self) -> dict:
+    def metadata(self, name: str = None) -> dict:
         """Return metadata of the dataset:"""
         if not self._structure_initialized():
             return None
-        return self.ds().attrs.copy()
+        if name is None:
+            return self.ds().attrs.copy()
+
+        data_array = self.get(name, data_array=True)
+        if data_array is not None:
+            return data_array.attrs.copy()
+
+        meta_parameter = self._coord_manager.meta_vars.get(name)
+        if meta_parameter is not None:
+            return meta_parameter.meta_dict()
+        return {}
 
     def set_metadata(
-        self, metadata: dict, append=False, data_array_name: str = None
+        self,
+        metadata: dict,
+        name: str = None,
+        append=True,
     ) -> None:
+        if not isinstance(metadata, dict):
+            raise TypeError(f"metadata needs to be a dict, not '{metadata}'!")
+
         if not self._structure_initialized():
-            return None
+            return
+
+        if name in self._ds_manager.empty_vars():
+            print(
+                f"Cannot set metadata to variable '{name}' before it has been initialized using 'skeleton.set_{name}()'!"
+            )
+            return
         if append:
-            old_metadata = self.metadata()
+            old_metadata = self.metadata(name)
             old_metadata.update(metadata)
             metadata = old_metadata
-        self._ds_manager.set_attrs(metadata, data_array_name)
+        self._ds_manager.set_attrs(metadata, name)
 
     def masks(self):
         mask_list = []
@@ -1038,7 +1092,7 @@ class Skeleton:
         if rechunk:
             self.rechunk(chunks, primary_dim)
 
-    def deactivate_dask(self, unchunk: bool = False) -> None:
+    def deactivate_dask(self, dechunk: bool = False) -> None:
         """Deactivates the use of dask, meaning:
 
         1) Data will not be converted to dask-arrays when set, unless chunks provided
@@ -1046,17 +1100,15 @@ class Skeleton:
         3) All data will be converted to numpy arrays if unchunk=True"""
         self.dask = False
         self.chunks = None
-        if unchunk:
-            for var in self.data_vars():
-                data = self.get(var)
-                if data is not None:
-                    if hasattr(data, "chunks"):
-                        data = data.compute()
-                    self.set(var, data)
+
+        if dechunk:
+            self._dechunk()
 
     def rechunk(
-        self, chunks: Union[tuple, dict, str] = "auto", primary_dim: Union[str,list[str]] = None
-    ):
+        self,
+        chunks: Union[tuple, dict, str] = "auto",
+        primary_dim: Union[str, list[str]] = None,
+    ) -> None:
         if primary_dim:
             if isinstance(primary_dim, str):
                 primary_dim = [primary_dim]
@@ -1072,6 +1124,24 @@ class Skeleton:
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.dask_me(data, chunks))
+        for var in self.masks():
+            data = self.get(var)
+            if data is not None:
+                self.set(var, dask_manager.dask_me(data, chunks))
+
+    def _dechunk(self) -> None:
+        """Computes all dask arrays and coverts them to numpy arrays.
+
+        If data is big this might taka a long time or kill Python."""
+        dask_manager = DaskManager()
+        for var in self.data_vars():
+            data = self.get(var)
+            if data is not None:
+                self.set(var, dask_manager.undask_me(data))
+        for var in self.masks():
+            data = self.get(var)
+            if data is not None:
+                self.set(var, dask_manager.undask_me(data))
 
     @property
     def x_str(self) -> str:
@@ -1144,10 +1214,10 @@ class Skeleton:
         )
 
     def __repr__(self) -> str:
-        def add_coords(list_of_coords, string, empty_list_string="") -> str:
+        def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:
-                return string + empty_list_string
-            string += "("
+                return ""
+            string = "("
             for c in list_of_coords:
                 string += f"{c}, "
             string = string[:-2]
@@ -1156,43 +1226,45 @@ class Skeleton:
 
         string = f"<{type(self).__name__} ({self.__class__.__base__.__name__})>\n"
 
-        string += "-" * 31 + " Coordinate groups " + "-" * 30 + "\n"
+        string += f"{' Coordinate groups ':-^80}" + "\n"
         string += f"{'Spatial:':12}"
 
-        string = add_coords(self.coords("spatial"), string, "*empty*")
+        string += string_of_coords(self.coords("spatial")) or "*empty*"
         string += f"\n{'Grid:':12}"
-        string = add_coords(self.coords("grid"), string, "*empty*")
+        string += string_of_coords(self.coords("grid")) or "*empty*"
         string += f"\n{'Gridpoint:':12}"
-        string = add_coords(self.coords("gridpoint"), string, "*empty*")
+        string += string_of_coords(self.coords("gridpoint")) or "*empty*"
 
         string += f"\n{'All:':12}"
-        string = add_coords(self.coords("all"), string, "*empty*")
+        string += string_of_coords(self.coords("all")) or "*empty*"
 
-        string += "\n" + "-" * 36 + " Xarray " + "-" * 36 + "\n"
+        string += "\n" + f"{' Xarray ':-^80}" + "\n"
         string += self.ds().__repr__()
 
         empty_vars = self._ds_manager.empty_vars()
         empty_masks = self._ds_manager.empty_masks()
 
         if empty_masks or empty_vars:
-            string += "\n" + "-" * 34 + " Empty data " + "-" * 34
+            string += "\n" + f"{' Empty data ':-^80}"
 
             if empty_vars:
                 string += "\n" + "Empty variables:"
                 max_len = len(max(empty_vars, key=len))
                 for var in empty_vars:
                     string += f"\n    {var:{max_len+2}}"
-                    string = add_coords(self.coords(self.coord_group(var)), string)
+                    string += string_of_coords(self.coords(self.coord_group(var)))
                     string += f":  {self._coord_manager._default_values.get(var)}"
-
-                    empty_vars = self._ds_manager.empty_vars()
+                    meta_parameter = self._coord_manager.meta_vars.get(var)
+                    if meta_parameter is not None:
+                        string += f" [{meta_parameter.unit()}]"
+                        string += f" {meta_parameter.standard_name()}"
 
             if empty_masks:
                 string += "\n" + "Empty masks:"
                 max_len = len(max(empty_masks, key=len))
                 for mask in empty_masks:
                     string += f"\n    {mask:{max_len+2}}"
-                    string = add_coords(self.coords(self.coord_group(mask)), string)
+                    string += string_of_coords(self.coords(self.coord_group(mask)))
                     string += (
                         f":  {bool(self._coord_manager._default_values.get(mask))}"
                     )
@@ -1200,14 +1272,24 @@ class Skeleton:
         magnitudes = self._coord_manager.magnitudes
 
         if magnitudes:
-            string += "\n" + "-" * 27 + " Magnitudes and directions" + "-" * 27
+            string += "\n" + f"{' Magnitudes and directions ':-^80}"
             for key, value in magnitudes.items():
                 string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
+
+                meta_parameter = self._coord_manager.meta_magnitudes.get(key)
+                if meta_parameter is not None:
+                    string += f" [{meta_parameter.unit()}]"
+                    string += f" {meta_parameter.standard_name()}"
 
         directions = self._coord_manager.directions
         if directions:
             for key, value in directions.items():
                 string += f"\n  {key}: direction of ({value['x']},{value['y']})"
+                meta_parameter = self._coord_manager.meta_directions.get(key)
+                if meta_parameter is not None:
+                    string += f" [{meta_parameter.unit()}]"
+                    string += f" {meta_parameter.standard_name()}"
+
         string += "\n" + "-" * 80
 
         return string

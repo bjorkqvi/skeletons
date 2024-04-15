@@ -2,13 +2,15 @@ import numpy as np
 from typing import Union
 from copy import deepcopy
 from functools import partial
+from geo_parameters.metaparameter import MetaParameter
 
 
 def add_datavar(
-    name,
-    coords="all",
-    default_value=0.0,
-    append=False,
+    name: Union[str, MetaParameter],
+    coords: str = "all",
+    default_value: float = 0.0,
+    direction_from: bool = None,
+    append: bool = False,
 ):
     """stash_get = True means that the coordinate data can be accessed
     by method ._{name}() instead of .{name}()
@@ -22,6 +24,7 @@ def add_datavar(
             data_array: bool = False,
             squeeze: bool = False,
             dask: bool = None,
+            angular: bool = False,
             **kwargs,
         ) -> np.ndarray:
             """Returns the data variable.
@@ -32,14 +35,21 @@ def add_datavar(
             """
             if not self._structure_initialized():
                 return None
-            return self.get(
-                name,
+            var = self.get(
+                name_str,
                 empty=empty,
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
                 **kwargs,
             )
+            if angular:
+                if offset is None:
+                    raise ValueError(
+                        "Cannot ask angular values for a non-directional variable!"
+                    )
+                var = (90 - var + offset) * np.pi / 180
+            return var
 
         def set_var(
             self,
@@ -51,9 +61,9 @@ def add_datavar(
             silent: bool = True,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
-                data = np.full(self.shape(name), data)
+                data = np.full(self.shape(name_str), data)
             self.set(
-                name,
+                name_str,
                 data,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
@@ -66,15 +76,40 @@ def add_datavar(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        c._coord_manager.add_var(name, coords, default_value)
+        name_str = c._coord_manager.add_var(name, coords, default_value)
 
         if append:
-            exec(f"c.{name} = partial(get_var, c)")
-            exec(f"c.set_{name} = partial(set_var, c)")
+            exec(f"c.{name_str} = partial(get_var, c)")
+            exec(f"c.set_{name_str} = partial(set_var, c)")
         else:
-            exec(f"c.{name} = get_var")
-            exec(f"c.set_{name} = set_var")
+            exec(f"c.{name_str} = get_var")
+            exec(f"c.set_{name_str} = set_var")
 
         return c
 
+    # If the direction_from flag is set (True/False) or name is a MetaParameter with directional info
+    # then the data variable is assumed to be a directional one
+    # and conversion to mathematical direction can be made
+
+    if direction_from is None:
+        if not isinstance(name, str):
+            direction_to = (
+                "to_direction" in name.standard_name()
+                or "to_direction" in name.standard_name(alias=True)
+            )
+            direction_from = (
+                "from_direction" in name.standard_name()
+                or "from_direction" in name.standard_name(alias=True)
+            )
+        else:
+            direction_to = None
+    else:
+        direction_to = not direction_from
+
+    if direction_from:
+        offset = 180
+    elif direction_to:
+        offset = 0
+    else:
+        offset = None
     return datavar_decorator

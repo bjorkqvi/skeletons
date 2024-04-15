@@ -2,6 +2,9 @@ from functools import partial
 import pandas as pd
 import numpy as np
 from copy import deepcopy
+from geo_parameters.metaparameter import MetaParameter
+from geo_parameters.wave import Freq, DirsTo, DirsFrom
+from typing import Union
 
 
 def coord_decorator(name, grid_coord, c, stash_get=False):
@@ -12,12 +15,12 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
 
     def set_spacing(self, nx: int = None, dx: float = None):
         """Sets spacing for added variable"""
-        z = self.get(name)
+        z = self.get(name_str)
 
         if dx is not None:
             nx = int((max(z) - min(z)) / dx + 1)
 
-        kwargs = {name: np.linspace(min(z), max(z), nx)}
+        kwargs = {name_str: np.linspace(min(z), max(z), nx)}
         self._init_structure(
             self.x(strict=True),
             self.y(strict=True),
@@ -29,7 +32,7 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
     def get_coord(self, data_array=False, **kwargs):
         if not self._structure_initialized():
             return None
-        data = self._ds_manager.get(name, **kwargs)
+        data = self._ds_manager.get(name_str, **kwargs)
         if data_array:
             return data
         return data.values.copy()
@@ -38,22 +41,22 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
         c._coord_manager = deepcopy(c._coord_manager)
         c._coord_manager.initial_state = False
 
-    c._coord_manager.add_coord(name, grid_coord)
+    name_str = c._coord_manager.add_coord(name, grid_coord)
     if stash_get:
-        exec(f"c._{name} = get_coord")
+        exec(f"c._{name_str} = get_coord")
     else:
-        exec(f"c.{name} = get_coord")
+        exec(f"c.{name_str} = get_coord")
 
-    exec(f"c.set_{name}_spacing = set_spacing")
+    exec(f"c.set_{name_str}_spacing = set_spacing")
     return c
 
 
-def add_coord(grid_coord: bool = False, name: str = "dummy"):
+def add_coord(grid_coord: bool = False, name: Union[str, MetaParameter] = "dummy"):
     """Add a generic coordinate with no customized methods."""
     return partial(coord_decorator, name, grid_coord)
 
 
-def add_time(grid_coord: bool = False, name: str = "time"):
+def add_time(grid_coord: bool = False):
     def wrapper(c):
         def unique_times(times, strf: str):
             return np.unique(np.array(pd.to_datetime(times).strftime(strf).to_list()))
@@ -121,12 +124,13 @@ def add_time(grid_coord: bool = False, name: str = "time"):
 
             return times
 
+        name = "time"
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        c._coord_manager.add_coord(name, grid_coord)
-        exec(f"c.{name} = get_time")
+        _ = c._coord_manager.add_coord(name, grid_coord)
+        c.time = get_time
 
         c.hours = hours
         c.days = days
@@ -137,12 +141,12 @@ def add_time(grid_coord: bool = False, name: str = "time"):
     return wrapper
 
 
-def add_frequency(grid_coord: bool = False, name: str = "freq"):
+def add_frequency(grid_coord: bool = False, name: Union[str, MetaParameter] = Freq):
     def wrapper(c):
         def get_freq(self, angular=False):
             if not self._structure_initialized():
                 return None
-            freq = self._ds_manager.get(name).values.copy()
+            freq = self._ds_manager.get(name_str).values.copy()
             if angular:
                 freq = 2 * np.pi * freq
             return freq
@@ -157,8 +161,8 @@ def add_frequency(grid_coord: bool = False, name: str = "freq"):
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        c._coord_manager.add_coord(name, grid_coord)
-        exec(f"c.{name} = get_freq")
+        name_str = c._coord_manager.add_coord(name, grid_coord)
+        exec(f"c.{name_str} = get_freq")
         c.df = df
 
         return c
@@ -166,29 +170,36 @@ def add_frequency(grid_coord: bool = False, name: str = "freq"):
     return wrapper
 
 
-def add_direction(grid_coord: bool = False, name: str = "dirs"):
+def add_direction(
+    grid_coord: bool = False,
+    name: Union[str, MetaParameter] = None,
+    direction_from: bool = True,
+):
     def wrapper(c):
-        def get_dirs(self, radians=False):
+        def get_dirs(self, angular=False):
             if not self._structure_initialized():
                 return None
-            dirs = self._ds_manager.get(name).values.copy()
-            if radians:
+            dirs = self._ds_manager.get(name_str).data.copy()
+            if angular:
                 dirs = dirs * np.pi / 180
             return dirs
 
-        def ddir(self, radians=False):
+        def ddir(self, angular=False):
             if not self._structure_initialized():
                 return None
-            dirs = get_dirs(self, radians=False).copy()
-            dmax = 2 * np.pi if radians else 360
+            dirs = get_dirs(self, angular=False).copy()
+            dmax = 2 * np.pi if angular else 360
             return dmax / len(dirs)
 
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
-        c._coord_manager.add_coord(name, grid_coord)
-        exec(f"c.{name} = get_dirs")
+
+        name_str = c._coord_manager.add_coord(name, grid_coord)
+        exec(f"c.{name_str} = get_dirs")
         c.dd = ddir
         return c
 
+    if name is None:
+        name = DirsFrom if direction_from else DirsTo
     return wrapper
