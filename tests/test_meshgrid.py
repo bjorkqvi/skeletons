@@ -21,8 +21,8 @@ def test_point_cartesian():
     assert points.longrid(strict=True) is None
     assert points.latgrid(strict=True) is None
 
-    np.testing.assert_almost_equal(points.longrid(), points.lon())
-    np.testing.assert_almost_equal(points.latgrid(), points.lat())
+    assert points.longrid() is None
+    assert points.latgrid() is None
 
 
 def test_point_sphericalk():
@@ -64,14 +64,10 @@ def test_gridded_cartesian():
     assert ygrid.shape == (4, 5)
 
     longrid = points.longrid()
-    np.testing.assert_almost_equal(longrid[0, :], points.lon())
-    np.testing.assert_almost_equal(longrid[-1, :], points.lon())
-    assert longrid.shape == (4, 5)
+    assert longrid is None  # No UTM zone
 
     latgrid = points.latgrid()
-    np.testing.assert_almost_equal(latgrid[:, 0], points.lat())
-    np.testing.assert_almost_equal(latgrid[:, -1], points.lat())
-    assert latgrid.shape == (4, 5)
+    assert latgrid is None  # No UTM zone
 
     assert points.longrid(strict=True) is None
     assert points.latgrid(strict=True) is None
