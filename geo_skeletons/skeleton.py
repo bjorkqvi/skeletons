@@ -4,6 +4,7 @@ import utm as utm_module
 from copy import copy
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
+from .managers.reshape_manager import ReshapeManager
 from typing import Iterable, Union
 from .aux_funcs import distance_funcs, array_funcs, utm_funcs
 from .errors import DataWrongDimensionError
@@ -313,121 +314,72 @@ class Skeleton:
 
         NB! For 1), only non-trivial dimensions need to be identified
         """
-
-        def transpose_me(data, coord_order):
-            if len(data.shape) > len(coord_order):
-                data = data.squeeze()
-            if dask_manager.data_is_dask(data):
-                return da.transpose(data, coord_order)
-            else:
-                return np.transpose(data, coord_order)
-
-        def transpose_given_data(data):
-            """Transposes given data if it is a two dimensional transpose of the wanted size after removing all trivial dimension.
-
-            If sizes match, it just squeezes the data."""
-            # Check if the base data (ignoring any trivial dimensions is the right (or possibly transposed) dimensions
-            expected_squeeezed_shape = self.size(coord_type, squeeze=True)
-            actual_squeezed_shape = data.squeeze().shape
-
-            if expected_squeeezed_shape == actual_squeezed_shape:
-                return data.squeeze()
-
-            # If data is not 2D and doesn't match, we don't want to try to reshape
-            if len(actual_squeezed_shape) != 2 or len(expected_squeeezed_shape) != 2:
-                return None
-
-            # Is the squeezed shape a transpose of the expected squeezed shape?
-            if (
-                tuple(np.flip(actual_squeezed_shape)) == expected_squeeezed_shape
-                and allow_transpose
-            ):
-                return data.squeeze().T
+       
+        # Takes care of dask/numpy operations so we don't have to check every tim
         dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
+        
+        if data is None:
+            data = self.get(name, empty=True, squeeze=False)
+
         # Make constant array if given data has no shape
         data = dask_manager.constant_array(data, self.shape(name), dask=(self.dask or chunks is not None))
         if not self._coord_manager.is_settable(name):
             raise KeyError(f"'{name}' is not a variable that can be set!")
-
-        coord_type = self.coord_group(name)
-
-        metadata = self.metadata(name)
-
-        if data is None:
-            data = self.get(name, empty=True, squeeze=False)
-
-        # Masks are stored as integers
-        if name[-5:] == "_mask":
-            data = data.astype(int)
 
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
         if isinstance(data, xr.DataArray):
             coords = coords or list(data.dims)
             data = data.data
 
-        
-        # 1 & 2)
-        # If the coordinates of the data are explicilty given as a coord-list or thorugh a DataArray, try to reshape to those
-        if coords is not None:
-            allow_reshape = True
-            data_coordinates = self.coords(self.coord_group(name))
-            # Check that we don't do trivial reshape
-            if data_coordinates == coords:
-                allow_reshape = False
-
-            # Create a list of shapes based on the given coordinates
-            coord_order = [coords.index(c) for c in data_coordinates if c in coords]
-            if allow_reshape:
-                if not silent:
-                    print(
-                        f"Reshaping data {data.shape} -> {transpose_me(data, tuple(coord_order)).shape}: {coords} -> {data_coordinates}"
-                    )
-                data = transpose_me(data, tuple(coord_order))
-
-        # First try to set the data here
         if self.dask or chunks is not None:
-            data = dask_manager.dask_me(data, chunks)
+            data = dask_manager.dask_me(data, chunks=chunks)
+
+        # Masks are stored as integers
+        if name[-5:] == "_mask":
+            data = data.astype(int)
+
+
+        # Reshaping        
+        reshape_manager = ReshapeManager(dask_manager=dask_manager,silent=silent)
+
+        # Explicit (1) or explicit though DataArray (2)
+        data_coords = self.coords(self.coord_group(name))
+        data = reshape_manager.explicit_reshape(data, data_coords=data_coords, expected_coords=coords)
+        
+        # Try to set the data
+
+        coord_type = self.coord_group(name)
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-            self.set_metadata(metadata, name, append=False)
-            meta_parameter = self._coord_manager.meta_vars.get(name)
-            if meta_parameter is not None:
-                self.set_metadata(meta_parameter.meta_dict(), name)
-            return
         except DataWrongDimensionError as data_error:
-            if not allow_reshape:
+            if not (allow_reshape or allow_transpose):
                 raise data_error
 
+            # If we are here then the data could not be set, but we are allowed to try to reshape
+            if not silent:
+                print(f"Size of {name} does not match size of {type(self).__name__}...")
+            
+            # Save this for messages
             original_data_shape = data.shape
-            data = transpose_given_data(data)
+            
+            if allow_transpose:
+                data = reshape_manager.transpose_2d(data,expected_squeezed_shape = self.size(coord_type, squeeze=True))
+            if allow_reshape:
+                data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
             if data is None:
-                raise data_error
+                raise data_error # Reshapes have failed
 
-        # We now know that the data is of right size if we ignore trivial dimensions
-        # Data also has all trivial dimensions squeezed by now
+            if not silent:
+                print(f"Reshaping data {original_data_shape} -> {data.shape}...")
 
-        if not silent:
-            print(f"Size of {name} does not match size of {type(self).__name__}...")
+            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
 
-        expected_shape = self.size(coord_type)
-        actual_shape = data.shape
-
-        if expected_shape != actual_shape:
-            trivial_places = tuple(np.where(np.array(expected_shape) == 1)[0])
-            if dask_manager.data_is_dask(data):
-                data = da.expand_dims(data, axis=trivial_places)
-            else:
-                data = np.expand_dims(data, axis=trivial_places)
-
-        if not silent:
-            print(f"Reshaping data {original_data_shape} -> {data.shape}...")
-
-        self._ds_manager.set(data=data, data_name=name, coords=coord_type)
+        # Set the metadata
+        metadata = self.metadata(name)  
         self.set_metadata(metadata, name, append=False)
         meta_parameter = self._coord_manager.meta_vars.get(name)
         if meta_parameter is not None:
             self.set_metadata(meta_parameter.meta_dict(), name)
-        
         return
 
     def get(

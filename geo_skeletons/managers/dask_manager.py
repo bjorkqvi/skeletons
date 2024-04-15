@@ -58,3 +58,17 @@ class DaskManager:
                 data = np.full(shape, data)
 
         return data
+
+    def reshape_me(self, data, coord_order):
+        if len(data.shape) > len(coord_order):
+            data = data.squeeze()
+        if self.data_is_dask(data):
+            return da.transpose(data, coord_order)
+        else:
+            return np.transpose(data, coord_order)
+
+    def expand_dims(self, data, axis=tuple[int]):
+        if self.data_is_dask(data):
+            return da.expand_dims(data, axis=axis)
+        else:
+            return np.expand_dims(data, axis=axis)
