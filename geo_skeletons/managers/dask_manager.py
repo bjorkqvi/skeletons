@@ -15,6 +15,8 @@ class DaskManager:
 
     def dask_me(self, data, chunks=None):
         """Convert a numpy array to a dask array if needed and wanted"""
+        if data is None:
+            return None
         if self.data_is_dask(data):
             if chunks is not None:
                 if not isinstance(data, xr.DataArray):
@@ -33,6 +35,8 @@ class DaskManager:
 
     def undask_me(self, data):
         """Convert a dask array to a numpy array if needed"""
+        if data is None:
+            return None
         if not self.data_is_dask(data):
             return data
 
