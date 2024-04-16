@@ -17,12 +17,19 @@ def test_angular_str():
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
     points.deactivate_dask()
 
-    assert points.u() is None
-    assert points.v() is None
-    assert points.wind() is None
-    assert points.wdir() is None
-    assert points.stokes() is None
-    assert points.stokes_dir() is None
+    np.testing.assert_almost_equal(np.mean(points.u()), 1)
+    np.testing.assert_almost_equal(np.mean(points.v()), -1)
+    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir()), 315)
+    np.testing.assert_almost_equal(np.mean(points.stokes()), 0.1)
+    np.testing.assert_almost_equal(np.mean(points.stokes_dir()), 0)
+
+    assert points.u(strict=True) is None
+    assert points.v(strict=True) is None
+    assert points.wind(strict=True) is None
+    assert points.wdir(strict=True) is None
+    assert points.stokes(strict=True) is None
+    assert points.stokes_dir(strict=True) is None
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 135 + 180)
     np.testing.assert_almost_equal(
@@ -49,12 +56,19 @@ def test_angular_gp():
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
     points.deactivate_dask()
 
-    assert points.u() is None
-    assert points.v() is None
-    assert points.wind() is None
-    assert points.wdir() is None
-    assert points.us() is None
-    assert points.us_dir() is None
+    np.testing.assert_almost_equal(np.mean(points.u()), 1)
+    np.testing.assert_almost_equal(np.mean(points.v()), -1)
+    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir()), 315)
+    np.testing.assert_almost_equal(np.mean(points.us()), 0.1)
+    np.testing.assert_almost_equal(np.mean(points.us_dir()), 0)
+
+    assert points.u(strict=True) is None
+    assert points.v(strict=True) is None
+    assert points.wind(strict=True) is None
+    assert points.wdir(strict=True) is None
+    assert points.us(strict=True) is None
+    assert points.us_dir(strict=True) is None
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 135 + 180)
     np.testing.assert_almost_equal(
@@ -81,12 +95,19 @@ def test_angular_gp_flip_dir():
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
     points.deactivate_dask()
 
-    assert points.u() is None
-    assert points.v() is None
-    assert points.wind() is None
-    assert points.wdir() is None
-    assert points.us() is None
-    assert points.us_dir() is None
+    np.testing.assert_almost_equal(np.mean(points.u()), 1)
+    np.testing.assert_almost_equal(np.mean(points.v()), -1)
+    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir()), 135)
+    np.testing.assert_almost_equal(np.mean(points.us()), 0.1)
+    np.testing.assert_almost_equal(np.mean(points.us_dir()), 0)
+
+    assert points.u(strict=True) is None
+    assert points.v(strict=True) is None
+    assert points.wind(strict=True) is None
+    assert points.wdir(strict=True) is None
+    assert points.us(strict=True) is None
+    assert points.us_dir(strict=True) is None
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 135)
     np.testing.assert_almost_equal(

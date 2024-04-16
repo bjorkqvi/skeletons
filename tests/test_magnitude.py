@@ -14,10 +14,14 @@ def test_magnitude_point():
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
     points.deactivate_dask()
 
-    assert points.u() is None
-    assert points.v() is None
-    assert points.wind() is None
-    assert points.wdir() is None
+    np.testing.assert_almost_equal(np.mean(points.u()), 1)
+    np.testing.assert_almost_equal(np.mean(points.v()), 1)
+    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir()), 225)
+    assert points.u(strict=True) is None
+    assert points.v(strict=True) is None
+    assert points.wind(strict=True) is None
+    assert points.wdir(strict=True) is None
 
     wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
@@ -74,11 +78,14 @@ def test_magnitude_gridded():
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
     points.deactivate_dask()
 
-    assert points.u() is None
-    assert points.v() is None
-    assert points.wind() is None
-    assert points.wdir() is None
-
+    np.testing.assert_almost_equal(np.mean(points.u()), 1)
+    np.testing.assert_almost_equal(np.mean(points.v()), 1)
+    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir()), 225)
+    assert points.u(strict=True) is None
+    assert points.v(strict=True) is None
+    assert points.wind(strict=True) is None
+    assert points.wdir(strict=True) is None
     wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
 
@@ -135,11 +142,14 @@ def test_add_magnitude():
     points.add_magnitude("wind", x="u", y="v", direction="wdir")
     points.deactivate_dask()
 
-    assert points.u() is None
-    assert points.v() is None
-    assert points.wind() is None
-    assert points.wdir() is None
-
+    np.testing.assert_almost_equal(np.mean(points.u()), 1)
+    np.testing.assert_almost_equal(np.mean(points.v()), 1)
+    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir()), 225)
+    assert points.u(strict=True) is None
+    assert points.v(strict=True) is None
+    assert points.wind(strict=True) is None
+    assert points.wdir(strict=True) is None
     wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
 

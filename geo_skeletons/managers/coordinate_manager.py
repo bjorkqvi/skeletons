@@ -222,9 +222,13 @@ class CoordinateManager:
         )
 
     def compute_magnitude(self, x, y):
+        if x is None or y is None:
+            return None
         return (x**2 + y**2) ** 0.5
 
     def compute_direction(self, x, y, angular: bool = False, dask: bool = True):
+        if x is None or y is None:
+            return None
         if dask or hasattr(x, "chunks"):
             dirs = da.arctan2(y, x)
         else:
