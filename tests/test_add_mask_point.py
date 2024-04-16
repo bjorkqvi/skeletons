@@ -125,3 +125,72 @@ def test_get_points():
     lon, lat = data.land_points()
     np.testing.assert_array_almost_equal(lon, np.array([10]))
     np.testing.assert_array_almost_equal(lat, np.array([30]))
+
+
+def test_add_mask_trigger():
+    @add_mask(
+        name="sea",
+        default_value=1.0,
+        opposite_name="land",
+        triggered_by="hs",
+        valid_range=(0, 3),
+        range_inclusive=(False, True),
+    )
+    @add_datavar(name="hs", default_value=0.0)
+    class WaveHeight(PointSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
+    data.deactivate_dask()
+    data.set_hs([0, 3])
+    np.testing.assert_almost_equal(data.sea_mask(), np.array([False, True]))
+
+
+def test_add_mask_trigger_inf():
+    @add_mask(
+        name="sea",
+        default_value=1.0,
+        opposite_name="land",
+        triggered_by="hs",
+        valid_range=(0, None),
+        range_inclusive=False,
+    )
+    @add_datavar(name="hs", default_value=0.0)
+    class WaveHeight(PointSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
+    data.deactivate_dask()
+    data.set_hs([0, 3])
+    np.testing.assert_almost_equal(data.sea_mask(), np.array([False, True]))
+
+
+def test_add_mask_trigger_two():
+    @add_mask(
+        name="point",
+        default_value=0.0,
+        triggered_by="hs",
+        valid_range=(-999, -999),
+    )
+    @add_mask(
+        name="sea",
+        default_value=1.0,
+        opposite_name="land",
+        triggered_by="hs",
+        valid_range=(0, None),
+        range_inclusive=False,
+    )
+    @add_datavar(name="hs", default_value=0.0)
+    class WaveHeight(PointSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10, 20, 30), lat=(30, 40, 50))
+    data.deactivate_dask()
+    data.set_hs([0, -999, 3])
+    np.testing.assert_almost_equal(data.sea_mask(), np.array([False, False, True]))
+    np.testing.assert_almost_equal(data.land_mask(), np.array([True, True, False]))
+    np.testing.assert_almost_equal(data.point_mask(), np.array([False, True, False]))
+
+    data.set_sea_mask([True, True, False])
+    np.testing.assert_almost_equal(data.land_mask(), np.array([False, False, True]))
+    np.testing.assert_almost_equal(data.sea_mask(), np.array([True, True, False]))

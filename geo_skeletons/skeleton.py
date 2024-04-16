@@ -395,6 +395,25 @@ class Skeleton:
         meta_parameter = self._coord_manager.meta_vars.get(name)
         if meta_parameter is not None:
             self.set_metadata(meta_parameter.meta_dict(), name)
+
+        ## Did we trigger any masks
+        for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(
+            name, []
+        ):
+            mask_name = f"{mask_name}_mask"
+
+            if range_inclusive[0]:
+                low_mask = data >= valid_range[0]
+            else:
+                low_mask = data > valid_range[0]
+
+            if range_inclusive[1]:
+                high_mask = data <= valid_range[1]
+            else:
+                high_mask = data < valid_range[1]
+            mask = np.logical_and(low_mask, high_mask)
+            self.set(mask_name, mask)
+
         return
 
     def get(
