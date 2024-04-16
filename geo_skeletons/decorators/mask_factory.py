@@ -13,7 +13,7 @@ from ..managers.dask_manager import DaskManager
 
 def add_mask(
     name: Union[str, MetaParameter],
-    default_value: int,
+    default_value: int = 0,
     coords: str = "grid",
     opposite_name: Union[str, MetaParameter] = None,
     triggered_by: str = None,
