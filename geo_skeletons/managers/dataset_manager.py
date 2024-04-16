@@ -174,6 +174,7 @@ class DatasetManager:
         self,
         name: str,
         empty: bool = False,
+        strict: bool = False,
         **kwargs,
     ) -> xr.DataArray:
         """Gets data from Dataset.
@@ -185,9 +186,18 @@ class DatasetManager:
         if ds is None:
             return None
 
+        data = ds.get(name)
+        if data is None:
+            if strict:
+                return None
+            else:
+                empty = True
+
         if empty:
             coords = self.coord_manager.added_vars().get(name)
             coords = coords or self.coord_manager.added_masks().get(name)
+            if coords is None:
+                return None
             empty_data = dask.array.full(
                 self.coords_to_size(self.coord_manager.coords(coords)),
                 self.coord_manager._default_values.get(name),
@@ -197,14 +207,9 @@ class DatasetManager:
                 coord: self.get(coord) for coord in self.coord_manager.coords(coords)
             }
 
-            return self._slice_data(
-                xr.DataArray(data=empty_data, coords=coords_dict), **kwargs
-            )
+            data = xr.DataArray(data=empty_data, coords=coords_dict)
 
-        if ds.get(name) is None:
-            return None
-        else:
-            return self._slice_data(ds.get(name), **kwargs)
+        return self._slice_data(data, **kwargs)
 
     def get_attrs(self) -> dict:
         """Gets a dictionary of all the data variable and global atributes.

@@ -10,7 +10,8 @@ def test_add_datavar():
         pass
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40))
-    assert data.hs() is None
+    np.testing.assert_almost_equal(np.mean(data.hs()), 0.0)
+    assert data.hs(strict=True) is None
     data.set_hs(1)
     assert np.mean(data.hs()) == 1
     data.set_hs(1.0)
@@ -26,7 +27,8 @@ def test_add_coord_and_datavar():
         pass
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
-    assert data.hs() is None
+    np.testing.assert_almost_equal(np.mean(data.hs()), 0.0)
+    assert data.hs(strict=True) is None
     data.set_hs(1)
     assert np.mean(data.hs()) == 1
     data.set_hs(1.0)

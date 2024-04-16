@@ -419,7 +419,8 @@ class Skeleton:
     def get(
         self,
         name,
-        empty=False,
+        empty: bool = False,
+        strict: bool = False,
         data_array: bool = False,
         squeeze: bool = True,
         boolean_mask: bool = False,
@@ -439,6 +440,7 @@ class Skeleton:
             x = self.get(
                 self._coord_manager.magnitudes[name].get("x"),
                 empty=empty,
+                strict=strict,
                 data_array=True,
                 squeeze=squeeze,
                 boolean_mask=boolean_mask,
@@ -447,6 +449,7 @@ class Skeleton:
             y = self.get(
                 self._coord_manager.magnitudes[name].get("y"),
                 empty=empty,
+                strict=strict,
                 data_array=True,
                 squeeze=squeeze,
                 boolean_mask=boolean_mask,
@@ -457,6 +460,7 @@ class Skeleton:
             x = self.get(
                 self._coord_manager.directions[name].get("x"),
                 empty=empty,
+                strict=strict,
                 data_array=True,
                 squeeze=squeeze,
                 boolean_mask=boolean_mask,
@@ -465,6 +469,7 @@ class Skeleton:
             y = self.get(
                 self._coord_manager.directions[name].get("y"),
                 empty=empty,
+                strict=strict,
                 data_array=True,
                 squeeze=squeeze,
                 boolean_mask=boolean_mask,
@@ -474,7 +479,7 @@ class Skeleton:
                 x, y, angular=angular, dask=dask
             )
         else:
-            data = self._ds_manager.get(name, empty=empty, **kwargs)
+            data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
 
         # The coordinates are never given as dask arrays
         if name in self.coords("all"):
