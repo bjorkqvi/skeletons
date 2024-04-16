@@ -1129,7 +1129,7 @@ class Skeleton:
         if name is None:
             return self.ds().attrs.copy()
 
-        data_array = self.get(name, data_array=True)
+        data_array = self.get(name, data_array=True, strict=True)
         if data_array is not None:
             return data_array.attrs.copy()
 
