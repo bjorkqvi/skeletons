@@ -51,7 +51,7 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
     return c
 
 
-def add_coord(grid_coord: bool = False, name: Union[str, MetaParameter] = "dummy"):
+def add_coord(name: Union[str, MetaParameter] = "dummy", grid_coord: bool = False):
     """Add a generic coordinate with no customized methods."""
     return partial(coord_decorator, name, grid_coord)
 
@@ -141,7 +141,7 @@ def add_time(grid_coord: bool = False):
     return wrapper
 
 
-def add_frequency(grid_coord: bool = False, name: Union[str, MetaParameter] = Freq):
+def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = False):
     def wrapper(c):
         def get_freq(self, angular=False):
             if not self._structure_initialized():
@@ -171,8 +171,8 @@ def add_frequency(grid_coord: bool = False, name: Union[str, MetaParameter] = Fr
 
 
 def add_direction(
-    grid_coord: bool = False,
     name: Union[str, MetaParameter] = None,
+    grid_coord: bool = False,
     direction_from: bool = True,
 ):
     def wrapper(c):

@@ -27,16 +27,16 @@ def test_two_coords():
     with pytest.raises(VariableExistsError):
 
         @add_coord(name="u")
-        @add_coord(name="u")
+        @add_coord("u")
         class Wrong(PointSkeleton):
             pass
 
 
 def test_mix():
-    @add_mask("sea", default_value=0)
+    @add_mask("sea")
     @add_datavar("v")
     @add_datavar("u")
-    @add_coord(name="z")
+    @add_coord("z")
     class Wrong(PointSkeleton):
         pass
 
