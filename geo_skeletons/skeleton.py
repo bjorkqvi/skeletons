@@ -614,6 +614,32 @@ class Skeleton:
             return None
         return self._ds_manager.ds()
 
+    def from_cf(self, standard_name: str) -> list[str]:
+        """Finds the variable names that have the given standard name"""
+        names = []
+        for key, val in self._coord_manager.meta_vars.items():
+            if (
+                val.standard_name() == standard_name
+                or val.standard_name(alias=True) == standard_name
+            ):
+                names.append(key)
+
+        for key, val in self._coord_manager.meta_magnitudes.items():
+            if (
+                val.standard_name() == standard_name
+                or val.standard_name(alias=True) == standard_name
+            ):
+                names.append(key)
+
+        for key, val in self._coord_manager.meta_directions.items():
+            if (
+                val.standard_name() == standard_name
+                or val.standard_name(alias=True) == standard_name
+            ):
+                names.append(key)
+
+        return names
+
     def size(self, coords: str = "all", squeeze: bool = False, **kwargs) -> tuple[int]:
         """Returns the size of the Dataset.
 

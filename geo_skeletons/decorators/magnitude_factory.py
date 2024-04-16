@@ -248,13 +248,14 @@ def add_magnitude(
     # Always respect explicitly set directional convention
     # Otherwise parse from MetaParameter is possible
     # Default to direction_from
-    if direction_from is None:
-        if not isinstance(direction, str):
-            direction_from = not (
-                "to_direction" in direction.standard_name()
-                or "to_direction" in direction.standard_name(alias=True)
-            )
-        else:
-            direction_from = True
-    offset = 180 if direction_from else 0
+    if direction is not None:
+        if direction_from is None:
+            if not isinstance(direction, str):
+                direction_from = not (
+                    "to_direction" in direction.standard_name()
+                    or "to_direction" in direction.standard_name(alias=True)
+                )
+            else:
+                direction_from = True
+        offset = 180 if direction_from else 0
     return magnitude_decorator
