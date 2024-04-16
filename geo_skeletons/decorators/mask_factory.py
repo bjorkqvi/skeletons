@@ -16,6 +16,9 @@ def add_mask(
     default_value: int,
     coords: str = "grid",
     opposite_name: Union[str, MetaParameter] = None,
+    triggered_by: str = None,
+    valid_range: tuple[float] = (0.0, None),
+    range_inclusive: float = True,
 ):
     """coord_type = 'all', 'spatial', 'grid' or 'gridpoint'"""
 
@@ -130,7 +133,13 @@ def add_mask(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
         name_str, opposite_name_str = c._coord_manager.add_mask(
-            name, coords, default_value, opposite_name
+            name,
+            coords,
+            default_value,
+            opposite_name,
+            triggered_by,
+            valid_range,
+            range_inclusive,
         )
         exec(f"c.{name_str}_mask = get_mask")
         exec(f"c.{name_str}_points = get_masked_points")

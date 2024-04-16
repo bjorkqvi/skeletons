@@ -51,6 +51,10 @@ class DaskManager:
                 data = da.full(shape, data)
             else:
                 data = np.full(shape, data)
+
+        if isinstance(data, list) or isinstance(data, tuple):
+            data = self.dask_me(data)
+
         if data is not None and data.shape == ():
             if dask or self.data_is_dask(data):
                 data = da.full(shape, data)

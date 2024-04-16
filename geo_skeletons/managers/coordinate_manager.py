@@ -38,6 +38,9 @@ class CoordinateManager:
         self.meta_magnitudes: dict[str, MetaParameter] = {}
         self.meta_directions: dict[str, MetaParameter] = {}
 
+        # E.g. creating a land-mask might be triggered by setting a bathymetry or hs variable
+        self.triggers: dict[str, list[tuple[str, tuple[float], tuple[bool]]]] = {}
+
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
@@ -55,7 +58,14 @@ class CoordinateManager:
         return name
 
     def add_mask(
-        self, name: str, coords: str, default_value: int, opposite_name: str
+        self,
+        name: str,
+        coords: str,
+        default_value: int,
+        opposite_name: str,
+        triggered_by: str,
+        valid_range: tuple[float],
+        range_inclusive: bool,
     ) -> tuple[str, str]:
         """Add a mask that the Skeleton will use."""
         name, meta = get_name_str_and_meta(name)
@@ -67,6 +77,17 @@ class CoordinateManager:
         if opposite_name is not None:
             opposite_name, meta = get_name_str_and_meta(opposite_name)
             self._masks["opposite"][f"{opposite_name}_mask"] = f"{name}_mask"
+
+        if triggered_by:
+            valid_range = tuple([np.inf if r is None else r for r in valid_range])
+            if len(valid_range) != 2:
+                raise ValueError(f"valid_rang has to be of length 2 (upper, lower)!")
+            if isinstance(range_inclusive, bool):
+                range_inclusive = (range_inclusive, range_inclusive)
+
+            list_of_computations = self.triggers.get(triggered_by, [])
+            list_of_computations.append((name, valid_range, range_inclusive))
+            self.triggers[triggered_by] = list_of_computations
 
         return name, opposite_name
 
