@@ -1,9 +1,9 @@
 [project]
 name = "geo-skeletons"
-version = "0.11.0"
+version = "0.11.1"
 description = "Easily extended way to represent structured and unstructured geophysical data."
 authors = [ { name = "Jan-Victor Björkqvist", email = "janvb@met.no" } ]
-dependencies = [ "numpy", "xarray", "pandas", "utm", "geopy", "dask" ]
+dependencies = [ "numpy", "xarray", "pandas", "utm", "geopy", "dask","geo-parameters" ]
 
 #[project.optional-dependencies]
 #tests = [ "numpy", "xarray", "pandas", "utm", "geopy"]
