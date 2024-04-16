@@ -4,6 +4,21 @@ import geo_parameters as gp
 import numpy as np
 
 
+def test_cf_no_info():
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_datavar("v", default_value=1)
+    @add_datavar("u", default_value=1)
+    class Magnitude(PointSkeleton):
+        pass
+
+    points = Magnitude(x=0, y=0)
+
+    assert points.from_cf(gp.wind.XWind.standard_name()) == []
+    assert points.from_cf(gp.wind.YWind.standard_name()) == []
+    assert points.from_cf(gp.wind.Wind.standard_name()) == []
+    assert points.from_cf(gp.wind.WindDir.standard_name()) == []
+
+
 def test_cf():
     @add_magnitude(name=gp.wind.Wind, x="u", y="v", direction=gp.wind.WindDir)
     @add_datavar(gp.wind.YWind("v"), default_value=1)
@@ -19,7 +34,7 @@ def test_cf():
     assert points.from_cf(gp.wind.WindDir.standard_name()) == ["wind_dir"]
 
 
-def test_cf():
+def test_cf_several():
     @add_magnitude(name=gp.wind.Wind("wind2"), x="u", y="v")
     @add_magnitude(name=gp.wind.Wind, x="u", y="v", direction=gp.wind.WindDir)
     @add_datavar(gp.wind.Wind("umag"), default_value=1)

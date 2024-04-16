@@ -618,6 +618,8 @@ class Skeleton:
         """Finds the variable names that have the given standard name"""
         names = []
         for key, val in self._coord_manager.meta_vars.items():
+            if val is None:
+                continue
             if (
                 val.standard_name() == standard_name
                 or val.standard_name(alias=True) == standard_name
@@ -625,6 +627,8 @@ class Skeleton:
                 names.append(key)
 
         for key, val in self._coord_manager.meta_magnitudes.items():
+            if val is None:
+                continue
             if (
                 val.standard_name() == standard_name
                 or val.standard_name(alias=True) == standard_name
@@ -632,6 +636,8 @@ class Skeleton:
                 names.append(key)
 
         for key, val in self._coord_manager.meta_directions.items():
+            if val is None:
+                continue
             if (
                 val.standard_name() == standard_name
                 or val.standard_name(alias=True) == standard_name
