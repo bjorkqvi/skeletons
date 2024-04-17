@@ -248,7 +248,7 @@ def test_transpose_with_trivial_dim_starting_with_numpy():
 
     points.set_dummy(data_T, allow_transpose=True)
     assert data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(), data.squeeze())
 
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2)
@@ -258,7 +258,7 @@ def test_transpose_with_trivial_dim_starting_with_numpy():
 
     points.set_dummy(data_T2, allow_transpose=True)
     assert data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(squeeze=False), data)
 
     points.deactivate_dask()
 
@@ -270,14 +270,14 @@ def test_transpose_with_trivial_dim_starting_with_numpy():
 
     points.set_dummy(data_T, allow_transpose=True)
     assert not data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(squeeze=False), data)
 
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2)
 
     points.set_dummy(data_T2, allow_transpose=True)
     assert not data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(), data.squeeze())
 
 
 def test_transpose_with_trivial_dim_starting_with_dask():
@@ -303,14 +303,14 @@ def test_transpose_with_trivial_dim_starting_with_dask():
 
     points.set_dummy(data_T, allow_transpose=True)
     assert data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(), data.squeeze())
 
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2)
 
     points.set_dummy(data_T2, allow_transpose=True)
     assert data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(squeeze=False), data)
 
     points.deactivate_dask()
 
@@ -322,14 +322,14 @@ def test_transpose_with_trivial_dim_starting_with_dask():
 
     points.set_dummy(data_T, allow_transpose=True)
     assert not data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(squeeze=False), data)
 
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2)
 
     points.set_dummy(data_T2, allow_transpose=True)
     assert not data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(), data.squeeze())
 
 
 def test_transpose_with_trivial_dim_explicit_starting_with_dask():
@@ -355,14 +355,14 @@ def test_transpose_with_trivial_dim_explicit_starting_with_dask():
 
     points.set_dummy(data_T, coords=["lon", "lat"])
     assert data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(squeeze=False), data)
 
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2)
 
     points.set_dummy(data_T2, coords=["lon", "lat"])
     assert data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(), data.squeeze())
 
     points.deactivate_dask()
 
@@ -374,11 +374,11 @@ def test_transpose_with_trivial_dim_explicit_starting_with_dask():
 
     points.set_dummy(data_T, coords=["lon", "lat"])
     assert not data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(), data.squeeze())
 
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T2)
 
     points.set_dummy(data_T2, coords=["lon", "lat"])
     assert not data_is_dask(points.dummy())
-    np.testing.assert_allclose(points.dummy(), data)
+    np.testing.assert_allclose(points.dummy(squeeze=False), data)
