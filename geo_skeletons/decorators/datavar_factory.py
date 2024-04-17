@@ -22,7 +22,7 @@ def add_datavar(
             self,
             empty: bool = False,
             data_array: bool = False,
-            squeeze: bool = False,
+            squeeze: bool = True,
             dask: bool = None,
             angular: bool = False,
             **kwargs,

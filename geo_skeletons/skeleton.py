@@ -498,12 +498,16 @@ class Skeleton:
             data = data.astype(bool)
 
         if squeeze:
-            dims_to_drop = set(self.coords("all")) - set(self.coords("spatial"))
             dims_to_drop = [
                 dim
-                for dim in dims_to_drop
+                for dim in self.coords("all")
                 if self.shape(dim)[0] == 1 and dim in data.coords
             ]
+
+            # If it looks like we are dropping all coords, then save the spatial ones
+            if dims_to_drop == self.coords("all"):
+                dims_to_drop = list(set(dims_to_drop) - set(self.coords("spatial")))
+
             if dims_to_drop:
                 data = data.squeeze(dim=dims_to_drop, drop=True)
 
