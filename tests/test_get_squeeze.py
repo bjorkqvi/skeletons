@@ -6,6 +6,17 @@ import numpy as np
 import pytest
 
 
+def test_squeeze_coords():
+    @add_coord(name="z")
+    class DummySkeleton(PointSkeleton):
+        pass
+
+    points = DummySkeleton(x=0, y=0, z=[1, 2, 3])
+    assert points.inds().shape == (1,)
+    assert points.get("inds").shape == (1,)
+    assert points.z().shape == (3,)
+
+
 def test_squeeze_trivial_spatial():
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
