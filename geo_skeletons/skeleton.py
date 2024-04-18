@@ -277,6 +277,7 @@ class Skeleton:
 
         dims = self.ds().dims
         index_list = list(np.arange(len(dims)))
+
         for n, dim in enumerate(dims):
             var = self.get(dim)
             if var is None:
@@ -284,7 +285,7 @@ class Skeleton:
             ind = kwargs.get(dim, slice(len(var)))
             index_list[n] = ind
 
-        old_data = self.get(name)
+        old_data = self.get(name, squeeze=False)
         N = len(old_data.shape)
         data_str = "old_data["
         for n in range(N):
@@ -292,7 +293,7 @@ class Skeleton:
         data_str = data_str[:-1]
         data_str += "] = data"
         exec(data_str)
-        self.set(name, old_data)
+        self.set(name, old_data, allow_reshape=False)
         return
 
     def set(
@@ -513,7 +514,6 @@ class Skeleton:
             if dims_to_drop:
                 data = data.squeeze(dim=dims_to_drop, drop=True)
 
-
         dask_manager = DaskManager(self.chunks)
         # if data.shape == ():  # Always keep at least the spatial dimensions
         #     reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=True)
@@ -686,7 +686,7 @@ class Skeleton:
     def inds(self, **kwargs) -> np.ndarray:
         if not self._structure_initialized():
             return None
-        return self.get('inds',**kwargs)
+        return self.get("inds", **kwargs)
         # inds = self._ds_manager.get("inds", **kwargs)
         # if inds is None:
         #     return None
