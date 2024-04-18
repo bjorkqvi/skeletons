@@ -5,6 +5,7 @@ class SkeletonIterator:
     def __init__(
         self, dict_of_coords: dict, coords_to_iterate: list[str], skeleton
     ) -> None:
+
         self.dict_of_coords = dict_of_coords
         self.coords_to_iterate = list(coords_to_iterate)
         # Needed to get the ordering right with itertools

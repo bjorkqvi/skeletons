@@ -505,11 +505,14 @@ class Skeleton:
             ]
 
             # If it looks like we are dropping all coords, then save the spatial ones
-            if dims_to_drop == self.coords("all"):
-                dims_to_drop = list(set(dims_to_drop) - set(self.coords("spatial")))
+            if dims_to_drop == list(data.coords):
+                dims_to_drop = list(
+                    set(dims_to_drop) - set(self.coords("spatial")) - set([name])
+                )
 
             if dims_to_drop:
                 data = data.squeeze(dim=dims_to_drop, drop=True)
+
 
         dask_manager = DaskManager(self.chunks)
         # if data.shape == ():  # Always keep at least the spatial dimensions
@@ -683,13 +686,14 @@ class Skeleton:
     def inds(self, **kwargs) -> np.ndarray:
         if not self._structure_initialized():
             return None
-        inds = self._ds_manager.get("inds", **kwargs)
-        if inds is None:
-            return None
-        vals = inds.values.copy()
-        if vals.shape == ():
-            vals = vals.reshape(1)[0]
-        return vals
+        return self.get('inds',**kwargs)
+        # inds = self._ds_manager.get("inds", **kwargs)
+        # if inds is None:
+        #     return None
+        # vals = inds.values.copy()
+        # if vals.shape == ():
+        #     vals = vals.reshape(1)[0]
+        # return vals
 
     def x(
         self,
