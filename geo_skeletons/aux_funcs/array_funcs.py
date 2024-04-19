@@ -82,6 +82,8 @@ def check_that_variables_equal_length(x, y) -> bool:
 def sanitize_time_input(time):
     if isinstance(time, str):
         return pd.DatetimeIndex([time])
+    if isinstance(time, np.ndarray):
+        return pd.DatetimeIndex(np.atleast_1d(time))
     if not isinstance(time, Iterable):
         return pd.DatetimeIndex([time])
     return pd.DatetimeIndex(time)

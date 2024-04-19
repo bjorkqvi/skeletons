@@ -1,3 +1,6 @@
+from typing import Union
+
+
 class UnknownCoordinateError(Exception):
     pass
 
@@ -16,10 +19,15 @@ class CoordinateWrongLengthError(Exception):
 
 
 class DataWrongDimensionError(Exception):
-    def __init__(self, data_shape: tuple[int], coord_shape: tuple[int]):
-        super().__init__(
-            f"Data has shape {data_shape}, but coordinates define a shape {coord_shape}!!!"
-        )
+    def __init__(self, data_shape: tuple[int], coord_shape: Union[tuple[int], int]):
+        if isinstance(coord_shape, int):  # Only amount of coords given
+            super().__init__(
+                f"Data has shape {data_shape}, but only {coord_shape} coordinates provided!!!"
+            )
+        else:
+            super().__init__(
+                f"Data has shape {data_shape}, but coordinates define a shape {coord_shape}!!!"
+            )
 
 
 class GridError(Exception):

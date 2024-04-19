@@ -1,9 +1,5 @@
 from geo_skeletons import GriddedSkeleton, PointSkeleton
 from geo_skeletons.decorators import add_datavar, add_coord
-from geo_skeletons.errors import DataWrongDimensionError
-import dask.array as da
-import numpy as np
-import pytest
 
 
 def test_squeeze_coords():
