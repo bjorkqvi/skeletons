@@ -64,8 +64,6 @@ class DaskManager:
         return data
 
     def reshape_me(self, data, coord_order):
-        if len(data.shape) > len(coord_order):
-            data = data.squeeze()
         if self.data_is_dask(data):
             return da.transpose(data, coord_order)
         else:

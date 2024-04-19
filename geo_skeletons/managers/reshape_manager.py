@@ -1,5 +1,7 @@
 import numpy as np
 
+from geo_skeletons.errors import DataWrongDimensionError
+
 
 class ReshapeManager:
     def __init__(
@@ -25,6 +27,9 @@ class ReshapeManager:
         coord_order = [
             expected_coords.index(c) for c in data_coords if c in expected_coords
         ]
+
+        if len(data.shape) > len(coord_order):
+            raise DataWrongDimensionError(data.shape, len(coord_order))
 
         original_shape = data.shape
         data = self.dask_manager.reshape_me(data, tuple(coord_order))

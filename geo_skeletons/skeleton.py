@@ -34,11 +34,11 @@ class Skeleton:
         lat=None,
         name: str = "LonelySkeleton",
         utm: tuple[int, str] = None,
+        chunks: Union[tuple[int], str] = "auto",
         **kwargs,
     ) -> None:
         self.name = name
-        self.dask = True
-        self.chunks = "auto"
+        self.chunks = chunks
         self._init_structure(x, y, lon, lat, utm=utm, **kwargs)
         self.data_vars = MethodType(_data_vars, self)
 
@@ -55,11 +55,15 @@ class Skeleton:
         )
 
     @classmethod
-    def from_ds(cls, ds: xr.Dataset, **kwargs):
+    def from_ds(
+        cls,
+        ds: xr.Dataset,
+        chunks: Union[tuple[int], str] = "auto",
+        **kwargs,
+    ):
         """Generats a PointSkeleton from an xarray Dataset. All coordinates must be present, but only matching data variables included.
 
         Missing coordinates can be provided as kwargs."""
-        coords = list(ds.coords) + list(kwargs.keys())
 
         # Getting mandatory spatial variables
         lon, lat = ds.get("lon"), ds.get("lat")
@@ -78,27 +82,30 @@ class Skeleton:
             raise ValueError("Can't find x/y lon/lat pair in Dataset!")
 
         # Gather other coordinates
+        coords = cls._coord_manager.coords(
+            "all"
+        )  # list(ds.coords) + list(kwargs.keys())
         additional_coords = {}
         for coord in [
             coord for coord in coords if coord not in ["inds", "lon", "lat", "x", "y"]
         ]:
             ds_val = ds.get(coord)
-            if ds_val is not None:
-                ds_val = ds_val.values
-            provided_val = kwargs.get(coord)
 
-            val = provided_val
+            provided_val = kwargs.get(coord)
+            val = provided_val if provided_val is not None else ds_val
+
             if val is None:
-                val = ds_val
-            # val = provided_val or ds_val
-            if val is None:
-                raise ValueError(
+                raise KeyError(
                     f"Can't find required coordinate {coord} in Dataset or in kwargs!"
                 )
+            else:
+                if isinstance(val, xr.DataArray):
+                    val = val.data
             additional_coords[coord] = val
 
         # Initialize Skeleton
-        points = cls(x=x, y=y, lon=lon, lat=lat, **additional_coords)
+        points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, **additional_coords)
+
         # Set data variables and masks that exist
         for data_var in points.data_vars():
             val = ds.get(data_var)
@@ -146,6 +153,7 @@ class Skeleton:
             self._ds_manager = DatasetManager(self._coord_manager)
 
         self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
+
         if utm == (None, None):
             utm = None
         self.set_utm(utm, silent=True)
@@ -184,7 +192,7 @@ class Skeleton:
     def data_vars(cls) -> None:
         return list(cls._coord_manager.added_vars().keys())
 
-    def coords(self, coords: str = "all") -> list[str]:
+    def coords(self, coords: str = "all", squeeze: bool = False) -> list[str]:
         """Returns a list of the coordinates from the Dataset.
 
         'all' [default]: all coordinates in the Dataset
@@ -192,7 +200,13 @@ class Skeleton:
         'grid': coordinates for the grid (spatial and e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        return self._coord_manager.coords(coords)
+        coordinates = self._coord_manager.coords(coords)
+        if squeeze:
+            # Don't allow spatial to be squeezed out if that is only thing left
+            coordinates = [
+                c for c in coordinates if len(self.get(c)) > 1
+            ] or self.coords("spatial")
+        return coordinates
 
     def coord_group(self, var: str) -> str:
         """Returns the coordinate group that a variable/mask is defined over.
@@ -324,6 +338,11 @@ class Skeleton:
         NB! For 1), only non-trivial dimensions need to be identified
         """
 
+        if not isinstance(name, str):
+            raise TypeError(
+                f"'name' must be of type 'str', not '{type(name).__name__}'!"
+            )
+
         # Takes care of dask/numpy operations so we don't have to check every tim
         dask_manager = DaskManager(chunks=chunks or self.chunks)
 
@@ -332,7 +351,7 @@ class Skeleton:
 
         # Make constant array if given data has no shape
         data = dask_manager.constant_array(
-            data, self.shape(name), dask=(self.dask or chunks is not None)
+            data, self.shape(name), dask=(self.dask() or chunks is not None)
         )
         if not self._coord_manager.is_settable(name):
             raise KeyError(f"'{name}' is not a variable that can be set!")
@@ -342,7 +361,7 @@ class Skeleton:
             coords = coords or list(data.dims)
             data = data.data
 
-        if self.dask or chunks is not None:
+        if self.dask() or chunks is not None:
             data = dask_manager.dask_me(data, chunks=chunks)
 
         # Masks are stored as integers
@@ -353,13 +372,28 @@ class Skeleton:
         reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
 
         # Explicit (1) or explicit though DataArray (2)
-        data_coords = self.coords(self.coord_group(name))
-        data = reshape_manager.explicit_reshape(
-            data, data_coords=data_coords, expected_coords=coords
-        )
-
+        try:
+            data = reshape_manager.explicit_reshape(
+                data,
+                data_coords=self.coords(self.coord_group(name)),
+                expected_coords=coords,
+            )
+        except DataWrongDimensionError as data_error:
+            # Try to squeeze out all trivial dimensions from both data and coordinates and see if that works
+            if data.shape == data.squeeze().shape:
+                raise data_error
+            squeezed_coords = [
+                c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
+            ]
+            self.set(
+                name=name,
+                data=data.squeeze(),
+                coords=squeezed_coords,
+                silent=silent,
+                chunks=chunks,
+            )
+            return
         # Try to set the data
-
         coord_type = self.coord_group(name)
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
@@ -515,16 +549,10 @@ class Skeleton:
                 data = data.squeeze(dim=dims_to_drop, drop=True)
 
         dask_manager = DaskManager(self.chunks)
-        # if data.shape == ():  # Always keep at least the spatial dimensions
-        #     reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=True)
-        #     breakpoint()
-        #     data = reshape_manager.unsqueeze(
-        #         data, expected_shape=self.coords("spatial")
-        #     )
 
         # Use dask mode default if not explicitly overridden
         if dask is None:
-            dask = self.dask
+            dask = self.dask()
 
         if dask:
             data = dask_manager.dask_me(data)
@@ -1211,7 +1239,6 @@ class Skeleton:
     def activate_dask(
         self, chunks="auto", primary_dim: str = None, rechunk: bool = True
     ) -> None:
-        self.dask = True
         self.chunks = chunks
         if rechunk:
             self.rechunk(chunks, primary_dim)
@@ -1222,7 +1249,6 @@ class Skeleton:
         1) Data will not be converted to dask-arrays when set, unless chunks provided
         2) Data will be converted from dask-arrays to numpy arrays when get
         3) All data will be converted to numpy arrays if unchunk=True"""
-        self.dask = False
         self.chunks = None
 
         if dechunk:
@@ -1266,6 +1292,9 @@ class Skeleton:
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.undask_me(data))
+
+    def dask(self) -> bool:
+        return self.chunks is not None
 
     @property
     def x_str(self) -> str:
