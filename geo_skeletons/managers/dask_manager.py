@@ -6,7 +6,7 @@ import numpy as np
 
 class DaskManager:
     def __init__(self, chunks="auto"):
-        self.chunks = chunks or "auto"
+        self.chunks = chunks
 
     @staticmethod
     def data_is_dask(data) -> bool:
@@ -17,6 +17,10 @@ class DaskManager:
         """Convert a numpy array to a dask array if needed and wanted"""
         if data is None:
             return None
+
+        if self.chunks is None and chunks is None:
+            return np.array(data)
+
         if self.data_is_dask(data):
             if chunks is not None:
                 if not isinstance(data, xr.DataArray):

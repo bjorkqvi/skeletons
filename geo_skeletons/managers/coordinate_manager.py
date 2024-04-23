@@ -4,6 +4,7 @@ from geo_parameters.grid import Lon, Lat, X, Y, Inds
 import numpy as np
 import dask.array as da
 from geo_skeletons.errors import VariableExistsError
+import geo_parameters as gp
 
 meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
 
@@ -54,7 +55,7 @@ class CoordinateManager:
         self, name: str, coords: str, default_value: float, meta: MetaParameter = None
     ) -> str:
         """Add a variable that the Skeleton will use."""
-        name, meta = get_name_str_and_meta(name)
+        name, meta = gp.decode(name)
 
         if name in self._used_names:
             raise VariableExistsError(name)
@@ -78,7 +79,7 @@ class CoordinateManager:
         range_inclusive: bool,
     ) -> tuple[str, str]:
         """Add a mask that the Skeleton will use."""
-        name, meta = get_name_str_and_meta(name)
+        name, meta = gp.decode(name)
         if f"{name}_mask" in self._used_names:
             raise VariableExistsError(f"{name}_mask")
 
@@ -89,7 +90,9 @@ class CoordinateManager:
         self._used_names.append(f"{name}_mask")
 
         if opposite_name is not None:
-            opposite_name, meta = get_name_str_and_meta(opposite_name)
+            opposite_name, meta = gp.decode(
+                opposite_name
+            )  # get_name_str_and_meta(opposite_name)
             if f"{opposite_name}_mask" in self._used_names:
                 raise VariableExistsError(f"{opposite_name}_mask")
 
@@ -120,7 +123,7 @@ class CoordinateManager:
         E.g. time can be either one (outer dimesnion in spectra, but inner
         dimension in time series)
         """
-        name, meta = get_name_str_and_meta(name)
+        name, meta = gp.decode(name)
         if name in self._used_names:
             raise VariableExistsError(name)
         self.meta_coords[name] = meta
@@ -134,7 +137,7 @@ class CoordinateManager:
         return name
 
     def add_magnitude(self, name: str, x: str, y: str) -> str:
-        name, meta = get_name_str_and_meta(name)
+        name, meta = gp.decode(name)
         if name in self._used_names:
             raise VariableExistsError(name)
         self.magnitudes[name] = {"x": x, "y": y}
@@ -145,7 +148,7 @@ class CoordinateManager:
     def add_direction(
         self, name: str, x: str, y: str, meta: MetaParameter = None
     ) -> str:
-        name, meta = get_name_str_and_meta(name)
+        name, meta = gp.decode(name)
         if name in self._used_names:
             raise VariableExistsError(name)
         self.directions[name] = {"x": x, "y": y}
@@ -275,21 +278,3 @@ def move_time_dim_to_front(coord_list) -> list[str]:
         return coord_list
     coord_list.insert(0, coord_list.pop(coord_list.index("time")))
     return coord_list
-
-
-def get_name_str_and_meta(
-    name: Union[str, MetaParameter]
-) -> tuple[str, Union[MetaParameter, None]]:
-    """Takes in a string, MetaParameter class or an instamce.
-    Returns a string valued name and an instance (if possilbe, otherwise None)"""
-    if isinstance(name, str):
-        return name, None
-
-    try:
-        name = name()
-    except TypeError:
-        pass
-    name_str = name.name  # 'hsig'
-    meta = name  # Hs('hsig')
-
-    return name_str, meta

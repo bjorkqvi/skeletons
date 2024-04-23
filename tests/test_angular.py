@@ -15,7 +15,6 @@ def test_angular_str():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
-    points.deactivate_dask()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), -1)
@@ -54,7 +53,6 @@ def test_angular_gp():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
-    points.deactivate_dask()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), -1)
@@ -92,7 +90,7 @@ def test_angular_gp_flip_dir():
     class Magnitude(PointSkeleton):
         pass
 
-    points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
+    points = Magnitude(x=(0, 1, 2), y=(5, 6, 7), chunks="auto")
     points.deactivate_dask()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)

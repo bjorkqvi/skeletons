@@ -1,5 +1,5 @@
 from geo_skeletons import GriddedSkeleton
-from geo_skeletons.decorators import add_datavar, add_coord
+from geo_skeletons.decorators import add_datavar, add_coord, activate_dask
 import dask.array as da
 import numpy as np
 
@@ -18,8 +18,11 @@ def test_set_chunks():
     points = DummySkeleton(lon=range(500), lat=range(400), z=range(100))
     points.set_dummy()
     chunks = (100, 100, 100)
-    points.set_dummy(points.dummy().compute(), chunks=chunks)
-    validate_chunks(chunks, ["lat", "lon", "z"], points.dummy(data_array=True))
+    points.set_dummy(points.dummy(), chunks=chunks)
+
+    validate_chunks(
+        chunks, ["lat", "lon", "z"], points.dummy(data_array=True, dask=True)
+    )
 
 
 def test_rechunk():
@@ -29,6 +32,7 @@ def test_rechunk():
         pass
 
     points = DummySkeleton(lon=range(500), lat=range(400), z=range(100))
+    points.activate_dask()
     points.set_dummy()
     chunks = (100, 100, 50)
     points.rechunk(chunks)
@@ -42,6 +46,7 @@ def test_rechunk_using_dict():
         pass
 
     points = DummySkeleton(lon=range(500), lat=range(400), z=range(100))
+    points.activate_dask()
     points.set_dummy()
     chunks = {"z": 50, "lat": 80, "lon": 100}
     points.rechunk(chunks)
@@ -49,6 +54,7 @@ def test_rechunk_using_dict():
 
 
 def test_rechunk_primary_dim():
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
     class DummySkeleton(GriddedSkeleton):
@@ -67,6 +73,7 @@ def test_rechunk_primary_dim():
 
 
 def test_rechunk_primary_dims():
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
     class DummySkeleton(GriddedSkeleton):
@@ -85,6 +92,7 @@ def test_rechunk_primary_dims():
 
 
 def test_rechunk_set_method():
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
     class DummySkeleton(GriddedSkeleton):

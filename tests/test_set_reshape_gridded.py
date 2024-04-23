@@ -1,5 +1,5 @@
 from geo_skeletons import GriddedSkeleton
-from geo_skeletons.decorators import add_datavar, add_coord
+from geo_skeletons.decorators import add_datavar, add_coord, activate_dask
 from geo_skeletons.errors import DataWrongDimensionError
 import dask.array as da
 import numpy as np
@@ -18,7 +18,7 @@ def test_trivial_dimension_explicit_starting_with_numpy():
     class DummySkeleton(GriddedSkeleton):
         pass
 
-    points = DummySkeleton(lon=1, lat=2, z=range(4))
+    points = DummySkeleton(lon=1, lat=2, z=range(4), chunks="auto")
     data = np.zeros((1, 1, 4))
     data_wrong_dim = np.zeros((1, 4, 1))
 
@@ -42,6 +42,7 @@ def test_trivial_dimension_explicit_starting_with_numpy():
 def test_trivial_dimension_explicit_starting_with_dask():
     """*A trivial dimension can expanded to. Dask and numpy uses different reshape functions."""
 
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
     class DummySkeleton(GriddedSkeleton):
@@ -79,6 +80,7 @@ def test_trivial_dimension_implicit_starting_with_numpy():
         pass
 
     points = DummySkeleton(lon=1, lat=2, z=range(4))
+    points.activate_dask()
     data = np.zeros((1, 1, 4))
     data_wrong_dim = np.zeros((1, 4, 1))
 
@@ -121,7 +123,7 @@ def test_trivial_dimension_implicit_starting_with_dask():
     class DummySkeleton(GriddedSkeleton):
         pass
 
-    points = DummySkeleton(lon=1, lat=2, z=range(4))
+    points = DummySkeleton(lon=1, lat=2, z=range(4), chunks="auto")
     data = da.from_array(np.zeros((1, 1, 4)))
     data_wrong_dim = da.from_array(np.zeros((1, 4, 1)))
 
@@ -158,6 +160,7 @@ def test_trivial_dimension_implicit_starting_with_dask():
 def test_transpose_starting_with_numpy():
     """*A trivial dimension can expanded to. Dask and numpy uses different reshape functions."""
 
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     class DummySkeleton(GriddedSkeleton):
         pass
@@ -193,6 +196,7 @@ def test_transpose_starting_with_numpy():
 def test_transpose_starting_with_dask():
     """*A trivial dimension can expanded to. Dask and numpy uses different reshape functions."""
 
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     class DummySkeleton(GriddedSkeleton):
         pass
@@ -233,7 +237,7 @@ def test_transpose_with_trivial_dim_starting_with_numpy():
     class DummySkeleton(GriddedSkeleton):
         pass
 
-    points = DummySkeleton(lon=range(5), lat=range(4), z=0)
+    points = DummySkeleton(lon=range(5), lat=range(4), z=0, chunks="auto")
     data = np.zeros((4, 5, 1))
     data[0, :, :] = 1
     data_T = data[:, :, 0].T
@@ -289,6 +293,7 @@ def test_transpose_with_trivial_dim_starting_with_dask():
         pass
 
     points = DummySkeleton(lon=range(5), lat=range(4), z=0)
+    points.activate_dask()
     data = da.from_array(np.zeros((4, 5, 1)))
     data[0, :, :] = 1
     data_T = data[:, :, 0].T
@@ -341,6 +346,7 @@ def test_transpose_with_trivial_dim_explicit_starting_with_dask():
         pass
 
     points = DummySkeleton(lon=range(5), lat=range(4), z=0)
+    points.activate_dask()
     data = da.from_array(np.zeros((4, 5, 1)))
     data[0, :, :] = 1
     data_T = data[:, :, 0].T

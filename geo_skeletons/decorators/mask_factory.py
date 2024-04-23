@@ -114,10 +114,14 @@ def add_mask(
             silent: bool = True,
         ) -> None:
 
-            dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
+            dask_manager = DaskManager(chunks=chunks or self.chunks)
             data = dask_manager.dask_me(data)
+
             if data is not None:
-                data = dask.array.logical_not(data)
+                if self.dask() or chunks is not None:
+                    data = dask.array.logical_not(data)
+                else:
+                    data = np.logical_not(data)
 
             self.set(
                 f"{name_str}_mask",

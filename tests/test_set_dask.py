@@ -1,5 +1,5 @@
 from geo_skeletons import PointSkeleton, GriddedSkeleton
-from geo_skeletons.decorators import add_datavar
+from geo_skeletons.decorators import add_datavar, activate_dask
 import dask.array as da
 import numpy as np
 
@@ -13,6 +13,7 @@ def test_single_point_starting_with_numpy():
     If dask-mode is deactivated, then the array is still converted if chunks are specified explicitly
     """
 
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     class DummySkeleton(PointSkeleton):
         pass
@@ -66,7 +67,7 @@ def test_single_point_starting_with_dask():
     class DummySkeleton(PointSkeleton):
         pass
 
-    points = DummySkeleton(lon=1, lat=2)
+    points = DummySkeleton(lon=1, lat=2, chunks="auto")
     data = da.from_array(np.zeros((1,)))
 
     points.set_dummy(data)
