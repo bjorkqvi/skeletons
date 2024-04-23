@@ -158,6 +158,55 @@ def add_magnitude(
         def set_magnitude(
             self,
             magnitude: Union[np.ndarray, int, float] = None,
+            allow_reshape: bool = True,
+            allow_transpose: bool = False,
+            coords: list[str] = None,
+            chunks: Union[tuple, str] = None,
+            silent: bool = True,
+        ):
+            dask_manager = DaskManager(chunks=chunks or self.chunks)
+
+            if magnitude is None:
+                magnitude = eval(f"self.{name_str}()")
+            else:
+                magnitude = dask_manager.constant_array(
+                    magnitude,
+                    self.shape(name_str),
+                    dask=(self.dask() or chunks is not None),
+                )
+
+            direction = get_direction(self, angular=True)
+
+            if dask_manager.data_is_dask(direction):
+                s = da.sin(direction)
+                c = da.cos(direction)
+            else:
+                s = np.sin(direction)
+                c = np.cos(direction)
+            ux = magnitude * c
+            uy = magnitude * s
+
+            self.set(
+                name=x,
+                data=ux,
+                allow_reshape=allow_reshape,
+                allow_transpose=allow_transpose,
+                coords=coords,
+                chunks=chunks,
+                silent=silent,
+            )
+            self.set(
+                name=y,
+                data=uy,
+                allow_reshape=allow_reshape,
+                allow_transpose=allow_transpose,
+                coords=coords,
+                chunks=chunks,
+                silent=silent,
+            )
+
+        def set_direction(
+            self,
             direction: Union[np.ndarray, int, float] = None,
             angular: bool = False,
             allow_reshape: bool = True,
@@ -166,31 +215,18 @@ def add_magnitude(
             chunks: Union[tuple, str] = None,
             silent: bool = True,
         ):
-            if magnitude is None and direction is None:
-                raise ValueError("magnitude and direction cannot both be None!")
+            dask_manager = DaskManager(chunks=chunks or self.chunks)
 
-            dask_manager = DaskManager(chunks=chunks or self.chunks or "auto")
+            magnitude = get_magnitude(self)
 
-            if magnitude is None:
-                magnitude = eval(f"self.{name_str}()")
-            else:
-                magnitude = dask_manager.constant_array(
-                    magnitude,
-                    self.shape(name_str),
-                    dask=(self.dask or chunks is not None),
-                )
             if direction is None:
-                direction = get_direction(
-                    self, angular=angular
-                )  # eval(f"self.{dir_str}(angular={angular})")
+                direction = get_direction(self, angular=angular)
             else:
                 direction = dask_manager.constant_array(
                     direction,
                     self.shape(name_str),
                     dask=(self.dask or chunks is not None),
                 )
-            if direction is None:
-                raise ValueError("Cannot set x- and y-components without a direction!")
 
             if not angular:  # Convert to mathematical convention
                 direction = (90 - direction + offset) * np.pi / 180
@@ -240,9 +276,10 @@ def add_magnitude(
             dir_str = c._coord_manager.add_direction(direction, x=x, y=y)
             if append:
                 exec(f"c.{dir_str} = partial(get_direction, c)")
+                exec(f"c.set_{dir_str} = partial(set_direction, c)")
             else:
                 exec(f"c.{dir_str} = get_direction")
-
+                exec(f"c.set_{dir_str} = set_direction")
         return c
 
     # Always respect explicitly set directional convention

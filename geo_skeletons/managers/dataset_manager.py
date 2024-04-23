@@ -174,7 +174,7 @@ class DatasetManager:
         self,
         name: str,
         empty: bool = False,
-        strict: bool = False,
+        strict: bool = True,
         **kwargs,
     ) -> xr.DataArray:
         """Gets data from Dataset.

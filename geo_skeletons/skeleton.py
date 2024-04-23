@@ -26,6 +26,8 @@ class Skeleton:
     Keeps track of the native structure of the grid (cartesian UTM / sperical).
     """
 
+    chunks = None
+
     def __init__(
         self,
         x=None,
@@ -34,11 +36,12 @@ class Skeleton:
         lat=None,
         name: str = "LonelySkeleton",
         utm: tuple[int, str] = None,
-        chunks: Union[tuple[int], str] = "auto",
+        chunks: Union[tuple[int], str] = None,
         **kwargs,
     ) -> None:
         self.name = name
-        self.chunks = chunks
+        if chunks is not None:
+            self.chunks = chunks
         self._init_structure(x, y, lon, lat, utm=utm, **kwargs)
         self.data_vars = MethodType(_data_vars, self)
 
@@ -299,7 +302,7 @@ class Skeleton:
             ind = kwargs.get(dim, slice(len(var)))
             index_list[n] = ind
 
-        old_data = self.get(name, squeeze=False)
+        old_data = self.get(name, squeeze=False).copy()
         N = len(old_data.shape)
         data_str = "old_data["
         for n in range(N):
@@ -322,12 +325,17 @@ class Skeleton:
     ) -> None:
         """Sets the data using the following logic:
 
-        Any numpy array is converted to a dask-array, unless dask-mode is deactivated with .deactivate_dask().
+        data [None]: numpy/dask array. If None [Default], an empty array is set.
+
+        Any numpy array is converted to a dask-array if dask-mode is set with .activate_dask().
         If keyword 'chunks' is set, then conversion to dask is always done.
 
         If given data is a dask array, then it is never rechunked, but used as is.
 
-        Data is assumed to be in the right dimension, but can also be reshaped:
+        allow_reshape [True]: Allow squeezing out trivial dimensions.
+        allow_transpose [False]: Allow trying to transpose exactly two non-trivial dimensions
+
+        Otherwise, data is assumed to be in the right dimension, but can also be reshaped:
 
         1) If 'coords' (e.g. ['freq',' inds']) is given, then data is reshaped assuming data is in that order.
         2) If data is a DataArray, then 'coords' is set using the information in the DataArray.
@@ -336,6 +344,9 @@ class Skeleton:
         5) If data along non-trivial dimensions is two-dimensional, then a transpose is attemted.
 
         NB! For 1), only non-trivial dimensions need to be identified
+
+        silent [True]: Don't output what reshaping is being performed.
+
         """
 
         if not isinstance(name, str):
@@ -353,9 +364,29 @@ class Skeleton:
         data = dask_manager.constant_array(
             data, self.shape(name), dask=(self.dask() or chunks is not None)
         )
-        if not self._coord_manager.is_settable(name):
-            raise KeyError(f"'{name}' is not a variable that can be set!")
 
+        if not self._coord_manager.is_settable(name):
+            setter_function = eval(f"self.set_{name}")
+            if self._coord_manager.magnitudes.get(name) is not None:
+                setter_function(
+                    magnitude=data,
+                    allow_reshape=allow_reshape,
+                    allow_transpose=allow_transpose,
+                    coords=coords,
+                    silent=silent,
+                    chunks=chunks,
+                )
+            else:
+                setter_function(
+                    direction=data,
+                    allow_reshape=allow_reshape,
+                    allow_transpose=allow_transpose,
+                    coords=coords,
+                    silent=silent,
+                    chunks=chunks,
+                )
+
+            return
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
         if isinstance(data, xr.DataArray):
             coords = coords or list(data.dims)
@@ -394,6 +425,7 @@ class Skeleton:
             )
             return
         # Try to set the data
+
         coord_type = self.coord_group(name)
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
@@ -428,6 +460,7 @@ class Skeleton:
         metadata = self.metadata(name)
         self.set_metadata(metadata, name, append=False)
         meta_parameter = self._coord_manager.meta_vars.get(name)
+
         if meta_parameter is not None:
             self.set_metadata(meta_parameter.meta_dict(), name)
 
@@ -446,6 +479,7 @@ class Skeleton:
                 high_mask = data <= valid_range[1]
             else:
                 high_mask = data < valid_range[1]
+
             mask = np.logical_and(low_mask, high_mask)
             self.set(mask_name, mask)
 
@@ -454,8 +488,8 @@ class Skeleton:
     def get(
         self,
         name,
-        empty: bool = False,
         strict: bool = False,
+        empty: bool = False,
         data_array: bool = False,
         squeeze: bool = True,
         boolean_mask: bool = False,
@@ -463,10 +497,14 @@ class Skeleton:
         angular: bool = False,
         **kwargs,
     ):
-        """Gets a mask or data variable.
+        """Gets a mask or data variable as an array.
 
-        Masks
-        You can also request empty masks that will be return even if data doesn't exist.
+        strict [False]: Return 'None' if data not set. Otherwise returns empty array.
+        empty [False]: Return an array full with default values even if variable is set.
+        data_array [False]: Return data as an xarray DataArray.
+        squeeze [True]: Smart squeeze out trivial dimensions, but return at least 1d array.
+        boolean_mask [False]: Convert array to a boolean array.
+        dask [None]: Return dask array [True] or numpy array [False]. Default: Use set dask-mode
         """
         if not self._structure_initialized():
             return None
@@ -548,11 +586,18 @@ class Skeleton:
             if dims_to_drop:
                 data = data.squeeze(dim=dims_to_drop, drop=True)
 
-        dask_manager = DaskManager(self.chunks)
-
         # Use dask mode default if not explicitly overridden
         if dask is None:
             dask = self.dask()
+
+        # Need to make sure we set chunks if dask mode is nopt activated
+        if dask:
+            chunks = self.chunks or "auto"
+        else:
+            # Can't use chunks if dask is not requested
+            chunks = None
+
+        dask_manager = DaskManager(chunks)
 
         if dask:
             data = dask_manager.dask_me(data)
@@ -1194,6 +1239,7 @@ class Skeleton:
         """Return metadata of the dataset:"""
         if not self._structure_initialized():
             return None
+
         if name is None:
             return self.ds().attrs.copy()
 
@@ -1259,6 +1305,10 @@ class Skeleton:
         chunks: Union[tuple, dict, str] = "auto",
         primary_dim: Union[str, list[str]] = None,
     ) -> None:
+        if self.chunks is None:
+            raise ValueError(
+                "Dask mode is not activated! use .activate_dask() before rechunking"
+            )
         if primary_dim:
             if isinstance(primary_dim, str):
                 primary_dim = [primary_dim]

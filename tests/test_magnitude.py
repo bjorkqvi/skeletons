@@ -12,7 +12,6 @@ def test_magnitude_point():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
-    points.deactivate_dask()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), 1)
@@ -75,7 +74,7 @@ def test_magnitude_gridded():
     class Magnitude(GriddedSkeleton):
         pass
 
-    points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
+    points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8), chunks="auto")
     points.deactivate_dask()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
@@ -140,12 +139,14 @@ def test_add_magnitude():
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
     points.add_magnitude("wind", x="u", y="v", direction="wdir")
+    points.activate_dask(rechunk=False)
     points.deactivate_dask()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), 1)
     np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
     np.testing.assert_almost_equal(np.mean(points.wdir()), 225)
+
     assert points.u(strict=True) is None
     assert points.v(strict=True) is None
     assert points.wind(strict=True) is None
@@ -203,7 +204,6 @@ def test_set_magnitude():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
-    points.deactivate_dask()
     u = np.full(points.size(), 2)
     ud = np.zeros(points.size())
     udm = ud - np.pi / 2
@@ -304,7 +304,7 @@ def test_get_magnitude():
     np.testing.assert_almost_equal(
         points.wdir(dask=False), points.get("wdir", dask=False)
     )
-    points.deactivate_dask()
+
     np.testing.assert_almost_equal(
         points.wdir(angular=True), points.get("wdir", angular=True)
     )
@@ -313,7 +313,7 @@ def test_get_magnitude():
     np.testing.assert_almost_equal(
         points.wdir(empty=True), points.get("wdir", empty=True)
     )
-    points.deactivate_dask()
+
     np.testing.assert_almost_equal(
         points.wdir(angular=True, empty=True),
         points.get("wdir", angular=True, empty=True),
@@ -334,7 +334,7 @@ def test_scale_magnitude():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
-    points.deactivate_dask()
+
     points.set_u(3)
     points.set_v(3)
     umag = (3**2 + 3**2) ** 0.5

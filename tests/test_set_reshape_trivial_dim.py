@@ -1,5 +1,5 @@
 from geo_skeletons import PointSkeleton
-from geo_skeletons.decorators import add_datavar, add_coord
+from geo_skeletons.decorators import add_datavar, add_coord, activate_dask
 from geo_skeletons.errors import DataWrongDimensionError
 import dask.array as da
 import numpy as np
@@ -13,6 +13,7 @@ def data_is_dask(data) -> bool:
 def test_trivial_dimension_explicit_starting_with_numpy():
     """*A trivial dimension can expanded to. Dask and numpy uses different reshape functions."""
 
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
     class DummySkeleton(PointSkeleton):
@@ -53,7 +54,7 @@ def test_trivial_dimension_explicit_starting_with_dask():
     class DummySkeleton(PointSkeleton):
         pass
 
-    points = DummySkeleton(lon=1, lat=2, z=range(4))
+    points = DummySkeleton(lon=1, lat=2, z=range(4), chunks="auto")
     data = da.from_array(np.zeros((1, 4)))
     data_wrong_dim = da.from_array(np.zeros((4,)))
     data_T = da.from_array(np.zeros((4, 1)))
@@ -88,6 +89,7 @@ def test_trivial_dimension_implicit_starting_with_numpy():
         pass
 
     points = DummySkeleton(lon=1, lat=2, z=range(4))
+    points.activate_dask()
     data = np.zeros((1, 4))
     data_wrong_dim = np.zeros((4,))
     data_T = np.zeros((4, 1))
@@ -132,6 +134,7 @@ def test_trivial_dimension_implicit_starting_with_dask():
         pass
 
     points = DummySkeleton(lon=1, lat=2, z=range(4))
+    points.activate_dask()
     data = da.from_array(np.zeros((1, 4)))
     data_wrong_dim = da.from_array(np.zeros((4,)))
     data_T = da.from_array(np.zeros((4, 1)))
@@ -169,6 +172,7 @@ def test_trivial_dimension_implicit_starting_with_dask():
 def test_squeeze_trivial_dimension_implicit_starting_with_numpy():
     """*A trivial dimension can expanded to. Dask and numpy uses different reshape functions."""
 
+    @activate_dask()
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
     @add_coord(name="w")
@@ -214,6 +218,7 @@ def test_squeeze_trivial_dimension_implicit_starting_with_numpy():
 def test_squeeze_trivial_dimension_implicit_starting_with_dask():
     """*A trivial dimension can expanded to. Dask and numpy uses different reshape functions."""
 
+    @activate_dask(chunks="auto")
     @add_datavar(name="dummy", default_value=-9)
     @add_coord(name="z")
     @add_coord(name="w")

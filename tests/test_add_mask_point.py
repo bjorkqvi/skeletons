@@ -67,7 +67,6 @@ def test_add_gridpoint_coord_and_mask():
     times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1h")
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3), time=times)
     data.set_land_mask(0)
-
     data.set_sea_mask()
     data.set_hs()
     np.testing.assert_array_equal(
@@ -141,7 +140,6 @@ def test_add_mask_trigger():
         pass
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
-    data.deactivate_dask()
     data.set_hs([0, 3])
     np.testing.assert_almost_equal(data.sea_mask(), np.array([False, True]))
 
@@ -160,7 +158,6 @@ def test_add_mask_trigger_inf():
         pass
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
-    data.deactivate_dask()
     data.set_hs([0, 3])
     np.testing.assert_almost_equal(data.sea_mask(), np.array([False, True]))
 
@@ -184,7 +181,7 @@ def test_add_mask_trigger_two():
     class WaveHeight(PointSkeleton):
         pass
 
-    data = WaveHeight(lon=(10, 20, 30), lat=(30, 40, 50))
+    data = WaveHeight(lon=(10, 20, 30), lat=(30, 40, 50), chunks="auto")
     data.deactivate_dask()
     data.set_hs([0, -999, 3])
     np.testing.assert_almost_equal(data.sea_mask(), np.array([False, False, True]))
