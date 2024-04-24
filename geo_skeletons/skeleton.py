@@ -571,28 +571,6 @@ class Skeleton:
                 dask_manager=dask_manager,
             )
 
-        # if self._coord_manager.directions.get(name) is not None:
-        #     setter_function = eval(f"self.set_{name}")
-        #     # if self._coord_manager.magnitudes.get(name) is not None:
-        #     #     setter_function(
-        #     #         magnitude=data,
-        #     #         allow_reshape=allow_reshape,
-        #     #         allow_transpose=allow_transpose,
-        #     #         coords=coords,
-        #     #         silent=silent,
-        #     #         chunks=chunks,
-        #     #     )
-        #     # else:
-        #     setter_function(
-        #         direction=data,
-        #         allow_reshape=allow_reshape,
-        #         allow_transpose=allow_transpose,
-        #         coords=coords,
-        #         silent=silent,
-        #         chunks=chunks,
-        #     )
-
-        #     return
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
         if isinstance(data, xr.DataArray):
             coords = coords or list(data.dims)
