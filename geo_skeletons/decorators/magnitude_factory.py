@@ -40,8 +40,6 @@ def add_magnitude(
 
             **kwargs can be used for slicing data.
             """
-            if not self._structure_initialized():
-                return None
             var = self.get(
                 dir_str,
                 empty=empty,
@@ -59,6 +57,7 @@ def add_magnitude(
             self,
             empty: bool = False,
             data_array: bool = False,
+            strict: bool = False,
             squeeze: bool = False,
             dask: bool = None,
             **kwargs,
@@ -69,52 +68,18 @@ def add_magnitude(
 
             **kwargs can be used for slicing data.
             """
-            if not self._structure_initialized():
-                return None
-
-            xvar = self._coord_manager.magnitudes.get(name_str)["x"]
-            yvar = self._coord_manager.magnitudes.get(name_str)["y"]
-            x = self.get(
-                xvar,
+            var = self.get(
+                name_str,
                 empty=empty,
-                data_array=data_array,
-                squeeze=squeeze,
-                dask=dask,
-                **kwargs,
-            )
-            y = self.get(
-                yvar,
-                empty=empty,
+                strict=strict,
+                dir_type=dir_type,
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
                 **kwargs,
             )
 
-            if not empty and x is None or y is None:
-                return None
-
-            if x is None:
-                x = self.get(
-                    xvar,
-                    empty=True,
-                    data_array=data_array,
-                    squeeze=squeeze,
-                    dask=dask,
-                    **kwargs,
-                )
-
-            if y is None:
-                y = self.get(
-                    yvar,
-                    empty=True,
-                    data_array=data_array,
-                    squeeze=squeeze,
-                    dask=dask,
-                    **kwargs,
-                )
-
-            return (x**2 + y**2) ** 0.5
+            return var
 
         def set_magnitude(
             self,

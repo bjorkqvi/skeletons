@@ -39,8 +39,6 @@ def add_datavar(
 
             **kwargs can be used for slicing data.
             """
-            if not self._structure_initialized():
-                return None
             var = self.get(
                 name_str,
                 empty=empty,
