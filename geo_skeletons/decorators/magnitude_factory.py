@@ -28,6 +28,7 @@ def add_magnitude(
             self,
             empty: bool = False,
             data_array: bool = False,
+            strict: bool = False,
             squeeze: bool = False,
             dask: bool = None,
             dir_type: str = None,
@@ -41,63 +42,18 @@ def add_magnitude(
             """
             if not self._structure_initialized():
                 return None
-            xvar = self._coord_manager.magnitudes.get(name_str)["x"]
-            yvar = self._coord_manager.magnitudes.get(name_str)["y"]
-            x = self.get(
-                xvar,
+            var = self.get(
+                dir_str,
                 empty=empty,
-                data_array=data_array,
-                squeeze=squeeze,
-                dask=dask,
-                **kwargs,
-            )
-            y = self.get(
-                yvar,
-                empty=empty,
+                strict=strict,
+                dir_type=dir_type,
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
                 **kwargs,
             )
 
-            if not empty and x is None or y is None:
-                return None
-
-            if x is None:
-                x = self.get(
-                    xvar,
-                    empty=True,
-                    data_array=data_array,
-                    squeeze=squeeze,
-                    dask=dask,
-                    **kwargs,
-                )
-
-            if y is None:
-                y = self.get(
-                    yvar,
-                    empty=True,
-                    data_array=data_array,
-                    squeeze=squeeze,
-                    dask=dask,
-                    **kwargs,
-                )
-
-            dir_type = dir_type or self._coord_manager.directions[dir_str]["dir_type"]
-
-            if dask:
-                dirs = da.arctan2(y, x)
-            else:
-                dirs = np.arctan2(y, x)
-
-            if dir_type != "math":
-                dirs = 90 - dirs * 180 / np.pi + offset[dir_type]
-                if dask:
-                    dirs = da.mod(dirs, 360)
-                else:
-                    dirs = np.mod(dirs, 360)
-
-            return dirs
+            return var
 
         def get_magnitude(
             self,
@@ -246,21 +202,20 @@ def add_magnitude(
 
     # Always respect explicitly set directional convention
     # Otherwise parse from MetaParameter is possible
-    if dir_type is None:
-        if gp.is_gp(direction):
-            standard_to = (
-                "to_direction" in direction.standard_name()
-                or "to_direction" in direction.standard_name(alias=True)
-            )
+    if dir_type is None and gp.is_gp(direction):
+        standard_to = (
+            "to_direction" in direction.standard_name()
+            or "to_direction" in direction.standard_name(alias=True)
+        )
 
-            standard_from = (
-                "from_direction" in direction.standard_name()
-                or "from_direction" in direction.standard_name(alias=True)
-            )
-            if standard_to:
-                dir_type = "to"
-            elif standard_from:
-                dir_type = "from"
+        standard_from = (
+            "from_direction" in direction.standard_name()
+            or "from_direction" in direction.standard_name(alias=True)
+        )
+        if standard_to:
+            dir_type = "to"
+        elif standard_from:
+            dir_type = "from"
 
     if dir_type is None and direction is not None:
         raise ValueError(

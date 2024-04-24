@@ -19,6 +19,7 @@ def test_angular_str():
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), -1)
     np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+
     np.testing.assert_almost_equal(np.mean(points.wdir()), 315)
     np.testing.assert_almost_equal(np.mean(points.stokes()), 0.1)
     np.testing.assert_almost_equal(np.mean(points.stokes_dir()), 0)
