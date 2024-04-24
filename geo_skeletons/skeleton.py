@@ -326,7 +326,6 @@ class Skeleton:
         allow_transpose: bool,
     ) -> None:
 
-        # Reshaping
         reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
         coord_type = self.coord_group(name)
 
@@ -339,7 +338,7 @@ class Skeleton:
             ]
             data = reshape_manager.explicit_reshape(
                 data.squeeze(),
-                data_coords=squeezed_coords, 
+                data_coords=squeezed_coords,
                 expected_coords=self.coords(coord_type),
             )
 
@@ -347,7 +346,6 @@ class Skeleton:
             data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
 
         # Try to set the data
-
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
         except DataWrongDimensionError as data_error:
@@ -377,13 +375,36 @@ class Skeleton:
 
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
 
-        # Set the metadata
+    def _set_metadata_of_parameter(self, name: str) -> None:
+        """Sets the metadata of a single parameter by finding the connected geo-parameter"""
         metadata = self.metadata(name)
         self.set_metadata(metadata, name, append=False)
         meta_parameter = self._coord_manager.meta_vars.get(name)
 
         if meta_parameter is not None:
             self.set_metadata(meta_parameter.meta_dict(), name)
+
+    def _trigger_masks(self, name: str, data) -> None:
+        """Set any masks that are triggered by setting a specific data variable
+        E.g. Set new 'land_mask' when 'topo' is set."""
+
+        for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(
+            name, []
+        ):
+            mask_name = f"{mask_name}_mask"
+
+            if range_inclusive[0]:
+                low_mask = data >= valid_range[0]
+            else:
+                low_mask = data > valid_range[0]
+
+            if range_inclusive[1]:
+                high_mask = data <= valid_range[1]
+            else:
+                high_mask = data < valid_range[1]
+
+            mask = np.logical_and(low_mask, high_mask)
+            self.set(mask_name, mask)
 
     def set(
         self,
@@ -481,24 +502,8 @@ class Skeleton:
             allow_transpose=allow_transpose,
         )
 
-        ## Did we trigger any masks
-        for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(
-            name, []
-        ):
-            mask_name = f"{mask_name}_mask"
-
-            if range_inclusive[0]:
-                low_mask = data >= valid_range[0]
-            else:
-                low_mask = data > valid_range[0]
-
-            if range_inclusive[1]:
-                high_mask = data <= valid_range[1]
-            else:
-                high_mask = data < valid_range[1]
-
-            mask = np.logical_and(low_mask, high_mask)
-            self.set(mask_name, mask)
+        self._set_metadata_of_parameter(name)
+        self._trigger_masks(name, data)
 
         return
 
