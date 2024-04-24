@@ -313,192 +313,6 @@ class Skeleton:
         self.set(name, old_data, allow_reshape=False)
         return
 
-    def _reshape_data(
-        self,
-        name: str,
-        data,
-        coords: list[str],
-        dask_manager: DaskManager,
-        silent: bool,
-        allow_reshape: bool,
-        allow_transpose: bool,
-    ):
-        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
-        coord_type = self.coord_group(name)
-
-        # Do explicit reshape if coordinates of the provided data is given
-        if coords is not None:
-            # Some dimensions of the provided data might not exist in the Skeleton
-            # If they are trivial then they don't matter, so squeeze them out
-            squeezed_coords = [
-                c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
-            ]
-            data = reshape_manager.explicit_reshape(
-                data.squeeze(),
-                data_coords=squeezed_coords,
-                expected_coords=self.coords(coord_type),
-            )
-
-            # Unsqueeze the data before setting to get back trivial dimensions
-            data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
-
-        # Try to set the data
-        if data.shape != self.shape(name):
-            # if not (allow_reshape or allow_transpose):
-            #     raise data_error
-
-            # If we are here then the data could not be set, but we are allowed to try to reshape
-            if not silent:
-                print(f"Size of {name} does not match size of {type(self).__name__}...")
-
-            # Save this for messages
-            original_data_shape = data.shape
-
-            if allow_transpose:
-                data = reshape_manager.transpose_2d(
-                    data, expected_squeezed_shape=self.size(coord_type, squeeze=True)
-                )
-            if allow_reshape:
-                data = reshape_manager.unsqueeze(
-                    data, expected_shape=self.size(coord_type)
-                )
-            if data is None:
-                raise DataWrongDimensionError(
-                    original_data_shape, self.shape(name)
-                )  # Reshapes have failed
-
-            if not silent:
-                print(f"Reshaping data {original_data_shape} -> {data.shape}...")
-        return data
-
-    def _set_data(
-        self,
-        name: str,
-        data,
-        dask_manager: DaskManager,
-        silent: bool,
-        allow_reshape: bool,
-        allow_transpose: bool,
-    ) -> None:
-
-        try:
-            self._ds_manager.set(
-                data=data, data_name=name, coords=self.coord_group(name)
-            )
-        except DataWrongDimensionError as data_error:
-            raise data_error
-
-    def _set_metadata_of_parameter(self, name: str) -> None:
-        """Sets the metadata of a single parameter by finding the connected geo-parameter"""
-        metadata = self.metadata(name)
-        self.set_metadata(metadata, name, append=False)
-        meta_parameter = self._coord_manager.meta_vars.get(name)
-
-        if meta_parameter is not None:
-            self.set_metadata(meta_parameter.meta_dict(), name)
-
-    def _trigger_masks(self, name: str, data) -> None:
-        """Set any masks that are triggered by setting a specific data variable
-        E.g. Set new 'land_mask' when 'topo' is set."""
-
-        for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(
-            name, []
-        ):
-            mask_name = f"{mask_name}_mask"
-
-            if range_inclusive[0]:
-                low_mask = data >= valid_range[0]
-            else:
-                low_mask = data > valid_range[0]
-
-            if range_inclusive[1]:
-                high_mask = data <= valid_range[1]
-            else:
-                high_mask = data < valid_range[1]
-
-            mask = np.logical_and(low_mask, high_mask)
-            self.set(mask_name, mask)
-
-    def _set_magnitude(
-        self,
-        name: str,
-        data,
-        allow_reshape,
-        allow_transpose,
-        silent,
-        dask_manager: DaskManager,
-    ) -> None:
-
-        x_component = self._coord_manager.magnitudes.get(name)["x"]
-        y_component = self._coord_manager.magnitudes.get(name)["y"]
-        dir_name = self._coord_manager.magnitudes.get(name)["dir"]
-
-        dir_data = self.get(dir_name, dir_type="math")
-
-        s = dask_manager.sin(dir_data)
-        c = dask_manager.cos(dir_data)
-        ux = data * c
-        uy = data * s
-
-        self._set_data(
-            name=x_component,
-            data=ux,
-            allow_reshape=allow_reshape,
-            allow_transpose=allow_transpose,
-            dask_manager=dask_manager,
-            silent=silent,
-        )
-        self._set_data(
-            name=y_component,
-            data=uy,
-            allow_reshape=allow_reshape,
-            allow_transpose=allow_transpose,
-            dask_manager=dask_manager,
-            silent=silent,
-        )
-
-    def _set_direction(
-        self,
-        name: str,
-        data,
-        dir_type: str,
-        allow_reshape,
-        allow_transpose,
-        silent,
-        dask_manager: DaskManager,
-    ) -> None:
-
-        x_component = self._coord_manager.directions.get(name)["x"]
-        y_component = self._coord_manager.directions.get(name)["y"]
-        mag_name = self._coord_manager.directions.get(name)["mag"]
-
-        mag_data = self.get(mag_name)
-
-        dir_type = dir_type or self._coord_manager.directions[name]["dir_type"]
-        data = self._coord_manager.convert_to_math_dir(data, dir_type)
-
-        s = dask_manager.sin(data)
-        c = dask_manager.cos(data)
-        ux = mag_data * c
-        uy = mag_data * s
-
-        self._set_data(
-            name=x_component,
-            data=ux,
-            allow_reshape=allow_reshape,
-            allow_transpose=allow_transpose,
-            dask_manager=dask_manager,
-            silent=silent,
-        )
-        self._set_data(
-            name=y_component,
-            data=uy,
-            allow_reshape=allow_reshape,
-            allow_transpose=allow_transpose,
-            dask_manager=dask_manager,
-            silent=silent,
-        )
-
     def set(
         self,
         name: str,
@@ -582,36 +396,210 @@ class Skeleton:
             self._set_magnitude(
                 name=name,
                 data=data,
-                allow_reshape=allow_reshape,
-                allow_transpose=allow_transpose,
-                silent=silent,
                 dask_manager=dask_manager,
             )
-
-        if name in self._coord_manager.directions.keys():
+        elif name in self._coord_manager.directions.keys():
             self._set_direction(
                 name=name,
                 data=data,
                 dir_type=dir_type,
-                allow_reshape=allow_reshape,
-                allow_transpose=allow_transpose,
-                silent=silent,
                 dask_manager=dask_manager,
             )
+        else:
+            self._set_data(
+                name=name,
+                data=data,
+            )
+
+        return
+
+    def _reshape_data(
+        self,
+        name: str,
+        data,
+        coords: list[str],
+        dask_manager: DaskManager,
+        silent: bool,
+        allow_reshape: bool,
+        allow_transpose: bool,
+    ):
+        """Reshapes the data using the following logic:
+
+        allow_reshape [True]: Allow squeezing out trivial dimensions.
+        allow_transpose [False]: Allow trying to transpose exactly two non-trivial dimensions
+
+        Otherwise, data is assumed to be in the right dimension, but can also be reshaped:
+
+        1) If 'coords' (e.g. ['freq',' inds']) is given, then data is reshaped assuming data is in that order.
+        2) If data is a DataArray, then 'coords' is set using the information in the DataArray.
+        3) If data has any trivial dimensions, then those are squeezed.
+        4) If data is missing any trivial dimension, then those are expanded.
+        5) If data along non-trivial dimensions is two-dimensional, then a transpose is attemted.
+
+        NB! For 1), only non-trivial dimensions need to be identified
+
+        silent [True]: Don't output what reshaping is being performed.
+
+        If data cannot be reshaped, a DataWrongDimensionError is raised.
+        """
+        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
+        coord_type = self.coord_group(name)
+
+        # Do explicit reshape if coordinates of the provided data is given
+        if coords is not None:
+            # Some dimensions of the provided data might not exist in the Skeleton
+            # If they are trivial then they don't matter, so squeeze them out
+            squeezed_coords = [
+                c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
+            ]
+            data = reshape_manager.explicit_reshape(
+                data.squeeze(),
+                data_coords=squeezed_coords,
+                expected_coords=self.coords(coord_type),
+            )
+
+            # Unsqueeze the data before setting to get back trivial dimensions
+            data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
+
+        # Try to set the data
+        if data.shape != self.shape(name):
+            # if not (allow_reshape or allow_transpose):
+            #     raise data_error
+
+            # If we are here then the data could not be set, but we are allowed to try to reshape
+            if not silent:
+                print(f"Size of {name} does not match size of {type(self).__name__}...")
+
+            # Save this for messages
+            original_data_shape = data.shape
+
+            if allow_transpose:
+                data = reshape_manager.transpose_2d(
+                    data, expected_squeezed_shape=self.size(coord_type, squeeze=True)
+                )
+            if allow_reshape:
+                data = reshape_manager.unsqueeze(
+                    data, expected_shape=self.size(coord_type)
+                )
+            if data is None:
+                raise DataWrongDimensionError(
+                    original_data_shape, self.shape(name)
+                )  # Reshapes have failed
+
+            if not silent:
+                print(f"Reshaping data {original_data_shape} -> {data.shape}...")
+        return data
+
+    def _set_magnitude(
+        self,
+        name: str,
+        data,
+        dask_manager: DaskManager,
+    ) -> None:
+        """Sets a magnitude variable.
+
+        Calculates x- and y- components and sets them based on set connected direction.
+
+        Data needs to be exactly right shape."""
+
+        x_component = self._coord_manager.magnitudes.get(name)["x"]
+        y_component = self._coord_manager.magnitudes.get(name)["y"]
+        dir_name = self._coord_manager.magnitudes.get(name)["dir"]
+
+        dir_data = self.get(dir_name, dir_type="math")
+
+        s = dask_manager.sin(dir_data)
+        c = dask_manager.cos(dir_data)
+        ux = data * c
+        uy = data * s
 
         self._set_data(
-            name=name,
-            data=data,
-            dask_manager=dask_manager,
-            silent=silent,
-            allow_reshape=allow_reshape,
-            allow_transpose=allow_transpose,
+            name=x_component,
+            data=ux,
+        )
+        self._set_data(
+            name=y_component,
+            data=uy,
         )
 
+    def _set_direction(
+        self,
+        name: str,
+        data,
+        dir_type: str,
+        dask_manager: DaskManager,
+    ) -> None:
+        """Sets a directeion variable.
+
+        Calculates x- and y- components and sets them based on set connected magnitude.
+
+        Data needs to be exactly right shape."""
+
+        x_component = self._coord_manager.directions.get(name)["x"]
+        y_component = self._coord_manager.directions.get(name)["y"]
+        mag_name = self._coord_manager.directions.get(name)["mag"]
+
+        mag_data = self.get(mag_name)
+
+        dir_type = dir_type or self._coord_manager.directions[name]["dir_type"]
+        data = self._coord_manager.convert_to_math_dir(data, dir_type)
+
+        s = dask_manager.sin(data)
+        c = dask_manager.cos(data)
+        ux = mag_data * c
+        uy = mag_data * s
+
+        self._set_data(
+            name=x_component,
+            data=ux,
+        )
+        self._set_data(
+            name=y_component,
+            data=uy,
+        )
+
+    def _set_data(
+        self,
+        name: str,
+        data,
+    ) -> None:
+        """Sets a data variable to the underlying dataset.
+
+        Triggers setting metadata of the variable and possible connected masks."""
+        self._ds_manager.set(data=data, data_name=name, coords=self.coord_group(name))
         self._set_metadata_of_parameter(name)
         self._trigger_masks(name, data)
 
-        return
+    def _set_metadata_of_parameter(self, name: str) -> None:
+        """Sets the metadata of a single parameter by finding the connected geo-parameter"""
+        metadata = self.metadata(name)
+        self.set_metadata(metadata, name, append=False)
+        meta_parameter = self._coord_manager.meta_vars.get(name)
+
+        if meta_parameter is not None:
+            self.set_metadata(meta_parameter.meta_dict(), name)
+
+    def _trigger_masks(self, name: str, data) -> None:
+        """Set any masks that are triggered by setting a specific data variable
+        E.g. Set new 'land_mask' when 'topo' is set."""
+
+        for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(
+            name, []
+        ):
+            mask_name = f"{mask_name}_mask"
+
+            if range_inclusive[0]:
+                low_mask = data >= valid_range[0]
+            else:
+                low_mask = data > valid_range[0]
+
+            if range_inclusive[1]:
+                high_mask = data <= valid_range[1]
+            else:
+                high_mask = data < valid_range[1]
+
+            mask = np.logical_and(low_mask, high_mask)
+            self.set(mask_name, mask)
 
     def get(
         self,
