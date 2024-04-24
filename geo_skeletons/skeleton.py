@@ -601,59 +601,6 @@ class Skeleton:
             mask = np.logical_and(low_mask, high_mask)
             self.set(mask_name, mask)
 
-    def _get_magnitude(
-        self,
-        name,
-        strict: bool = False,
-        empty: bool = False,
-        **kwargs,
-    ):
-        x_data = self._ds_manager.get(
-            self._coord_manager.magnitudes[name].get("x"),
-            empty=empty,
-            strict=strict,
-            **kwargs,
-        )
-        y_data = self._ds_manager.get(
-            self._coord_manager.magnitudes[name].get("y"),
-            empty=empty,
-            strict=strict,
-            **kwargs,
-        )
-        data = self._coord_manager.compute_magnitude(x_data, y_data)
-        return data
-
-    def _get_direction(
-        self,
-        name,
-        strict: bool = False,
-        empty: bool = False,
-        dir_type: str = None,
-        **kwargs,
-    ):
-
-        x_data = self._ds_manager.get(
-            self._coord_manager.directions[name].get("x"),
-            empty=empty,
-            strict=strict,
-            **kwargs,
-        )
-        y_data = self._ds_manager.get(
-            self._coord_manager.directions[name].get("y"),
-            empty=empty,
-            strict=strict,
-            **kwargs,
-        )
-
-        if x_data is None or y_data is None:
-            return None
-
-        dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
-        data = self._coord_manager.compute_math_direction(x_data, y_data)
-        data = self._coord_manager.convert_from_math_dir(data, dir_type=dir_type)
-
-        return data
-
     def get(
         self,
         name,
@@ -690,7 +637,6 @@ class Skeleton:
                 **kwargs,
             )
         elif name in self._coord_manager.directions.keys():
-
             data = self._get_direction(
                 name=name,
                 strict=strict,
@@ -744,6 +690,59 @@ class Skeleton:
         if not data_array:
             data = data.data
 
+        return data
+
+    def _get_direction(
+        self,
+        name,
+        strict: bool = False,
+        empty: bool = False,
+        dir_type: str = None,
+        **kwargs,
+    ):
+
+        x_data = self._ds_manager.get(
+            self._coord_manager.directions[name].get("x"),
+            empty=empty,
+            strict=strict,
+            **kwargs,
+        )
+        y_data = self._ds_manager.get(
+            self._coord_manager.directions[name].get("y"),
+            empty=empty,
+            strict=strict,
+            **kwargs,
+        )
+
+        if x_data is None or y_data is None:
+            return None
+
+        dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
+        data = self._coord_manager.compute_math_direction(x_data, y_data)
+        data = self._coord_manager.convert_from_math_dir(data, dir_type=dir_type)
+
+        return data
+
+    def _get_magnitude(
+        self,
+        name,
+        strict: bool = False,
+        empty: bool = False,
+        **kwargs,
+    ):
+        x_data = self._ds_manager.get(
+            self._coord_manager.magnitudes[name].get("x"),
+            empty=empty,
+            strict=strict,
+            **kwargs,
+        )
+        y_data = self._ds_manager.get(
+            self._coord_manager.magnitudes[name].get("y"),
+            empty=empty,
+            strict=strict,
+            **kwargs,
+        )
+        data = self._coord_manager.compute_magnitude(x_data, y_data)
         return data
 
     def _smart_squeeze(self, name: str, data):
@@ -919,13 +918,7 @@ class Skeleton:
         if not self._structure_initialized():
             return None
         return self.get("inds", **kwargs)
-        # inds = self._ds_manager.get("inds", **kwargs)
-        # if inds is None:
-        #     return None
-        # vals = inds.values.copy()
-        # if vals.shape == ():
-        #     vals = vals.reshape(1)[0]
-        # return vals
+
 
     def x(
         self,
