@@ -3,17 +3,22 @@ from typing import Union
 from copy import deepcopy
 from functools import partial
 from geo_parameters.metaparameter import MetaParameter
+import geo_parameters as gp
+import dask.array as da
 
 
 def add_datavar(
     name: Union[str, MetaParameter],
     coords: str = "all",
     default_value: float = 0.0,
-    direction_from: bool = None,
+    dir_type: bool = None,
     append: bool = False,
 ):
     """stash_get = True means that the coordinate data can be accessed
     by method ._{name}() instead of .{name}()
+
+    for directional parameters provide a MetaParameter or set:
+    dir_type: 'from', 'to' or 'math'
 
     This allows for alternative definitions of the get-method elsewere."""
 
@@ -21,10 +26,11 @@ def add_datavar(
         def get_var(
             self,
             empty: bool = False,
+            strict: bool = False,
+            dir_type: str = None,
             data_array: bool = False,
             squeeze: bool = True,
             dask: bool = None,
-            angular: bool = False,
             **kwargs,
         ) -> np.ndarray:
             """Returns the data variable.
@@ -38,17 +44,39 @@ def add_datavar(
             var = self.get(
                 name_str,
                 empty=empty,
+                strict=strict,
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
                 **kwargs,
             )
-            if angular:
-                if offset is None:
+
+            set_dir_type = self._coord_manager.dir_vars[name_str]
+            if dir_type is not None:
+                if set_dir_type is None:
                     raise ValueError(
-                        "Cannot ask angular values for a non-directional variable!"
+                        "Cannot ask specific direction type ('dir_type') for a non-directional variable!"
                     )
-                var = (90 - var + offset) * np.pi / 180
+                # Convert to mathematical convention first
+                math_var = (90 - var + offset[set_dir_type]) * np.pi / 180
+                if dir_type == "math":
+                    if dask:
+                        var = da.mod(math_var, 2 * np.pi)
+                        var[var > np.pi] = var[var > np.pi] - 2 * np.pi
+                    else:
+                        var = np.mod(math_var, 2 * np.pi)
+                        var[var > np.pi] = var[var > np.pi] - 2 * np.pi
+                elif dir_type in ["to", "from"]:
+                    var = 90 - math_var * 180 / np.pi + offset[dir_type]
+                    if dask:
+                        var = da.mod(var, 360)
+                    else:
+                        var = np.mod(var, 360)
+                else:
+                    raise ValueError(
+                        f"'dir_type' needs to be 'to', 'from' or 'math', not {dir_type}"
+                    )
+
             return var
 
         def set_var(
@@ -76,7 +104,7 @@ def add_datavar(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        name_str = c._coord_manager.add_var(name, coords, default_value)
+        name_str = c._coord_manager.add_var(name, coords, default_value, dir_type)
 
         if append:
             exec(f"c.{name_str} = partial(get_var, c)")
@@ -87,29 +115,25 @@ def add_datavar(
 
         return c
 
-    # If the direction_from flag is set (True/False) or name is a MetaParameter with directional info
-    # then the data variable is assumed to be a directional one
-    # and conversion to mathematical direction can be made
-
-    if direction_from is None:
-        if not isinstance(name, str):
-            direction_to = (
+    # Always respect explicitly set directional convention
+    # Otherwise parse from MetaParameter is possible
+    # If dir_type is left to None, it means that this data variable is not a dirctional parameter
+    if dir_type is None:
+        if gp.is_gp(name):
+            standard_to = (
                 "to_direction" in name.standard_name()
                 or "to_direction" in name.standard_name(alias=True)
             )
-            direction_from = (
+
+            standard_from = (
                 "from_direction" in name.standard_name()
                 or "from_direction" in name.standard_name(alias=True)
             )
-        else:
-            direction_to = None
-    else:
-        direction_to = not direction_from
+            if standard_to:
+                dir_type = "to"
+            elif standard_from:
+                dir_type = "from"
 
-    if direction_from:
-        offset = 180
-    elif direction_to:
-        offset = 0
-    else:
-        offset = None
+    offset = {"from": 180, "to": 0}
+
     return datavar_decorator

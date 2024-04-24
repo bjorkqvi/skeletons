@@ -52,10 +52,12 @@ class Skeleton:
             name=name, coords=coords, default_value=default_value, append=True
         )(self)
 
-    def add_magnitude(self, name: str, x: str, y: str, direction: str = None) -> None:
-        self = add_magnitude(name=name, x=x, y=y, direction=direction, append=True)(
-            self
-        )
+    def add_magnitude(
+        self, name: str, x: str, y: str, direction: str = None, dir_type: str = None
+    ) -> None:
+        self = add_magnitude(
+            name=name, x=x, y=y, direction=direction, dir_type=dir_type, append=True
+        )(self)
 
     @classmethod
     def from_ds(
@@ -491,10 +493,10 @@ class Skeleton:
         strict: bool = False,
         empty: bool = False,
         data_array: bool = False,
+        dir_type: str = None,
         squeeze: bool = True,
         boolean_mask: bool = False,
         dask: bool = None,
-        angular: bool = False,
         **kwargs,
     ):
         """Gets a mask or data variable as an array.
@@ -548,8 +550,9 @@ class Skeleton:
                 boolean_mask=boolean_mask,
                 dask=dask,
             )
+            dir_type = dir_type or self._coord_manager.directions[name].get('dir_type')
             data = self._coord_manager.compute_direction(
-                x, y, angular=angular, dask=dask
+                x, y, dir_type=dir_type, dask=dask
             )
         else:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)

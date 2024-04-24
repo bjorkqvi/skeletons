@@ -5,7 +5,7 @@ import numpy as np
 
 
 def test_cf_no_info():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(PointSkeleton):

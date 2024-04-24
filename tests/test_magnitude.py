@@ -5,7 +5,7 @@ import numpy as np
 
 def test_magnitude_point():
 
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(PointSkeleton):
@@ -26,26 +26,28 @@ def test_magnitude_point():
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 45 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, angular=True)), np.pi / 4
+        np.median(points.wdir(empty=True, dir_type="math")), np.pi / 4
     )
 
     points.set_u(-1)
     points.set_v(1)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), -45 + 360 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi * 3 / 4)
+    np.testing.assert_almost_equal(
+        np.median(points.wdir(dir_type="math")), np.pi * 3 / 4
+    )
 
     points.set_u(2**0.5)
     points.set_v(0)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), 90 + 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), 0)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), 0)
 
     points.set_u(-(2**0.5))
     points.set_v(0)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), 270 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), np.pi)
 
     points.set_u(3)
     points.set_v(4)
@@ -58,17 +60,17 @@ def test_magnitude_point():
     points.set_u(0)
     points.set_v(1)
     np.testing.assert_almost_equal(np.median(points.wdir()), 0 + 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi / 2)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), np.pi / 2)
 
     points.set_u(0)
     points.set_v(-1)
     np.testing.assert_almost_equal(np.median(points.wdir()), 180 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), -np.pi / 2)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), -np.pi / 2)
 
 
 def test_magnitude_gridded():
 
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -90,26 +92,28 @@ def test_magnitude_gridded():
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 45 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, angular=True)), np.pi / 4
+        np.median(points.wdir(empty=True, dir_type="math")), np.pi / 4
     )
 
     points.set_u(-1)
     points.set_v(1)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), -45 + 360 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi * 3 / 4)
+    np.testing.assert_almost_equal(
+        np.median(points.wdir(dir_type="math")), np.pi * 3 / 4
+    )
 
     points.set_u(2**0.5)
     points.set_v(0)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), 90 + 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), 0)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), 0)
 
     points.set_u(-(2**0.5))
     points.set_v(0)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), 270 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), np.pi)
 
     points.set_u(3)
     points.set_v(4)
@@ -122,12 +126,12 @@ def test_magnitude_gridded():
     points.set_u(0)
     points.set_v(1)
     np.testing.assert_almost_equal(np.median(points.wdir()), 0 + 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi / 2)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), np.pi / 2)
 
     points.set_u(0)
     points.set_v(-1)
     np.testing.assert_almost_equal(np.median(points.wdir()), 180 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), -np.pi / 2)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), -np.pi / 2)
 
 
 def test_add_magnitude():
@@ -138,7 +142,7 @@ def test_add_magnitude():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
-    points.add_magnitude("wind", x="u", y="v", direction="wdir")
+    points.add_magnitude("wind", x="u", y="v", direction="wdir", dir_type="from")
     points.activate_dask(rechunk=False)
     points.deactivate_dask()
 
@@ -156,26 +160,28 @@ def test_add_magnitude():
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 45 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, angular=True)), np.pi / 4
+        np.median(points.wdir(empty=True, dir_type="math")), np.pi / 4
     )
 
     points.set_u(-1)
     points.set_v(1)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), -45 + 360 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi * 3 / 4)
+    np.testing.assert_almost_equal(
+        np.median(points.wdir(dir_type="math")), np.pi * 3 / 4
+    )
 
     points.set_u(2**0.5)
     points.set_v(0)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), 90 + 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), 0)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), 0)
 
     points.set_u(-(2**0.5))
     points.set_v(0)
     np.testing.assert_almost_equal(points.wind(), wind)
     np.testing.assert_almost_equal(np.median(points.wdir()), 270 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), np.pi)
 
     points.set_u(3)
     points.set_v(4)
@@ -188,16 +194,16 @@ def test_add_magnitude():
     points.set_u(0)
     points.set_v(1)
     np.testing.assert_almost_equal(np.median(points.wdir()), 0 + 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), np.pi / 2)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), np.pi / 2)
 
     points.set_u(0)
     points.set_v(-1)
     np.testing.assert_almost_equal(np.median(points.wdir()), 180 - 180)
-    np.testing.assert_almost_equal(np.median(points.wdir(angular=True)), -np.pi / 2)
+    np.testing.assert_almost_equal(np.median(points.wdir(dir_type="math")), -np.pi / 2)
 
 
 def test_set_magnitude():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -207,18 +213,20 @@ def test_set_magnitude():
     u = np.full(points.size(), 2)
     ud = np.zeros(points.size())
     udm = ud - np.pi / 2
-    points.set_wind(u, ud)
+    points.set_wind(u)
+    points.set_wdir(ud)
     np.testing.assert_almost_equal(u, points.wind())
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
-    points.set_wind(u, udm, angular=True)
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
+    points.set_wind(u)
+    points.set_wdir(udm, dir_type="math")
     np.testing.assert_almost_equal(u, points.wind())
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
 
 
 def test_set_magnitude_dask():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -228,18 +236,20 @@ def test_set_magnitude_dask():
     u = np.full(points.size(), 2)
     ud = np.zeros(points.size())
     udm = ud - np.pi / 2
-    points.set_wind(u, ud)
+    points.set_wind(u)
+    points.set_wdir(ud)
     np.testing.assert_almost_equal(u, points.wind())
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
-    points.set_wind(u, udm, angular=True)
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
+    points.set_wind(u)
+    points.set_wdir(udm, dir_type="math")
     np.testing.assert_almost_equal(u, points.wind())
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
 
 
 def test_set_magnitude_constant():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -249,20 +259,22 @@ def test_set_magnitude_constant():
     u = np.full(points.size(), 2)
     ud = np.zeros(points.size())
     udm = ud - np.pi / 2
-    points.set_wind(2, 0)
+    points.set_wind(2)
+    points.set_wdir(0)
     np.testing.assert_almost_equal(u, points.wind())
 
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
-    points.set_wind(2, -np.pi / 2, angular=True)
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
+    points.set_wind(2)
+    points.set_wdir(-np.pi / 2, dir_type="math")
 
     np.testing.assert_almost_equal(u, points.wind())
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
 
 
 def test_set_magnitude_constant_empty_direction():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -275,23 +287,32 @@ def test_set_magnitude_constant_empty_direction():
 
     points.set_u(0)
     points.set_v(-2)
+
     np.testing.assert_almost_equal(u, points.wind())
+
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
 
     points.set_wind(2)
     np.testing.assert_almost_equal(u, points.wind())
     np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
-    points.set_wind(2, angular=True)
+    np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
 
+    points.set_wdir(90)
     np.testing.assert_almost_equal(u, points.wind())
-    np.testing.assert_almost_equal(ud, points.wdir())
-    np.testing.assert_almost_equal(udm, points.wdir(angular=True))
+    np.testing.assert_almost_equal(ud + 90, points.wdir())
+    np.testing.assert_almost_equal(
+        udm - np.pi / 2 + 2 * np.pi, points.wdir(dir_type="math")
+    )
+
+    points.set_wdir(90, dir_type="to")
+    np.testing.assert_almost_equal(u, points.wind())
+    np.testing.assert_almost_equal(ud - 90 + 360, points.wdir())
+    np.testing.assert_almost_equal(udm + np.pi / 2, points.wdir(dir_type="math"))
 
 
 def test_get_magnitude():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -306,7 +327,7 @@ def test_get_magnitude():
     )
 
     np.testing.assert_almost_equal(
-        points.wdir(angular=True), points.get("wdir", angular=True)
+        points.wdir(dir_type="math"), points.get("wdir", dir_type="math")
     )
     np.testing.assert_almost_equal(points.wind(), points.get("wind"))
 
@@ -315,8 +336,8 @@ def test_get_magnitude():
     )
 
     np.testing.assert_almost_equal(
-        points.wdir(angular=True, empty=True),
-        points.get("wdir", angular=True, empty=True),
+        points.wdir(dir_type="math", empty=True),
+        points.get("wdir", dir_type="math", empty=True),
     )
     np.testing.assert_almost_equal(
         points.wind(empty=True), points.get("wind", empty=True)
@@ -327,7 +348,7 @@ def test_get_magnitude():
 
 
 def test_scale_magnitude():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -355,7 +376,7 @@ def test_scale_magnitude():
 
 
 def test_turn_direction():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
@@ -374,7 +395,7 @@ def test_turn_direction():
     np.testing.assert_almost_equal(points.wdir(), ud)
     np.testing.assert_almost_equal(points.wind(), u)
 
-    points.set_wind(direction=(points.wdir() + 180))
+    points.set_wdir(points.wdir() + 180)
     np.testing.assert_almost_equal(points.wind(), u)
     np.testing.assert_almost_equal(points.wdir(), ud - 180)
     np.testing.assert_almost_equal(points.u(), -ux)

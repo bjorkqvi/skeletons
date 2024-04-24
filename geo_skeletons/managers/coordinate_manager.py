@@ -36,6 +36,7 @@ class CoordinateManager:
 
         self.meta_coords: dict[str, MetaParameter] = {}
         self.meta_vars: dict[str, MetaParameter] = {}
+        self.dir_vars: dict[str, str] = {}
         self.meta_masks: dict[str, MetaParameter] = {}
         self.meta_magnitudes: dict[str, MetaParameter] = {}
         self.meta_directions: dict[str, MetaParameter] = {}
@@ -52,7 +53,12 @@ class CoordinateManager:
         self.initial_state = True
 
     def add_var(
-        self, name: str, coords: str, default_value: float, meta: MetaParameter = None
+        self,
+        name: str,
+        coords: str,
+        default_value: float,
+        dir_type: str = None,
+        meta: MetaParameter = None,
     ) -> str:
         """Add a variable that the Skeleton will use."""
         name, meta = gp.decode(name)
@@ -63,6 +69,7 @@ class CoordinateManager:
         self._vars["added"][name] = coords
         self._default_values[name] = default_value
         self.meta_vars[name] = meta
+        self.dir_vars[name] = dir_type
 
         self._used_names.append(name)
 
@@ -146,12 +153,17 @@ class CoordinateManager:
         return name
 
     def add_direction(
-        self, name: str, x: str, y: str, meta: MetaParameter = None
+        self,
+        name: str,
+        x: str,
+        y: str,
+        dir_type: str,
+        meta: MetaParameter = None,
     ) -> str:
         name, meta = gp.decode(name)
         if name in self._used_names:
             raise VariableExistsError(name)
-        self.directions[name] = {"x": x, "y": y}
+        self.directions[name] = {"x": x, "y": y, "dir_type": dir_type}
         self.meta_directions[name] = meta
         self._used_names.append(name)
         return name
@@ -256,7 +268,7 @@ class CoordinateManager:
             return None
         return (x**2 + y**2) ** 0.5
 
-    def compute_direction(self, x, y, angular: bool = False, dask: bool = True):
+    def compute_direction(self, x, y, dir_type: str, dask: bool = True):
         if x is None or y is None:
             return None
         if dask or hasattr(x, "chunks"):
@@ -264,12 +276,17 @@ class CoordinateManager:
         else:
             dirs = np.arctan2(y, x)
 
-        if not angular:
+        if dir_type == "math":
+            return dirs
+
+        if dir_type == "from":
             dirs = 90 - dirs * 180 / np.pi + 180
-            if dask or hasattr(x, "chunks"):
-                dirs = da.mod(dirs, 360)
-            else:
-                dirs = np.mod(dirs, 360)
+        elif dir_type == "to":
+            dirs = 90 - dirs * 180 / np.pi
+        if dask or hasattr(x, "chunks"):
+            dirs = da.mod(dirs, 360)
+        else:
+            dirs = np.mod(dirs, 360)
         return dirs
 
 

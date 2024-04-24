@@ -68,7 +68,7 @@ def test_insert_slice():
 
 
 def test_slice_magnitude():
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Wind(GriddedSkeleton):
