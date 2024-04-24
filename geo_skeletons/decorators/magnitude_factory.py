@@ -269,9 +269,22 @@ def add_magnitude(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
+        name_str, meta = gp.decode(name)
         if direction is not None:
-            dir_str = c._coord_manager.add_direction(
-                direction, x=x, y=y, dir_type=dir_type
+            dir_str, meta_dir = gp.decode(direction)
+        else:
+            dir_str, meta_dir = None, None
+
+        c._coord_manager.add_magnitude(name_str, meta, x=x, y=y, dir=dir_str)
+
+        if direction is not None:
+            c._coord_manager.add_direction(
+                name=dir_str,
+                meta=meta_dir,
+                x=x,
+                y=y,
+                dir_type=dir_type,
+                mag=name_str,
             )
             if append:
                 exec(f"c.{dir_str} = partial(get_direction, c)")
@@ -281,8 +294,6 @@ def add_magnitude(
                 exec(f"c.set_{dir_str} = set_direction")
         else:
             dir_str = None
-
-        name_str = c._coord_manager.add_magnitude(name, x=x, y=y, dir=dir_str)
 
         if append:
             exec(f"c.{name_str} = partial(get_magnitude, c)")
