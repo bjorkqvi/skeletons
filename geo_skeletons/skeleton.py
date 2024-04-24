@@ -452,6 +452,7 @@ class Skeleton:
         self,
         name: str,
         data,
+        dir_type: str,
         allow_reshape,
         allow_transpose,
         coords,
@@ -467,12 +468,12 @@ class Skeleton:
 
         dir_type = dir_type or self._coord_manager.directions[name]["dir_type"]
         if dir_type != "math":  # Convert to mathematical convention
-            direction = (90 - direction + OFFSET[dir_type]) * np.pi / 180
+            data = (90 - data + OFFSET[dir_type]) * np.pi / 180
 
         s = dask_manager.sin(data)
         c = dask_manager.cos(data)
-        x_component = mag_data * c
-        y_component = mag_data * s
+        ux = mag_data * c
+        uy = mag_data * s
 
         self._set_data(
             name=x_component,
@@ -497,6 +498,7 @@ class Skeleton:
         self,
         name: str,
         data=None,
+        dir_type: str = None,
         allow_reshape: bool = True,
         allow_transpose: bool = False,
         coords: list[str] = None,
@@ -557,28 +559,40 @@ class Skeleton:
                 dask_manager=dask_manager,
             )
 
-        if self._coord_manager.directions.get(name) is not None:
-            setter_function = eval(f"self.set_{name}")
-            # if self._coord_manager.magnitudes.get(name) is not None:
-            #     setter_function(
-            #         magnitude=data,
-            #         allow_reshape=allow_reshape,
-            #         allow_transpose=allow_transpose,
-            #         coords=coords,
-            #         silent=silent,
-            #         chunks=chunks,
-            #     )
-            # else:
-            setter_function(
-                direction=data,
+        if name in self._coord_manager.directions.keys():
+            self._set_direction(
+                name=name,
+                data=data,
+                dir_type=dir_type,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
                 coords=coords,
                 silent=silent,
-                chunks=chunks,
+                dask_manager=dask_manager,
             )
 
-            return
+        # if self._coord_manager.directions.get(name) is not None:
+        #     setter_function = eval(f"self.set_{name}")
+        #     # if self._coord_manager.magnitudes.get(name) is not None:
+        #     #     setter_function(
+        #     #         magnitude=data,
+        #     #         allow_reshape=allow_reshape,
+        #     #         allow_transpose=allow_transpose,
+        #     #         coords=coords,
+        #     #         silent=silent,
+        #     #         chunks=chunks,
+        #     #     )
+        #     # else:
+        #     setter_function(
+        #         direction=data,
+        #         allow_reshape=allow_reshape,
+        #         allow_transpose=allow_transpose,
+        #         coords=coords,
+        #         silent=silent,
+        #         chunks=chunks,
+        #     )
+
+        #     return
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
         if isinstance(data, xr.DataArray):
             coords = coords or list(data.dims)
