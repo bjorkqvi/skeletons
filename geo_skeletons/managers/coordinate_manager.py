@@ -143,30 +143,29 @@ class CoordinateManager:
         self._used_names.append(name)
         return name
 
-    def add_magnitude(self, name: str, x: str, y: str, dir: str) -> str:
-        name, meta = gp.decode(name)
+    def add_magnitude(
+        self, name: str, meta: MetaParameter, x: str, y: str, dir: str
+    ) -> str:
         if name in self._used_names:
             raise VariableExistsError(name)
         self.magnitudes[name] = {"x": x, "y": y, "dir": dir}
         self.meta_magnitudes[name] = meta
         self._used_names.append(name)
-        return name
 
     def add_direction(
         self,
         name: str,
+        meta: MetaParameter,
         x: str,
         y: str,
         dir_type: str,
-        meta: MetaParameter = None,
+        mag: str,
     ) -> str:
-        name, meta = gp.decode(name)
         if name in self._used_names:
             raise VariableExistsError(name)
-        self.directions[name] = {"x": x, "y": y, "dir_type": dir_type}
+        self.directions[name] = {"x": x, "y": y, "dir_type": dir_type, "mag": mag}
         self.meta_directions[name] = meta
         self._used_names.append(name)
-        return name
 
     def set_initial_vars(self, initial_vars: dict) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""

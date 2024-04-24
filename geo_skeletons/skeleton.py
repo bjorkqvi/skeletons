@@ -17,6 +17,7 @@ from types import MethodType
 from .iter import SkeletonIterator
 
 # DEFAULT_UTM = (33, "W")
+OFFSET = {"from": 180, "to": 0}
 
 
 class Skeleton:
@@ -427,6 +428,51 @@ class Skeleton:
         c = dask_manager.cos(dir_data)
         ux = data * c
         uy = data * s
+
+        self._set_data(
+            name=x_component,
+            data=ux,
+            allow_reshape=allow_reshape,
+            allow_transpose=allow_transpose,
+            coords=coords,
+            dask_manager=dask_manager,
+            silent=silent,
+        )
+        self._set_data(
+            name=y_component,
+            data=uy,
+            allow_reshape=allow_reshape,
+            allow_transpose=allow_transpose,
+            coords=coords,
+            dask_manager=dask_manager,
+            silent=silent,
+        )
+
+    def _set_direction(
+        self,
+        name: str,
+        data,
+        allow_reshape,
+        allow_transpose,
+        coords,
+        silent,
+        dask_manager: DaskManager,
+    ) -> None:
+
+        x_component = self._coord_manager.directions.get(name)["x"]
+        y_component = self._coord_manager.directions.get(name)["y"]
+        mag_name = self._coord_manager.directions.get(name)["mag"]
+
+        mag_data = self.get(mag_name)
+
+        dir_type = dir_type or self._coord_manager.directions[name]["dir_type"]
+        if dir_type != "math":  # Convert to mathematical convention
+            direction = (90 - direction + OFFSET[dir_type]) * np.pi / 180
+
+        s = dask_manager.sin(data)
+        c = dask_manager.cos(data)
+        x_component = mag_data * c
+        y_component = mag_data * s
 
         self._set_data(
             name=x_component,
