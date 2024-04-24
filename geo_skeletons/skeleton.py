@@ -423,12 +423,8 @@ class Skeleton:
 
         dir_data = self.get(dir_name, dir_type="math")
 
-        if dask_manager.data_is_dask(dir_data):
-            s = da.sin(dir_data)
-            c = da.cos(dir_data)
-        else:
-            s = np.sin(dir_data)
-            c = np.cos(dir_data)
+        s = dask_manager.sin(dir_data)
+        c = dask_manager.cos(dir_data)
         ux = data * c
         uy = data * s
 

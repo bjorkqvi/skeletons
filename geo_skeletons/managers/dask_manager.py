@@ -78,3 +78,15 @@ class DaskManager:
             return da.expand_dims(data, axis=axis)
         else:
             return np.expand_dims(data, axis=axis)
+
+    def cos(self, data):
+        if self.data_is_dask(data):
+            return da.cos(data)
+        else:
+            return np.cos(data)
+
+    def sin(self, data):
+        if self.data_is_dask(data):
+            return da.sin(data)
+        else:
+            return np.sin(data)
