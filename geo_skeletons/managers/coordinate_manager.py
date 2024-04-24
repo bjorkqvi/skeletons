@@ -9,6 +9,7 @@ import geo_parameters as gp
 meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
 
 SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
+OFFSET = {"from": 180, "to": 0}
 
 
 class CoordinateManager:
@@ -261,6 +262,11 @@ class CoordinateManager:
             self.added_vars().get(name) is not None
             or self.added_masks().get(name) is not None
         )
+
+    def convert_to_math_dir(self, data, dir_type: str):
+        if dir_type == "math":  # Convert to mathematical convention
+            return data
+        return (90 - data + OFFSET[dir_type]) * np.pi / 180
 
     def compute_magnitude(self, x, y):
         if x is None or y is None:
