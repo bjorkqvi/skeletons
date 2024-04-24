@@ -13,9 +13,6 @@ class ReshapeManager:
         self.silent = silent
 
     def explicit_reshape(self, data, data_coords, expected_coords):
-        if expected_coords is None:
-            return data
-
         if data is None:
             return None
 
@@ -25,7 +22,7 @@ class ReshapeManager:
 
         # Create a list of shapes based on the given coordinates
         coord_order = [
-            expected_coords.index(c) for c in data_coords if c in expected_coords
+            data_coords.index(c) for c in expected_coords if c in data_coords
         ]
 
         if len(data.shape) > len(coord_order):
@@ -35,7 +32,7 @@ class ReshapeManager:
         data = self.dask_manager.reshape_me(data, tuple(coord_order))
         if not self.silent:
             print(
-                f"Reshaping data {original_shape} -> {data.shape}: {expected_coords} -> {data_coords}"
+                f"Reshaping data {original_shape} -> {data.shape}: {data_coords} -> {expected_coords}"
             )
 
         return data

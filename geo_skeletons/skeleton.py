@@ -315,35 +315,39 @@ class Skeleton:
         self.set(name, old_data, allow_reshape=False)
         return
 
-    def _set_data(self, name: str, data, coords: list[str], dask_manager: DaskManager, silent: bool, chunks: tuple[int], allow_reshape: bool, allow_transpose: bool) -> None:
+    def _set_data(
+        self,
+        name: str,
+        data,
+        coords: list[str],
+        dask_manager: DaskManager,
+        silent: bool,
+        allow_reshape: bool,
+        allow_transpose: bool,
+    ) -> None:
+
         # Reshaping
         reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
+        coord_type = self.coord_group(name)
 
-        # Explicit (1) or explicit though DataArray (2)
-        try:
-            data = reshape_manager.explicit_reshape(
-                data,
-                data_coords=self.coords(self.coord_group(name)),
-                expected_coords=coords,
-            )
-        except DataWrongDimensionError as data_error:
-            # Try to squeeze out all trivial dimensions from both data and coordinates and see if that works
-            if data.shape == data.squeeze().shape:
-                raise data_error
+        # Do explicit reshape if coordinates of the provided data is given
+        if coords is not None:
+            # Some dimensions of the provided data might not exist in the Skeleton
+            # If they are trivial then they don't matter, so squeeze them out
             squeezed_coords = [
                 c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
             ]
-            self.set(
-                name=name,
-                data=data.squeeze(),
-                coords=squeezed_coords,
-                silent=silent,
-                chunks=chunks,
+            data = reshape_manager.explicit_reshape(
+                data.squeeze(),
+                data_coords=squeezed_coords, 
+                expected_coords=self.coords(coord_type),
             )
-            return
+
+            # Unsqueeze the data before setting to get back trivial dimensions
+            data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
+
         # Try to set the data
 
-        coord_type = self.coord_group(name)
         try:
             self._ds_manager.set(data=data, data_name=name, coords=coord_type)
         except DataWrongDimensionError as data_error:
@@ -467,7 +471,15 @@ class Skeleton:
         if name[-5:] == "_mask":
             data = data.astype(int)
 
-        self._set_data(name=name, data=data, coords=coords, dask_manager=dask_manager, silent=silent, chunks=chunks, allow_reshape=allow_reshape, allow_transpose=allow_transpose)
+        self._set_data(
+            name=name,
+            data=data,
+            coords=coords,
+            dask_manager=dask_manager,
+            silent=silent,
+            allow_reshape=allow_reshape,
+            allow_transpose=allow_transpose,
+        )
 
         ## Did we trigger any masks
         for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(

@@ -90,9 +90,9 @@ def test_set_dataarray_wrong_variable_name_transpose():
     grid2 = Expanded2(
         x=(1, 2, 3),
         y=(4, 5, 6, 7, 8),
-        test=(10, 11),
         another=(2, 3, 4, 5),
         trivial2=0,
+        test=(10, 11),
         another_trivial2=5,
         chunks=None,
     )
@@ -110,15 +110,16 @@ def test_set_dataarray_wrong_variable_name_transpose():
     # Not squeezed data
     grid.set_hs(1)
     data = grid.hs(data_array=True, squeeze=False) * 2
-    data.data[:, :, 0, :, 1, 0] = 5
+    data.data[:, :, :, 0, 1, :] = 5
 
     # Ignores the trivial dimensions, but identifies non-trivial matching dimensions and performs a reshape
     grid2.set_hs(data)
     # Check that the transpose has been done right
+
     assert (
-        grid2.hs(squeeze=False)[:, :, 1, 0, :, 0] == data.data[:, :, 0, :, 1, 0]
+        grid2.hs(squeeze=False)[:, :, 1, :, 0, :] == data.data[:, :, :, 0, 1, :]
     ).all()
     assert (
-        grid2.hs(data_array=True, squeeze=False)[:, :, 1, 0, :, 0]
-        == data[:, :, 0, :, 1, 0]
+        grid2.hs(data_array=True, squeeze=False)[:, :, 1, :, 0, :]
+        == data[:, :, :, 0, 1, :]
     ).all()
