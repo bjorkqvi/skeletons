@@ -6,9 +6,9 @@ import geo_parameters as gp
 
 
 def test_angular_str():
-    @add_datavar("stokes_dir", default_value=0, direction_from=False)
+    @add_datavar("stokes_dir", default_value=0, dir_type="from")
     @add_datavar("stokes", default_value=0.1)
-    @add_magnitude(name="wind", x="u", y="v", direction="wdir")
+    @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
     @add_datavar("v", default_value=-1)
     @add_datavar("u", default_value=1)
     class Magnitude(PointSkeleton):
@@ -32,15 +32,17 @@ def test_angular_str():
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 135 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, angular=True)), -np.pi / 4
+        np.median(points.wdir(empty=True, dir_type="math")), -np.pi / 4
     )
 
+    points.stokes_dir(dir_type="from")
     np.testing.assert_almost_equal(np.median(points.stokes_dir(empty=True)), 0)
+
     np.testing.assert_almost_equal(
-        np.median(points.stokes_dir(empty=True, angular=True)), np.pi / 2
+        np.median(points.stokes_dir(empty=True, dir_type="math")), -np.pi / 2
     )
     with pytest.raises(ValueError):
-        points.stokes(angular=True)
+        points.stokes(dir_type="math")
 
 
 def test_angular_gp():
@@ -70,15 +72,25 @@ def test_angular_gp():
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 135 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, angular=True)), -np.pi / 4
+        np.median(points.wdir(empty=True, dir_type="math")), -np.pi / 4
+    )
+    np.testing.assert_almost_equal(
+        np.median(points.wdir(empty=True, dir_type="to")), 135
+    )
+    np.testing.assert_almost_equal(np.median(points.us_dir(empty=True)), 0)
+
+    points.us_dir(empty=True, dir_type="math")
+    np.testing.assert_almost_equal(
+        np.median(points.us_dir(empty=True, dir_type="math")), np.pi / 2
     )
 
-    np.testing.assert_almost_equal(np.median(points.us_dir(empty=True)), 0)
+    points.set_us_dir(180)
     np.testing.assert_almost_equal(
-        np.median(points.us_dir(empty=True, angular=True)), np.pi / 2
+        np.median(points.us_dir(dir_type="math")), -np.pi / 2
     )
+
     with pytest.raises(ValueError):
-        points.us(angular=True)
+        points.us(dir_type="math")
 
 
 def test_angular_gp_flip_dir():
@@ -109,12 +121,18 @@ def test_angular_gp_flip_dir():
 
     np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 135)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, angular=True)), -np.pi / 4
+        np.median(points.wdir(empty=True, dir_type="math")), -np.pi / 4
     )
 
     np.testing.assert_almost_equal(np.median(points.us_dir(empty=True)), 0)
     np.testing.assert_almost_equal(
-        np.median(points.us_dir(empty=True, angular=True)), -np.pi / 2 + 2 * np.pi
+        np.median(points.us_dir(empty=True, dir_type="from")), 0
+    )
+    np.testing.assert_almost_equal(
+        np.median(points.us_dir(empty=True, dir_type="to")), 180
+    )
+    np.testing.assert_almost_equal(
+        np.median(points.us_dir(empty=True, dir_type="math")), -np.pi / 2
     )
     with pytest.raises(ValueError):
-        points.us(angular=True)
+        points.us(dir_type="from")

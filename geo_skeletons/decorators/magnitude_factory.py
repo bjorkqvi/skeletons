@@ -5,6 +5,7 @@ from functools import partial
 import dask.array as da
 from geo_parameters.metaparameter import MetaParameter
 from ..managers.dask_manager import DaskManager
+import geo_parameters as gp
 
 
 def add_magnitude(
@@ -12,11 +13,13 @@ def add_magnitude(
     x: str,
     y: str,
     direction: Union[str, MetaParameter] = None,
-    direction_from: bool = None,
+    dir_type: str = None,
     append=False,
 ):
     """stash_get = True means that the coordinate data can be accessed
     by method ._{name}() instead of .{name}()
+
+    dir_type: 'from', 'to' or 'math'
 
     This allows for alternative definitions of the get-method elsewere."""
 
@@ -27,7 +30,7 @@ def add_magnitude(
             data_array: bool = False,
             squeeze: bool = False,
             dask: bool = None,
-            angular: bool = False,
+            dir_type: str = None,
             **kwargs,
         ) -> np.ndarray:
             """Returns the magnitude.
@@ -80,13 +83,15 @@ def add_magnitude(
                     **kwargs,
                 )
 
+            dir_type = dir_type or self._coord_manager.directions[dir_str]["dir_type"]
+
             if dask:
                 dirs = da.arctan2(y, x)
             else:
                 dirs = np.arctan2(y, x)
 
-            if not angular:
-                dirs = 90 - dirs * 180 / np.pi + offset
+            if dir_type != "math":
+                dirs = 90 - dirs * 180 / np.pi + offset[dir_type]
                 if dask:
                     dirs = da.mod(dirs, 360)
                 else:
@@ -175,7 +180,7 @@ def add_magnitude(
                     dask=(self.dask() or chunks is not None),
                 )
 
-            direction = get_direction(self, angular=True)
+            direction = get_direction(self, dir_type="math")
 
             if dask_manager.data_is_dask(direction):
                 s = da.sin(direction)
@@ -208,7 +213,7 @@ def add_magnitude(
         def set_direction(
             self,
             direction: Union[np.ndarray, int, float] = None,
-            angular: bool = False,
+            dir_type: str = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: list[str] = None,
@@ -220,7 +225,7 @@ def add_magnitude(
             magnitude = get_magnitude(self)
 
             if direction is None:
-                direction = get_direction(self, angular=angular)
+                direction = get_direction(self, dir_type=dir_type)
             else:
                 direction = dask_manager.constant_array(
                     direction,
@@ -228,8 +233,9 @@ def add_magnitude(
                     dask=(self.dask or chunks is not None),
                 )
 
-            if not angular:  # Convert to mathematical convention
-                direction = (90 - direction + offset) * np.pi / 180
+            dir_type = dir_type or self._coord_manager.directions[dir_str]["dir_type"]
+            if dir_type != "math":  # Convert to mathematical convention
+                direction = (90 - direction + offset[dir_type]) * np.pi / 180
 
             if dask_manager.data_is_dask(direction):
                 s = da.sin(direction)
@@ -273,7 +279,9 @@ def add_magnitude(
             exec(f"c.set_{name_str} = set_magnitude")
 
         if direction is not None:
-            dir_str = c._coord_manager.add_direction(direction, x=x, y=y)
+            dir_str = c._coord_manager.add_direction(
+                direction, x=x, y=y, dir_type=dir_type
+            )
             if append:
                 exec(f"c.{dir_str} = partial(get_direction, c)")
                 exec(f"c.set_{dir_str} = partial(set_direction, c)")
@@ -282,17 +290,34 @@ def add_magnitude(
                 exec(f"c.set_{dir_str} = set_direction")
         return c
 
+    if dir_type not in ["from", "to", "math", None]:
+        raise ValueError(
+            f"'dir_type' should be 'from', 'to' or 'math' (or 'None'), not {dir_type}!"
+        )
+
     # Always respect explicitly set directional convention
     # Otherwise parse from MetaParameter is possible
-    # Default to direction_from
-    if direction is not None:
-        if direction_from is None:
-            if not isinstance(direction, str):
-                direction_from = not (
-                    "to_direction" in direction.standard_name()
-                    or "to_direction" in direction.standard_name(alias=True)
-                )
-            else:
-                direction_from = True
-        offset = 180 if direction_from else 0
+    if dir_type is None:
+        if gp.is_gp(direction):
+            standard_to = (
+                "to_direction" in direction.standard_name()
+                or "to_direction" in direction.standard_name(alias=True)
+            )
+
+            standard_from = (
+                "from_direction" in direction.standard_name()
+                or "from_direction" in direction.standard_name(alias=True)
+            )
+            if standard_to:
+                dir_type = "to"
+            elif standard_from:
+                dir_type = "from"
+
+    if dir_type is None and direction is not None:
+        raise ValueError(
+            f"Could not parse dir_type, please set it explicitly to 'from', 'to' or 'math'!"
+        )
+
+    offset = {"from": 180, "to": 0}
+
     return magnitude_decorator

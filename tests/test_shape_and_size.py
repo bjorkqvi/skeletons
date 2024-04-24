@@ -9,7 +9,7 @@ from geo_skeletons.decorators import (
 
 
 def test_point():
-    @add_magnitude("mag", x="gr", y="gr", direction="dir")
+    @add_magnitude("mag", x="gr", y="gr", direction="dir", dir_type="from")
     @add_mask(name="all", coords="all", opposite_name="n_all", default_value=1)
     @add_mask(
         name="gridpoint",
@@ -66,7 +66,7 @@ def test_point():
 
 
 def test_gridded():
-    @add_magnitude("mag", x="gr", y="gr", direction="dir")
+    @add_magnitude("mag", x="gr", y="gr", direction="dir", dir_type="from")
     @add_mask(name="all", coords="all", opposite_name="n_all", default_value=1)
     @add_mask(
         name="gridpoint",

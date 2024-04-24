@@ -42,13 +42,13 @@ def test_mix():
 
     points = Wrong(x=0, y=0, z=0)
     with pytest.raises(VariableExistsError):
-        points.add_magnitude(name="u", x="u", y="v")
+        points.add_magnitude(name="u", x="u", y="v", dir_type="from")
 
     with pytest.raises(VariableExistsError):
-        points.add_magnitude(name="umag", x="u", y="v", direction="v")
+        points.add_magnitude(name="umag", x="u", y="v", direction="v", dir_type="from")
 
     with pytest.raises(VariableExistsError):
-        points.add_magnitude(name="umag", x="u", y="v", direction="v")
+        points.add_magnitude(name="umag", x="u", y="v", direction="v", dir_type="from")
 
     with pytest.raises(VariableExistsError):
 
