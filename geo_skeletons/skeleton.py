@@ -16,9 +16,6 @@ from .decorators import add_datavar, add_magnitude
 from types import MethodType
 from .iter import SkeletonIterator
 
-# DEFAULT_UTM = (33, "W")
-OFFSET = {"from": 180, "to": 0}
-
 
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
@@ -467,8 +464,7 @@ class Skeleton:
         mag_data = self.get(mag_name)
 
         dir_type = dir_type or self._coord_manager.directions[name]["dir_type"]
-        if dir_type != "math":  # Convert to mathematical convention
-            data = (90 - data + OFFSET[dir_type]) * np.pi / 180
+        data = self._coord_manager.convert_to_math_dir(data, dir_type)
 
         s = dask_manager.sin(data)
         c = dask_manager.cos(data)
