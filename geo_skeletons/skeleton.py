@@ -645,9 +645,13 @@ class Skeleton:
             **kwargs,
         )
 
+        if x_data is None or y_data is None:
+            return None
+
         dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
         data = self._coord_manager.compute_math_direction(x_data, y_data)
         data = self._coord_manager.convert_from_math_dir(data, dir_type=dir_type)
+
         return data
 
     def get(
@@ -686,6 +690,7 @@ class Skeleton:
                 **kwargs,
             )
         elif name in self._coord_manager.directions.keys():
+
             data = self._get_direction(
                 name=name,
                 strict=strict,
@@ -695,18 +700,21 @@ class Skeleton:
             )
         else:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
-            set_dir_type = self._coord_manager.dir_vars.get(name)
-            if dir_type is not None:
-                if set_dir_type is None:
+
+            if data is not None:
+                set_dir_type = self._coord_manager.dir_vars.get(name)
+                if dir_type is not None and set_dir_type is None:
                     raise ValueError(
                         "Cannot ask for a 'dir_type' for a non-directional variable!"
                     )
-                data = self._coord_manager.convert_to_math_dir(
-                    data, dir_type=set_dir_type
-                )
-                data = self._coord_manager.convert_from_math_dir(
-                    data, dir_type=dir_type
-                )
+                if set_dir_type is not None:
+                    dir_type = dir_type or set_dir_type
+                    data = self._coord_manager.convert_to_math_dir(
+                        data, dir_type=set_dir_type
+                    )
+                    data = self._coord_manager.convert_from_math_dir(
+                        data, dir_type=dir_type
+                    )
 
         if not isinstance(data, xr.DataArray):
             return None
