@@ -342,27 +342,10 @@ class Skeleton:
             # Unsqueeze the data before setting to get back trivial dimensions
             data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
 
-        return data
-
-    def _set_data(
-        self,
-        name: str,
-        data,
-        dask_manager: DaskManager,
-        silent: bool,
-        allow_reshape: bool,
-        allow_transpose: bool,
-    ) -> None:
-
-        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
-        coord_type = self.coord_group(name)
-
         # Try to set the data
-        try:
-            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-        except DataWrongDimensionError as data_error:
-            if not (allow_reshape or allow_transpose):
-                raise data_error
+        if data.shape != self.shape(name):
+            # if not (allow_reshape or allow_transpose):
+            #     raise data_error
 
             # If we are here then the data could not be set, but we are allowed to try to reshape
             if not silent:
@@ -380,12 +363,30 @@ class Skeleton:
                     data, expected_shape=self.size(coord_type)
                 )
             if data is None:
-                raise data_error  # Reshapes have failed
+                raise DataWrongDimensionError(
+                    original_data_shape, self.shape(name)
+                )  # Reshapes have failed
 
             if not silent:
                 print(f"Reshaping data {original_data_shape} -> {data.shape}...")
+        return data
 
-            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
+    def _set_data(
+        self,
+        name: str,
+        data,
+        dask_manager: DaskManager,
+        silent: bool,
+        allow_reshape: bool,
+        allow_transpose: bool,
+    ) -> None:
+
+        try:
+            self._ds_manager.set(
+                data=data, data_name=name, coords=self.coord_group(name)
+            )
+        except DataWrongDimensionError as data_error:
+            raise data_error
 
     def _set_metadata_of_parameter(self, name: str) -> None:
         """Sets the metadata of a single parameter by finding the connected geo-parameter"""
@@ -569,9 +570,6 @@ class Skeleton:
             allow_reshape,
             allow_transpose,
         )
-
-        if data is None:
-            breakpoint()
 
         # Masks are stored as integers
         if (
