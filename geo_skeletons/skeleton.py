@@ -406,6 +406,51 @@ class Skeleton:
             mask = np.logical_and(low_mask, high_mask)
             self.set(mask_name, mask)
 
+    def _set_magnitude(
+        self,
+        name: str,
+        data,
+        allow_reshape,
+        allow_transpose,
+        coords,
+        silent,
+        dask_manager: DaskManager,
+    ) -> None:
+
+        x_component = self._coord_manager.magnitudes.get(name)["x"]
+        y_component = self._coord_manager.magnitudes.get(name)["y"]
+        dir_name = self._coord_manager.magnitudes.get(name)["dir"]
+
+        dir_data = self.get(dir_name, dir_type="math")
+
+        if dask_manager.data_is_dask(dir_data):
+            s = da.sin(dir_data)
+            c = da.cos(dir_data)
+        else:
+            s = np.sin(dir_data)
+            c = np.cos(dir_data)
+        ux = data * c
+        uy = data * s
+
+        self._set_data(
+            name=x_component,
+            data=ux,
+            allow_reshape=allow_reshape,
+            allow_transpose=allow_transpose,
+            coords=coords,
+            dask_manager=dask_manager,
+            silent=silent,
+        )
+        self._set_data(
+            name=y_component,
+            data=uy,
+            allow_reshape=allow_reshape,
+            allow_transpose=allow_transpose,
+            coords=coords,
+            dask_manager=dask_manager,
+            silent=silent,
+        )
+
     def set(
         self,
         name: str,
@@ -459,26 +504,37 @@ class Skeleton:
             data, self.shape(name), dask=(self.dask() or chunks is not None)
         )
 
-        if not self._coord_manager.is_settable(name):
+        if name in self._coord_manager.magnitudes.keys():
+            self._set_magnitude(
+                name=name,
+                data=data,
+                allow_reshape=allow_reshape,
+                allow_transpose=allow_transpose,
+                coords=coords,
+                silent=silent,
+                dask_manager=dask_manager,
+            )
+
+        if self._coord_manager.directions.get(name) is not None:
             setter_function = eval(f"self.set_{name}")
-            if self._coord_manager.magnitudes.get(name) is not None:
-                setter_function(
-                    magnitude=data,
-                    allow_reshape=allow_reshape,
-                    allow_transpose=allow_transpose,
-                    coords=coords,
-                    silent=silent,
-                    chunks=chunks,
-                )
-            else:
-                setter_function(
-                    direction=data,
-                    allow_reshape=allow_reshape,
-                    allow_transpose=allow_transpose,
-                    coords=coords,
-                    silent=silent,
-                    chunks=chunks,
-                )
+            # if self._coord_manager.magnitudes.get(name) is not None:
+            #     setter_function(
+            #         magnitude=data,
+            #         allow_reshape=allow_reshape,
+            #         allow_transpose=allow_transpose,
+            #         coords=coords,
+            #         silent=silent,
+            #         chunks=chunks,
+            #     )
+            # else:
+            setter_function(
+                direction=data,
+                allow_reshape=allow_reshape,
+                allow_transpose=allow_transpose,
+                coords=coords,
+                silent=silent,
+                chunks=chunks,
+            )
 
             return
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
