@@ -315,6 +315,72 @@ class Skeleton:
         self.set(name, old_data, allow_reshape=False)
         return
 
+    def _set_data(self, name: str, data, coords: list[str], dask_manager: DaskManager, silent: bool, chunks: tuple[int], allow_reshape: bool, allow_transpose: bool) -> None:
+        # Reshaping
+        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
+
+        # Explicit (1) or explicit though DataArray (2)
+        try:
+            data = reshape_manager.explicit_reshape(
+                data,
+                data_coords=self.coords(self.coord_group(name)),
+                expected_coords=coords,
+            )
+        except DataWrongDimensionError as data_error:
+            # Try to squeeze out all trivial dimensions from both data and coordinates and see if that works
+            if data.shape == data.squeeze().shape:
+                raise data_error
+            squeezed_coords = [
+                c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
+            ]
+            self.set(
+                name=name,
+                data=data.squeeze(),
+                coords=squeezed_coords,
+                silent=silent,
+                chunks=chunks,
+            )
+            return
+        # Try to set the data
+
+        coord_type = self.coord_group(name)
+        try:
+            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
+        except DataWrongDimensionError as data_error:
+            if not (allow_reshape or allow_transpose):
+                raise data_error
+
+            # If we are here then the data could not be set, but we are allowed to try to reshape
+            if not silent:
+                print(f"Size of {name} does not match size of {type(self).__name__}...")
+
+            # Save this for messages
+            original_data_shape = data.shape
+
+            if allow_transpose:
+                data = reshape_manager.transpose_2d(
+                    data, expected_squeezed_shape=self.size(coord_type, squeeze=True)
+                )
+            if allow_reshape:
+                data = reshape_manager.unsqueeze(
+                    data, expected_shape=self.size(coord_type)
+                )
+            if data is None:
+                raise data_error  # Reshapes have failed
+
+            if not silent:
+                print(f"Reshaping data {original_data_shape} -> {data.shape}...")
+
+            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
+
+        # Set the metadata
+        metadata = self.metadata(name)
+        self.set_metadata(metadata, name, append=False)
+        meta_parameter = self._coord_manager.meta_vars.get(name)
+
+        if meta_parameter is not None:
+            self.set_metadata(meta_parameter.meta_dict(), name)
+
     def set(
         self,
         name: str,
@@ -401,70 +467,7 @@ class Skeleton:
         if name[-5:] == "_mask":
             data = data.astype(int)
 
-        # Reshaping
-        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
-
-        # Explicit (1) or explicit though DataArray (2)
-        try:
-            data = reshape_manager.explicit_reshape(
-                data,
-                data_coords=self.coords(self.coord_group(name)),
-                expected_coords=coords,
-            )
-        except DataWrongDimensionError as data_error:
-            # Try to squeeze out all trivial dimensions from both data and coordinates and see if that works
-            if data.shape == data.squeeze().shape:
-                raise data_error
-            squeezed_coords = [
-                c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
-            ]
-            self.set(
-                name=name,
-                data=data.squeeze(),
-                coords=squeezed_coords,
-                silent=silent,
-                chunks=chunks,
-            )
-            return
-        # Try to set the data
-
-        coord_type = self.coord_group(name)
-        try:
-            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-        except DataWrongDimensionError as data_error:
-            if not (allow_reshape or allow_transpose):
-                raise data_error
-
-            # If we are here then the data could not be set, but we are allowed to try to reshape
-            if not silent:
-                print(f"Size of {name} does not match size of {type(self).__name__}...")
-
-            # Save this for messages
-            original_data_shape = data.shape
-
-            if allow_transpose:
-                data = reshape_manager.transpose_2d(
-                    data, expected_squeezed_shape=self.size(coord_type, squeeze=True)
-                )
-            if allow_reshape:
-                data = reshape_manager.unsqueeze(
-                    data, expected_shape=self.size(coord_type)
-                )
-            if data is None:
-                raise data_error  # Reshapes have failed
-
-            if not silent:
-                print(f"Reshaping data {original_data_shape} -> {data.shape}...")
-
-            self._ds_manager.set(data=data, data_name=name, coords=coord_type)
-
-        # Set the metadata
-        metadata = self.metadata(name)
-        self.set_metadata(metadata, name, append=False)
-        meta_parameter = self._coord_manager.meta_vars.get(name)
-
-        if meta_parameter is not None:
-            self.set_metadata(meta_parameter.meta_dict(), name)
+        self._set_data(name=name, data=data, coords=coords, dask_manager=dask_manager, silent=silent, chunks=chunks, allow_reshape=allow_reshape, allow_transpose=allow_transpose)
 
         ## Did we trigger any masks
         for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(
@@ -550,7 +553,7 @@ class Skeleton:
                 boolean_mask=boolean_mask,
                 dask=dask,
             )
-            dir_type = dir_type or self._coord_manager.directions[name].get('dir_type')
+            dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
             data = self._coord_manager.compute_direction(
                 x, y, dir_type=dir_type, dask=dask
             )
