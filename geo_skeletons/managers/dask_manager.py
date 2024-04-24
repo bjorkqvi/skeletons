@@ -90,3 +90,15 @@ class DaskManager:
             return da.sin(data)
         else:
             return np.sin(data)
+
+    def mod(self, data, mod):
+        if self.data_is_dask(data):
+            return da.mod(data, mod)
+        else:
+            return np.mod(data, mod)
+
+    def arctan2(self, y, x):
+        if self.data_is_dask(y) and self.data_is_dask(x):
+            return da.arctan2(y, x)
+        else:
+            return np.arctan2(y, x)

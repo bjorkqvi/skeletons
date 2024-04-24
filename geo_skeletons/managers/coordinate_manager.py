@@ -5,6 +5,8 @@ import numpy as np
 import dask.array as da
 from geo_skeletons.errors import VariableExistsError
 import geo_parameters as gp
+from geo_skeletons.managers.dask_manager import DaskManager
+import xarray as xr
 
 meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
 
@@ -263,33 +265,37 @@ class CoordinateManager:
     def convert_to_math_dir(self, data, dir_type: str):
         if dir_type == "math":  # Convert to mathematical convention
             return data
-        return (90 - data + OFFSET[dir_type]) * np.pi / 180
+        math_dir = (90 - data + OFFSET[dir_type]) * np.pi / 180
+        dask_manager = DaskManager()
+        math_dir = dask_manager.mod(math_dir, 2 * np.pi)
+        mask = dask_manager.undask_me(math_dir > np.pi)
+        if isinstance(mask, xr.DataArray):
+            mask = mask.data
+        if isinstance(math_dir, xr.DataArray):
+            math_dir.data[mask] = math_dir.data[mask] - 2 * np.pi
+        else:
+            math_dir[mask] = math_dir[mask] - 2 * np.pi
+        return math_dir
+
+    def convert_from_math_dir(self, data, dir_type: str):
+        if dir_type == "math":
+            return data
+
+        data = 90 - data * 180 / np.pi + OFFSET[dir_type]
+        return DaskManager().mod(data, 360)
 
     def compute_magnitude(self, x, y):
         if x is None or y is None:
             return None
         return (x**2 + y**2) ** 0.5
 
-    def compute_direction(self, x, y, dir_type: str, dask: bool = True):
+    def compute_math_direction(self, x, y):
         if x is None or y is None:
             return None
-        if dask or hasattr(x, "chunks"):
-            dirs = da.arctan2(y, x)
-        else:
-            dirs = np.arctan2(y, x)
 
-        if dir_type == "math":
-            return dirs
-
-        if dir_type == "from":
-            dirs = 90 - dirs * 180 / np.pi + 180
-        elif dir_type == "to":
-            dirs = 90 - dirs * 180 / np.pi
-        if dask or hasattr(x, "chunks"):
-            dirs = da.mod(dirs, 360)
-        else:
-            dirs = np.mod(dirs, 360)
-        return dirs
+        dask_manager = DaskManager()
+        math_dir = dask_manager.arctan2(y, x)
+        return math_dir
 
 
 def move_time_dim_to_front(coord_list) -> list[str]:
