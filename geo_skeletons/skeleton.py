@@ -606,11 +606,9 @@ class Skeleton:
         name,
         strict: bool = False,
         empty: bool = False,
-        data_array: bool = False,
         squeeze: bool = True,
         boolean_mask: bool = False,
         dask: bool = None,
-        **kwargs,
     ):
         x = self.get(
             self._coord_manager.magnitudes[name].get("x"),
@@ -633,6 +631,41 @@ class Skeleton:
         data = self._coord_manager.compute_magnitude(x, y)
         return data
 
+
+    def _get_direction(
+        self,
+        name,
+        strict: bool = False,
+        empty: bool = False,
+        dir_type: str = None,
+        squeeze: bool = True,
+        boolean_mask: bool = False,
+        dask: bool = None,
+    ):
+
+        x = self.get(
+            self._coord_manager.directions[name].get("x"),
+            empty=empty,
+            strict=strict,
+            data_array=True,
+            squeeze=squeeze,
+            boolean_mask=boolean_mask,
+            dask=dask,
+        )
+        y = self.get(
+            self._coord_manager.directions[name].get("y"),
+            empty=empty,
+            strict=strict,
+            data_array=True,
+            squeeze=squeeze,
+            boolean_mask=boolean_mask,
+            dask=dask,
+        )
+        dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
+        data = self._coord_manager.compute_direction(
+            x, y, dir_type=dir_type, dask=dask
+        )
+        return data
     def get(
         self,
         name,
@@ -662,33 +695,19 @@ class Skeleton:
                 name=name,
                 strict=strict,
                 empty=empty,
-                data_array=data_array,
                 squeeze=squeeze,
                 boolean_mask=boolean_mask,
                 dask=dask,
             )
         elif name in self._coord_manager.directions.keys():
-            x = self.get(
-                self._coord_manager.directions[name].get("x"),
-                empty=empty,
+            data = self._get_direction(
+                name=name,
                 strict=strict,
-                data_array=True,
+                dir_type=dir_type,
+                empty=empty,
                 squeeze=squeeze,
                 boolean_mask=boolean_mask,
                 dask=dask,
-            )
-            y = self.get(
-                self._coord_manager.directions[name].get("y"),
-                empty=empty,
-                strict=strict,
-                data_array=True,
-                squeeze=squeeze,
-                boolean_mask=boolean_mask,
-                dask=dask,
-            )
-            dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
-            data = self._coord_manager.compute_direction(
-                x, y, dir_type=dir_type, dask=dask
             )
         else:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
