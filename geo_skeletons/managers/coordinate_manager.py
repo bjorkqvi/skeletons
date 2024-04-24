@@ -143,11 +143,11 @@ class CoordinateManager:
         self._used_names.append(name)
         return name
 
-    def add_magnitude(self, name: str, x: str, y: str) -> str:
+    def add_magnitude(self, name: str, x: str, y: str, dir: str) -> str:
         name, meta = gp.decode(name)
         if name in self._used_names:
             raise VariableExistsError(name)
-        self.magnitudes[name] = {"x": x, "y": y}
+        self.magnitudes[name] = {"x": x, "y": y, "dir": dir}
         self.meta_magnitudes[name] = meta
         self._used_names.append(name)
         return name
