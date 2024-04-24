@@ -313,7 +313,7 @@ class Skeleton:
         self.set(name, old_data, allow_reshape=False)
         return
 
-    def _set_data(
+    def _reshape_data(
         self,
         name: str,
         data,
@@ -322,8 +322,7 @@ class Skeleton:
         silent: bool,
         allow_reshape: bool,
         allow_transpose: bool,
-    ) -> None:
-
+    ):
         reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
         coord_type = self.coord_group(name)
 
@@ -342,6 +341,21 @@ class Skeleton:
 
             # Unsqueeze the data before setting to get back trivial dimensions
             data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
+
+        return data
+
+    def _set_data(
+        self,
+        name: str,
+        data,
+        dask_manager: DaskManager,
+        silent: bool,
+        allow_reshape: bool,
+        allow_transpose: bool,
+    ) -> None:
+
+        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
+        coord_type = self.coord_group(name)
 
         # Try to set the data
         try:
@@ -410,7 +424,6 @@ class Skeleton:
         data,
         allow_reshape,
         allow_transpose,
-        coords,
         silent,
         dask_manager: DaskManager,
     ) -> None:
@@ -431,7 +444,6 @@ class Skeleton:
             data=ux,
             allow_reshape=allow_reshape,
             allow_transpose=allow_transpose,
-            coords=coords,
             dask_manager=dask_manager,
             silent=silent,
         )
@@ -440,7 +452,6 @@ class Skeleton:
             data=uy,
             allow_reshape=allow_reshape,
             allow_transpose=allow_transpose,
-            coords=coords,
             dask_manager=dask_manager,
             silent=silent,
         )
@@ -452,7 +463,6 @@ class Skeleton:
         dir_type: str,
         allow_reshape,
         allow_transpose,
-        coords,
         silent,
         dask_manager: DaskManager,
     ) -> None:
@@ -476,7 +486,6 @@ class Skeleton:
             data=ux,
             allow_reshape=allow_reshape,
             allow_transpose=allow_transpose,
-            coords=coords,
             dask_manager=dask_manager,
             silent=silent,
         )
@@ -485,7 +494,6 @@ class Skeleton:
             data=uy,
             allow_reshape=allow_reshape,
             allow_transpose=allow_transpose,
-            coords=coords,
             dask_manager=dask_manager,
             silent=silent,
         )
@@ -544,13 +552,40 @@ class Skeleton:
             data, self.shape(name), dask=(self.dask() or chunks is not None)
         )
 
+        # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
+        if isinstance(data, xr.DataArray):
+            coords = coords or list(data.dims)
+            data = data.data
+
+        if self.dask() or chunks is not None:
+            data = dask_manager.dask_me(data, chunks=chunks)
+
+        data = self._reshape_data(
+            name,
+            data,
+            coords,
+            dask_manager,
+            silent,
+            allow_reshape,
+            allow_transpose,
+        )
+
+        if data is None:
+            breakpoint()
+
+        # Masks are stored as integers
+        if (
+            name in self._coord_manager.added_masks().keys()
+            or name in self._coord_manager.opposite_masks().keys()
+        ):
+            data = data.astype(int)
+
         if name in self._coord_manager.magnitudes.keys():
             self._set_magnitude(
                 name=name,
                 data=data,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
-                coords=coords,
                 silent=silent,
                 dask_manager=dask_manager,
             )
@@ -562,30 +597,13 @@ class Skeleton:
                 dir_type=dir_type,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
-                coords=coords,
                 silent=silent,
                 dask_manager=dask_manager,
             )
 
-        # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
-        if isinstance(data, xr.DataArray):
-            coords = coords or list(data.dims)
-            data = data.data
-
-        if self.dask() or chunks is not None:
-            data = dask_manager.dask_me(data, chunks=chunks)
-
-        # Masks are stored as integers
-        if (
-            name in self._coord_manager.added_masks().keys()
-            or name in self._coord_manager.opposite_masks().keys()
-        ):
-            data = data.astype(int)
-
         self._set_data(
             name=name,
             data=data,
-            coords=coords,
             dask_manager=dask_manager,
             silent=silent,
             allow_reshape=allow_reshape,
