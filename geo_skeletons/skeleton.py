@@ -606,31 +606,22 @@ class Skeleton:
         name,
         strict: bool = False,
         empty: bool = False,
-        squeeze: bool = True,
-        boolean_mask: bool = False,
-        dask: bool = None,
+        **kwargs,
     ):
-        x = self.get(
+        x_data = self._ds_manager.get(
             self._coord_manager.magnitudes[name].get("x"),
             empty=empty,
             strict=strict,
-            data_array=True,
-            squeeze=squeeze,
-            boolean_mask=boolean_mask,
-            dask=dask,
+            **kwargs,
         )
-        y = self.get(
+        y_data = self._ds_manager.get(
             self._coord_manager.magnitudes[name].get("y"),
             empty=empty,
             strict=strict,
-            data_array=True,
-            squeeze=squeeze,
-            boolean_mask=boolean_mask,
-            dask=dask,
+            **kwargs,
         )
-        data = self._coord_manager.compute_magnitude(x, y)
+        data = self._coord_manager.compute_magnitude(x_data, y_data)
         return data
-
 
     def _get_direction(
         self,
@@ -638,34 +629,27 @@ class Skeleton:
         strict: bool = False,
         empty: bool = False,
         dir_type: str = None,
-        squeeze: bool = True,
-        boolean_mask: bool = False,
-        dask: bool = None,
+        **kwargs,
     ):
 
-        x = self.get(
+        x_data = self._ds_manager.get(
             self._coord_manager.directions[name].get("x"),
             empty=empty,
             strict=strict,
-            data_array=True,
-            squeeze=squeeze,
-            boolean_mask=boolean_mask,
-            dask=dask,
+            **kwargs,
         )
-        y = self.get(
+        y_data = self._ds_manager.get(
             self._coord_manager.directions[name].get("y"),
             empty=empty,
             strict=strict,
-            data_array=True,
-            squeeze=squeeze,
-            boolean_mask=boolean_mask,
-            dask=dask,
+            **kwargs,
         )
+
         dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
-        data = self._coord_manager.compute_direction(
-            x, y, dir_type=dir_type, dask=dask
-        )
+        data = self._coord_manager.compute_math_direction(x_data, y_data)
+        data = self._coord_manager.convert_from_math_dir(data, dir_type=dir_type)
         return data
+
     def get(
         self,
         name,
@@ -674,7 +658,6 @@ class Skeleton:
         data_array: bool = False,
         dir_type: str = None,
         squeeze: bool = True,
-        boolean_mask: bool = False,
         dask: bool = None,
         **kwargs,
     ):
@@ -690,14 +673,17 @@ class Skeleton:
         if not self._structure_initialized():
             return None
 
+        if dir_type not in ["to", "from", "math", None]:
+            raise ValueError(
+                f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
+            )
+
         if name in self._coord_manager.magnitudes.keys():
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
                 empty=empty,
-                squeeze=squeeze,
-                boolean_mask=boolean_mask,
-                dask=dask,
+                **kwargs,
             )
         elif name in self._coord_manager.directions.keys():
             data = self._get_direction(
@@ -705,65 +691,72 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
-                squeeze=squeeze,
-                boolean_mask=boolean_mask,
-                dask=dask,
+                **kwargs,
             )
         else:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
+            set_dir_type = self._coord_manager.dir_vars.get(name)
+            if dir_type is not None:
+                if set_dir_type is None:
+                    raise ValueError(
+                        "Cannot ask for a 'dir_type' for a non-directional variable!"
+                    )
+                data = self._coord_manager.convert_to_math_dir(
+                    data, dir_type=set_dir_type
+                )
+                data = self._coord_manager.convert_from_math_dir(
+                    data, dir_type=dir_type
+                )
+
+        if not isinstance(data, xr.DataArray):
+            return None
 
         # The coordinates are never given as dask arrays
         if name in self.coords("all"):
             dask = False
 
-        if not isinstance(data, xr.DataArray):
-            return None
-
-        if name[-5:] == "_mask":
-            boolean_mask = True
-
-        if boolean_mask or squeeze:
-            data = data.copy()
-
-        if boolean_mask:
+        if (
+            name in self._coord_manager.added_masks().keys()
+            or name in self._coord_manager.opposite_masks().keys()
+        ):
             data = data.astype(bool)
 
         if squeeze:
-            dims_to_drop = [
-                dim
-                for dim in self.coords("all")
-                if self.shape(dim)[0] == 1 and dim in data.coords
-            ]
-
-            # If it looks like we are dropping all coords, then save the spatial ones
-            if dims_to_drop == list(data.coords):
-                dims_to_drop = list(
-                    set(dims_to_drop) - set(self.coords("spatial")) - set([name])
-                )
-
-            if dims_to_drop:
-                data = data.squeeze(dim=dims_to_drop, drop=True)
+            data = self._smart_squeeze(name, data)
 
         # Use dask mode default if not explicitly overridden
         if dask is None:
             dask = self.dask()
-
-        # Need to make sure we set chunks if dask mode is nopt activated
-        if dask:
-            chunks = self.chunks or "auto"
-        else:
-            # Can't use chunks if dask is not requested
-            chunks = None
-
+        # Need to make sure we set chunks if dask mode is not activated
+        # Can't use chunks if dask is not requested
+        chunks = self.chunks or "auto" if dask else None
         dask_manager = DaskManager(chunks)
-
-        if dask:
-            data = dask_manager.dask_me(data)
-        else:
-            data = dask_manager.undask_me(data)
+        data = dask_manager.dask_me(data) if dask else dask_manager.undask_me(data)
 
         if not data_array:
             data = data.data
+
+        return data
+
+    def _smart_squeeze(self, name: str, data):
+        """Squeezes the data but takes care that one dimension is kept.
+
+        Spatial dims are not protected, but if the results is a 0-dim,
+        then 'inds' or 'lat' is kept."""
+        dims_to_drop = [
+            dim
+            for dim in self.coords("all")
+            if self.shape(dim)[0] == 1 and dim in data.coords
+        ]
+
+        # If it looks like we are dropping all coords, then save the spatial ones
+        if dims_to_drop == list(data.coords):
+            dims_to_drop = list(
+                set(dims_to_drop) - set(self.coords("spatial")) - set([name])
+            )
+
+        if dims_to_drop:
+            data = data.squeeze(dim=dims_to_drop, drop=True)
 
         return data
 

@@ -45,37 +45,12 @@ def add_datavar(
                 name_str,
                 empty=empty,
                 strict=strict,
+                dir_type=dir_type,
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
                 **kwargs,
             )
-
-            set_dir_type = self._coord_manager.dir_vars[name_str]
-            if dir_type is not None:
-                if set_dir_type is None:
-                    raise ValueError(
-                        "Cannot ask specific direction type ('dir_type') for a non-directional variable!"
-                    )
-                # Convert to mathematical convention first
-                math_var = (90 - var + offset[set_dir_type]) * np.pi / 180
-                if dir_type == "math":
-                    if dask:
-                        var = da.mod(math_var, 2 * np.pi)
-                        var[var > np.pi] = var[var > np.pi] - 2 * np.pi
-                    else:
-                        var = np.mod(math_var, 2 * np.pi)
-                        var[var > np.pi] = var[var > np.pi] - 2 * np.pi
-                elif dir_type in ["to", "from"]:
-                    var = 90 - math_var * 180 / np.pi + offset[dir_type]
-                    if dask:
-                        var = da.mod(var, 360)
-                    else:
-                        var = np.mod(var, 360)
-                else:
-                    raise ValueError(
-                        f"'dir_type' needs to be 'to', 'from' or 'math', not {dir_type}"
-                    )
 
             return var
 
