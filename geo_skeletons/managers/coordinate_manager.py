@@ -56,13 +56,12 @@ class CoordinateManager:
     def add_var(
         self,
         name: str,
+        meta: MetaParameter,
         coords: str,
         default_value: float,
         dir_type: str = None,
-        meta: MetaParameter = None,
-    ) -> str:
+    ) -> None:
         """Add a variable that the Skeleton will use."""
-        name, meta = gp.decode(name)
 
         if name in self._used_names:
             raise VariableExistsError(name)
@@ -73,8 +72,6 @@ class CoordinateManager:
         self.dir_vars[name] = dir_type
 
         self._used_names.append(name)
-
-        return name
 
     def add_mask(
         self,
@@ -146,7 +143,7 @@ class CoordinateManager:
 
     def add_magnitude(
         self, name: str, meta: MetaParameter, x: str, y: str, dir: str
-    ) -> str:
+    ) -> None:
         if name in self._used_names:
             raise VariableExistsError(name)
         self.magnitudes[name] = {"x": x, "y": y, "dir": dir}
@@ -161,7 +158,7 @@ class CoordinateManager:
         y: str,
         dir_type: str,
         mag: str,
-    ) -> str:
+    ) -> None:
         if name in self._used_names:
             raise VariableExistsError(name)
         self.directions[name] = {"x": x, "y": y, "dir_type": dir_type, "mag": mag}

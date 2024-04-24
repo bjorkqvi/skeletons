@@ -601,6 +601,38 @@ class Skeleton:
             mask = np.logical_and(low_mask, high_mask)
             self.set(mask_name, mask)
 
+    def _get_magnitude(
+        self,
+        name,
+        strict: bool = False,
+        empty: bool = False,
+        data_array: bool = False,
+        squeeze: bool = True,
+        boolean_mask: bool = False,
+        dask: bool = None,
+        **kwargs,
+    ):
+        x = self.get(
+            self._coord_manager.magnitudes[name].get("x"),
+            empty=empty,
+            strict=strict,
+            data_array=True,
+            squeeze=squeeze,
+            boolean_mask=boolean_mask,
+            dask=dask,
+        )
+        y = self.get(
+            self._coord_manager.magnitudes[name].get("y"),
+            empty=empty,
+            strict=strict,
+            data_array=True,
+            squeeze=squeeze,
+            boolean_mask=boolean_mask,
+            dask=dask,
+        )
+        data = self._coord_manager.compute_magnitude(x, y)
+        return data
+
     def get(
         self,
         name,
@@ -626,25 +658,15 @@ class Skeleton:
             return None
 
         if name in self._coord_manager.magnitudes.keys():
-            x = self.get(
-                self._coord_manager.magnitudes[name].get("x"),
-                empty=empty,
+            data = self._get_magnitude(
+                name=name,
                 strict=strict,
-                data_array=True,
+                empty=empty,
+                data_array=data_array,
                 squeeze=squeeze,
                 boolean_mask=boolean_mask,
                 dask=dask,
             )
-            y = self.get(
-                self._coord_manager.magnitudes[name].get("y"),
-                empty=empty,
-                strict=strict,
-                data_array=True,
-                squeeze=squeeze,
-                boolean_mask=boolean_mask,
-                dask=dask,
-            )
-            data = self._coord_manager.compute_magnitude(x, y)
         elif name in self._coord_manager.directions.keys():
             x = self.get(
                 self._coord_manager.directions[name].get("x"),
