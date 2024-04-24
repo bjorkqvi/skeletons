@@ -454,6 +454,7 @@ class Skeleton:
             data = self.get(name, empty=True, squeeze=False)
 
         # Make constant array if given data has no shape
+        # Return original data if it has shape
         data = dask_manager.constant_array(
             data, self.shape(name), dask=(self.dask() or chunks is not None)
         )
@@ -489,7 +490,10 @@ class Skeleton:
             data = dask_manager.dask_me(data, chunks=chunks)
 
         # Masks are stored as integers
-        if name[-5:] == "_mask":
+        if (
+            name in self._coord_manager.added_masks().keys()
+            or name in self._coord_manager.opposite_masks().keys()
+        ):
             data = data.astype(int)
 
         self._set_data(
