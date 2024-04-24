@@ -91,6 +91,11 @@ def add_datavar(
     # Always respect explicitly set directional convention
     # Otherwise parse from MetaParameter is possible
     # If dir_type is left to None, it means that this data variable is not a dirctional parameter
+    if dir_type not in ["to", "from", "math", None]:
+        raise ValueError(
+            f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
+        )
+
     if dir_type is None and gp.is_gp(name):
         standard_to = (
             "to_direction" in name.standard_name()

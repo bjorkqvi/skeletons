@@ -160,9 +160,9 @@ def add_magnitude(
 
         return c
 
-    if dir_type not in ["from", "to", "math", None]:
+    if dir_type not in ["to", "from", "math", None]:
         raise ValueError(
-            f"'dir_type' should be 'from', 'to' or 'math' (or 'None'), not {dir_type}!"
+            f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
         )
 
     # Always respect explicitly set directional convention
