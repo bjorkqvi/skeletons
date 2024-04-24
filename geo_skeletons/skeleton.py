@@ -540,7 +540,7 @@ class Skeleton:
         dask_manager = DaskManager(chunks=chunks or self.chunks)
 
         if data is None:
-            data = self.get(name, empty=True, squeeze=False)
+            data = self.get(name, empty=True, squeeze=False, dir_type=dir_type)
 
         # Make constant array if given data has no shape
         # Return original data if it has shape
