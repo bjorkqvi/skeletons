@@ -189,44 +189,10 @@ def add_magnitude(
             chunks: Union[tuple, str] = None,
             silent: bool = True,
         ):
-            dask_manager = DaskManager(chunks=chunks or self.chunks)
-
-            magnitude = get_magnitude(self)
-
-            if direction is None:
-                direction = get_direction(self, dir_type=dir_type)
-            else:
-                direction = dask_manager.constant_array(
-                    direction,
-                    self.shape(name_str),
-                    dask=(self.dask or chunks is not None),
-                )
-
-            dir_type = dir_type or self._coord_manager.directions[dir_str]["dir_type"]
-            if dir_type != "math":  # Convert to mathematical convention
-                direction = (90 - direction + offset[dir_type]) * np.pi / 180
-
-            if dask_manager.data_is_dask(direction):
-                s = da.sin(direction)
-                c = da.cos(direction)
-            else:
-                s = np.sin(direction)
-                c = np.cos(direction)
-            ux = magnitude * c
-            uy = magnitude * s
-
             self.set(
-                name=x,
-                data=ux,
-                allow_reshape=allow_reshape,
-                allow_transpose=allow_transpose,
-                coords=coords,
-                chunks=chunks,
-                silent=silent,
-            )
-            self.set(
-                name=y,
-                data=uy,
+                dir_str,
+                data=direction,
+                dir_type=dir_type,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
                 coords=coords,

@@ -215,6 +215,7 @@ def test_set_magnitude():
     udm = ud - np.pi / 2
     points.set_wind(u)
     points.set_wdir(ud)
+
     np.testing.assert_almost_equal(u, points.wind())
     np.testing.assert_almost_equal(ud, points.wdir())
     np.testing.assert_almost_equal(udm, points.wdir(dir_type="math"))
