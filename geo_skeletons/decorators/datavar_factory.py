@@ -103,8 +103,8 @@ def add_datavar(
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
-
-        name_str = c._coord_manager.add_var(name, coords, default_value, dir_type)
+        name_str, meta = gp.decode(name)
+        c._coord_manager.add_var(name_str, meta, coords, default_value, dir_type)
 
         if append:
             exec(f"c.{name_str} = partial(get_var, c)")
