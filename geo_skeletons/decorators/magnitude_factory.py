@@ -6,6 +6,7 @@ import dask.array as da
 from geo_parameters.metaparameter import MetaParameter
 from ..managers.dask_manager import DaskManager
 import geo_parameters as gp
+from geo_skeletons.variables import Magnitude, Direction
 
 
 def add_magnitude(
@@ -131,17 +132,22 @@ def add_magnitude(
         else:
             dir_str, meta_dir = None, None
 
-        c._coord_manager.add_magnitude(name_str, meta, x=x, y=y, dir=dir_str)
+        coord_group = c._coord_manager.added_vars.get(x).coord_group
+
+        mag_obj = Magnitude(name=name_str, meta=meta, x=x, y=y, coord_group=coord_group)
 
         if direction is not None:
-            c._coord_manager.add_direction(
+            dir_obj = Direction(
                 name=dir_str,
                 meta=meta_dir,
                 x=x,
                 y=y,
+                coord_group=coord_group,
                 dir_type=dir_type,
-                mag=name_str,
+                magnitude=mag_obj,
             )
+            mag_obj.direction = dir_obj
+            c._coord_manager.add_direction(dir_obj)
             if append:
                 exec(f"c.{dir_str} = partial(get_direction, c)")
                 exec(f"c.set_{dir_str} = partial(set_direction, c)")
@@ -157,6 +163,8 @@ def add_magnitude(
         else:
             exec(f"c.{name_str} = get_magnitude")
             exec(f"c.set_{name_str} = set_magnitude")
+
+        c._coord_manager.add_magnitude(mag_obj)
 
         return c
 

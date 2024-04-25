@@ -3,7 +3,7 @@ import xarray as xr
 from .coordinate_manager import (
     CoordinateManager,
     SPATIAL_COORDS,
-    move_time_dim_to_front,
+    move_time_and_spatial_to_front,
 )
 
 from ..errors import (
@@ -58,7 +58,7 @@ class DatasetManager:
                 raise GridError
 
             # Check that all added coordinates are provided
-            for coord in self.coord_manager.added_coords("all"):
+            for coord in self.coord_manager.coords("all"):
                 if coord not in coords:
                     if self.get(coord) is not None:
                         # Add in old coordinate if it is not provided now (can happen when using set_spacing)
@@ -70,9 +70,9 @@ class DatasetManager:
 
             # Check that all provided coordinates have been added
             for coord in set(coords) - set(SPATIAL_COORDS):
-                if coord not in self.coord_manager.added_coords("all"):
+                if coord not in self.coord_manager.coords("all"):
                     raise UnknownCoordinateError(
-                        f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.added_coords('all')}! Missing a decorator?"
+                        f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.coords('all')}! Missing a decorator?"
                     )
 
         def determine_coords() -> dict:
@@ -80,13 +80,13 @@ class DatasetManager:
 
             coord_dict = {}
 
-            if "inds" in self.coord_manager.initial_coords():
+            if "inds" in self.coord_manager.coords("spatial"):
                 coord_dict["inds"] = np.arange(len(x))
             else:
                 coord_dict[y_str] = y
                 coord_dict[x_str] = x
             # Add in other possible coordinates that are set at initialization
-            for key in self.coord_manager.added_coords():
+            for key in self.coord_manager.coords("nonspatial"):
                 value = kwargs.get(key)
 
                 if value is None:
@@ -94,13 +94,14 @@ class DatasetManager:
 
                 if value is None:
                     raise UnknownCoordinateError(
-                        f"Skeleton has coordinate '{key}', but it was not provided on initialization {kwargs.keys()} nor is it already set {self.coord_manager.coords()}!"
+                        f"Skeleton has coordinate '{key}', but it was not provided on initialization {list(kwargs.keys())} nor is it already set {self.coord_manager.added_coords()}!"
                     )
 
                 coord_dict[key] = np.array(value)
 
             coord_dict = {
-                c: coord_dict[c] for c in move_time_dim_to_front(list(coord_dict))
+                c: coord_dict[c]
+                for c in move_time_and_spatial_to_front(list(coord_dict))
             }
 
             return coord_dict
@@ -108,27 +109,31 @@ class DatasetManager:
         def determine_vars() -> dict:
             """Creates dictionary of variables"""
             var_dict = {}
-            initial_vars = self.coord_manager.initial_vars()
-            initial_x = "x" if initial_vars.get("x") is not None else "lon"
-            initial_y = "y" if initial_vars.get("y") is not None else "lat"
-            if initial_y in initial_vars.keys():
-                if initial_vars[initial_y] not in coord_dict.keys():
+            initial_vars = self.coord_manager.data_vars("spatial")
+            initial_x = "x" if "x" in initial_vars else "lon"
+            initial_y = "y" if "y" in initial_vars else "lat"
+
+            if initial_y in initial_vars:
+                coord_group = self.coord_manager.added_vars.get(initial_y).coord_group
+                coords = self.coord_manager.coords(coord_group)
+                if not coords <= list(coord_dict.keys()):
                     raise ValueError(
-                        f"Trying to make variable '{initial_y}' depend on {initial_vars[initial_y]}, but {initial_vars[initial_y]} is not set as a coordinate!"
+                        f"Trying to make variable '{initial_y}' depend on {coords}, but it is not set as a coordinate ({list(coord_dict.keys())}!"
                     )
-                var_dict[y_str] = ([initial_vars[initial_y]], y)
-            if initial_x in initial_vars.keys():
-                if initial_vars[initial_x] not in coord_dict.keys():
+                var_dict[y_str] = (coords, y)
+            if initial_x in initial_vars:
+                coord_group = self.coord_manager.added_vars.get(initial_x).coord_group
+                coords = self.coord_manager.coords(coord_group)
+                if not coords <= list(coord_dict.keys()):
                     raise ValueError(
-                        f"Trying to make variable '{initial_x}' depend on {initial_vars[initial_x]}, but {initial_vars[initial_x]} is not set as a coordinate!"
+                        f"Trying to make variable '{initial_x}' depend on {coords}, but it is not set as a coordinate ({list(coord_dict.keys())}!"
                     )
-                var_dict[x_str] = ([initial_vars[initial_x]], x)
+                var_dict[x_str] = (coords, x)
 
             return var_dict
 
         coord_dict = determine_coords()
         var_dict = determine_vars()
-
         check_consistency()
         self.set_new_ds(xr.Dataset(coords=coord_dict, data_vars=var_dict))
 
@@ -157,7 +162,7 @@ class DatasetManager:
     def empty_vars(self) -> list[str]:
         """Get a list of empty variables"""
         empty_vars = []
-        for var in self.coord_manager.added_vars():
+        for var in self.coord_manager.added_vars:
             if self.get(var) is None:
                 empty_vars.append(var)
         return empty_vars
@@ -165,7 +170,7 @@ class DatasetManager:
     def empty_masks(self) -> list[str]:
         """Get a list of empty masks"""
         empty_masks = []
-        for mask in self.coord_manager.added_masks():
+        for mask in self.coord_manager.added_masks:
             if self.get(mask) is None:
                 empty_masks.append(mask)
         return empty_masks

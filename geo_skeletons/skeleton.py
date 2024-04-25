@@ -162,18 +162,13 @@ class Skeleton:
         self.set_utm(utm, silent=True)
 
         # Set metadata
-        for var in self._coord_manager.initial_vars():
-            metavar = self._coord_manager.meta_vars.get(var)
+        for var in self._coord_manager.data_vars("spatial"):
+            metavar = self._coord_manager.added_vars.get(var).meta
             if metavar is not None:
                 self.set_metadata(metavar.meta_dict(), var)
 
-        for coord in self._coord_manager.initial_coords():
-            metavar = self._coord_manager.meta_coords.get(coord)
-            if metavar is not None:
-                self.set_metadata(metavar.meta_dict(), coord)
-
-        for coord in self._coord_manager.added_coords():
-            metavar = self._coord_manager.meta_coords.get(coord)
+        for coord in self._coord_manager.coords("all"):
+            metavar = self._coord_manager.added_coords.get(coord).meta
             if metavar is not None:
                 self.set_metadata(metavar.meta_dict(), coord)
 
@@ -193,9 +188,9 @@ class Skeleton:
 
     @classmethod
     def data_vars(cls) -> None:
-        return list(cls._coord_manager.added_vars().keys())
+        return cls._coord_manager.data_vars("nonspatial")
 
-    def coords(self, coords: str = "all", squeeze: bool = False) -> list[str]:
+    def coords(self, coord_group: str = "all", squeeze: bool = False) -> list[str]:
         """Returns a list of the coordinates from the Dataset.
 
         'all' [default]: all coordinates in the Dataset
@@ -203,7 +198,7 @@ class Skeleton:
         'grid': coordinates for the grid (spatial and e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        coordinates = self._coord_manager.coords(coords)
+        coordinates = self._coord_manager.coords(coord_group)
         if squeeze:
             # Don't allow spatial to be squeezed out if that is only thing left
             coordinates = [
@@ -214,29 +209,7 @@ class Skeleton:
     def coord_group(self, var: str) -> str:
         """Returns the coordinate group that a variable/mask is defined over.
         The coordinates can then be retrived using the group by the method .coords()"""
-        var_coords = self._coord_manager.added_vars().get(var)
-        mask_coords = self._coord_manager.added_masks().get(var)
-        if mask_coords is None:
-            mask_name = self._coord_manager.opposite_masks().get(var)
-            mask_coords = self._coord_manager.added_masks().get(mask_name)
-
-        mag = self._coord_manager.magnitudes.get(var)
-        if mag is not None:
-            mag_coords = self._coord_manager.added_vars().get(mag["x"])
-        else:
-            mag_coords = None
-
-        dir = self._coord_manager.directions.get(var)
-        if dir is not None:
-            dir_coords = self._coord_manager.added_vars().get(dir["x"])
-        else:
-            dir_coords = None
-
-        coord_group = var_coords or mask_coords or mag_coords or dir_coords
-        if coord_group is None:
-            raise KeyError(f"Cannot find the data {var}!")
-
-        return coord_group
+        return self._coord_manager.coord_group(var)
 
     def coords_dict(
         self, type: str = "all", data_array: bool = False, **kwargs
@@ -386,19 +359,16 @@ class Skeleton:
         )
 
         # Masks are stored as integers
-        if (
-            name in self._coord_manager.added_masks().keys()
-            or name in self._coord_manager.opposite_masks().keys()
-        ):
+        if name in self._coord_manager.added_masks:
             data = data.astype(int)
 
-        if name in self._coord_manager.magnitudes.keys():
+        if name in self._coord_manager.added_magnitudes:
             self._set_magnitude(
                 name=name,
                 data=data,
                 dask_manager=dask_manager,
             )
-        elif name in self._coord_manager.directions.keys():
+        elif name in self._coord_manager.added_directions:
             self._set_direction(
                 name=name,
                 data=data,
@@ -574,7 +544,7 @@ class Skeleton:
         """Sets the metadata of a single parameter by finding the connected geo-parameter"""
         metadata = self.metadata(name)
         self.set_metadata(metadata, name, append=False)
-        meta_parameter = self._coord_manager.meta_vars.get(name)
+        meta_parameter = self._coord_manager.meta_parameter(name)
 
         if meta_parameter is not None:
             self.set_metadata(meta_parameter.meta_dict(), name)
@@ -648,7 +618,10 @@ class Skeleton:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
 
             if data is not None:
-                set_dir_type = self._coord_manager.dir_vars.get(name)
+                if self._coord_manager.added_vars.get(name) is not None:
+                    set_dir_type = self._coord_manager.added_vars.get(name).dir_type
+                else:
+                    set_dir_type = None
                 if dir_type is not None and set_dir_type is None:
                     raise ValueError(
                         "Cannot ask for a 'dir_type' for a non-directional variable!"
@@ -669,10 +642,7 @@ class Skeleton:
         if name in self.coords("all"):
             dask = False
 
-        if (
-            name in self._coord_manager.added_masks().keys()
-            or name in self._coord_manager.opposite_masks().keys()
-        ):
+        if name in self._coord_manager.added_masks:
             data = data.astype(bool)
 
         if squeeze:
@@ -855,32 +825,41 @@ class Skeleton:
     def from_cf(self, standard_name: str) -> list[str]:
         """Finds the variable names that have the given standard name"""
         names = []
-        for key, val in self._coord_manager.meta_vars.items():
-            if val is None:
+        for val in self._coord_manager.added_vars.values():
+            if val.meta is None:
                 continue
             if (
-                val.standard_name() == standard_name
-                or val.standard_name(alias=True) == standard_name
+                val.meta.standard_name() == standard_name
+                or val.meta.standard_name(alias=True) == standard_name
             ):
-                names.append(key)
+                names.append(val.name)
 
-        for key, val in self._coord_manager.meta_magnitudes.items():
-            if val is None:
+        for val in self._coord_manager.added_magnitudes.values():
+            if val.meta is None:
                 continue
             if (
-                val.standard_name() == standard_name
-                or val.standard_name(alias=True) == standard_name
+                val.meta.standard_name() == standard_name
+                or val.meta.standard_name(alias=True) == standard_name
             ):
-                names.append(key)
+                names.append(val.name)
 
-        for key, val in self._coord_manager.meta_directions.items():
-            if val is None:
+        for val in self._coord_manager.added_directions.values():
+            if val.meta is None:
                 continue
             if (
-                val.standard_name() == standard_name
-                or val.standard_name(alias=True) == standard_name
+                val.meta.standard_name() == standard_name
+                or val.meta.standard_name(alias=True) == standard_name
             ):
-                names.append(key)
+                names.append(val.name)
+
+        for val in self._coord_manager.added_masks.values():
+            if val.meta is None:
+                continue
+            if (
+                val.meta.standard_name() == standard_name
+                or val.meta.standard_name(alias=True) == standard_name
+            ):
+                names.append(val.name)
 
         return names
 
@@ -918,7 +897,6 @@ class Skeleton:
         if not self._structure_initialized():
             return None
         return self.get("inds", **kwargs)
-
 
     def x(
         self,
@@ -1608,8 +1586,8 @@ class Skeleton:
                 for var in empty_vars:
                     string += f"\n    {var:{max_len+2}}"
                     string += string_of_coords(self.coords(self.coord_group(var)))
-                    string += f":  {self._coord_manager._default_values.get(var)}"
-                    meta_parameter = self._coord_manager.meta_vars.get(var)
+                    string += f":  {self._coord_manager.default_value(var)}"
+                    meta_parameter = self._coord_manager.meta_parameter(var)
                     if meta_parameter is not None:
                         string += f" [{meta_parameter.unit()}]"
                         string += f" {meta_parameter.standard_name()}"
@@ -1620,9 +1598,7 @@ class Skeleton:
                 for mask in empty_masks:
                     string += f"\n    {mask:{max_len+2}}"
                     string += string_of_coords(self.coords(self.coord_group(mask)))
-                    string += (
-                        f":  {bool(self._coord_manager._default_values.get(mask))}"
-                    )
+                    string += f":  {bool(self._coord_manager.default_value(mask))}"
 
         magnitudes = self._coord_manager.magnitudes
 
@@ -1631,7 +1607,7 @@ class Skeleton:
             for key, value in magnitudes.items():
                 string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
 
-                meta_parameter = self._coord_manager.meta_magnitudes.get(key)
+                meta_parameter = self._coord_manager.meta_parameter(key)
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.unit()}]"
                     string += f" {meta_parameter.standard_name()}"
@@ -1640,7 +1616,7 @@ class Skeleton:
         if directions:
             for key, value in directions.items():
                 string += f"\n  {key}: direction of ({value['x']},{value['y']})"
-                meta_parameter = self._coord_manager.meta_directions.get(key)
+                meta_parameter = self._coord_manager.meta_parameter(key)
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.unit()}]"
                     string += f" {meta_parameter.standard_name()}"
@@ -1652,4 +1628,4 @@ class Skeleton:
 
 def _data_vars(self) -> None:
     """Used for instanes instead of the class method, since data_variables can be added after initialization."""
-    return list(self._coord_manager.added_vars().keys())
+    return self._coord_manager.data_vars("nonspatial")

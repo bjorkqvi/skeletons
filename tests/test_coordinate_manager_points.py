@@ -3,23 +3,27 @@ from geo_skeletons.decorators import add_coord, add_datavar
 
 
 def test_point_basic():
-    assert PointSkeleton._coord_manager.initial_coords() == ["inds"]
-    assert PointSkeleton._coord_manager.initial_vars() == {"y": "inds", "x": "inds"}
+    assert PointSkeleton._coord_manager.coords("all") == ["inds"]
+    assert PointSkeleton._coord_manager.coords("spatial") == ["inds"]
+
+    assert PointSkeleton._coord_manager.data_vars() == ["x", "y"]
+    assert PointSkeleton._coord_manager.data_vars("all") == ["x", "y"]
+    assert PointSkeleton._coord_manager.data_vars("spatial") == ["x", "y"]
 
     points = PointSkeleton(x=[1, 2], y=[2, 3])
-    assert points._coord_manager.initial_coords() == ["inds"]
-    assert points._coord_manager.initial_vars() == {"y": "inds", "x": "inds"}
+    assert points._coord_manager.coords("all") == ["inds"]
+    assert points._coord_manager.data_vars() == ["x", "y"]
 
     points2 = PointSkeleton(lon=[1, 2], lat=[2, 3])
-    assert points2._coord_manager.initial_coords() == ["inds"]
-    assert points2._coord_manager.initial_vars() == {"lat": "inds", "lon": "inds"}
+    assert points2._coord_manager.coords("spatial") == ["inds"]
+    assert points2._coord_manager.data_vars() == ["lon", "lat"]
 
     # Check that deepcopy of coord_manager works and these are not altered
-    assert PointSkeleton._coord_manager.initial_coords() == ["inds"]
-    assert PointSkeleton._coord_manager.initial_vars() == {"y": "inds", "x": "inds"}
+    assert PointSkeleton._coord_manager.coords("spatial") == ["inds"]
+    assert PointSkeleton._coord_manager.data_vars() == ["x", "y"]
 
-    assert points._coord_manager.initial_coords() == ["inds"]
-    assert points._coord_manager.initial_vars() == {"y": "inds", "x": "inds"}
+    assert points._coord_manager.coords("spatial") == ["inds"]
+    assert points._coord_manager.data_vars() == ["x", "y"]
 
 
 def test_point_added_coord():
