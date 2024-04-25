@@ -5,11 +5,12 @@ from functools import partial
 from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 import dask.array as da
+from geo_skeletons.variables import DataVar
 
 
 def add_datavar(
     name: Union[str, MetaParameter],
-    coords: str = "all",
+    coord_group: str = "all",
     default_value: float = 0.0,
     dir_type: bool = None,
     append: bool = False,
@@ -77,7 +78,15 @@ def add_datavar(
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
         name_str, meta = gp.decode(name)
-        c._coord_manager.add_var(name_str, meta, coords, default_value, dir_type)
+
+        data_var = DataVar(
+            name=name_str,
+            meta=meta,
+            coord_group=coord_group,
+            default_value=default_value,
+            dir_type=dir_type,
+        )
+        c._coord_manager.add_var(data_var)
 
         if append:
             exec(f"c.{name_str} = partial(get_var, c)")

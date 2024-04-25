@@ -10,21 +10,24 @@ from geo_skeletons.decorators import (
 
 def test_point():
     @add_magnitude("mag", x="gr", y="gr", direction="dir", dir_type="from")
-    @add_mask(name="all", coords="all", opposite_name="n_all", default_value=1)
+    @add_mask(name="all", coord_group="all", opposite_name="n_all", default_value=1)
     @add_mask(
         name="gridpoint",
-        coords="gridpoint",
+        coord_group="gridpoint",
         opposite_name="n_gridpoint",
         default_value=0,
     )
-    @add_mask(name="grid", coords="grid", opposite_name="n_grid", default_value=0)
+    @add_mask(name="grid", coord_group="grid", opposite_name="n_grid", default_value=0)
     @add_mask(
-        name="spatial", coords="spatial", opposite_name="n_spatial", default_value=0
+        name="spatial",
+        coord_group="spatial",
+        opposite_name="n_spatial",
+        default_value=0,
     )
-    @add_datavar(name="al", coords="all")
-    @add_datavar(name="sptl", coords="spatial")
-    @add_datavar(name="grp", coords="gridpoint")
-    @add_datavar(name="gr", coords="grid")
+    @add_datavar(name="al", coord_group="all")
+    @add_datavar(name="sptl", coord_group="spatial")
+    @add_datavar(name="grp", coord_group="gridpoint")
+    @add_datavar(name="gr", coord_group="grid")
     @add_time()
     @add_coord(name="gp", grid_coord=False)
     @add_coord(name="g", grid_coord=True)
@@ -67,21 +70,24 @@ def test_point():
 
 def test_gridded():
     @add_magnitude("mag", x="gr", y="gr", direction="dir", dir_type="from")
-    @add_mask(name="all", coords="all", opposite_name="n_all", default_value=1)
+    @add_mask(name="all", coord_group="all", opposite_name="n_all", default_value=1)
     @add_mask(
         name="gridpoint",
-        coords="gridpoint",
+        coord_group="gridpoint",
         opposite_name="n_gridpoint",
         default_value=0,
     )
-    @add_mask(name="grid", coords="grid", opposite_name="n_grid", default_value=0)
+    @add_mask(name="grid", coord_group="grid", opposite_name="n_grid", default_value=0)
     @add_mask(
-        name="spatial", coords="spatial", opposite_name="n_spatial", default_value=0
+        name="spatial",
+        coord_group="spatial",
+        opposite_name="n_spatial",
+        default_value=0,
     )
-    @add_datavar(name="al", coords="all")
-    @add_datavar(name="sptl", coords="spatial")
-    @add_datavar(name="grp", coords="gridpoint")
-    @add_datavar(name="gr", coords="grid")
+    @add_datavar(name="al", coord_group="all")
+    @add_datavar(name="sptl", coord_group="spatial")
+    @add_datavar(name="grp", coord_group="gridpoint")
+    @add_datavar(name="gr", coord_group="grid")
     @add_time(grid_coord=True)
     @add_coord(name="gp", grid_coord=False)
     @add_coord(name="g", grid_coord=True)

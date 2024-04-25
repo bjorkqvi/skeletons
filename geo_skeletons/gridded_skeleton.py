@@ -4,11 +4,19 @@ from .point_skeleton import PointSkeleton
 from .aux_funcs import distance_funcs
 from .managers.coordinate_manager import CoordinateManager
 from .managers.dask_manager import DaskManager
+from .variables import Coordinate
+import geo_parameters as gp
 
-INITIAL_CARTESIAN_COORDS = ["y", "x"]
-INITIAL_SPERICAL_COORDS = ["lat", "lon"]
 
-INITIAL_VARS = {}
+lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial")
+lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial")
+x_var = Coordinate(name="x", meta=gp.grid.X, coord_group="spatial")
+y_var = Coordinate(name="y", meta=gp.grid.Y, coord_group="spatial")
+
+INITIAL_CARTESIAN_COORDS = [y_var, x_var]
+INITIAL_SPERICAL_COORDS = [lat_var, lon_var]
+
+INITIAL_VARS = []
 
 
 class GriddedSkeleton(Skeleton):

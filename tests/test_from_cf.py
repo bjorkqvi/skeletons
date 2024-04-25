@@ -27,7 +27,6 @@ def test_cf():
         pass
 
     points = Magnitude(x=0, y=0)
-
     assert points.from_cf(gp.wind.XWind.standard_name()) == ["u"]
     assert points.from_cf(gp.wind.YWind.standard_name()) == ["v"]
     assert points.from_cf(gp.wind.Wind.standard_name()) == ["wind"]

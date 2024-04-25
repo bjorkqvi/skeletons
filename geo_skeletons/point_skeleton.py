@@ -2,10 +2,18 @@ import numpy as np
 from .skeleton import Skeleton
 from .managers.coordinate_manager import CoordinateManager
 from .managers.dask_manager import DaskManager
+from .variables import DataVar, Coordinate
+import geo_parameters as gp
 
-INITIAL_COORDS = ["inds"]
-INITIAL_CARTESIAN_VARS = {"x": "inds", "y": "inds"}
-INITIAL_SPHERICAL_VARS = {"lat": "inds", "lon": "inds"}
+inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
+INITIAL_COORDS = [inds_coord]
+
+lon_var = DataVar(name="lon", meta=gp.grid.Lon, coord_group="spatial", default_value=0)
+lat_var = DataVar(name="lat", meta=gp.grid.Lat, coord_group="spatial", default_value=0)
+x_var = DataVar(name="x", meta=gp.grid.X, coord_group="spatial", default_value=0)
+y_var = DataVar(name="y", meta=gp.grid.Y, coord_group="spatial", default_value=0)
+INITIAL_CARTESIAN_VARS = [x_var, y_var]  #: "inds", "y": "inds"}
+INITIAL_SPHERICAL_VARS = [lon_var, lat_var]  # {"lat": "inds", "lon": "inds"}
 
 
 class PointSkeleton(Skeleton):

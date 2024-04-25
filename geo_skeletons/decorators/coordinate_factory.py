@@ -6,6 +6,9 @@ from geo_parameters.metaparameter import MetaParameter
 from geo_parameters.wave import Freq, DirsTo, DirsFrom
 from typing import Union
 
+import geo_parameters as gp
+from geo_skeletons.variables import Coordinate
+
 
 def coord_decorator(name, grid_coord, c, stash_get=False):
     """stash_get = True means that the coordinate data can be accessed
@@ -41,7 +44,16 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
         c._coord_manager = deepcopy(c._coord_manager)
         c._coord_manager.initial_state = False
 
-    name_str = c._coord_manager.add_coord(name, grid_coord)
+    name_str, meta = gp.decode(name)
+
+    coord_group = "grid" if grid_coord else "gridpoint"
+    coord_var = Coordinate(
+        name=name_str,
+        meta=meta,
+        coord_group=coord_group,
+    )
+    c._coord_manager.add_coord(coord_var)
+
     if stash_get:
         exec(f"c._{name_str} = get_coord")
     else:
@@ -124,12 +136,17 @@ def add_time(grid_coord: bool = False):
 
             return times
 
-        name = "time"
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        _ = c._coord_manager.add_coord(name, grid_coord)
+        coord_group = "grid" if grid_coord else "gridpoint"
+        coord_var = Coordinate(
+            name="time",
+            meta=None,
+            coord_group=coord_group,
+        )
+        c._coord_manager.add_coord(coord_var)
         c.time = get_time
 
         c.hours = hours
@@ -161,7 +178,15 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
 
-        name_str = c._coord_manager.add_coord(name, grid_coord)
+        name_str, meta = gp.decode(name)
+
+        coord_group = "grid" if grid_coord else "gridpoint"
+        coord_var = Coordinate(
+            name=name_str,
+            meta=meta,
+            coord_group=coord_group,
+        )
+        c._coord_manager.add_coord(coord_var)
         exec(f"c.{name_str} = get_freq")
         c.df = df
 
@@ -194,8 +219,14 @@ def add_direction(
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
-
-        name_str = c._coord_manager.add_coord(name, grid_coord)
+        name_str, meta = gp.decode(name)
+        coord_group = "grid" if grid_coord else "gridpoint"
+        coord_var = Coordinate(
+            name=name_str,
+            meta=meta,
+            coord_group=coord_group,
+        )
+        c._coord_manager.add_coord(coord_var)
         exec(f"c.{name_str} = get_dirs")
         c.dd = ddir
         return c

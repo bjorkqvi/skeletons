@@ -10,11 +10,14 @@ from geo_parameters.metaparameter import MetaParameter
 
 from ..managers.dask_manager import DaskManager
 
+import geo_parameters as gp
+from geo_skeletons.variables import GridMask
+
 
 def add_mask(
     name: Union[str, MetaParameter],
     default_value: int = 0,
-    coords: str = "grid",
+    coord_group: str = "grid",
     opposite_name: Union[str, MetaParameter] = None,
     triggered_by: str = None,
     valid_range: tuple[float] = (0.0, None),
@@ -136,15 +139,36 @@ def add_mask(
         if c._coord_manager.initial_state:
             c._coord_manager = deepcopy(c._coord_manager)
             c._coord_manager.initial_state = False
-        name_str, opposite_name_str = c._coord_manager.add_mask(
-            name,
-            coords,
-            default_value,
-            opposite_name,
-            triggered_by,
-            valid_range,
-            range_inclusive,
+
+        name_str, meta = gp.decode(name)
+        if opposite_name is not None:
+            opposite_name_str, opposite_meta = gp.decode(opposite_name)
+            opposite_grid_mask = GridMask(
+                name=f"{opposite_name_str}_mask",
+                meta=opposite_meta,
+                coord_group=coord_group,
+                primary_mask=False,
+            )
+        else:
+            opposite_name_str = None
+            opposite_grid_mask = None
+
+        grid_mask = GridMask(
+            name=f"{name_str}_mask",
+            meta=meta,
+            coord_group=coord_group,
+            default_value=default_value,
+            primary_mask=True,
+            opposite_mask=opposite_grid_mask,
+            triggered_by=triggered_by,
+            valid_range=valid_range,
+            range_inclusive=range_inclusive,
         )
+
+        c._coord_manager.add_mask(grid_mask)
+        if opposite_grid_mask is not None:
+            c._coord_manager.add_mask(opposite_grid_mask)
+
         exec(f"c.{name_str}_mask = get_mask")
         exec(f"c.{name_str}_points = get_masked_points")
         exec(f"c.set_{name_str}_mask = set_mask")
