@@ -25,16 +25,16 @@ class CoordinateManager:
         # self._coords["gridpoint"] = []
         # self._coords["initial"] = []
 
-        self.added_coords = {}
+        self._added_coords = {}
         # self._vars = {}
         # self._vars["added"] = {}
         # self._vars["initial"] = {}
 
         # Refactoring one
-        self.added_vars = {}
-        self.added_magnitudes = {}
-        self.added_directions = {}
-        self.added_masks = {}
+        self._added_vars = {}
+        self._added_magnitudes = {}
+        self._added_directions = {}
+        self._added_masks = {}
         # self.meta_coords: dict[str, MetaParameter] = {}
         # self.meta_vars: dict[str, MetaParameter] = {}
         # self.dir_vars: dict[str, str] = {}
@@ -45,8 +45,6 @@ class CoordinateManager:
         # E.g. creating a land-mask might be triggered by setting a bathymetry or hs variable
         # self.triggers: dict[str, list[tuple[str, tuple[float], tuple[bool]]]] = {}
 
-        self._used_names = []
-
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
@@ -56,7 +54,7 @@ class CoordinateManager:
     def add_var(self, data_var: DataVar) -> None:
         if self.get_added(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
-        self.added_vars[data_var.name] = data_var
+        self._added_vars[data_var.name] = data_var
 
     def add_mask(self, grid_mask: GridMask) -> None:
         if self.get_added(grid_mask.name) is not None:
@@ -73,10 +71,12 @@ class CoordinateManager:
                 grid_mask.range_inclusive,
                 grid_mask.range_inclusive,
             )
-        self.added_masks[grid_mask.name] = grid_mask
+        self._added_masks[grid_mask.name] = grid_mask
 
     def triggers(self, name: str) -> list[str]:
-        return [mask for mask in self.added_masks.values() if mask.triggered_by == name]
+        return [
+            mask for mask in self._added_masks.values() if mask.triggered_by == name
+        ]
 
         # list_of_computations = self.triggers.get(triggered_by, [])
         # list_of_computations.append((name, valid_range, range_inclusive))
@@ -86,39 +86,39 @@ class CoordinateManager:
         """Add a coordinate that the Skeleton will use."""
         if self.get_added(coord.name) is not None:
             raise VariableExistsError(coord.name)
-        self.added_coords[coord.name] = coord
+        self._added_coords[coord.name] = coord
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
         if self.get_added(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
-        self.added_magnitudes[magnitude.name] = magnitude
+        self._added_magnitudes[magnitude.name] = magnitude
 
     def add_direction(self, direction: Direction) -> None:
         if self.get_added(direction.name) is not None:
             raise VariableExistsError(direction.name)
-        self.added_directions[direction.name] = direction
+        self._added_directions[direction.name] = direction
 
     def set_initial_vars(self, initial_vars: list) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
         if not isinstance(initial_vars, list):
             raise ValueError("initial_vars needs to be a dict of DataVar's!")
         ## Class has x/y set automatically, but instance might change to lon/lat
-        for var in list(self.added_vars.keys()):
+        for var in list(self._added_vars.keys()):
             if var in SPATIAL_COORDS:
-                del self.added_vars[var]
+                del self._added_vars[var]
         for var in initial_vars:
-            self.added_vars[var.name] = var
+            self._added_vars[var.name] = var
 
     def set_initial_coords(self, initial_coords: list) -> None:
         """Set dictionary containing the initial coordinates of the Skeleton"""
         if not isinstance(initial_coords, list):
             raise ValueError("initial_coords needs to be a list of strings!")
         ## Class has x/y set automatically, but instance might change to lon/lat
-        for coord in list(self.added_coords.keys()):
+        for coord in list(self._added_coords.keys()):
             if coord in SPATIAL_COORDS:
-                del self.added_coords[coord]
+                del self._added_coords[coord]
         for coord in initial_coords:
-            self.added_coords[coord.name] = coord
+            self._added_coords[coord.name] = coord
 
     def coords(self, coord_group: str = "all") -> list[str]:
         """Returns list of coordinats that have been added to a specific coord group.
@@ -136,27 +136,65 @@ class CoordinateManager:
             return None
 
         if coord_group == "all":
-            coords = self.added_coords.values()
+            coords = self._added_coords.values()
         elif coord_group == "nonspatial":
             coords = [
                 coord
-                for coord in self.added_coords.values()
+                for coord in self._added_coords.values()
                 if coord.coord_group != "spatial"
             ]
         elif coord_group == "grid":
             coords = [
                 coord
-                for coord in self.added_coords.values()
+                for coord in self._added_coords.values()
                 if coord.coord_group in [coord_group, "spatial"]
             ]
         else:
             coords = [
                 coord
-                for coord in self.added_coords.values()
+                for coord in self._added_coords.values()
                 if coord.coord_group == coord_group
             ]
 
         return move_time_and_spatial_to_front([coord.name for coord in coords])
+
+    def masks(self, coord_group: str = "all") -> list[str]:
+        """Returns list of masks that have been added to a specific coord group.
+
+        'all': All added coordinates
+        'spatial': spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'grid': coordinates for the grid (e.g. z, time)
+        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        """
+        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
+            print(
+                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
+            )
+            return None
+
+        if coord_group == "all":
+            masks = self._added_masks.values()
+        elif coord_group == "nonspatial":
+            masks = [
+                mask
+                for mask in self._added_masks.values()
+                if mask.coord_group != "spatial"
+            ]
+        elif coord_group == "grid":
+            masks = [
+                mask
+                for mask in self._added_masks.values()
+                if mask.coord_group in [coord_group, "spatial"]
+            ]
+        else:
+            masks = [
+                mask
+                for mask in self._added_masks.values()
+                if mask.coord_group == coord_group
+            ]
+
+        return [mask.name for mask in masks]
 
     def data_vars(self, coord_group: str = "nonspatial") -> list[str]:
         """Returns list of variables that have been added to a specific coord group.
@@ -174,21 +212,21 @@ class CoordinateManager:
             return None
 
         if coord_group == "all":
-            vars = self.added_vars.values()
+            vars = self._added_vars.values()
         elif coord_group == "nonspatial":
             vars = [
-                var for var in self.added_vars.values() if var.coord_group != "spatial"
+                var for var in self._added_vars.values() if var.coord_group != "spatial"
             ]
         elif coord_group == "grid":
             vars = [
                 var
-                for var in self.added_vars.values()
+                for var in self._added_vars.values()
                 if var.coord_group in [coord_group, "spatial"]
             ]
         else:
             vars = [
                 var
-                for var in self.added_vars.values()
+                for var in self._added_vars.values()
                 if var.coord_group == coord_group
             ]
 
@@ -210,23 +248,23 @@ class CoordinateManager:
             return None
 
         if coord_group == "all":
-            vars = self.added_magnitudes.values()
+            vars = self._added_magnitudes.values()
         elif coord_group == "nonspatial":
             vars = [
                 var
-                for var in self.added_magnitudes.values()
+                for var in self._added_magnitudes.values()
                 if var.x.coord_group != "spatial"
             ]
         elif coord_group == "grid":
             vars = [
                 var
-                for var in self.added_magnitudes.values()
+                for var in self._added_magnitudes.values()
                 if var.x.coord_group in [coord_group, "spatial"]
             ]
         else:
             vars = [
                 var
-                for var in self.added_magnitudes.values()
+                for var in self._added_magnitudes.values()
                 if var.x.coord_group == coord_group
             ]
 
@@ -248,35 +286,45 @@ class CoordinateManager:
             return None
 
         if coord_group == "all":
-            vars = self.added_directions.values()
+            vars = self._added_directions.values()
         elif coord_group == "nonspatial":
             vars = [
                 var
-                for var in self.added_directions.values()
+                for var in self._added_directions.values()
                 if var.x.coord_group != "spatial"
             ]
         elif coord_group == "grid":
             vars = [
                 var
-                for var in self.added_directions.values()
+                for var in self._added_directions.values()
                 if var.x.coord_group in [coord_group, "spatial"]
             ]
         else:
             vars = [
                 var
-                for var in self.added_directions.values()
+                for var in self._added_directions.values()
                 if var.x.coord_group == coord_group
             ]
 
         return [var.name for var in vars]
 
+    def all_objects(self, coord_group: str = "all") -> list[str]:
+        list_of_objects = (
+            self.data_vars(coord_group)
+            + self.coords(coord_group)
+            + self.magnitudes(coord_group)
+            + self.directions(coord_group)
+            + self.masks(coord_group)
+        )
+        return list_of_objects
+
     def coord_group(self, var: str) -> str:
         """Returns the coordinate group that a variable/mask is defined over.
         The coordinates can then be retrived using the group by the method .coords()"""
-        vars = [v for v in self.added_vars.values() if v.name == var]
-        masks = [v for v in self.added_masks.values() if v.name == var]
-        mags = [v for v in self.added_magnitudes.values() if v.name == var]
-        dirs = [v for v in self.added_directions.values() if v.name == var]
+        vars = [v for v in self._added_vars.values() if v.name == var]
+        masks = [v for v in self._added_masks.values() if v.name == var]
+        mags = [v for v in self._added_magnitudes.values() if v.name == var]
+        dirs = [v for v in self._added_directions.values() if v.name == var]
         all_vars = vars + masks + mags + dirs
         # coord_group = var_coords or mask_coords or mag_coords or dir_coords
         if not all_vars:
@@ -286,11 +334,11 @@ class CoordinateManager:
 
     def get_added(self, var: str):
         return (
-            self.added_coords.get(var)
-            or self.added_vars.get(var)
-            or self.added_magnitudes.get(var)
-            or self.added_directions.get(var)
-            or self.added_masks.get(var)
+            self._added_coords.get(var)
+            or self._added_vars.get(var)
+            or self._added_magnitudes.get(var)
+            or self._added_directions.get(var)
+            or self._added_masks.get(var)
         )
 
     def meta_parameter(self, var: str) -> MetaParameter:
@@ -310,8 +358,8 @@ class CoordinateManager:
     # def is_settable(self, name: str) -> bool:
     #     """Check if the variable etc. is allowed to be set (i.e. is not a magnitude, opposite mask etc.)"""
     #     return (
-    #         self.added_vars().get(name) is not None
-    #         or self.added_masks().get(name) is not None
+    #         self._added_vars().get(name) is not None
+    #         or self._added_masks().get(name) is not None
     #     )
 
     def convert_to_math_dir(self, data, dir_type: str):

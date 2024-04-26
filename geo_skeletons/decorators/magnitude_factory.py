@@ -132,8 +132,7 @@ def add_magnitude(
         else:
             dir_str, meta_dir = None, None
 
-        coord_group = c._coord_manager.added_vars.get(x).coord_group
-
+        coord_group = c._coord_manager.get_added(x).coord_group
         mag_obj = Magnitude(name=name_str, meta=meta, x=x, y=y, coord_group=coord_group)
 
         if direction is not None:
