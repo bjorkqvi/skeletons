@@ -431,11 +431,8 @@ class Skeleton:
 
         Data needs to be exactly right shape."""
         obj = self.core.get(name)
-        x_component = obj.x
-        y_component = obj.y
-        dir_name = obj.direction.name
-
-        dir_data = self.get(dir_name, dir_type="math")
+        x_component, y_component = obj.x, obj.y
+        dir_data = self.get(obj.direction.name, dir_type="math")
 
         s = dask_manager.sin(dir_data)
         c = dask_manager.cos(dir_data)
@@ -464,11 +461,8 @@ class Skeleton:
 
         Data needs to be exactly right shape."""
         obj = self.core.get(name)
-        x_component = obj.x
-        y_component = obj.y
-        mag_name = obj.magnitude.name
-
-        mag_data = self.get(mag_name)
+        x_component, y_component = obj.x, obj.y
+        mag_data = self.get(obj.magnitude.name)
 
         dir_type = dir_type or obj.dir_type
 
@@ -496,9 +490,9 @@ class Skeleton:
         """Sets a data variable to the underlying dataset.
 
         Triggers setting metadata of the variable and possible connected masks."""
-        self._ds_manager.set(
-            data=data, data_name=name, coords=self.core.coord_group(name)
-        )
+        coord_group = self.core.coord_group(name)
+        coords = self.core.coords(coord_group)
+        self._ds_manager.set(data=data, data_name=name, coords=coords)
         self._trigger_masks(name, data)
 
     def _trigger_masks(self, name: str, data) -> None:

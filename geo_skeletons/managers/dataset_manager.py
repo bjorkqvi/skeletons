@@ -146,11 +146,8 @@ class DatasetManager:
             return None
         return self.data
 
-    def set(self, data: np.ndarray, data_name: str, coords: str = "all") -> None:
-        """Adds in new data to the Dataset.
-
-        coord_type = 'all', 'spatial', 'grid' or 'gridpoint'
-        """
+    def set(self, data: np.ndarray, data_name: str, coords: list[str]) -> None:
+        """Adds in new data to the Dataset."""
         all_metadata = self.get_attrs()
         self._merge_in_ds(self.compile_to_ds(data, data_name, coords))
         for var, metadata in all_metadata.items():
@@ -260,24 +257,14 @@ class DatasetManager:
             self.set_new_ds(ds.merge(self.ds(), compat="override"))
 
     def compile_to_ds(
-        self, data: np.ndarray, data_name: str, coords: str
+        self, data: np.ndarray, data_name: str, coords: list[str]
     ) -> xr.Dataset:
         """This is used to compile a Dataset containing the given data using the
         coordinates of the Skeleton.
-
-        coord_type determines over which coordinates to set the mask:
-
-        'all': all coordinates in the Dataset
-        'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': coordinates for the grid (e.g. z, time)
-
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        coords_dict = {
-            coord: self.get(coord) for coord in self.coord_manager.coords(coords)
-        }
+        coords_dict = {coord: self.get(coord) for coord in coords}
 
-        coord_shape = self.coords_to_size(self.coord_manager.coords(coords))
+        coord_shape = self.coords_to_size(coords)
         if coord_shape != data.shape:
             raise DataWrongDimensionError(
                 data_shape=data.shape, coord_shape=coord_shape

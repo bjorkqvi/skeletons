@@ -61,9 +61,6 @@ class CoordinateManager:
             grid_mask.valid_range = tuple(
                 [np.inf if r is None else r for r in grid_mask.valid_range]
             )
-        # if len(grid_mask.valid_range) != 2:
-        #     raise ValueError(f"valid_rang has to be of length 2 (upper, lower)!")
-
         if isinstance(grid_mask.range_inclusive, bool):
             grid_mask.range_inclusive = (
                 grid_mask.range_inclusive,
@@ -75,10 +72,6 @@ class CoordinateManager:
         return [
             mask for mask in self._added_masks.values() if mask.triggered_by == name
         ]
-
-        # list_of_computations = self.triggers.get(triggered_by, [])
-        # list_of_computations.append((name, valid_range, range_inclusive))
-        # self.triggers[triggered_by] = list_of_computations
 
     def add_coord(self, coord: Coordinate) -> str:
         """Add a coordinate that the Skeleton will use."""
