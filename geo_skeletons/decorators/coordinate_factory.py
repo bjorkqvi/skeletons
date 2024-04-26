@@ -33,7 +33,7 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
         )
 
     def get_coord(self, data_array=False, **kwargs):
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
         data = self._ds_manager.get(name_str, **kwargs)
         if data_array:
@@ -75,7 +75,7 @@ def add_time(grid_coord: bool = False):
 
         def hours(self, datetime=True, fmt: str = "%Y-%m-%d %H:00"):
             """Determins a Pandas data range of all the days in the time span."""
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             times = self._ds_manager.get("time").values.copy()
             if datetime:
@@ -85,7 +85,7 @@ def add_time(grid_coord: bool = False):
 
         def days(self, datetime=True, fmt: str = "%Y-%m-%d"):
             """Determins a Pandas data range of all the days in the time span."""
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             times = self._ds_manager.get("time").values.copy()
             if datetime:
@@ -95,7 +95,7 @@ def add_time(grid_coord: bool = False):
 
         def months(self, datetime=True, fmt: str = "%Y-%m"):
             """Determins a Pandas data range of all the months in the time span."""
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             times = self._ds_manager.get("time").values.copy()
             if datetime:
@@ -105,7 +105,7 @@ def add_time(grid_coord: bool = False):
 
         def years(self, datetime=True, fmt: str = "%Y"):
             """Determins a Pandas data range of all the months in the time span."""
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             times = self._ds_manager.get("time").values.copy()
             if datetime:
@@ -120,7 +120,7 @@ def add_time(grid_coord: bool = False):
             fmt="%Y-%m-%d %H:%M:00",
             **kwargs,
         ):
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return (None, None)
             data = self._ds_manager.get("time", **kwargs)
             if data_array:
@@ -161,7 +161,7 @@ def add_time(grid_coord: bool = False):
 def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = False):
     def wrapper(c):
         def get_freq(self, angular=False):
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             freq = self._ds_manager.get(name_str).values.copy()
             if angular:
@@ -169,7 +169,7 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
             return freq
 
         def df(self, angular=False):
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             freq = get_freq(self, angular=angular).copy()
             return (freq[-1] - freq[0]) / (len(freq) - 1)
@@ -202,7 +202,7 @@ def add_direction(
 ):
     def wrapper(c):
         def get_dirs(self, angular=False):
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             dirs = self._ds_manager.get(name_str).data.copy()
             if angular:
@@ -210,7 +210,7 @@ def add_direction(
             return dirs
 
         def ddir(self, angular=False):
-            if not self._structure_initialized():
+            if self.ds() is None:
                 return None
             dirs = get_dirs(self, angular=False).copy()
             dmax = 2 * np.pi if angular else 360

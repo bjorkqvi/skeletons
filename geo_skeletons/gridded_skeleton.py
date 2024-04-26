@@ -121,7 +121,7 @@ class GriddedSkeleton(Skeleton):
         order_by = 'y' (default) or 'x'
         """
 
-        if self.is_cartesian() and strict and (not native):
+        if self.core.is_cartesian() and strict and (not native):
             return None, None
 
         if mask is None:
@@ -131,7 +131,7 @@ class GriddedSkeleton(Skeleton):
         mask = mask.ravel()
         x, y = self._native_xy(**kwargs)
 
-        if not self.is_cartesian() or native:
+        if not self.core.is_cartesian() or native:
             return x[mask], y[mask]
 
         # Only convert if skeleton is Cartesian and native output is not requested
@@ -157,7 +157,7 @@ class GriddedSkeleton(Skeleton):
         order_by = 'y' (default) or 'x'
         """
 
-        if not self.is_cartesian() and strict and (not native):
+        if not self.core.is_cartesian() and strict and (not native):
             return None, None
 
         if mask is None:
@@ -166,7 +166,7 @@ class GriddedSkeleton(Skeleton):
         mask = mask.ravel()
 
         x, y = self._native_xy(utm=utm, **kwargs)
-        if self.is_cartesian() or native:
+        if self.core.is_cartesian() or native:
             return x[mask], y[mask]
 
         # Only convert if skeleton is not Cartesian and native output is not requested
@@ -233,7 +233,7 @@ class GriddedSkeleton(Skeleton):
                 return int(nx), x_end
 
             if dnmi:
-                if self.is_cartesian():
+                if self.core.is_cartesian():
                     dm = dnmi * 1850
                 else:
                     dlat = dnmi / 60
@@ -250,7 +250,7 @@ class GriddedSkeleton(Skeleton):
                     + 1
                 )
                 if floating_edge:
-                    if self.is_cartesian():
+                    if self.core.is_cartesian():
                         raise Exception(
                             "Grid is cartesian, so cant set exact dlon/dlat using floating_edge!"
                         )
@@ -263,7 +263,7 @@ class GriddedSkeleton(Skeleton):
             if dx:
                 nx = np.round((self.edges(x_type)[1] - self.edges(x_type)[0]) / dx) + 1
                 if floating_edge:
-                    if not self.is_cartesian():
+                    if not self.core.is_cartesian():
                         raise Exception(
                             "Grid is spherical, so cant set exact dx/dy using floating_edge!"
                         )
@@ -280,7 +280,7 @@ class GriddedSkeleton(Skeleton):
         x_native = np.unique(np.linspace(self.x(native=True)[0], native_x_end, nx))
         y_native = np.unique(np.linspace(self.y(native=True)[0], native_y_end, ny))
 
-        if self.is_cartesian():
+        if self.core.is_cartesian():
             x = x_native
             y = y_native
             lon = None

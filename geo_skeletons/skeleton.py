@@ -136,18 +136,20 @@ class Skeleton:
         x_str, y_str, xvec, yvec = utm_funcs.will_grid_be_spherical_or_cartesian(
             x, y, lon, lat
         )
-        self.x_str = x_str
-        self.y_str = y_str
+        self.core.x_str = x_str
+        self.core.y_str = y_str
 
         # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
         self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
         self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
 
         # The manager contains the Xarray Dataset
-        if not self._structure_initialized():
+        if self.ds() is None:
             self._ds_manager = DatasetManager(self.core)
 
-        self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
+        self._ds_manager.create_structure(
+            xvec, yvec, self.core.x_str, self.core.y_str, **kwargs
+        )
 
         if utm == (None, None):
             utm = None
@@ -533,7 +535,7 @@ class Skeleton:
         boolean_mask [False]: Convert array to a boolean array.
         dask [None]: Return dask array [True] or numpy array [False]. Default: Use set dask-mode
         """
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
         if dir_type not in ["to", "from", "math", None]:
@@ -681,21 +683,6 @@ class Skeleton:
             "spatial"
         )
 
-    def is_initialized(self) -> bool:
-        return hasattr(self, "x_str") and hasattr(self, "y_str")
-
-    def is_cartesian(self) -> bool:
-        """Checks if the grid is cartesian (True) or spherical (False)."""
-        if not self._structure_initialized():
-            return False
-        if self.x_str == "x" and self.y_str == "y":
-            return True
-        elif self.x_str == "lon" and self.y_str == "lat":
-            return False
-        raise Exception(
-            f"Expected x- and y string to be either 'x' and 'y' or 'lon' and 'lat', but they were {self.x_str} and {self.y_str}"
-        )
-
     def set_utm(self, utm_zone: tuple[int, str] = None, silent: bool = False):
         """Set UTM zone and number to be used for cartesian coordinates.
 
@@ -705,7 +692,7 @@ class Skeleton:
         """
 
         if utm_zone is None:
-            if self.is_cartesian():
+            if self.core.is_cartesian():
                 zone_number, zone_letter = (None, None)  # DEFAULT_UTM
             else:
                 lon, lat = self.lonlat()
@@ -744,7 +731,7 @@ class Skeleton:
 
         self._zone_number = number
         self._zone_letter = letter
-        if self.is_cartesian() and number is not None:
+        if self.core.is_cartesian() and number is not None:
             self.set_metadata({"utm_zone": f"{number:02.0f}{letter}"}, append=True)
 
         if not silent and number is not None:
@@ -762,7 +749,7 @@ class Skeleton:
         return zone_number, zone_letter
 
     def ds(self):
-        if not self._structure_initialized():
+        if not hasattr(self, "_ds_manager"):
             return None
         return self._ds_manager.ds()
 
@@ -793,7 +780,7 @@ class Skeleton:
         'gridpoint': size over coordinates for a grid point (e.g. frequency, direcion or time)
         """
 
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
         if coord_group not in ["all", "spatial", "grid", "gridpoint"]:
@@ -814,7 +801,7 @@ class Skeleton:
         return self.size(coord_group=coord_group, squeeze=squeeze, **kwargs)
 
     def inds(self, **kwargs) -> np.ndarray:
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
         return self.get("inds", **kwargs)
 
@@ -838,16 +825,16 @@ class Skeleton:
         Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
 
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if not self.is_cartesian() and native:
+        if not self.core.is_cartesian() and native:
             return self.lon(**kwargs)
 
-        if not self.is_cartesian() and strict:
+        if not self.core.is_cartesian() and strict:
             return None
 
-        if self.is_cartesian() and (self.utm() == utm or utm is None):
+        if self.core.is_cartesian() and (self.utm() == utm or utm is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()
             if normalize:
                 x = x - min(x)
@@ -918,16 +905,16 @@ class Skeleton:
         Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
 
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if not self.is_cartesian() and native:
+        if not self.core.is_cartesian() and native:
             return self.lat(**kwargs)
 
-        if not self.is_cartesian() and strict:
+        if not self.core.is_cartesian() and strict:
             return None
 
-        if self.is_cartesian() and (self.utm() == utm or utm is None):
+        if self.core.is_cartesian() and (self.utm() == utm or utm is None):
             y = self._ds_manager.get("y", **kwargs).values.copy()
             if normalize:
                 y = y - min(y)
@@ -996,16 +983,16 @@ class Skeleton:
 
         native=True overrides strict=True for cartesian grids
         """
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if self.is_cartesian() and native:
+        if self.core.is_cartesian() and native:
             return self.x(**kwargs)
 
-        if self.is_cartesian() and strict:
+        if self.core.is_cartesian() and strict:
             return None
 
-        if self.is_cartesian():
+        if self.core.is_cartesian():
             if (
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
@@ -1042,16 +1029,16 @@ class Skeleton:
 
         native=True overrides strict=True for cartesian grids
         """
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if self.is_cartesian() and native:
+        if self.core.is_cartesian() and native:
             return self.y(**kwargs)
 
-        if self.is_cartesian() and strict:
+        if self.core.is_cartesian() and strict:
             return None
 
-        if self.is_cartesian():
+        if self.core.is_cartesian():
             if (
                 self.is_gridded()
             ):  # This will rotate the grid, but is best estimate to keep it strucutred
@@ -1083,7 +1070,7 @@ class Skeleton:
         self, coord: str, native: bool = False, strict=False
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return (None, None)
 
         if coord not in ["x", "y", "lon", "lat"]:
@@ -1107,23 +1094,23 @@ class Skeleton:
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return 0
         return len(self.x(native=True))
 
     def ny(self):
         """Length of y/lat-vector."""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return 0
         return len(self.y(native=True))
 
     def dx(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the x vector. Conversion made for
         spherical grids."""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if not self.is_cartesian() and strict and (not native):
+        if not self.core.is_cartesian() and strict and (not native):
             return None
 
         if self.nx() == 1:
@@ -1136,10 +1123,10 @@ class Skeleton:
     def dy(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the y vector. Conversion made for
         spherical grids."""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if not self.is_cartesian() and strict and (not native):
+        if not self.core.is_cartesian() and strict and (not native):
             return None
 
         if self.ny() == 1:
@@ -1152,10 +1139,10 @@ class Skeleton:
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the longitude vector. Conversion made for
         cartesian grids."""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if self.is_cartesian() and strict and (not native):
+        if self.core.is_cartesian() and strict and (not native):
             return None
         if self.nx() == 1:
             return 0.0
@@ -1167,10 +1154,10 @@ class Skeleton:
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
-        if self.is_cartesian() and strict and (not native):
+        if self.core.is_cartesian() and strict and (not native):
             return None
         if self.ny() == 1:
             return 0.0
@@ -1198,7 +1185,7 @@ class Skeleton:
         Set unique=True to remove any repeated points.
         Set fast=True to use UTM casrtesian search for low latitudes."""
 
-        if self.is_cartesian():
+        if self.core.is_cartesian():
             fast = True
 
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
@@ -1212,7 +1199,7 @@ class Skeleton:
 
         orig_zone = self.utm()
         if lon is not None and lat is not None:
-            if self.is_cartesian():
+            if self.core.is_cartesian():
                 x, y, __, __ = utm_module.from_latlon(
                     lat,
                     lon,
@@ -1287,7 +1274,7 @@ class Skeleton:
 
     def metadata(self, name: str = None) -> dict:
         """Return metadata of the dataset:"""
-        if not self._structure_initialized():
+        if self.ds() is None:
             return None
 
         if name is None:
@@ -1311,7 +1298,7 @@ class Skeleton:
         if not isinstance(metadata, dict):
             raise TypeError(f"metadata needs to be a dict, not '{metadata}'!")
 
-        if not self._structure_initialized():
+        if self.ds() is None:
             return
 
         if name in self._ds_manager.empty_vars():
@@ -1397,42 +1384,6 @@ class Skeleton:
         return self.chunks is not None
 
     @property
-    def x_str(self) -> str:
-        """Return string compatible with the type of spacing used:
-
-        'x' for cartesian grid.
-        'lon' for spherical grid.
-        """
-        if not self._structure_initialized():
-            return None
-        return self._x_str
-
-    @x_str.setter
-    def x_str(self, new_str):
-        if new_str in ["x", "lon"]:
-            self._x_str = new_str
-        else:
-            raise ValueError("x_str need to be 'x' or 'lon'")
-
-    @property
-    def y_str(self) -> str:
-        """Return string compatible with the type of spacing used:
-
-        'y' for cartesian grid.
-        'lat' for spherical grid.
-        """
-        if not self._structure_initialized():
-            return None
-        return self._y_str
-
-    @y_str.setter
-    def y_str(self, new_str):
-        if new_str in ["y", "lat"]:
-            self._y_str = new_str
-        else:
-            raise ValueError("y_str need to be 'y' or 'lat'")
-
-    @property
     def name(self) -> str:
         if not hasattr(self, "_name"):
             return "LonelySkeleton"
@@ -1451,9 +1402,6 @@ class Skeleton:
         for coord in self.core.coords():
             chunk_list.append(chunk_dict.get(coord, "auto"))
         return tuple(chunk_list)
-
-    def _structure_initialized(self) -> bool:
-        return hasattr(self, "_ds_manager")
 
     def iterate(self, coords: list[str] = None):
         coords = coords or self.core.coords("grid")
