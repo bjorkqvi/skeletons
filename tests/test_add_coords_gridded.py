@@ -69,10 +69,10 @@ def test_add_z_coord():
     np.testing.assert_array_almost_equal(grid.z(), np.linspace(0.0, 10.0, 11))
 
     assert grid.size() == (6, 5, 11)
-    assert grid.size(coords="all") == (6, 5, 11)
-    assert grid.size(coords="spatial") == (6, 5)
-    assert grid.size(coords="grid") == (6, 5, 11)
-    assert grid.size(coords="gridpoint") == ()
+    assert grid.size(coord_group="all") == (6, 5, 11)
+    assert grid.size(coord_group="spatial") == (6, 5)
+    assert grid.size(coord_group="grid") == (6, 5, 11)
+    assert grid.size(coord_group="gridpoint") == ()
 
 
 def test_add_time_coord():
@@ -119,10 +119,10 @@ def test_add_z_and_time_coord():
     ts.set_z_spacing(nx=11)
 
     assert ts.size() == (len(times), 6, 5, 11)
-    assert ts.size(coords="all") == (len(times), 6, 5, 11)
-    assert ts.size(coords="spatial") == (6, 5)
-    assert ts.size(coords="grid") == (6, 5, 11)
-    assert ts.size(coords="gridpoint") == (len(times),)
+    assert ts.size(coord_group="all") == (len(times), 6, 5, 11)
+    assert ts.size(coord_group="spatial") == (6, 5)
+    assert ts.size(coord_group="grid") == (6, 5, 11)
+    assert ts.size(coord_group="gridpoint") == (len(times),)
 
     for n, t in enumerate(times):
         assert t == ts.time()[n]

@@ -15,10 +15,10 @@ def test_1d_spectrum():
     np.testing.assert_array_almost_equal(spec.freq(angular=True), freqs * 2 * np.pi)
 
     assert spec.size() == (2, len(freqs))
-    assert spec.size(coords="all") == (2, len(freqs))
-    assert spec.size(coords="spatial") == (2,)
-    assert spec.size(coords="grid") == (2,)
-    assert spec.size(coords="gridpoint") == (len(freqs),)
+    assert spec.size(coord_group="all") == (2, len(freqs))
+    assert spec.size(coord_group="spatial") == (2,)
+    assert spec.size(coord_group="grid") == (2,)
+    assert spec.size(coord_group="gridpoint") == (len(freqs),)
 
 
 def test_1d_spectrum_point():
@@ -32,10 +32,10 @@ def test_1d_spectrum_point():
     np.testing.assert_array_almost_equal(spec.f(angular=True), freqs * 2 * np.pi)
 
     assert spec.size() == (2, len(freqs))
-    assert spec.size(coords="all") == (2, len(freqs))
-    assert spec.size(coords="spatial") == (2,)
-    assert spec.size(coords="grid") == (2,)
-    assert spec.size(coords="gridpoint") == (len(freqs),)
+    assert spec.size(coord_group="all") == (2, len(freqs))
+    assert spec.size(coord_group="spatial") == (2,)
+    assert spec.size(coord_group="grid") == (2,)
+    assert spec.size(coord_group="gridpoint") == (len(freqs),)
 
 
 def test_2d_spectrum():
@@ -57,10 +57,10 @@ def test_2d_spectrum():
     np.testing.assert_almost_equal(spec.df(angular=True), 0.1 * 2 * np.pi)
 
     assert spec.size() == (2, len(freqs), len(dirs))
-    assert spec.size(coords="all") == (2, len(freqs), len(dirs))
-    assert spec.size(coords="spatial") == (2,)
-    assert spec.size(coords="grid") == (2,)
-    assert spec.size(coords="gridpoint") == (len(freqs), len(dirs))
+    assert spec.size(coord_group="all") == (2, len(freqs), len(dirs))
+    assert spec.size(coord_group="spatial") == (2,)
+    assert spec.size(coord_group="grid") == (2,)
+    assert spec.size(coord_group="gridpoint") == (len(freqs), len(dirs))
 
 
 def test_2d_spectrum_new_names():
@@ -78,10 +78,10 @@ def test_2d_spectrum_new_names():
     np.testing.assert_array_almost_equal(spec.D(angular=True), dirs * np.pi / 180)
 
     assert spec.size() == (2, len(dirs), len(freqs))
-    assert spec.size(coords="all") == (2, len(dirs), len(freqs))
-    assert spec.size(coords="spatial") == (2,)
-    assert spec.size(coords="grid") == (2,)
-    assert spec.size(coords="gridpoint") == (len(dirs), len(freqs))
+    assert spec.size(coord_group="all") == (2, len(dirs), len(freqs))
+    assert spec.size(coord_group="spatial") == (2,)
+    assert spec.size(coord_group="grid") == (2,)
+    assert spec.size(coord_group="gridpoint") == (len(dirs), len(freqs))
 
 
 def test_3d_spectrum():
@@ -102,10 +102,10 @@ def test_3d_spectrum():
     np.testing.assert_array_almost_equal(spec.freq(angular=True), freqs * 2 * np.pi)
 
     assert spec.size() == (2, len(freqs), len(k), len(k))
-    assert spec.size(coords="all") == (2, len(freqs), len(k), len(k))
-    assert spec.size(coords="spatial") == (2,)
-    assert spec.size(coords="grid") == (2,)
-    assert spec.size(coords="gridpoint") == (len(freqs), len(k), len(k))
+    assert spec.size(coord_group="all") == (2, len(freqs), len(k), len(k))
+    assert spec.size(coord_group="spatial") == (2,)
+    assert spec.size(coord_group="grid") == (2,)
+    assert spec.size(coord_group="gridpoint") == (len(freqs), len(k), len(k))
 
 
 def test_timeseries():
@@ -117,10 +117,10 @@ def test_timeseries():
     ts = TimeSeries(x=(0.0, 1.0), y=(10.0, 20.0), time=times)
 
     assert ts.size() == (len(times), 2)
-    assert ts.size(coords="all") == (len(times), 2)
-    assert ts.size(coords="spatial") == (2,)
-    assert ts.size(coords="grid") == (2,)
-    assert ts.size(coords="gridpoint") == (len(times),)
+    assert ts.size(coord_group="all") == (len(times), 2)
+    assert ts.size(coord_group="spatial") == (2,)
+    assert ts.size(coord_group="grid") == (2,)
+    assert ts.size(coord_group="gridpoint") == (len(times),)
 
     for n, t in enumerate(times):
         assert t == ts.time()[n]

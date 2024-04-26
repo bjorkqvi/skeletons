@@ -44,10 +44,10 @@ class Skeleton:
         self.data_vars = MethodType(_data_vars, self)
 
     def add_datavar(
-        self, name: str, coords: str = "all", default_value: float = 0.0
+        self, name: str, coord_group: str = "all", default_value: float = 0.0
     ) -> None:
         self = add_datavar(
-            name=name, coords=coords, default_value=default_value, append=True
+            name=name, coord_group=coord_group, default_value=default_value, append=True
         )(self)
 
     def add_magnitude(
@@ -228,11 +228,11 @@ class Skeleton:
 
     def magnitudes(self) -> list[str]:
         """Returns the names of all defined magnitudes"""
-        return list(self._coord_manager.magnitudes.keys())
+        return self._coord_manager.magnitudes()
 
     def directions(self) -> list[str]:
         """Returns the names of all defined magnitudes"""
-        return list(self._coord_manager.directions.keys())
+        return self._coord_manager.directions()
 
     def sel(self, **kwargs):
         return self.from_ds(self.ds().sel(**kwargs))
@@ -471,10 +471,10 @@ class Skeleton:
         Calculates x- and y- components and sets them based on set connected direction.
 
         Data needs to be exactly right shape."""
-
-        x_component = self._coord_manager.magnitudes.get(name)["x"]
-        y_component = self._coord_manager.magnitudes.get(name)["y"]
-        dir_name = self._coord_manager.magnitudes.get(name)["dir"]
+        obj = self._coord_manager.get_added(name)
+        x_component = obj.x
+        y_component = obj.y
+        dir_name = obj.direction.name
 
         dir_data = self.get(dir_name, dir_type="math")
 
@@ -504,14 +504,14 @@ class Skeleton:
         Calculates x- and y- components and sets them based on set connected magnitude.
 
         Data needs to be exactly right shape."""
-
-        x_component = self._coord_manager.directions.get(name)["x"]
-        y_component = self._coord_manager.directions.get(name)["y"]
-        mag_name = self._coord_manager.directions.get(name)["mag"]
+        obj = self._coord_manager.get_added(name)
+        x_component = obj.x
+        y_component = obj.y
+        mag_name = obj.magnitude.name
 
         mag_data = self.get(mag_name)
 
-        dir_type = dir_type or self._coord_manager.directions[name]["dir_type"]
+        dir_type = dir_type or obj.dir_type
         data = self._coord_manager.convert_to_math_dir(data, dir_type)
 
         s = dask_manager.sin(data)
@@ -552,24 +552,20 @@ class Skeleton:
     def _trigger_masks(self, name: str, data) -> None:
         """Set any masks that are triggered by setting a specific data variable
         E.g. Set new 'land_mask' when 'topo' is set."""
+        for mask in self._coord_manager.triggers(name):
 
-        for mask_name, valid_range, range_inclusive in self._coord_manager.triggers.get(
-            name, []
-        ):
-            mask_name = f"{mask_name}_mask"
-
-            if range_inclusive[0]:
-                low_mask = data >= valid_range[0]
+            if mask.range_inclusive[0]:
+                low_mask = data >= mask.valid_range[0]
             else:
-                low_mask = data > valid_range[0]
+                low_mask = data > mask.valid_range[0]
 
-            if range_inclusive[1]:
-                high_mask = data <= valid_range[1]
+            if mask.range_inclusive[1]:
+                high_mask = data <= mask.valid_range[1]
             else:
-                high_mask = data < valid_range[1]
+                high_mask = data < mask.valid_range[1]
 
-            mask = np.logical_and(low_mask, high_mask)
-            self.set(mask_name, mask)
+            mask_array = np.logical_and(low_mask, high_mask)
+            self.set(mask.name, mask_array)
 
     def get(
         self,
@@ -599,14 +595,14 @@ class Skeleton:
                 f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
             )
 
-        if name in self._coord_manager.magnitudes.keys():
+        if name in self._coord_manager.magnitudes():
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
                 empty=empty,
                 **kwargs,
             )
-        elif name in self._coord_manager.directions.keys():
+        elif name in self._coord_manager.directions():
             data = self._get_direction(
                 name=name,
                 strict=strict,
@@ -672,13 +668,13 @@ class Skeleton:
     ):
 
         x_data = self._ds_manager.get(
-            self._coord_manager.directions[name].get("x"),
+            self._coord_manager.get_added(name).x,
             empty=empty,
             strict=strict,
             **kwargs,
         )
         y_data = self._ds_manager.get(
-            self._coord_manager.directions[name].get("y"),
+            self._coord_manager.get_added(name).y,
             empty=empty,
             strict=strict,
             **kwargs,
@@ -687,7 +683,7 @@ class Skeleton:
         if x_data is None or y_data is None:
             return None
 
-        dir_type = dir_type or self._coord_manager.directions[name].get("dir_type")
+        dir_type = dir_type or self._coord_manager.get_added(name).dir_type
         data = self._coord_manager.compute_math_direction(x_data, y_data)
         data = self._coord_manager.convert_from_math_dir(data, dir_type=dir_type)
 
@@ -701,13 +697,13 @@ class Skeleton:
         **kwargs,
     ):
         x_data = self._ds_manager.get(
-            self._coord_manager.magnitudes[name].get("x"),
+            self._coord_manager.get_added(name).x,
             empty=empty,
             strict=strict,
             **kwargs,
         )
         y_data = self._ds_manager.get(
-            self._coord_manager.magnitudes[name].get("y"),
+            self._coord_manager.get_added(name).y,
             empty=empty,
             strict=strict,
             **kwargs,
@@ -863,7 +859,9 @@ class Skeleton:
 
         return names
 
-    def size(self, coords: str = "all", squeeze: bool = False, **kwargs) -> tuple[int]:
+    def size(
+        self, coord_group: str = "all", squeeze: bool = False, **kwargs
+    ) -> tuple[int]:
         """Returns the size of the Dataset.
 
         'all' [default]: size of entire Dataset
@@ -875,12 +873,11 @@ class Skeleton:
         if not self._structure_initialized():
             return None
 
-        if coords not in ["all", "spatial", "grid", "gridpoint"]:
+        if coord_group not in ["all", "spatial", "grid", "gridpoint"]:
             raise KeyError(
-                f"coords should be 'all', 'spatial', 'grid' or 'gridpoint', not {coords}!"
+                f"coords should be 'all', 'spatial', 'grid' or 'gridpoint', not {coord_group}!"
             )
-
-        size = self._ds_manager.coords_to_size(self.coords(coords), **kwargs)
+        size = self._ds_manager.coords_to_size(self.coords(coord_group), **kwargs)
 
         if squeeze:
             size = tuple([s for s in size if s > 1])
@@ -890,8 +887,8 @@ class Skeleton:
         """Returns the size of one specific data variable"""
         if var in self.coords("all"):
             return self.get(var, squeeze=False).shape
-        coords = self.coord_group(var)
-        return self.size(coords=coords, squeeze=squeeze, **kwargs)
+        coord_group = self.coord_group(var)
+        return self.size(coord_group=coord_group, squeeze=squeeze, **kwargs)
 
     def inds(self, **kwargs) -> np.ndarray:
         if not self._structure_initialized():
@@ -1377,7 +1374,7 @@ class Skeleton:
         if data_array is not None:
             return data_array.attrs.copy()
 
-        meta_parameter = self._coord_manager.meta_vars.get(name)
+        meta_parameter = self._coord_manager.meta_parameter(name)
         if meta_parameter is not None:
             return meta_parameter.meta_dict()
         return {}
@@ -1600,22 +1597,24 @@ class Skeleton:
                     string += string_of_coords(self.coords(self.coord_group(mask)))
                     string += f":  {bool(self._coord_manager.default_value(mask))}"
 
-        magnitudes = self._coord_manager.magnitudes
+        magnitudes = self._coord_manager.magnitudes()
 
         if magnitudes:
             string += "\n" + f"{' Magnitudes and directions ':-^80}"
-            for key, value in magnitudes.items():
-                string += f"\n  {key}: magnitude of ({value['x']},{value['y']})"
+            for key in magnitudes:
+                value = self._coord_manager.get_added(key)
+                string += f"\n  {key}: magnitude of ({value.x},{value.y})"
 
                 meta_parameter = self._coord_manager.meta_parameter(key)
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.unit()}]"
                     string += f" {meta_parameter.standard_name()}"
 
-        directions = self._coord_manager.directions
+        directions = self._coord_manager.directions()
         if directions:
-            for key, value in directions.items():
-                string += f"\n  {key}: direction of ({value['x']},{value['y']})"
+            for key in directions:
+                value = self._coord_manager.get_added(key)
+                string += f"\n  {key}: direction of ({value.x},{value.y})"
                 meta_parameter = self._coord_manager.meta_parameter(key)
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.unit()}]"

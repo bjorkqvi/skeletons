@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def test_add_z_and_time_coord():
-    @add_datavar(name="hs", default_value=0.0, coords="all")
+    @add_datavar(name="hs", default_value=0.0, coord_group="all")
     @add_time(grid_coord=False)
     @add_coord(grid_coord=True, name="z")
     class TimeSeries(GriddedSkeleton):
