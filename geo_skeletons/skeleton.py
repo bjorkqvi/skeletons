@@ -178,50 +178,6 @@ class Skeleton:
         )
         return new_skeleton
 
-    def coords(self, coord_group: str = "all", squeeze: bool = False) -> list[str]:
-        """Returns a list of the coordinates from the Dataset.
-
-        'all' [default]: all coordinates in the Dataset
-        'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': coordinates for the grid (spatial and e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
-        """
-        coordinates = self.core.coords(coord_group)
-        if squeeze:
-            # Don't allow spatial to be squeezed out if that is only thing left
-            coordinates = [
-                c for c in coordinates if len(self.get(c)) > 1
-            ] or self.coords("spatial")
-        return coordinates
-
-    def coord_group(self, var: str) -> str:
-        """Returns the coordinate group that a variable/mask is defined over.
-        The coordinates can then be retrived using the group by the method .coords()"""
-        return self.core.coord_group(var)
-
-    def coords_dict(
-        self, type: str = "all", data_array: bool = False, **kwargs
-    ) -> dict:
-        """Return variable dictionary of the Dataset.
-
-        'all': all coordinates in the Dataset
-        'spatial': Dataset coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
-        """
-        return {
-            coord: self.get(coord, data_array=data_array, **kwargs)
-            for coord in self.coords(type)
-        }
-
-    def magnitudes(self) -> list[str]:
-        """Returns the names of all defined magnitudes"""
-        return self.core.magnitudes()
-
-    def directions(self) -> list[str]:
-        """Returns the names of all defined magnitudes"""
-        return self.core.directions()
-
     def sel(self, **kwargs):
         return self.from_ds(self.ds().sel(**kwargs))
 
@@ -401,7 +357,7 @@ class Skeleton:
         If data cannot be reshaped, a DataWrongDimensionError is raised.
         """
         reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
-        coord_type = self.coord_group(name)
+        coord_type = self.core.coord_group(name)
 
         # Do explicit reshape if coordinates of the provided data is given
         if coords is not None:
@@ -413,7 +369,7 @@ class Skeleton:
             data = reshape_manager.explicit_reshape(
                 data.squeeze(),
                 data_coords=squeezed_coords,
-                expected_coords=self.coords(coord_type),
+                expected_coords=self.core.coords(coord_type),
             )
 
             # Unsqueeze the data before setting to get back trivial dimensions
@@ -524,7 +480,9 @@ class Skeleton:
         """Sets a data variable to the underlying dataset.
 
         Triggers setting metadata of the variable and possible connected masks."""
-        self._ds_manager.set(data=data, data_name=name, coords=self.coord_group(name))
+        self._ds_manager.set(
+            data=data, data_name=name, coords=self.core.coord_group(name)
+        )
         self._set_metadata_of_parameter(name)
         self._trigger_masks(name, data)
 
@@ -620,7 +578,7 @@ class Skeleton:
             return None
 
         # The coordinates are never given as dask arrays
-        if name in self.coords("all"):
+        if name in self.core.coords("all"):
             dask = False
 
         if name in self.core.masks("all"):
@@ -703,20 +661,25 @@ class Skeleton:
         then 'inds' or 'lat' is kept."""
         dims_to_drop = [
             dim
-            for dim in self.coords("all")
+            for dim in self.core.coords("all")
             if self.shape(dim)[0] == 1 and dim in data.coords
         ]
 
         # If it looks like we are dropping all coords, then save the spatial ones
         if dims_to_drop == list(data.coords):
             dims_to_drop = list(
-                set(dims_to_drop) - set(self.coords("spatial")) - set([name])
+                set(dims_to_drop) - set(self.core.coords("spatial")) - set([name])
             )
 
         if dims_to_drop:
             data = data.squeeze(dim=dims_to_drop, drop=True)
 
         return data
+
+    def coord_squeeze(self, coords: list[str]) -> list[str]:
+        return [c for c in coords if len(self.get(c)) > 1] or self.core.coords(
+            "spatial"
+        )
 
     def is_initialized(self) -> bool:
         return hasattr(self, "x_str") and hasattr(self, "y_str")
@@ -837,7 +800,7 @@ class Skeleton:
             raise KeyError(
                 f"coords should be 'all', 'spatial', 'grid' or 'gridpoint', not {coord_group}!"
             )
-        size = self._ds_manager.coords_to_size(self.coords(coord_group), **kwargs)
+        size = self._ds_manager.coords_to_size(self.core.coords(coord_group), **kwargs)
 
         if squeeze:
             size = tuple([s for s in size if s > 1])
@@ -845,9 +808,9 @@ class Skeleton:
 
     def shape(self, var, squeeze: bool = False, **kwargs) -> tuple[int]:
         """Returns the size of one specific data variable"""
-        if var in self.coords("all"):
+        if var in self.core.coords("all"):
             return self.get(var, squeeze=False).shape
-        coord_group = self.coord_group(var)
+        coord_group = self.core.coord_group(var)
         return self.size(coord_group=coord_group, squeeze=squeeze, **kwargs)
 
     def inds(self, **kwargs) -> np.ndarray:
@@ -1485,7 +1448,7 @@ class Skeleton:
     def _chunk_tuple_from_dict(self, chunk_dict: dict) -> tuple[int]:
         """Determines a tuple of chunks based on a dict of coordinates and chunks"""
         chunk_list = []
-        for coord in self.coords():
+        for coord in self.core.coords():
             chunk_list.append(chunk_dict.get(coord, "auto"))
         return tuple(chunk_list)
 
@@ -1493,13 +1456,14 @@ class Skeleton:
         return hasattr(self, "_ds_manager")
 
     def iterate(self, coords: list[str] = None):
-        coords = coords or self.coords("grid")
+        coords = coords or self.core.coords("grid")
         return iter(self)(coords)
 
     def __iter__(self):
+        coords_dict = {coord: self.get(coord) for coord in self.core.coords("all")}
         return SkeletonIterator(
-            self.coords_dict("all"),
-            self.coords("grid"),
+            coords_dict,
+            self.core.coords("grid"),
             self,
         )
 
@@ -1519,14 +1483,14 @@ class Skeleton:
         string += f"{' Coordinate groups ':-^80}" + "\n"
         string += f"{'Spatial:':12}"
 
-        string += string_of_coords(self.coords("spatial")) or "*empty*"
+        string += string_of_coords(self.core.coords("spatial")) or "*empty*"
         string += f"\n{'Grid:':12}"
-        string += string_of_coords(self.coords("grid")) or "*empty*"
+        string += string_of_coords(self.core.coords("grid")) or "*empty*"
         string += f"\n{'Gridpoint:':12}"
-        string += string_of_coords(self.coords("gridpoint")) or "*empty*"
+        string += string_of_coords(self.core.coords("gridpoint")) or "*empty*"
 
         string += f"\n{'All:':12}"
-        string += string_of_coords(self.coords("all")) or "*empty*"
+        string += string_of_coords(self.core.coords("all")) or "*empty*"
 
         string += "\n" + f"{' Xarray ':-^80}" + "\n"
         string += self.ds().__repr__()
@@ -1542,7 +1506,9 @@ class Skeleton:
                 max_len = len(max(empty_vars, key=len))
                 for var in empty_vars:
                     string += f"\n    {var:{max_len+2}}"
-                    string += string_of_coords(self.coords(self.coord_group(var)))
+                    string += string_of_coords(
+                        self.core.coords(self.core.coord_group(var))
+                    )
                     string += f":  {self.core.default_value(var)}"
                     meta_parameter = self.core.meta_parameter(var)
                     if meta_parameter is not None:
@@ -1554,7 +1520,9 @@ class Skeleton:
                 max_len = len(max(empty_masks, key=len))
                 for mask in empty_masks:
                     string += f"\n    {mask:{max_len+2}}"
-                    string += string_of_coords(self.coords(self.coord_group(mask)))
+                    string += string_of_coords(
+                        self.core.coords(self.core.coord_group(mask))
+                    )
                     string += f":  {bool(self.core.default_value(mask))}"
 
         magnitudes = self.core.magnitudes()

@@ -181,8 +181,8 @@ def test_add_magnitude():
 
     assert gp.wind.XWind.meta_dict().items() <= points.metadata("u").items()
     assert points.metadata("u").get("new") == "u-specific"
-    assert points.magnitudes() == ["wnd"]
-    assert points.directions() == [gp.wind.WindDir.name]
+    assert points.core.magnitudes() == ["wnd"]
+    assert points.core.directions() == [gp.wind.WindDir.name]
 
 
 def test_add_mask():
