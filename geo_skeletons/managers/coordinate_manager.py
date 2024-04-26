@@ -1,18 +1,12 @@
 from geo_parameters.metaparameter import MetaParameter
-from typing import Union
-from geo_parameters.grid import Lon, Lat, X, Y, Inds
 import numpy as np
-import dask.array as da
 from geo_skeletons.errors import VariableExistsError
-import geo_parameters as gp
 from geo_skeletons.managers.dask_manager import DaskManager
 import xarray as xr
 from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coordinate
 
-meta_parameters = {"lon": Lon, "lat": Lat, "x": X, "y": Y, "inds": Inds}
 
 SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
-OFFSET = {"from": 180, "to": 0}
 
 
 class CoordinateManager:
@@ -367,48 +361,6 @@ class CoordinateManager:
         if not hasattr(param, "default_value"):
             return None
         return param.default_value
-
-    # def is_settable(self, name: str) -> bool:
-    #     """Check if the variable etc. is allowed to be set (i.e. is not a magnitude, opposite mask etc.)"""
-    #     return (
-    #         self._added_vars().get(name) is not None
-    #         or self._added_masks().get(name) is not None
-    #     )
-
-    def convert_to_math_dir(self, data, dir_type: str):
-        if dir_type == "math":  # Convert to mathematical convention
-            return data
-        math_dir = (90 - data + OFFSET[dir_type]) * np.pi / 180
-        dask_manager = DaskManager()
-        math_dir = dask_manager.mod(math_dir, 2 * np.pi)
-        mask = dask_manager.undask_me(math_dir > np.pi)
-        if isinstance(mask, xr.DataArray):
-            mask = mask.data
-        if isinstance(math_dir, xr.DataArray):
-            math_dir.data[mask] = math_dir.data[mask] - 2 * np.pi
-        else:
-            math_dir[mask] = math_dir[mask] - 2 * np.pi
-        return math_dir
-
-    def convert_from_math_dir(self, data, dir_type: str):
-        if dir_type == "math":
-            return data
-
-        data = 90 - data * 180 / np.pi + OFFSET[dir_type]
-        return DaskManager().mod(data, 360)
-
-    def compute_magnitude(self, x, y):
-        if x is None or y is None:
-            return None
-        return (x**2 + y**2) ** 0.5
-
-    def compute_math_direction(self, x, y):
-        if x is None or y is None:
-            return None
-
-        dask_manager = DaskManager()
-        math_dir = dask_manager.arctan2(y, x)
-        return math_dir
 
 
 def move_time_and_spatial_to_front(coord_list) -> list[str]:
