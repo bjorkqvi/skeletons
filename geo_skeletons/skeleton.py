@@ -48,6 +48,8 @@ class Skeleton:
         self = add_datavar(
             name=name, coord_group=coord_group, default_value=default_value, append=True
         )(self)
+        self._ds_manager.coord_manager = self.core
+        self.meta._ds_manager = self._ds_manager
 
     def add_magnitude(
         self, name: str, x: str, y: str, direction: str = None, dir_type: str = None
@@ -55,6 +57,8 @@ class Skeleton:
         self = add_magnitude(
             name=name, x=x, y=y, direction=direction, dir_type=dir_type, append=True
         )(self)
+        self._ds_manager.coord_manager = self.core
+        self.meta._ds_manager = self._ds_manager
 
     @classmethod
     def from_ds(
@@ -107,12 +111,12 @@ class Skeleton:
         points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, **additional_coords)
 
         # Set data variables and masks that exist
-        for data_var in points.core.data_vars():
+        for data_var in points.core.non_coord_objects():
             val = ds.get(data_var)
             if val is not None:
                 points.set(data_var, val)
-                points.set_metadata(ds.get(data_var).attrs, name=data_var)
-        points.set_metadata(ds.attrs)
+                points.meta.set(ds.get(data_var).attrs, name=data_var)
+        points.meta.set(ds.attrs)
 
         return points
 
@@ -127,8 +131,17 @@ class Skeleton:
         """
 
         # Don't want to alter the CoordManager of the class
-        self.core = deepcopy(self.core)
-        self.core.initial_state = False
+        if not self.core._is_initialized():
+            self.core = deepcopy(self.core)  # Makes a copy of the class coord_manager
+            self.meta = deepcopy(self.meta)
+            self.meta._coord_manager = self.core
+
+        # # The manager will contain the Xarray Dataset
+        if self.ds() is None:
+            self._ds_manager = DatasetManager(self.core)
+        else:
+            self._ds_manager.coord_manager = self.core
+        self.meta._ds_manager = self._ds_manager
 
         x, y, lon, lat, kwargs = array_funcs.sanitize_input(
             x, y, lon, lat, self.is_gridded(), **kwargs
@@ -144,10 +157,6 @@ class Skeleton:
         self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
         self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
 
-        # The manager contains the Xarray Dataset
-        if self.ds() is None:
-            self._ds_manager = DatasetManager(self.core)
-
         self._ds_manager.create_structure(
             xvec, yvec, self.core.x_str, self.core.y_str, **kwargs
         )
@@ -156,18 +165,11 @@ class Skeleton:
             utm = None
         self.set_utm(utm, silent=True)
 
-        self.meta = MetaDataManager(ds=self.ds(), coord_manager=self.core)
-
         # Set metadata
-        for var in self.core.data_vars("spatial"):
-            metavar = self.core.get(var).meta
+        for name in self.core.all_objects("all"):
+            metavar = self.core.get(name).meta
             if metavar is not None:
-                self.set_metadata(metavar.meta_dict(), var)
-
-        for coord in self.core.coords("all"):
-            metavar = self.core.get(coord).meta
-            if metavar is not None:
-                self.set_metadata(metavar.meta_dict(), coord)
+                self.meta.append(metavar.meta_dict(), name)
 
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
         """Absorb another object of same type over a centrain dimension.
@@ -488,17 +490,7 @@ class Skeleton:
         self._ds_manager.set(
             data=data, data_name=name, coords=self.core.coord_group(name)
         )
-        self._set_metadata_of_parameter(name)
         self._trigger_masks(name, data)
-
-    def _set_metadata_of_parameter(self, name: str) -> None:
-        """Sets the metadata of a single parameter by finding the connected geo-parameter"""
-        metadata = self.metadata(name)
-        self.set_metadata(metadata, name, append=False)
-        meta_parameter = self.core.meta_parameter(name)
-
-        if meta_parameter is not None:
-            self.set_metadata(meta_parameter.meta_dict(), name)
 
     def _trigger_masks(self, name: str, data) -> None:
         """Set any masks that are triggered by setting a specific data variable
@@ -563,7 +555,6 @@ class Skeleton:
             )
         else:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
-
             if data is not None:
                 obj = self.core.get(name)
                 set_dir_type = None
@@ -735,7 +726,7 @@ class Skeleton:
         self._zone_number = number
         self._zone_letter = letter
         if self.core.is_cartesian() and number is not None:
-            self.set_metadata({"utm_zone": f"{number:02.0f}{letter}"}, append=True)
+            self.meta.append({"utm_zone": f"{number:02.0f}{letter}"})
 
         if not silent and number is not None:
             print(f"Setting UTM ({number}, {letter})")
@@ -1275,46 +1266,6 @@ class Skeleton:
         else:
             return {"inds": np.array(inds), "dx": np.array(dx)}
 
-    def metadata(self, name: str = None) -> dict:
-        """Return metadata of the dataset:"""
-        if self.ds() is None:
-            return None
-
-        if name is None:
-            return self.ds().attrs.copy()
-
-        data_array = self.get(name, data_array=True, strict=True)
-        if data_array is not None:
-            return data_array.attrs.copy()
-
-        meta_parameter = self.core.meta_parameter(name)
-        if meta_parameter is not None:
-            return meta_parameter.meta_dict()
-        return {}
-
-    def set_metadata(
-        self,
-        metadata: dict,
-        name: str = None,
-        append=True,
-    ) -> None:
-        if not isinstance(metadata, dict):
-            raise TypeError(f"metadata needs to be a dict, not '{metadata}'!")
-
-        if self.ds() is None:
-            return
-
-        if name in self._ds_manager.empty_vars():
-            print(
-                f"Cannot set metadata to variable '{name}' before it has been initialized using 'skeleton.set_{name}()'!"
-            )
-            return
-        if append:
-            old_metadata = self.metadata(name)
-            old_metadata.update(metadata)
-            metadata = old_metadata
-        self._ds_manager.set_attrs(metadata, name)
-
     def activate_dask(
         self, chunks="auto", primary_dim: str = None, rechunk: bool = True
     ) -> None:
@@ -1357,7 +1308,7 @@ class Skeleton:
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.dask_me(data, chunks))
-        for var in self.masks():
+        for var in self.core.masks():
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.dask_me(data, chunks))
@@ -1371,7 +1322,7 @@ class Skeleton:
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.undask_me(data))
-        for var in self.masks():
+        for var in self.core.masks():
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.undask_me(data))

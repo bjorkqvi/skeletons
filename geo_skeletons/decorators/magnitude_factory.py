@@ -122,10 +122,10 @@ def add_magnitude(
                 silent=silent,
             )
 
-        if c.core.initial_state:
-            c.core = deepcopy(c.core)
-            c.core.initial_state = False
-
+        if not c.core._is_altered():
+            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+            c.meta = deepcopy(c.meta)
+            c.meta._coord_manager = c.core
         name_str, meta = gp.decode(name)
         if direction is not None:
             dir_str, meta_dir = gp.decode(direction)

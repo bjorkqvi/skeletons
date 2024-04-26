@@ -6,6 +6,7 @@ from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 import dask.array as da
 from geo_skeletons.variables import DataVar
+from geo_skeletons.managers.dataset_manager import DatasetManager
 
 
 def add_datavar(
@@ -74,9 +75,6 @@ def add_datavar(
                 silent=silent,
             )
 
-        if c.core.initial_state:
-            c.core = deepcopy(c.core)
-            c.core.initial_state = False
         name_str, meta = gp.decode(name)
 
         data_var = DataVar(
@@ -86,6 +84,11 @@ def add_datavar(
             default_value=default_value,
             dir_type=dir_type,
         )
+
+        if not c.core._is_altered():
+            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+            c.meta = deepcopy(c.meta)
+            c.meta._coord_manager = c.core
         c.core.add_var(data_var)
 
         if append:

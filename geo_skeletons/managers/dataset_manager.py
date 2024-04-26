@@ -90,7 +90,7 @@ class DatasetManager:
                 value = kwargs.get(key)
 
                 if value is None:
-                    value = self.get(key)
+                    value = self.get(key, strict=False)
 
                 if value is None:
                     raise UnknownCoordinateError(

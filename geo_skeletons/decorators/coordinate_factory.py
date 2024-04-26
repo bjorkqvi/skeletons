@@ -40,10 +40,10 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
             return data
         return data.values.copy()
 
-    if c.core.initial_state:
-        c.core = deepcopy(c.core)
-        c.core.initial_state = False
-
+    if not c.core._is_altered():
+        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+        c.meta = deepcopy(c.meta)
+        c.meta._coord_manager = c.core
     name_str, meta = gp.decode(name)
 
     coord_group = "grid" if grid_coord else "gridpoint"
@@ -136,10 +136,10 @@ def add_time(grid_coord: bool = False):
 
             return times
 
-        if c.core.initial_state:
-            c.core = deepcopy(c.core)
-            c.core.initial_state = False
-
+        if not c.core._is_altered():
+            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+            c.meta = deepcopy(c.meta)
+            c.meta._coord_manager = c.core
         coord_group = "grid" if grid_coord else "gridpoint"
         coord_var = Coordinate(
             name="time",
@@ -174,10 +174,10 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
             freq = get_freq(self, angular=angular).copy()
             return (freq[-1] - freq[0]) / (len(freq) - 1)
 
-        if c.core.initial_state:
-            c.core = deepcopy(c.core)
-            c.core.initial_state = False
-
+        if not c.core._is_altered():
+            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+            c.meta = deepcopy(c.meta)
+            c.meta._coord_manager = c.core
         name_str, meta = gp.decode(name)
 
         coord_group = "grid" if grid_coord else "gridpoint"
@@ -216,9 +216,10 @@ def add_direction(
             dmax = 2 * np.pi if angular else 360
             return dmax / len(dirs)
 
-        if c.core.initial_state:
-            c.core = deepcopy(c.core)
-            c.core.initial_state = False
+        if not c.core._is_altered():
+            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+            c.meta = deepcopy(c.meta)
+            c.meta._coord_manager = c.core
         name_str, meta = gp.decode(name)
         coord_group = "grid" if grid_coord else "gridpoint"
         coord_var = Coordinate(
