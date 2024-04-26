@@ -6,6 +6,8 @@ from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.metadata_manager import MetaDataManager
+from .managers.dir_type_manager import DirTypeManager
+
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union
 from .aux_funcs import distance_funcs, array_funcs, utm_funcs
@@ -161,6 +163,8 @@ class Skeleton:
         self._ds_manager.create_structure(
             xvec, yvec, self.core.x_str, self.core.y_str, **kwargs
         )
+
+        self._dir_type_manager = DirTypeManager(coord_manager=self.core)
 
         self.utm = UTMManager(
             lat=self.edges("lat", strict=True),
@@ -467,7 +471,8 @@ class Skeleton:
         mag_data = self.get(mag_name)
 
         dir_type = dir_type or obj.dir_type
-        data = self.core.convert_to_math_dir(data, dir_type)
+
+        data = self._dir_type_manager.convert_to_math_dir(data, dir_type)
 
         s = dask_manager.sin(data)
         c = dask_manager.cos(data)
@@ -559,20 +564,14 @@ class Skeleton:
             )
         else:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
-            if data is not None:
-                obj = self.core.get(name)
-                set_dir_type = None
-                if obj is not None and hasattr(obj, "dir_type"):
-                    set_dir_type = self.core.get(name).dir_type
+            if data is None:
+                return None
 
-                if dir_type is not None and set_dir_type is None:
-                    raise ValueError(
-                        "Cannot ask for a 'dir_type' for a non-directional variable!"
-                    )
-                if set_dir_type is not None:
-                    dir_type = dir_type or set_dir_type
-                    data = self.core.convert_to_math_dir(data, dir_type=set_dir_type)
-                    data = self.core.convert_from_math_dir(data, dir_type=dir_type)
+            if dir_type is not None:
+                set_dir_type = self._dir_type_manager.get_dir_type(name)
+                data = self._dir_type_manager.convert(
+                    data, in_type=set_dir_type, out_type=dir_type
+                )
 
         if not isinstance(data, xr.DataArray):
             return None
@@ -627,8 +626,8 @@ class Skeleton:
             return None
 
         dir_type = dir_type or self.core.get(name).dir_type
-        data = self.core.compute_math_direction(x_data, y_data)
-        data = self.core.convert_from_math_dir(data, dir_type=dir_type)
+        data = self._dir_type_manager.compute_math_direction(x_data, y_data)
+        data = self._dir_type_manager.convert_from_math_dir(data, dir_type=dir_type)
 
         return data
 
@@ -651,7 +650,7 @@ class Skeleton:
             strict=strict,
             **kwargs,
         )
-        data = self.core.compute_magnitude(x_data, y_data)
+        data = self._dir_type_manager.compute_magnitude(x_data, y_data)
         return data
 
     def _smart_squeeze(self, name: str, data):
