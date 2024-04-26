@@ -4,6 +4,7 @@ from .point_skeleton import PointSkeleton
 from .aux_funcs import distance_funcs
 from .managers.coordinate_manager import CoordinateManager
 from .managers.dask_manager import DaskManager
+from .managers.metadata_manager import MetaDataManager
 from .variables import Coordinate
 import geo_parameters as gp
 
@@ -31,6 +32,7 @@ class GriddedSkeleton(Skeleton):
     """
 
     core = CoordinateManager(INITIAL_CARTESIAN_COORDS, INITIAL_VARS)
+    meta = MetaDataManager(ds=None, coord_manager=core)
 
     @classmethod
     def from_skeleton(

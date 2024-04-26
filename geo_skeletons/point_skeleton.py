@@ -1,6 +1,7 @@
 import numpy as np
 from .skeleton import Skeleton
 from .managers.coordinate_manager import CoordinateManager
+from .managers.metadata_manager import MetaDataManager
 from .managers.dask_manager import DaskManager
 from .variables import DataVar, Coordinate
 import geo_parameters as gp
@@ -28,6 +29,7 @@ class PointSkeleton(Skeleton):
     """
 
     core = CoordinateManager(INITIAL_COORDS, INITIAL_CARTESIAN_VARS)
+    meta = MetaDataManager(ds=None, coord_manager=core)
 
     @classmethod
     def from_skeleton(

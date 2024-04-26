@@ -5,6 +5,7 @@ from copy import copy
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
+from .managers.metadata_manager import MetaDataManager
 from typing import Iterable, Union
 from .aux_funcs import distance_funcs, array_funcs, utm_funcs
 from .errors import DataWrongDimensionError
@@ -154,6 +155,8 @@ class Skeleton:
         if utm == (None, None):
             utm = None
         self.set_utm(utm, silent=True)
+
+        self.meta = MetaDataManager(ds=self.ds(), coord_manager=self.core)
 
         # Set metadata
         for var in self.core.data_vars("spatial"):
