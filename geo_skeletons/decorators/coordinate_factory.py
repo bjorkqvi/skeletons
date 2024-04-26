@@ -77,7 +77,7 @@ def add_time(grid_coord: bool = False):
             """Determins a Pandas data range of all the days in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self._ds_manager.get(name).values.copy()
+            times = self._ds_manager.get("time").values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d %H"))
             else:
@@ -87,7 +87,7 @@ def add_time(grid_coord: bool = False):
             """Determins a Pandas data range of all the days in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self._ds_manager.get(name).values.copy()
+            times = self._ds_manager.get("time").values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d"))
             else:
@@ -97,7 +97,7 @@ def add_time(grid_coord: bool = False):
             """Determins a Pandas data range of all the months in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self._ds_manager.get(name).values.copy()
+            times = self._ds_manager.get("time").values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m"))
             else:
@@ -107,7 +107,7 @@ def add_time(grid_coord: bool = False):
             """Determins a Pandas data range of all the months in the time span."""
             if not self._structure_initialized():
                 return None
-            times = self._ds_manager.get(name).values.copy()
+            times = self._ds_manager.get("time").values.copy()
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y"))
             else:
@@ -122,7 +122,7 @@ def add_time(grid_coord: bool = False):
         ):
             if not self._structure_initialized():
                 return (None, None)
-            data = self._ds_manager.get(name, **kwargs)
+            data = self._ds_manager.get("time", **kwargs)
             if data_array:
                 return data
 

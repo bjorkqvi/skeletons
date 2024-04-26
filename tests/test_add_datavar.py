@@ -22,7 +22,7 @@ def test_add_datavar_on_top():
     assert "hs" in Expanded.data_vars()
 
     points = Expanded(x=[6, 7, 8], y=[4, 5, 6], z=[6, 7])
-    points.add_datavar("tp", default_value=5.0, coords="gridpoint")
+    points.add_datavar("tp", default_value=5.0, coord_group="gridpoint")
     assert "hs" in points.data_vars()
     assert "tp" in points.data_vars()
 

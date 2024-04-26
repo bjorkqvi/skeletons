@@ -57,7 +57,7 @@ def test_add_coord_and_mask():
 
 
 def test_add_gridpoint_coord_and_mask():
-    @add_mask(name="sea", default_value=1.0, opposite_name="land", coords="grid")
+    @add_mask(name="sea", default_value=1.0, opposite_name="land", coord_group="grid")
     @add_datavar(name="hs", default_value=0.0)
     @add_time(grid_coord=False)
     @add_coord(name="z", grid_coord=True)
@@ -70,25 +70,25 @@ def test_add_gridpoint_coord_and_mask():
     data.set_sea_mask()
     data.set_hs()
     np.testing.assert_array_equal(
-        data.sea_mask(), np.full(data.size(coords="grid"), True)
+        data.sea_mask(), np.full(data.size(coord_group="grid"), True)
     )
     np.testing.assert_array_equal(
-        data.land_mask(), np.full(data.size(coords="grid"), False)
+        data.land_mask(), np.full(data.size(coord_group="grid"), False)
     )
     data.set_sea_mask(data.hs()[0, :] > 0)
     np.testing.assert_array_equal(
-        data.sea_mask(), np.full(data.size(coords="grid"), False)
+        data.sea_mask(), np.full(data.size(coord_group="grid"), False)
     )
     np.testing.assert_array_equal(
-        data.land_mask(), np.full(data.size(coords="grid"), True)
+        data.land_mask(), np.full(data.size(coord_group="grid"), True)
     )
 
     data.set_land_mask(data.hs()[0, :] <= 0)
     np.testing.assert_array_equal(
-        data.sea_mask(), np.full(data.size(coords="grid"), False)
+        data.sea_mask(), np.full(data.size(coord_group="grid"), False)
     )
     np.testing.assert_array_equal(
-        data.land_mask(), np.full(data.size(coords="grid"), True)
+        data.land_mask(), np.full(data.size(coord_group="grid"), True)
     )
 
 

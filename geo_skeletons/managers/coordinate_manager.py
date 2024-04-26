@@ -35,9 +35,6 @@ class CoordinateManager:
         self.added_magnitudes = {}
         self.added_directions = {}
         self.added_masks = {}
-        self.magnitudes = {}
-        self.directions = {}
-
         # self.meta_coords: dict[str, MetaParameter] = {}
         # self.meta_vars: dict[str, MetaParameter] = {}
         # self.dir_vars: dict[str, str] = {}
@@ -57,12 +54,13 @@ class CoordinateManager:
         self.initial_state = True
 
     def add_var(self, data_var: DataVar) -> None:
-        if data_var.name in self._used_names:
+        if self.get_added(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self.added_vars[data_var.name] = data_var
-        self._used_names.append(data_var.name)
 
     def add_mask(self, grid_mask: GridMask) -> None:
+        if self.get_added(grid_mask.name) is not None:
+            raise VariableExistsError(grid_mask.name)
         if grid_mask.triggered_by:
             grid_mask.valid_range = tuple(
                 [np.inf if r is None else r for r in grid_mask.valid_range]
@@ -77,28 +75,28 @@ class CoordinateManager:
             )
         self.added_masks[grid_mask.name] = grid_mask
 
+    def triggers(self, name: str) -> list[str]:
+        return [mask for mask in self.added_masks.values() if mask.triggered_by == name]
+
         # list_of_computations = self.triggers.get(triggered_by, [])
         # list_of_computations.append((name, valid_range, range_inclusive))
         # self.triggers[triggered_by] = list_of_computations
 
     def add_coord(self, coord: Coordinate) -> str:
         """Add a coordinate that the Skeleton will use."""
-        if coord.name in self._used_names:
+        if self.get_added(coord.name) is not None:
             raise VariableExistsError(coord.name)
         self.added_coords[coord.name] = coord
-        self._used_names.append(coord.name)
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
-        if magnitude.name in self._used_names:
+        if self.get_added(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
         self.added_magnitudes[magnitude.name] = magnitude
-        self._used_names.append(magnitude.name)
 
     def add_direction(self, direction: Direction) -> None:
-        if direction.name in self._used_names:
+        if self.get_added(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self.added_directions[direction.name] = direction
-        self._used_names.append(direction.name)
 
     def set_initial_vars(self, initial_vars: list) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
@@ -160,7 +158,7 @@ class CoordinateManager:
 
         return move_time_and_spatial_to_front([coord.name for coord in coords])
 
-    def data_vars(self, coord_group: str = "all") -> list[str]:
+    def data_vars(self, coord_group: str = "nonspatial") -> list[str]:
         """Returns list of variables that have been added to a specific coord group.
 
         'all': All added coordinates
@@ -192,6 +190,82 @@ class CoordinateManager:
                 var
                 for var in self.added_vars.values()
                 if var.coord_group == coord_group
+            ]
+
+        return move_time_and_spatial_to_front([var.name for var in vars if var.name])
+
+    def magnitudes(self, coord_group: str = "all") -> list[str]:
+        """Returns list of magnitudes that have been added to a specific coord group.
+
+        'all': All added coordinates
+        'spatial': spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'grid': coordinates for the grid (e.g. z, time)
+        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        """
+        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
+            print(
+                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
+            )
+            return None
+
+        if coord_group == "all":
+            vars = self.added_magnitudes.values()
+        elif coord_group == "nonspatial":
+            vars = [
+                var
+                for var in self.added_magnitudes.values()
+                if var.x.coord_group != "spatial"
+            ]
+        elif coord_group == "grid":
+            vars = [
+                var
+                for var in self.added_magnitudes.values()
+                if var.x.coord_group in [coord_group, "spatial"]
+            ]
+        else:
+            vars = [
+                var
+                for var in self.added_magnitudes.values()
+                if var.x.coord_group == coord_group
+            ]
+
+        return [var.name for var in vars]
+
+    def directions(self, coord_group: str = "all") -> list[str]:
+        """Returns list of directions that have been added to a specific coord group.
+
+        'all': All added coordinates
+        'spatial': spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'grid': coordinates for the grid (e.g. z, time)
+        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        """
+        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
+            print(
+                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
+            )
+            return None
+
+        if coord_group == "all":
+            vars = self.added_directions.values()
+        elif coord_group == "nonspatial":
+            vars = [
+                var
+                for var in self.added_directions.values()
+                if var.x.coord_group != "spatial"
+            ]
+        elif coord_group == "grid":
+            vars = [
+                var
+                for var in self.added_directions.values()
+                if var.x.coord_group in [coord_group, "spatial"]
+            ]
+        else:
+            vars = [
+                var
+                for var in self.added_directions.values()
+                if var.x.coord_group == coord_group
             ]
 
         return [var.name for var in vars]
@@ -283,6 +357,10 @@ def move_time_and_spatial_to_front(coord_list) -> list[str]:
         coord_list.insert(0, coord_list.pop(coord_list.index("x")))
     if "y" in coord_list:
         coord_list.insert(0, coord_list.pop(coord_list.index("y")))
+    if "lon" in coord_list:
+        coord_list.insert(0, coord_list.pop(coord_list.index("lon")))
+    if "lat" in coord_list:
+        coord_list.insert(0, coord_list.pop(coord_list.index("lat")))
     if "time" in coord_list:
         coord_list.insert(0, coord_list.pop(coord_list.index("time")))
     return coord_list
