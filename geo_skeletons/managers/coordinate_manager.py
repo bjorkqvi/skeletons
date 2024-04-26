@@ -23,20 +23,27 @@ class CoordinateManager:
         self.x_str = None
         self.y_str = None
         self._added_coords = {}
-
         self._added_vars = {}
         self._added_magnitudes = {}
         self._added_directions = {}
         self._added_masks = {}
 
+        self._set_initial_coords = [c.name for c in initial_coords]
+        self._set_initial_vars = [v.name for v in initial_vars]
+
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
-        # This will be used by decorators to make a deepcopy of the manager for different classes
-        self.initial_state = True
-
-    def is_initialized(self) -> bool:
+    def _is_initialized(self) -> bool:
         return self.x_str is not None and self.y_str is not None
+
+    def _is_altered(self) -> bool:
+        p1 = set(self.coords("all")) == set(self._set_initial_coords)
+        p2 = set(self.data_vars("all")) == set(self._set_initial_vars)
+        p3 = self._added_magnitudes == {}
+        p4 = self._added_directions == {}
+        p5 = self._added_masks == {}
+        return not (p1 and p2 and p3 and p4 and p5)
 
     def is_cartesian(self) -> bool:
         """Checks if the grid is cartesian (True) or spherical (False)."""
@@ -306,6 +313,7 @@ class CoordinateManager:
         return [var.name for var in vars]
 
     def all_objects(self, coord_group: str = "all") -> list[str]:
+        """Returns a list of all objects for the given coord_group"""
         list_of_objects = (
             self.data_vars(coord_group)
             + self.coords(coord_group)
@@ -315,14 +323,22 @@ class CoordinateManager:
         )
         return list_of_objects
 
+    def non_coord_objects(self, coord_group: str = "all") -> list[str]:
+        """Returns a list of all objects for given coord_group that are not coords or spatial data_vars (e.g. 'x' in PointSkeleton)"""
+        not_accepted = set(self.coords("all") + self.data_vars("spatial"))
+        all_objects = set(self.all_objects(coord_group))
+        accepted = all_objects - not_accepted
+        return list(accepted)
+
     def coord_group(self, var: str) -> str:
         """Returns the coordinate group that a variable/mask is defined over.
         The coordinates can then be retrived using the group by the method .coords()"""
+        coords = [v for v in self._added_coords.values() if v.name == var]
         vars = [v for v in self._added_vars.values() if v.name == var]
         masks = [v for v in self._added_masks.values() if v.name == var]
         mags = [v for v in self._added_magnitudes.values() if v.name == var]
         dirs = [v for v in self._added_directions.values() if v.name == var]
-        all_vars = vars + masks + mags + dirs
+        all_vars = coords + vars + masks + mags + dirs
         # coord_group = var_coords or mask_coords or mag_coords or dir_coords
         if not all_vars:
             raise KeyError(f"Cannot find the data {var}!")

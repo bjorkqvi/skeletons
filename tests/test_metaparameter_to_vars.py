@@ -14,20 +14,20 @@ import pandas as pd
 
 def test_lonlat():
     points = PointSkeleton(lon=[1, 2], lat=[4, 5])
-    assert points.metadata("lon") == {
+    assert points.meta.get("lon") == {
         "short_name": "lon",
         "long_name": "longitude",
         "standard_name": "longitude",
         "unit": "degrees_east",
     }
-    assert points.metadata("lat") == {
+    assert points.meta.get("lat") == {
         "short_name": "lat",
         "long_name": "latitude",
         "standard_name": "latitude",
         "unit": "degrees_north",
     }
 
-    assert points.metadata("inds") == {
+    assert points.meta.get("inds") == {
         "short_name": "inds",
         "long_name": "index_of_points",
         "standard_name": "index_of_geophysical_points",
@@ -37,20 +37,20 @@ def test_lonlat():
 
 def test_xy():
     points = PointSkeleton(x=[1, 2], y=[4, 5])
-    assert points.metadata("x") == {
+    assert points.meta.get("x") == {
         "short_name": "x",
         "long_name": "x_distance",
         "standard_name": "distance_in_x_direction",
         "unit": "m",
     }
-    assert points.metadata("y") == {
+    assert points.meta.get("y") == {
         "short_name": "y",
         "long_name": "y_distance",
         "standard_name": "distance_in_y_direction",
         "unit": "m",
     }
 
-    assert points.metadata("inds") == {
+    assert points.meta.get("inds") == {
         "short_name": "inds",
         "long_name": "index_of_points",
         "standard_name": "index_of_geophysical_points",
@@ -60,19 +60,19 @@ def test_xy():
 
 def test_lonlat_gridded():
     points = GriddedSkeleton(lon=[1, 2], lat=[4, 5])
-    assert points.metadata("lon") == {
+    assert points.meta.get("lon") == {
         "short_name": "lon",
         "long_name": "longitude",
         "standard_name": "longitude",
         "unit": "degrees_east",
     }
-    assert points.metadata("lat") == {
+    assert points.meta.get("lat") == {
         "short_name": "lat",
         "long_name": "latitude",
         "standard_name": "latitude",
         "unit": "degrees_north",
     }
-    assert points.metadata("inds") == {}
+    assert points.meta.get("inds") == {}
 
 
 def test_freq_dir_time():
@@ -89,20 +89,20 @@ def test_freq_dir_time():
         dirs=range(360),
         time=pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="h"),
     )
-    assert points.metadata("freq") == {
+    assert points.meta.get("freq") == {
         "short_name": "freq",
         "long_name": "frequency",
         "standard_name": "wave_frequency",
         "unit": "1/s",
     }
 
-    assert points.metadata("dirs") == {
+    assert points.meta.get("dirs") == {
         "short_name": "dirs",
         "long_name": "wave_direction",
         "standard_name": "sea_surface_wave_from_direction",
         "unit": "deg",
     }
-    assert points.metadata("time") == {}
+    assert points.meta.get("time") == {}
 
 
 def test_dirto():
@@ -113,7 +113,7 @@ def test_dirto():
 
     points = Expanded(lon=[1, 2], lat=[4, 5], dirs=range(360))
 
-    assert points.metadata("dirs") == {
+    assert points.meta.get("dirs") == {
         "short_name": "dirs",
         "long_name": "wave_direction",
         "standard_name": "sea_surface_wave_to_direction",
@@ -128,25 +128,25 @@ def test_add_datavar():
         pass
 
     points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
-    breakpoint()
-    assert points.metadata() == {}
+
+    assert points.meta.get() == {}
     points.set_utm((33, "W"))
-    assert points.metadata() == {"utm_zone": "33W"}
-    points.set_metadata({"general_info": "who knew!?"})
-    assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {"utm_zone": "33W"}
+    points.meta.append({"general_info": "who knew!?"})
+    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
     points.set_u(0)
-    assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
-    assert points.metadata("u") == gp.wind.XWind.meta_dict()
-    points.set_metadata({"new": "global"})
-    points.set_metadata({"new": "u-specific"}, "u")
-    assert points.metadata() == {
+    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get("u") == gp.wind.XWind.meta_dict()
+    points.meta.append({"new": "global"})
+    points.meta.append({"new": "u-specific"}, "u")
+    assert points.meta.get() == {
         "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
     }
 
-    assert gp.wind.XWind.meta_dict().items() <= points.metadata("u").items()
-    assert points.metadata("u").get("new") == "u-specific"
+    assert gp.wind.XWind.meta_dict().items() <= points.meta.get("u").items()
+    assert points.meta.get("u").get("new") == "u-specific"
 
 
 def test_add_magnitude():
@@ -163,24 +163,24 @@ def test_add_magnitude():
 
     points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
 
-    assert points.metadata() == {}
+    assert points.meta.get() == {}
     points.set_utm((33, "W"))
-    assert points.metadata() == {"utm_zone": "33W"}
-    points.set_metadata({"general_info": "who knew!?"})
-    assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {"utm_zone": "33W"}
+    points.meta.append({"general_info": "who knew!?"})
+    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
     points.set_u(0)
-    assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
-    assert points.metadata("u") == gp.wind.XWind.meta_dict()
-    points.set_metadata({"new": "global"})
-    points.set_metadata({"new": "u-specific"}, "u")
-    assert points.metadata() == {
+    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get("u") == gp.wind.XWind.meta_dict()
+    points.meta.append({"new": "global"})
+    points.meta.append({"new": "u-specific"}, "u")
+    assert points.meta.get() == {
         "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
     }
 
-    assert gp.wind.XWind.meta_dict().items() <= points.metadata("u").items()
-    assert points.metadata("u").get("new") == "u-specific"
+    assert gp.wind.XWind.meta_dict().items() <= points.meta.get("u").items()
+    assert points.meta.get("u").get("new") == "u-specific"
     assert points.core.magnitudes() == ["wnd"]
     assert points.core.directions() == [gp.wind.WindDir.name]
 
@@ -194,21 +194,21 @@ def test_add_mask():
 
     points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
     points.set_land_mask(0)
-    assert points.metadata() == {}
+    assert points.meta.get() == {}
     points.set_utm((33, "W"))
-    assert points.metadata() == {"utm_zone": "33W"}
-    points.set_metadata({"general_info": "who knew!?"})
-    assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {"utm_zone": "33W"}
+    points.meta.append({"general_info": "who knew!?"})
+    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
     points.set_u(0)
-    assert points.metadata() == {"utm_zone": "33W", "general_info": "who knew!?"}
-    assert points.metadata("u") == gp.wind.XWind.meta_dict()
-    points.set_metadata({"new": "global"})
-    points.set_metadata({"new": "u-specific"}, "u")
-    assert points.metadata() == {
+    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get("u") == gp.wind.XWind.meta_dict()
+    points.meta.append({"new": "global"})
+    points.meta.append({"new": "u-specific"}, "u")
+    assert points.meta.get() == {
         "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
     }
 
-    assert gp.wind.XWind.meta_dict().items() <= points.metadata("u").items()
-    assert points.metadata("u").get("new") == "u-specific"
+    assert gp.wind.XWind.meta_dict().items() <= points.meta.get("u").items()
+    assert points.meta.get("u").get("new") == "u-specific"

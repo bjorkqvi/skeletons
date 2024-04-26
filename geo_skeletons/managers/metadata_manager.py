@@ -1,16 +1,34 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from .coordinate_manager import CoordinateManager
-import xarray as xr
+    from .dataset_manager import DatasetManager
 
 
 class MetaDataManager:
-    def __init__(self, ds: xr.Dataset, coord_manager: CoordinateManager):
-        self._ds = ds
+    def __init__(
+        self, ds_manager: Union[DatasetManager, None], coord_manager: CoordinateManager
+    ):
+        self._ds_manager = ds_manager
         self._coord_manager = coord_manager
         self._metadata: dict = {}
+        # This will be used to make a deepcopy of the manager for different classes
+        self._initial_state = True
+        # This will be used to make a deepcopy of the manager for instances
+        self._uninitialized = True
+
+    def _ds_set_possible(self, name: Union[str, None]):
+        """Checks if it is possible to set metadata to the dataset"""
+        if self._ds_manager is None:
+            return False
+        if self._ds_manager.ds() is None:
+            return False
+        if name is None:
+            return True
+        if self._ds_manager.get(name) is None:
+            return False
+        return True
 
     def set(
         self,
@@ -28,7 +46,7 @@ class MetaDataManager:
             self._metadata["__general__"] = metadata
 
         # Store is dataset if possible
-        if self._ds is not None and self._ds.get(name) is not None:
+        if self._ds_set_possible(name):
             self._ds_manager.set_attrs(metadata, name)
 
     def append(self, metadata: dict, name: str = None):

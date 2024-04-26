@@ -24,7 +24,7 @@ def test_add_mask_one_point():
     data.set_sea_mask(data.hs(empty=True) > 0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
-    assert data.masks()[0] == "sea_mask"
+    assert data.core.masks()[0] == "sea_mask"
 
 
 def test_add_mask():
@@ -44,7 +44,7 @@ def test_add_mask():
     data.set_sea_mask(data.hs(empty=True) > 0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
-    assert data.masks()[0] == "sea_mask"
+    assert data.core.masks()[0] == "sea_mask"
 
 
 def test_add_coord_and_mask():
@@ -65,7 +65,7 @@ def test_add_coord_and_mask():
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
 
-    assert data.masks()[0] == "sea_mask"
+    assert data.core.masks()[0] == "sea_mask"
 
 
 def test_add_gridpoint_coord_and_mask():
