@@ -114,7 +114,7 @@ class DatasetManager:
             initial_y = "y" if "y" in initial_vars else "lat"
 
             if initial_y in initial_vars:
-                coord_group = self.coord_manager.get_added(initial_y).coord_group
+                coord_group = self.coord_manager.get(initial_y).coord_group
                 coords = self.coord_manager.coords(coord_group)
                 if not coords <= list(coord_dict.keys()):
                     raise ValueError(
@@ -122,7 +122,7 @@ class DatasetManager:
                     )
                 var_dict[y_str] = (coords, y)
             if initial_x in initial_vars:
-                coord_group = self.coord_manager.get_added(initial_x).coord_group
+                coord_group = self.coord_manager.get(initial_x).coord_group
                 coords = self.coord_manager.coords(coord_group)
                 if not coords <= list(coord_dict.keys()):
                     raise ValueError(
@@ -199,7 +199,7 @@ class DatasetManager:
                 empty = True
 
         if empty:
-            obj = self.coord_manager.get_added(name)
+            obj = self.coord_manager.get(name)
             if obj is None or obj.coord_group is None:
                 return None
             coords = self.coord_manager.coords(obj.coord_group)

@@ -20,7 +20,7 @@ def test_coords():
         another_trivial=1,
         chunks=None,
     )
-    grid._coord_manager.coords("nonspatial")
+    grid.core.coords("nonspatial")
 
     assert set(grid.coords("all")) == set(
         ["trivial", "test", "another", "another_trivial", "x", "y"]

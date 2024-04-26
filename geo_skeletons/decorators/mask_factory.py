@@ -136,9 +136,9 @@ def add_mask(
                 silent=silent,
             )
 
-        if c._coord_manager.initial_state:
-            c._coord_manager = deepcopy(c._coord_manager)
-            c._coord_manager.initial_state = False
+        if c.core.initial_state:
+            c.core = deepcopy(c.core)
+            c.core.initial_state = False
 
         name_str, meta = gp.decode(name)
         if opposite_name is not None:
@@ -165,9 +165,9 @@ def add_mask(
             range_inclusive=range_inclusive,
         )
 
-        c._coord_manager.add_mask(grid_mask)
+        c.core.add_mask(grid_mask)
         if opposite_grid_mask is not None:
-            c._coord_manager.add_mask(opposite_grid_mask)
+            c.core.add_mask(opposite_grid_mask)
 
         exec(f"c.{name_str}_mask = get_mask")
         exec(f"c.{name_str}_points = get_masked_points")
