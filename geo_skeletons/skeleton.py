@@ -7,10 +7,11 @@ from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.metadata_manager import MetaDataManager
 from .managers.dir_type_manager import DirTypeManager
+from .managers.data_sanitizer import DataSanitizer
 
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union
-from .aux_funcs import distance_funcs, array_funcs, utm_funcs
+from .aux_funcs import distance_funcs, utm_funcs
 from .errors import DataWrongDimensionError
 
 from typing import Iterable
@@ -146,7 +147,8 @@ class Skeleton:
             self._ds_manager.coord_manager = self.core
         self.meta._ds_manager = self._ds_manager
 
-        x, y, lon, lat, kwargs = array_funcs.sanitize_input(
+        self._data_sanitizer = DataSanitizer(coord_manager=self.core)
+        x, y, lon, lat, kwargs = self._data_sanitizer.sanitize_input(
             x, y, lon, lat, self.is_gridded(), **kwargs
         )
 
@@ -1115,10 +1117,11 @@ class Skeleton:
             fast = True
 
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
-        x = array_funcs.force_to_iterable(x)
-        y = array_funcs.force_to_iterable(y)
-        lon = array_funcs.force_to_iterable(lon)
-        lat = array_funcs.force_to_iterable(lat)
+
+        x = self._data_sanitizer.force_to_iterable(x)
+        y = self._data_sanitizer.force_to_iterable(y)
+        lon = self._data_sanitizer.force_to_iterable(lon)
+        lat = self._data_sanitizer.force_to_iterable(lat)
 
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
