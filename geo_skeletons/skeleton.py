@@ -1312,13 +1312,6 @@ class Skeleton:
             metadata = old_metadata
         self._ds_manager.set_attrs(metadata, name)
 
-    def masks(self):
-        mask_list = []
-        for var in list(self.ds().data_vars):
-            if var[-5:] == "_mask":
-                mask_list.append(var)
-        return mask_list
-
     def activate_dask(
         self, chunks="auto", primary_dim: str = None, rechunk: bool = True
     ) -> None:
