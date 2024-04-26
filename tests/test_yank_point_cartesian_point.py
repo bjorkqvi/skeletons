@@ -42,7 +42,7 @@ def test_yank_several_points_with_close_coordinates():
 
 def test_yank_spherical_point_from_cartesian_grid():
     data = PointSkeleton(x=(165640, 180189, 283749), y=(6666593, 6766055, 6769393))
-    data.set_utm((33, "N"))
+    data.utm.set((33, "N"))
 
     assert np.round(data.lon()[0]) == 9
     assert np.round(data.lat()[0]) == 60
