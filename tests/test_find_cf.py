@@ -13,10 +13,10 @@ def test_cf_no_info():
 
     points = Magnitude(x=0, y=0)
 
-    assert points.from_cf(gp.wind.XWind.standard_name()) == []
-    assert points.from_cf(gp.wind.YWind.standard_name()) == []
-    assert points.from_cf(gp.wind.Wind.standard_name()) == []
-    assert points.from_cf(gp.wind.WindDir.standard_name()) == []
+    assert points.find_cf(gp.wind.XWind.standard_name()) == []
+    assert points.find_cf(gp.wind.YWind.standard_name()) == []
+    assert points.find_cf(gp.wind.Wind.standard_name()) == []
+    assert points.find_cf(gp.wind.WindDir.standard_name()) == []
 
 
 def test_cf():
@@ -27,10 +27,10 @@ def test_cf():
         pass
 
     points = Magnitude(x=0, y=0)
-    assert points.from_cf(gp.wind.XWind.standard_name()) == ["u"]
-    assert points.from_cf(gp.wind.YWind.standard_name()) == ["v"]
-    assert points.from_cf(gp.wind.Wind.standard_name()) == ["wind"]
-    assert points.from_cf(gp.wind.WindDir.standard_name()) == ["wind_dir"]
+    assert points.find_cf(gp.wind.XWind.standard_name()) == ["u"]
+    assert points.find_cf(gp.wind.YWind.standard_name()) == ["v"]
+    assert points.find_cf(gp.wind.Wind.standard_name()) == ["wind"]
+    assert points.find_cf(gp.wind.WindDir.standard_name()) == ["wind_dir"]
 
 
 def test_cf_several():
@@ -46,7 +46,7 @@ def test_cf_several():
 
     points = Magnitude(x=0, y=0)
 
-    assert points.from_cf(gp.wind.XWind.standard_name()) == ["u", "umodel"]
-    assert points.from_cf(gp.wind.YWind.standard_name()) == ["v", "vmodel"]
-    assert points.from_cf(gp.wind.Wind.standard_name()) == ["umag", "wind", "wind2"]
-    assert points.from_cf(gp.wind.WindDir.standard_name()) == ["wind_dir"]
+    assert points.find_cf(gp.wind.XWind.standard_name()) == ["u", "umodel"]
+    assert points.find_cf(gp.wind.YWind.standard_name()) == ["v", "vmodel"]
+    assert points.find_cf(gp.wind.Wind.standard_name()) == ["umag", "wind", "wind2"]
+    assert points.find_cf(gp.wind.WindDir.standard_name()) == ["wind_dir"]

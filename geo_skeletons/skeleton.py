@@ -163,12 +163,12 @@ class Skeleton:
 
         # Set metadata
         for var in self._coord_manager.data_vars("spatial"):
-            metavar = self._coord_manager.added_vars.get(var).meta
+            metavar = self._coord_manager.get_added(var).meta
             if metavar is not None:
                 self.set_metadata(metavar.meta_dict(), var)
 
         for coord in self._coord_manager.coords("all"):
-            metavar = self._coord_manager.added_coords.get(coord).meta
+            metavar = self._coord_manager.get_added(coord).meta
             if metavar is not None:
                 self.set_metadata(metavar.meta_dict(), coord)
 
@@ -359,16 +359,16 @@ class Skeleton:
         )
 
         # Masks are stored as integers
-        if name in self._coord_manager.added_masks:
+        if name in self._coord_manager.masks("all"):
             data = data.astype(int)
 
-        if name in self._coord_manager.added_magnitudes:
+        if name in self._coord_manager.magnitudes("all"):
             self._set_magnitude(
                 name=name,
                 data=data,
                 dask_manager=dask_manager,
             )
-        elif name in self._coord_manager.added_directions:
+        elif name in self._coord_manager.directions("all"):
             self._set_direction(
                 name=name,
                 data=data,
@@ -614,10 +614,11 @@ class Skeleton:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
 
             if data is not None:
-                if self._coord_manager.added_vars.get(name) is not None:
-                    set_dir_type = self._coord_manager.added_vars.get(name).dir_type
-                else:
-                    set_dir_type = None
+                obj = self._coord_manager.get_added(name)
+                set_dir_type = None
+                if obj is not None and hasattr(obj, "dir_type"):
+                    set_dir_type = self._coord_manager.get_added(name).dir_type
+
                 if dir_type is not None and set_dir_type is None:
                     raise ValueError(
                         "Cannot ask for a 'dir_type' for a non-directional variable!"
@@ -638,7 +639,7 @@ class Skeleton:
         if name in self.coords("all"):
             dask = False
 
-        if name in self._coord_manager.added_masks:
+        if name in self._coord_manager.masks("all"):
             data = data.astype(bool)
 
         if squeeze:
@@ -818,44 +819,19 @@ class Skeleton:
             return None
         return self._ds_manager.ds()
 
-    def from_cf(self, standard_name: str) -> list[str]:
+    def find_cf(self, standard_name: str) -> list[str]:
         """Finds the variable names that have the given standard name"""
         names = []
-        for val in self._coord_manager.added_vars.values():
-            if val.meta is None:
-                continue
-            if (
-                val.meta.standard_name() == standard_name
-                or val.meta.standard_name(alias=True) == standard_name
-            ):
-                names.append(val.name)
 
-        for val in self._coord_manager.added_magnitudes.values():
-            if val.meta is None:
+        for name in self._coord_manager.all_objects():
+            obj = self._coord_manager.get_added(name)
+            if obj.meta is None:
                 continue
             if (
-                val.meta.standard_name() == standard_name
-                or val.meta.standard_name(alias=True) == standard_name
+                obj.meta.standard_name() == standard_name
+                or obj.meta.standard_name(alias=True) == standard_name
             ):
-                names.append(val.name)
-
-        for val in self._coord_manager.added_directions.values():
-            if val.meta is None:
-                continue
-            if (
-                val.meta.standard_name() == standard_name
-                or val.meta.standard_name(alias=True) == standard_name
-            ):
-                names.append(val.name)
-
-        for val in self._coord_manager.added_masks.values():
-            if val.meta is None:
-                continue
-            if (
-                val.meta.standard_name() == standard_name
-                or val.meta.standard_name(alias=True) == standard_name
-            ):
-                names.append(val.name)
+                names.append(obj.name)
 
         return names
 

@@ -94,7 +94,7 @@ class DatasetManager:
 
                 if value is None:
                     raise UnknownCoordinateError(
-                        f"Skeleton has coordinate '{key}', but it was not provided on initialization {list(kwargs.keys())} nor is it already set {self.coord_manager.added_coords()}!"
+                        f"Skeleton has coordinate '{key}', but it was not provided on initialization {list(kwargs.keys())} nor is it already set {self.coord_manager.coords('all')}!"
                     )
 
                 coord_dict[key] = np.array(value)
@@ -114,7 +114,7 @@ class DatasetManager:
             initial_y = "y" if "y" in initial_vars else "lat"
 
             if initial_y in initial_vars:
-                coord_group = self.coord_manager.added_vars.get(initial_y).coord_group
+                coord_group = self.coord_manager.get_added(initial_y).coord_group
                 coords = self.coord_manager.coords(coord_group)
                 if not coords <= list(coord_dict.keys()):
                     raise ValueError(
@@ -122,7 +122,7 @@ class DatasetManager:
                     )
                 var_dict[y_str] = (coords, y)
             if initial_x in initial_vars:
-                coord_group = self.coord_manager.added_vars.get(initial_x).coord_group
+                coord_group = self.coord_manager.get_added(initial_x).coord_group
                 coords = self.coord_manager.coords(coord_group)
                 if not coords <= list(coord_dict.keys()):
                     raise ValueError(
@@ -162,7 +162,7 @@ class DatasetManager:
     def empty_vars(self) -> list[str]:
         """Get a list of empty variables"""
         empty_vars = []
-        for var in self.coord_manager.added_vars:
+        for var in self.coord_manager.data_vars():
             if self.get(var) is None:
                 empty_vars.append(var)
         return empty_vars
@@ -170,7 +170,7 @@ class DatasetManager:
     def empty_masks(self) -> list[str]:
         """Get a list of empty masks"""
         empty_masks = []
-        for mask in self.coord_manager.added_masks:
+        for mask in self.coord_manager.masks():
             if self.get(mask) is None:
                 empty_masks.append(mask)
         return empty_masks
