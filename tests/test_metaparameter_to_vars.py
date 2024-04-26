@@ -128,7 +128,7 @@ def test_add_datavar():
         pass
 
     points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
-
+    breakpoint()
     assert points.metadata() == {}
     points.set_utm((33, "W"))
     assert points.metadata() == {"utm_zone": "33W"}
