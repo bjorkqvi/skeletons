@@ -20,36 +20,33 @@ class CoordinateManager:
     by the decorators."""
 
     def __init__(self, initial_coords, initial_vars) -> None:
-        # self._coords = {}
-        # self._coords["grid"] = []
-        # self._coords["gridpoint"] = []
-        # self._coords["initial"] = []
-
+        self.x_str = None
+        self.y_str = None
         self._added_coords = {}
-        # self._vars = {}
-        # self._vars["added"] = {}
-        # self._vars["initial"] = {}
 
-        # Refactoring one
         self._added_vars = {}
         self._added_magnitudes = {}
         self._added_directions = {}
         self._added_masks = {}
-        # self.meta_coords: dict[str, MetaParameter] = {}
-        # self.meta_vars: dict[str, MetaParameter] = {}
-        # self.dir_vars: dict[str, str] = {}
-        # self.meta_masks: dict[str, MetaParameter] = {}
-        # self.meta_magnitudes: dict[str, MetaParameter] = {}
-        # self.meta_directions: dict[str, MetaParameter] = {}
-
-        # E.g. creating a land-mask might be triggered by setting a bathymetry or hs variable
-        # self.triggers: dict[str, list[tuple[str, tuple[float], tuple[bool]]]] = {}
 
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
         # This will be used by decorators to make a deepcopy of the manager for different classes
         self.initial_state = True
+
+    def is_initialized(self) -> bool:
+        return self.x_str is not None and self.y_str is not None
+
+    def is_cartesian(self) -> bool:
+        """Checks if the grid is cartesian (True) or spherical (False)."""
+        if self.x_str == "x" and self.y_str == "y":
+            return True
+        elif self.x_str == "lon" and self.y_str == "lat":
+            return False
+        raise ValueError(
+            f"Expected x- and y string to be either 'x' and 'y' or 'lon' and 'lat', but they were {self.x_str} and {self.y_str}"
+        )
 
     def add_var(self, data_var: DataVar) -> None:
         if self.get(data_var.name) is not None:
