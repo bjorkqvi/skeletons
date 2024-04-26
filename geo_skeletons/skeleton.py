@@ -13,7 +13,6 @@ from typing import Iterable
 import dask.array as da
 from copy import deepcopy
 from .decorators import add_datavar, add_magnitude
-from types import MethodType
 from .iter import SkeletonIterator
 
 
@@ -41,7 +40,6 @@ class Skeleton:
         if chunks is not None:
             self.chunks = chunks
         self._init_structure(x, y, lon, lat, utm=utm, **kwargs)
-        self.data_vars = MethodType(_data_vars, self)
 
     def add_datavar(
         self, name: str, coord_group: str = "all", default_value: float = 0.0
@@ -108,7 +106,7 @@ class Skeleton:
         points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, **additional_coords)
 
         # Set data variables and masks that exist
-        for data_var in points.data_vars():
+        for data_var in points.core.data_vars():
             val = ds.get(data_var)
             if val is not None:
                 points.set(data_var, val)
@@ -179,10 +177,6 @@ class Skeleton:
             ).sortby(dim)
         )
         return new_skeleton
-
-    @classmethod
-    def data_vars(cls) -> None:
-        return cls.core.data_vars("nonspatial")
 
     def coords(self, coord_group: str = "all", squeeze: bool = False) -> list[str]:
         """Returns a list of the coordinates from the Dataset.
@@ -1413,7 +1407,7 @@ class Skeleton:
             chunks = self._chunk_tuple_from_dict(chunks)
         self.chunks = chunks
         dask_manager = DaskManager(self.chunks)
-        for var in self.data_vars():
+        for var in self.core.data_vars():
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.dask_me(data, chunks))
@@ -1427,7 +1421,7 @@ class Skeleton:
 
         If data is big this might taka a long time or kill Python."""
         dask_manager = DaskManager()
-        for var in self.data_vars():
+        for var in self.core.data_vars():
             data = self.get(var)
             if data is not None:
                 self.set(var, dask_manager.undask_me(data))
@@ -1589,8 +1583,3 @@ class Skeleton:
         string += "\n" + "-" * 80
 
         return string
-
-
-def _data_vars(self) -> None:
-    """Used for instanes instead of the class method, since data_variables can be added after initialization."""
-    return self.core.data_vars("nonspatial")
