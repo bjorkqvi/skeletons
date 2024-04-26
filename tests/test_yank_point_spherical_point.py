@@ -55,7 +55,7 @@ def test_yank_several_points_with_close_coordinates():
 
 def test_yank_cartesian_point_from_spherical_grid():
     data = PointSkeleton(lon=(9.0, 9.1, 11.0), lat=(60.0, 60.9, 61.0))
-    data.set_utm((33, "N"))
+    data.utm.set((33, "N"))
 
     dd = data.yank_point(x=165640, y=6666593)
     assert dd["inds"][0] == 0

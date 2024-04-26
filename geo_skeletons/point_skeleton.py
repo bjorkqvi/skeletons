@@ -46,7 +46,7 @@ class PointSkeleton(Skeleton):
         x, y = skeleton.xy(strict=True, mask=mask)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        new_skeleton.set_utm(skeleton.utm(), silent=True)
+        new_skeleton.utm.set(skeleton.utm.zone(), silent=True)
 
         return new_skeleton
 

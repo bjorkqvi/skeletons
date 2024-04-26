@@ -31,8 +31,8 @@ def test_utm_conversion():
     assert grid.y(strict=True) is None
     assert np.all(grid.xy(strict=True) == (None, None))
 
-    grid.set_utm((zone, letter))
-    assert grid.utm() == (zone, letter)
+    grid.utm.set((zone, letter))
+    assert grid.utm.zone() == (zone, letter)
 
     x_rot, __, __, __ = utm.from_latlon(
         np.median(lat), lon, force_zone_number=zone, force_zone_letter=letter
@@ -82,8 +82,8 @@ def test_utm_conversion():
 
     grid2 = GriddedSkeleton(x=x, y=y)
     grid2.set_spacing(nx=3, ny=3)
-    grid2.set_utm((zone, letter))
-    assert grid.utm() == (zone, letter)
+    grid2.utm.set((zone, letter))
+    assert grid.utm.zone() == (zone, letter)
 
     assert grid2.nx() == 3
     assert grid2.ny() == 3

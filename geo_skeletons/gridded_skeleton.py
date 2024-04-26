@@ -56,7 +56,7 @@ class GriddedSkeleton(Skeleton):
         x, y = skeleton.x(strict=True, mask=mask), skeleton.y(strict=True, mask=mask)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        new_skeleton.set_utm(skeleton.utm(), silent=True)
+        new_skeleton.utm.set(skeleton.utm.zone(), silent=True)
 
         return new_skeleton
 
@@ -138,7 +138,7 @@ class GriddedSkeleton(Skeleton):
 
         # Only convert if skeleton is Cartesian and native output is not requested
         points = PointSkeleton(x=x, y=y)
-        points.set_utm(self.utm(), silent=True)
+        points.utm.set(self.utm.zone(), silent=True)
 
         return points.lonlat(mask=mask)
 
@@ -173,7 +173,7 @@ class GriddedSkeleton(Skeleton):
 
         # Only convert if skeleton is not Cartesian and native output is not requested
         points = PointSkeleton(lon=x, lat=y)
-        points.set_utm(self.utm(), silent=True)
+        points.utm.set(self.utm.zone(), silent=True)
 
         return points.xy(mask=mask)
 
@@ -293,7 +293,7 @@ class GriddedSkeleton(Skeleton):
             x = None
             y = None
 
-        self._init_structure(x, y, lon, lat, utm=self.utm())
+        self._init_structure(x, y, lon, lat, utm=self.utm.zone())
 
 
 # dummy(time, y, x)

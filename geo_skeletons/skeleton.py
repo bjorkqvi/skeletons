@@ -6,6 +6,7 @@ from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.metadata_manager import MetaDataManager
+from .managers.utm_manager import UTMManager
 from typing import Iterable, Union
 from .aux_funcs import distance_funcs, array_funcs, utm_funcs
 from .errors import DataWrongDimensionError
@@ -161,9 +162,12 @@ class Skeleton:
             xvec, yvec, self.core.x_str, self.core.y_str, **kwargs
         )
 
-        if utm == (None, None):
-            utm = None
-        self.set_utm(utm, silent=True)
+        self.utm = UTMManager(
+            lat=self.edges("lat", strict=True),
+            lon=self.edges("lon", strict=True),
+            metadata_manager=self.meta,
+        )
+        self.utm.set(utm, silent=True)
 
         # Set metadata
         for name in self.core.all_objects("all"):
@@ -677,71 +681,6 @@ class Skeleton:
             "spatial"
         )
 
-    def set_utm(self, utm_zone: tuple[int, str] = None, silent: bool = False):
-        """Set UTM zone and number to be used for cartesian coordinates.
-
-        If not given for a spherical grid, they will be deduced.
-
-        If not given for a cartesian grid, will be set to default (33, 'W')
-        """
-
-        if utm_zone is None:
-            if self.core.is_cartesian():
-                zone_number, zone_letter = (None, None)  # DEFAULT_UTM
-            else:
-                lon, lat = self.lonlat()
-                # *** utm.error.OutOfRangeError: latitude out of range (must be between 80 deg S and 84 deg N)
-                mask = np.logical_and(lat < 84, lat > -80)
-                # raise OutOfRangeError('longitude out of range (must be between 180 deg W and 180 deg E)')
-
-                lat, lon = lat[mask], lon[mask]
-
-                # *** ValueError: latitudes must all have the same sign
-                if len(lat[lat >= 0]) > len(lat[lat < 0]):
-                    lat, lon = lat[lat >= 0], lon[lat >= 0]
-                else:
-                    lat, lon = lat[lat < 0], lon[lat < 0]
-
-                __, __, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
-        else:
-            zone_number, zone_letter = utm_zone
-
-        if isinstance(zone_number, int) or isinstance(zone_number, float):
-            number = copy(int(zone_number))
-        elif zone_number is None:
-            number = None
-        else:
-            raise ValueError("zone_number needs to be an integer")
-
-        if isinstance(zone_letter, str):
-            letter = copy(zone_letter)
-        elif zone_letter is None:
-            letter = None
-        else:
-            raise ValueError("zone_letter needs to be a string!")
-
-        if not utm_funcs.valid_utm_zone((number, letter)):
-            raise ValueError(f"({number}, {letter}) is not a valid UTM zone!")
-
-        self._zone_number = number
-        self._zone_letter = letter
-        if self.core.is_cartesian() and number is not None:
-            self.meta.append({"utm_zone": f"{number:02.0f}{letter}"})
-
-        if not silent and number is not None:
-            print(f"Setting UTM ({number}, {letter})")
-
-    def utm(self) -> tuple[int, str]:
-        """Returns UTM zone number and letter. Returns (None, None)
-        if it hasn't been set by the user in cartesian grids."""
-        zone_number, zone_letter = (None, None)
-
-        if hasattr(self, "_zone_number"):
-            zone_number = self._zone_number
-        if hasattr(self, "_zone_letter"):
-            zone_letter = self._zone_letter
-        return zone_number, zone_letter
-
     def ds(self):
         if not hasattr(self, "_ds_manager"):
             return None
@@ -828,14 +767,14 @@ class Skeleton:
         if not self.core.is_cartesian() and strict:
             return None
 
-        if self.core.is_cartesian() and (self.utm() == utm or utm is None):
+        if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()
             if normalize:
                 x = x - min(x)
             return x
 
         if utm is None:
-            number, letter = self.utm()
+            number, letter = self.utm.zone()
         else:
             number, letter = utm
 
@@ -908,14 +847,14 @@ class Skeleton:
         if not self.core.is_cartesian() and strict:
             return None
 
-        if self.core.is_cartesian() and (self.utm() == utm or utm is None):
+        if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             y = self._ds_manager.get("y", **kwargs).values.copy()
             if normalize:
                 y = y - min(y)
             return y
 
         if utm is None:
-            number, letter = self.utm()
+            number, letter = self.utm.zone()
         else:
             number, letter = utm
         posmask = self.lat(**kwargs) >= 0
@@ -996,7 +935,7 @@ class Skeleton:
                 )
             else:
                 y = self.y(**kwargs)
-            number, letter = self.utm()
+            number, letter = self.utm.zone()
             if number is None:
                 print(
                     "Need to set an UTM-zone, e.g. set_utm((33,'W')), to get longitudes!"
@@ -1043,7 +982,7 @@ class Skeleton:
             else:
                 x = self.x(**kwargs)
 
-            number, letter = self.utm()
+            number, letter = self.utm.zone()
             if number is None:
                 print(
                     "Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!"
@@ -1191,7 +1130,7 @@ class Skeleton:
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
 
-        orig_zone = self.utm()
+        orig_zone = self.utm.zone()
         if lon is not None and lat is not None:
             if self.core.is_cartesian():
                 x, y, __, __ = utm_module.from_latlon(
@@ -1202,7 +1141,7 @@ class Skeleton:
                 )
             else:
                 x, y, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
-                self.set_utm((zone_number, zone_letter), silent=True)
+                self.utm.set((zone_number, zone_letter), silent=True)
         else:
             if orig_zone[0] is not None:
                 lat, lon = utm_module.to_latlon(
@@ -1246,7 +1185,7 @@ class Skeleton:
             if dxx is not None:
                 inds.append(ii)
                 dx.append(dxx)
-        self.set_utm(orig_zone, silent=True)  # Reset UTM zone
+        self.utm.set(orig_zone, silent=True)  # Reset UTM zone
 
         if unique:
             inds = np.unique(inds)
