@@ -85,9 +85,7 @@ class Skeleton:
             raise ValueError("Can't find x/y lon/lat pair in Dataset!")
 
         # Gather other coordinates
-        coords = cls._coord_manager.coords(
-            "all"
-        )  # list(ds.coords) + list(kwargs.keys())
+        coords = cls.core.coords("all")  # list(ds.coords) + list(kwargs.keys())
         additional_coords = {}
         for coord in [
             coord for coord in coords if coord not in ["inds", "lon", "lat", "x", "y"]
@@ -130,8 +128,8 @@ class Skeleton:
         """
 
         # Don't want to alter the CoordManager of the class
-        self._coord_manager = deepcopy(self._coord_manager)
-        self._coord_manager.initial_state = False
+        self.core = deepcopy(self.core)
+        self.core.initial_state = False
 
         x, y, lon, lat, kwargs = array_funcs.sanitize_input(
             x, y, lon, lat, self.is_gridded(), **kwargs
@@ -144,16 +142,12 @@ class Skeleton:
         self.y_str = y_str
 
         # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
-        self._coord_manager.set_initial_coords(
-            self._initial_coords(spherical=(x_str == "lon"))
-        )
-        self._coord_manager.set_initial_vars(
-            self._initial_vars(spherical=(x_str == "lon"))
-        )
+        self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
+        self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
 
         # The manager contains the Xarray Dataset
         if not self._structure_initialized():
-            self._ds_manager = DatasetManager(self._coord_manager)
+            self._ds_manager = DatasetManager(self.core)
 
         self._ds_manager.create_structure(xvec, yvec, self.x_str, self.y_str, **kwargs)
 
@@ -162,13 +156,13 @@ class Skeleton:
         self.set_utm(utm, silent=True)
 
         # Set metadata
-        for var in self._coord_manager.data_vars("spatial"):
-            metavar = self._coord_manager.get_added(var).meta
+        for var in self.core.data_vars("spatial"):
+            metavar = self.core.get(var).meta
             if metavar is not None:
                 self.set_metadata(metavar.meta_dict(), var)
 
-        for coord in self._coord_manager.coords("all"):
-            metavar = self._coord_manager.get_added(coord).meta
+        for coord in self.core.coords("all"):
+            metavar = self.core.get(coord).meta
             if metavar is not None:
                 self.set_metadata(metavar.meta_dict(), coord)
 
@@ -188,7 +182,7 @@ class Skeleton:
 
     @classmethod
     def data_vars(cls) -> None:
-        return cls._coord_manager.data_vars("nonspatial")
+        return cls.core.data_vars("nonspatial")
 
     def coords(self, coord_group: str = "all", squeeze: bool = False) -> list[str]:
         """Returns a list of the coordinates from the Dataset.
@@ -198,7 +192,7 @@ class Skeleton:
         'grid': coordinates for the grid (spatial and e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        coordinates = self._coord_manager.coords(coord_group)
+        coordinates = self.core.coords(coord_group)
         if squeeze:
             # Don't allow spatial to be squeezed out if that is only thing left
             coordinates = [
@@ -209,7 +203,7 @@ class Skeleton:
     def coord_group(self, var: str) -> str:
         """Returns the coordinate group that a variable/mask is defined over.
         The coordinates can then be retrived using the group by the method .coords()"""
-        return self._coord_manager.coord_group(var)
+        return self.core.coord_group(var)
 
     def coords_dict(
         self, type: str = "all", data_array: bool = False, **kwargs
@@ -228,11 +222,11 @@ class Skeleton:
 
     def magnitudes(self) -> list[str]:
         """Returns the names of all defined magnitudes"""
-        return self._coord_manager.magnitudes()
+        return self.core.magnitudes()
 
     def directions(self) -> list[str]:
         """Returns the names of all defined magnitudes"""
-        return self._coord_manager.directions()
+        return self.core.directions()
 
     def sel(self, **kwargs):
         return self.from_ds(self.ds().sel(**kwargs))
@@ -359,16 +353,16 @@ class Skeleton:
         )
 
         # Masks are stored as integers
-        if name in self._coord_manager.masks("all"):
+        if name in self.core.masks("all"):
             data = data.astype(int)
 
-        if name in self._coord_manager.magnitudes("all"):
+        if name in self.core.magnitudes("all"):
             self._set_magnitude(
                 name=name,
                 data=data,
                 dask_manager=dask_manager,
             )
-        elif name in self._coord_manager.directions("all"):
+        elif name in self.core.directions("all"):
             self._set_direction(
                 name=name,
                 data=data,
@@ -471,7 +465,7 @@ class Skeleton:
         Calculates x- and y- components and sets them based on set connected direction.
 
         Data needs to be exactly right shape."""
-        obj = self._coord_manager.get_added(name)
+        obj = self.core.get(name)
         x_component = obj.x
         y_component = obj.y
         dir_name = obj.direction.name
@@ -504,7 +498,7 @@ class Skeleton:
         Calculates x- and y- components and sets them based on set connected magnitude.
 
         Data needs to be exactly right shape."""
-        obj = self._coord_manager.get_added(name)
+        obj = self.core.get(name)
         x_component = obj.x
         y_component = obj.y
         mag_name = obj.magnitude.name
@@ -512,7 +506,7 @@ class Skeleton:
         mag_data = self.get(mag_name)
 
         dir_type = dir_type or obj.dir_type
-        data = self._coord_manager.convert_to_math_dir(data, dir_type)
+        data = self.core.convert_to_math_dir(data, dir_type)
 
         s = dask_manager.sin(data)
         c = dask_manager.cos(data)
@@ -544,7 +538,7 @@ class Skeleton:
         """Sets the metadata of a single parameter by finding the connected geo-parameter"""
         metadata = self.metadata(name)
         self.set_metadata(metadata, name, append=False)
-        meta_parameter = self._coord_manager.meta_parameter(name)
+        meta_parameter = self.core.meta_parameter(name)
 
         if meta_parameter is not None:
             self.set_metadata(meta_parameter.meta_dict(), name)
@@ -552,7 +546,7 @@ class Skeleton:
     def _trigger_masks(self, name: str, data) -> None:
         """Set any masks that are triggered by setting a specific data variable
         E.g. Set new 'land_mask' when 'topo' is set."""
-        for mask in self._coord_manager.triggers(name):
+        for mask in self.core.triggers(name):
 
             if mask.range_inclusive[0]:
                 low_mask = data >= mask.valid_range[0]
@@ -595,14 +589,14 @@ class Skeleton:
                 f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
             )
 
-        if name in self._coord_manager.magnitudes():
+        if name in self.core.magnitudes():
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
                 empty=empty,
                 **kwargs,
             )
-        elif name in self._coord_manager.directions():
+        elif name in self.core.directions():
             data = self._get_direction(
                 name=name,
                 strict=strict,
@@ -614,10 +608,10 @@ class Skeleton:
             data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
 
             if data is not None:
-                obj = self._coord_manager.get_added(name)
+                obj = self.core.get(name)
                 set_dir_type = None
                 if obj is not None and hasattr(obj, "dir_type"):
-                    set_dir_type = self._coord_manager.get_added(name).dir_type
+                    set_dir_type = self.core.get(name).dir_type
 
                 if dir_type is not None and set_dir_type is None:
                     raise ValueError(
@@ -625,12 +619,8 @@ class Skeleton:
                     )
                 if set_dir_type is not None:
                     dir_type = dir_type or set_dir_type
-                    data = self._coord_manager.convert_to_math_dir(
-                        data, dir_type=set_dir_type
-                    )
-                    data = self._coord_manager.convert_from_math_dir(
-                        data, dir_type=dir_type
-                    )
+                    data = self.core.convert_to_math_dir(data, dir_type=set_dir_type)
+                    data = self.core.convert_from_math_dir(data, dir_type=dir_type)
 
         if not isinstance(data, xr.DataArray):
             return None
@@ -639,7 +629,7 @@ class Skeleton:
         if name in self.coords("all"):
             dask = False
 
-        if name in self._coord_manager.masks("all"):
+        if name in self.core.masks("all"):
             data = data.astype(bool)
 
         if squeeze:
@@ -669,13 +659,13 @@ class Skeleton:
     ):
 
         x_data = self._ds_manager.get(
-            self._coord_manager.get_added(name).x,
+            self.core.get(name).x,
             empty=empty,
             strict=strict,
             **kwargs,
         )
         y_data = self._ds_manager.get(
-            self._coord_manager.get_added(name).y,
+            self.core.get(name).y,
             empty=empty,
             strict=strict,
             **kwargs,
@@ -684,9 +674,9 @@ class Skeleton:
         if x_data is None or y_data is None:
             return None
 
-        dir_type = dir_type or self._coord_manager.get_added(name).dir_type
-        data = self._coord_manager.compute_math_direction(x_data, y_data)
-        data = self._coord_manager.convert_from_math_dir(data, dir_type=dir_type)
+        dir_type = dir_type or self.core.get(name).dir_type
+        data = self.core.compute_math_direction(x_data, y_data)
+        data = self.core.convert_from_math_dir(data, dir_type=dir_type)
 
         return data
 
@@ -698,18 +688,18 @@ class Skeleton:
         **kwargs,
     ):
         x_data = self._ds_manager.get(
-            self._coord_manager.get_added(name).x,
+            self.core.get(name).x,
             empty=empty,
             strict=strict,
             **kwargs,
         )
         y_data = self._ds_manager.get(
-            self._coord_manager.get_added(name).y,
+            self.core.get(name).y,
             empty=empty,
             strict=strict,
             **kwargs,
         )
-        data = self._coord_manager.compute_magnitude(x_data, y_data)
+        data = self.core.compute_magnitude(x_data, y_data)
         return data
 
     def _smart_squeeze(self, name: str, data):
@@ -823,8 +813,8 @@ class Skeleton:
         """Finds the variable names that have the given standard name"""
         names = []
 
-        for name in self._coord_manager.all_objects():
-            obj = self._coord_manager.get_added(name)
+        for name in self.core.all_objects():
+            obj = self.core.get(name)
             if obj.meta is None:
                 continue
             if (
@@ -1350,7 +1340,7 @@ class Skeleton:
         if data_array is not None:
             return data_array.attrs.copy()
 
-        meta_parameter = self._coord_manager.meta_parameter(name)
+        meta_parameter = self.core.meta_parameter(name)
         if meta_parameter is not None:
             return meta_parameter.meta_dict()
         return {}
@@ -1559,8 +1549,8 @@ class Skeleton:
                 for var in empty_vars:
                     string += f"\n    {var:{max_len+2}}"
                     string += string_of_coords(self.coords(self.coord_group(var)))
-                    string += f":  {self._coord_manager.default_value(var)}"
-                    meta_parameter = self._coord_manager.meta_parameter(var)
+                    string += f":  {self.core.default_value(var)}"
+                    meta_parameter = self.core.meta_parameter(var)
                     if meta_parameter is not None:
                         string += f" [{meta_parameter.unit()}]"
                         string += f" {meta_parameter.standard_name()}"
@@ -1571,27 +1561,27 @@ class Skeleton:
                 for mask in empty_masks:
                     string += f"\n    {mask:{max_len+2}}"
                     string += string_of_coords(self.coords(self.coord_group(mask)))
-                    string += f":  {bool(self._coord_manager.default_value(mask))}"
+                    string += f":  {bool(self.core.default_value(mask))}"
 
-        magnitudes = self._coord_manager.magnitudes()
+        magnitudes = self.core.magnitudes()
 
         if magnitudes:
             string += "\n" + f"{' Magnitudes and directions ':-^80}"
             for key in magnitudes:
-                value = self._coord_manager.get_added(key)
+                value = self.core.get(key)
                 string += f"\n  {key}: magnitude of ({value.x},{value.y})"
 
-                meta_parameter = self._coord_manager.meta_parameter(key)
+                meta_parameter = self.core.meta_parameter(key)
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.unit()}]"
                     string += f" {meta_parameter.standard_name()}"
 
-        directions = self._coord_manager.directions()
+        directions = self.core.directions()
         if directions:
             for key in directions:
-                value = self._coord_manager.get_added(key)
+                value = self.core.get(key)
                 string += f"\n  {key}: direction of ({value.x},{value.y})"
-                meta_parameter = self._coord_manager.meta_parameter(key)
+                meta_parameter = self.core.meta_parameter(key)
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.unit()}]"
                     string += f" {meta_parameter.standard_name()}"
@@ -1603,4 +1593,4 @@ class Skeleton:
 
 def _data_vars(self) -> None:
     """Used for instanes instead of the class method, since data_variables can be added after initialization."""
-    return self._coord_manager.data_vars("nonspatial")
+    return self.core.data_vars("nonspatial")

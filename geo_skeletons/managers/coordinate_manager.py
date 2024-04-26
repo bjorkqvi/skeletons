@@ -52,12 +52,12 @@ class CoordinateManager:
         self.initial_state = True
 
     def add_var(self, data_var: DataVar) -> None:
-        if self.get_added(data_var.name) is not None:
+        if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
 
     def add_mask(self, grid_mask: GridMask) -> None:
-        if self.get_added(grid_mask.name) is not None:
+        if self.get(grid_mask.name) is not None:
             raise VariableExistsError(grid_mask.name)
         if grid_mask.triggered_by:
             grid_mask.valid_range = tuple(
@@ -84,17 +84,17 @@ class CoordinateManager:
 
     def add_coord(self, coord: Coordinate) -> str:
         """Add a coordinate that the Skeleton will use."""
-        if self.get_added(coord.name) is not None:
+        if self.get(coord.name) is not None:
             raise VariableExistsError(coord.name)
         self._added_coords[coord.name] = coord
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
-        if self.get_added(magnitude.name) is not None:
+        if self.get(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
         self._added_magnitudes[magnitude.name] = magnitude
 
     def add_direction(self, direction: Direction) -> None:
-        if self.get_added(direction.name) is not None:
+        if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self._added_directions[direction.name] = direction
 
@@ -332,7 +332,7 @@ class CoordinateManager:
 
         return all_vars[0].coord_group
 
-    def get_added(self, var: str):
+    def get(self, var: str):
         return (
             self._added_coords.get(var)
             or self._added_vars.get(var)
@@ -342,13 +342,13 @@ class CoordinateManager:
         )
 
     def meta_parameter(self, var: str) -> MetaParameter:
-        param = self.get_added(var)
+        param = self.get(var)
         if param is None:
             return None
         return param.meta
 
     def default_value(self, var: str):
-        param = self.get_added(var)
+        param = self.get(var)
         if param is None:
             return None
         if not hasattr(param, "default_value"):

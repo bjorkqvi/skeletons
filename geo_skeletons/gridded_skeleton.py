@@ -30,7 +30,7 @@ class GriddedSkeleton(Skeleton):
     (i.e. raveled meshgrid).
     """
 
-    _coord_manager = CoordinateManager(INITIAL_CARTESIAN_COORDS, INITIAL_VARS)
+    core = CoordinateManager(INITIAL_CARTESIAN_COORDS, INITIAL_VARS)
 
     @classmethod
     def from_skeleton(
