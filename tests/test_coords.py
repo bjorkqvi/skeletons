@@ -22,16 +22,20 @@ def test_coords():
     )
     grid.core.coords("nonspatial")
 
-    assert set(grid.coords("all")) == set(
+    assert set(grid.core.coords("all")) == set(
         ["trivial", "test", "another", "another_trivial", "x", "y"]
     )
-    assert set(grid.coords("grid")) == set(["trivial", "test", "x", "y"])
-    assert set(grid.coords("spatial")) == set(["x", "y"])
-    assert set(grid.coords("gridpoint")) == set(["another_trivial", "another"])
-    assert set(grid.coords("grid", squeeze=True)) == set(["test", "y", "x"])
-    assert set(grid.coords("gridpoint", squeeze=True)) == set(["another"])
-    assert set(grid.coords("spatial", squeeze=True)) == set(["x", "y"])
-    assert set(grid.coords("all", squeeze=True)) == set(["test", "another", "x", "y"])
+    g_coords = grid.core.coords("grid")
+    gp_coords = grid.core.coords("gridpoint")
+    s_coords = grid.core.coords("spatial")
+    a_coords = grid.core.coords("all")
+    assert set(g_coords) == set(["trivial", "test", "x", "y"])
+    assert set(s_coords) == set(["x", "y"])
+    assert set(gp_coords) == set(["another_trivial", "another"])
+    assert set(grid.coord_squeeze(g_coords)) == set(["test", "y", "x"])
+    assert set(grid.coord_squeeze(gp_coords)) == set(["another"])
+    assert set(grid.coord_squeeze(s_coords)) == set(["x", "y"])
+    assert set(grid.coord_squeeze(a_coords)) == set(["test", "another", "x", "y"])
 
 
 def test_coords_one_trivial_spatial():
@@ -53,16 +57,20 @@ def test_coords_one_trivial_spatial():
         chunks=None,
     )
 
-    assert set(grid.coords("all")) == set(
+    assert set(grid.core.coords("all")) == set(
         ["trivial", "test", "another", "another_trivial", "x", "y"]
     )
-    assert set(grid.coords("grid")) == set(["trivial", "test", "x", "y"])
-    assert set(grid.coords("spatial")) == set(["x", "y"])
-    assert set(grid.coords("gridpoint")) == set(["another_trivial", "another"])
-    assert set(grid.coords("grid", squeeze=True)) == set(["test", "y"])
-    assert set(grid.coords("gridpoint", squeeze=True)) == set(["another"])
-    assert set(grid.coords("spatial", squeeze=True)) == set(["y"])
-    assert set(grid.coords("all", squeeze=True)) == set(["test", "another", "y"])
+    g_coords = grid.core.coords("grid")
+    gp_coords = grid.core.coords("gridpoint")
+    s_coords = grid.core.coords("spatial")
+    a_coords = grid.core.coords("all")
+    assert set(g_coords) == set(["trivial", "test", "x", "y"])
+    assert set(s_coords) == set(["x", "y"])
+    assert set(gp_coords) == set(["another_trivial", "another"])
+    assert set(grid.coord_squeeze(g_coords)) == set(["test", "y"])
+    assert set(grid.coord_squeeze(gp_coords)) == set(["another"])
+    assert set(grid.coord_squeeze(s_coords)) == set(["y"])
+    assert set(grid.coord_squeeze(a_coords)) == set(["test", "another", "y"])
 
 
 def test_coords_two_trivial_spatial():
@@ -84,16 +92,20 @@ def test_coords_two_trivial_spatial():
         chunks=None,
     )
 
-    assert set(grid.coords("all")) == set(
+    assert set(grid.core.coords("all")) == set(
         ["trivial", "test", "another", "another_trivial", "x", "y"]
     )
-    assert set(grid.coords("grid")) == set(["trivial", "test", "x", "y"])
-    assert set(grid.coords("spatial")) == set(["x", "y"])
-    assert set(grid.coords("gridpoint")) == set(["another_trivial", "another"])
-    assert set(grid.coords("grid", squeeze=True)) == set(["test"])
-    assert set(grid.coords("gridpoint", squeeze=True)) == set(["another"])
-    assert set(grid.coords("spatial", squeeze=True)) == set(["y", "x"])
-    assert set(grid.coords("all", squeeze=True)) == set(["test", "another"])
+    g_coords = grid.core.coords("grid")
+    gp_coords = grid.core.coords("gridpoint")
+    s_coords = grid.core.coords("spatial")
+    a_coords = grid.core.coords("all")
+    assert set(g_coords) == set(["trivial", "test", "x", "y"])
+    assert set(s_coords) == set(["x", "y"])
+    assert set(gp_coords) == set(["another_trivial", "another"])
+    assert set(grid.coord_squeeze(g_coords)) == set(["test"])
+    assert set(grid.coord_squeeze(gp_coords)) == set(["another"])
+    assert set(grid.coord_squeeze(s_coords)) == set(["y", "x"])
+    assert set(grid.coord_squeeze(a_coords)) == set(["test", "another"])
 
 
 def test_coords_inds():
@@ -115,16 +127,20 @@ def test_coords_inds():
         chunks=None,
     )
 
-    assert set(grid.coords("all")) == set(
+    assert set(grid.core.coords("all")) == set(
         ["trivial", "test", "another", "another_trivial", "inds"]
     )
-    assert set(grid.coords("grid")) == set(["trivial", "test", "inds"])
-    assert set(grid.coords("spatial")) == set(["inds"])
-    assert set(grid.coords("gridpoint")) == set(["another_trivial", "another"])
-    assert set(grid.coords("grid", squeeze=True)) == set(["test", "inds"])
-    assert set(grid.coords("gridpoint", squeeze=True)) == set(["another"])
-    assert set(grid.coords("spatial", squeeze=True)) == set(["inds"])
-    assert set(grid.coords("all", squeeze=True)) == set(["test", "another", "inds"])
+    g_coords = grid.core.coords("grid")
+    gp_coords = grid.core.coords("gridpoint")
+    s_coords = grid.core.coords("spatial")
+    a_coords = grid.core.coords("all")
+    assert set(g_coords) == set(["trivial", "test", "inds"])
+    assert set(s_coords) == set(["inds"])
+    assert set(gp_coords) == set(["another_trivial", "another"])
+    assert set(grid.coord_squeeze(g_coords)) == set(["test", "inds"])
+    assert set(grid.coord_squeeze(gp_coords)) == set(["another"])
+    assert set(grid.coord_squeeze(s_coords)) == set(["inds"])
+    assert set(grid.coord_squeeze(a_coords)) == set(["test", "another", "inds"])
 
 
 def test_coords_inds_trivial():
@@ -146,17 +162,21 @@ def test_coords_inds_trivial():
         chunks=None,
     )
 
-    assert set(grid.coords("all")) == set(
+    assert set(grid.core.coords("all")) == set(
         ["trivial", "test", "another", "another_trivial", "inds"]
     )
-    assert set(grid.coords("grid")) == set(["trivial", "test", "inds"])
-    assert set(grid.coords("spatial")) == set(["inds"])
-    assert set(grid.coords("gridpoint")) == set(["another_trivial", "another"])
-    assert set(grid.coords("grid", squeeze=True)) == set(
+    g_coords = grid.core.coords("grid")
+    gp_coords = grid.core.coords("gridpoint")
+    s_coords = grid.core.coords("spatial")
+    a_coords = grid.core.coords("all")
+    assert set(g_coords) == set(["trivial", "test", "inds"])
+    assert set(s_coords) == set(["inds"])
+    assert set(gp_coords) == set(["another_trivial", "another"])
+    assert set(grid.coord_squeeze(g_coords)) == set(
         [
             "test",
         ]
     )
-    assert set(grid.coords("gridpoint", squeeze=True)) == set(["another"])
-    assert set(grid.coords("spatial", squeeze=True)) == set(["inds"])
-    assert set(grid.coords("all", squeeze=True)) == set(["test", "another"])
+    assert set(grid.coord_squeeze(gp_coords)) == set(["another"])
+    assert set(grid.coord_squeeze(s_coords)) == set(["inds"])
+    assert set(grid.coord_squeeze(a_coords)) == set(["test", "another"])
