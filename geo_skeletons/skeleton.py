@@ -7,7 +7,7 @@ from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.metadata_manager import MetaDataManager
 from .managers.dir_type_manager import DirTypeManager
-from .managers.data_sanitizer import DataSanitizer
+from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
 
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union
@@ -148,13 +148,12 @@ class Skeleton:
         self.meta._ds_manager = self._ds_manager
 
         self._data_sanitizer = DataSanitizer(coord_manager=self.core)
+
         x, y, lon, lat, kwargs = self._data_sanitizer.sanitize_input(
             x, y, lon, lat, self.is_gridded(), **kwargs
         )
 
-        x_str, y_str, xvec, yvec = utm_funcs.will_grid_be_spherical_or_cartesian(
-            x, y, lon, lat
-        )
+        x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
         self.core.x_str = x_str
         self.core.y_str = y_str
 
@@ -162,17 +161,22 @@ class Skeleton:
         self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
         self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
 
-        self._ds_manager.create_structure(
-            xvec, yvec, self.core.x_str, self.core.y_str, **kwargs
-        )
+        # existing_coords = {
+        #     c: self.get(c, strict=True) for c in self.core.coords("nonspatial")
+        # }
+        # coord_dict = self._data_sanitizer.determine_coords(
+        #     x=xvec, y=yvec, new_coords=kwargs, existing_coords=existing_coords
+        # )
+        # var_dict = self._data_sanitizer.determine_vars(coord_dict, x=xvec, y=yvec)
+        self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
         self._dir_type_manager = DirTypeManager(coord_manager=self.core)
-
         self.utm = UTMManager(
             lat=self.edges("lat", strict=True),
             lon=self.edges("lon", strict=True),
             metadata_manager=self.meta,
         )
+
         self.utm.set(utm, silent=True)
 
         # Set metadata
@@ -394,9 +398,6 @@ class Skeleton:
 
         # Try to set the data
         if data.shape != self.shape(name):
-            # if not (allow_reshape or allow_transpose):
-            #     raise data_error
-
             # If we are here then the data could not be set, but we are allowed to try to reshape
             if not silent:
                 print(f"Size of {name} does not match size of {type(self).__name__}...")
@@ -412,10 +413,10 @@ class Skeleton:
                 data = reshape_manager.unsqueeze(
                     data, expected_shape=self.size(coord_type)
                 )
-            if data is None:
+            if data is None or (data.shape != self.shape(name)):
                 raise DataWrongDimensionError(
                     original_data_shape, self.shape(name)
-                )  # Reshapes have failed
+                )  # Reshapes have failed or were not tried
 
             if not silent:
                 print(f"Reshaping data {original_data_shape} -> {data.shape}...")
@@ -492,9 +493,7 @@ class Skeleton:
         """Sets a data variable to the underlying dataset.
 
         Triggers setting metadata of the variable and possible connected masks."""
-        coord_group = self.core.coord_group(name)
-        coords = self.core.coords(coord_group)
-        self._ds_manager.set(data=data, data_name=name, coords=coords)
+        self._ds_manager.set(data=data, name=name)
         self._trigger_masks(name, data)
 
     def _trigger_masks(self, name: str, data) -> None:

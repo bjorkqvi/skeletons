@@ -1,12 +1,19 @@
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .coordinate_manager import CoordinateManager
+from .coordinate_manager import (
+    CoordinateManager,
+    move_time_and_spatial_to_front,
+    SPATIAL_COORDS,
+)
 
 import pandas as pd
 import numpy as np
 from typing import Iterable
+
+from ..errors import (
+    DataWrongDimensionError,
+    UnknownCoordinateError,
+    CoordinateWrongLengthError,
+    GridError,
+)
 
 
 class DataSanitizer:
@@ -63,6 +70,97 @@ class DataSanitizer:
         x = np.array([a for a in x if a is not None])
 
         return x
+
+    def check_consistency(self, coord_dict, var_dict) -> None:
+        """Checks that the provided coordinates are consistent with the
+        coordinates that the Skeleton is defined over."""
+        coords = list(coord_dict.keys())
+        # Check spatial coordinates
+        xy_set = "x" in coords and "y" in coords
+        lonlat_set = "lon" in coords and "lat" in coords
+        inds_set = "inds" in coords
+        if inds_set:
+            ind_len = len(coord_dict["inds"])
+            for key, value in var_dict.items():
+                if len(value[1]) != ind_len:
+                    raise CoordinateWrongLengthError(
+                        variable=key,
+                        len_of_variable=len(value[1]),
+                        index_variable="inds",
+                        len_of_index_variable=ind_len,
+                    )
+        if not (xy_set or lonlat_set or inds_set):
+            raise GridError
+        if sum([xy_set, lonlat_set, inds_set]) > 1:
+            raise GridError
+
+        # Check that all added coordinates are provided
+        for coord in self.coord_manager.coords("all"):
+            if coord not in coords:
+                if self.get(coord) is not None:
+                    # Add in old coordinate if it is not provided now (can happen when using set_spacing)
+                    coord_dict[coord] = self.ds().get(coord).values
+                else:
+                    raise UnknownCoordinateError(
+                        f"Skeleton has coordinate '{coord}', but it was not provided on initialization: {coords}!"
+                    )
+
+        # Check that all provided coordinates have been added
+        for coord in set(coords) - set(SPATIAL_COORDS):
+            if coord not in self.coord_manager.coords("all"):
+                raise UnknownCoordinateError(
+                    f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.coords('all')}! Missing a decorator?"
+                )
+
+
+def will_grid_be_spherical_or_cartesian(x, y, lon, lat):
+    """Determines if the grid will be spherical or cartesian based on which
+    inputs are given and which are None.
+
+    Returns the ringth vector and string to identify the native values.
+    """
+
+    # Check for empty grid
+    if (
+        (lon is None or len(lon) == 0)
+        and (lat is None or len(lat) == 0)
+        and (x is None or len(x) == 0)
+        and (y is None or len(y) == 0)
+    ):
+        native_x = "x"
+        native_y = "y"
+        xvec = np.array([])
+        yvec = np.array([])
+        return native_x, native_y, xvec, yvec
+
+    xy = False
+    lonlat = False
+
+    if (x is not None) and (y is not None):
+        xy = True
+        native_x = "x"
+        native_y = "y"
+        xvec = x
+        yvec = y
+
+    if (lon is not None) and (lat is not None):
+        lonlat = True
+        native_x = "lon"
+        native_y = "lat"
+        xvec = lon
+        yvec = lat
+
+    if xy and lonlat:
+        raise ValueError("Can't set both lon/lat and x/y!")
+
+    # Empty grid will be cartesian
+    if not xy and not lonlat:
+        native_x = "x"
+        native_y = "y"
+        xvec = np.array([])
+        yvec = np.array([])
+
+    return native_x, native_y, xvec, yvec
 
 
 def coord_len_to_max_two(xvec):
