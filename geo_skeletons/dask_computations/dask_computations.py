@@ -1,5 +1,6 @@
 import dask.array as da
 import numpy as np
+import xarray as xr
 
 
 def reshape_me(data, coord_order):
@@ -46,9 +47,17 @@ def arctan2(y, x):
 
 def atleast_1d(data):
     if data_is_dask(data):
-        return da.atleast_1d(data)
+        if not isinstance(data, xr.DataArray):
+            return da.atleast_1d(data)
+        else:
+            data.data = da.atleast_1d(data)
+            return data
     else:
-        return np.atleast_1d(data)
+        if not isinstance(data, xr.DataArray):
+            return np.atleast_1d(data)
+        else:
+            data.data = np.atleast_1d(data)
+            return data
 
 
 def data_is_dask(data) -> bool:

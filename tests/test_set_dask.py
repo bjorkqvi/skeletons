@@ -79,9 +79,9 @@ def test_single_point_starting_with_dask():
     assert data_is_dask(points.dummy())
 
     points.dask.deactivate()
-
     points.set_dummy(data)
-    assert data_is_dask(points.ds().dummy.data)
+
+    assert not data_is_dask(points.ds().dummy.data)
     assert not data_is_dask(points.dummy())
 
     points.set_dummy(data, chunks="auto")
