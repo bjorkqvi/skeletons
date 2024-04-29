@@ -8,6 +8,8 @@ from .dask_manager import DaskManager
 import numpy as np
 import xarray as xr
 
+from geo_skeletons import dask_computations
+
 OFFSET = {"from": 180, "to": 0}
 
 
@@ -40,9 +42,8 @@ class DirTypeManager:
         if dir_type == "math":  # Convert to mathematical convention
             return data
         math_dir = (90 - data + OFFSET[dir_type]) * np.pi / 180
-        dask_manager = DaskManager()
-        math_dir = dask_manager.mod(math_dir, 2 * np.pi)
-        mask = dask_manager.undask_me(math_dir > np.pi)
+        math_dir = dask_computations.mod(math_dir, 2 * np.pi)
+        mask = dask_computations.undask_me(math_dir > np.pi)
         if isinstance(mask, xr.DataArray):
             mask = mask.data
         if isinstance(math_dir, xr.DataArray):
@@ -57,7 +58,7 @@ class DirTypeManager:
             return data
 
         data = 90 - data * 180 / np.pi + OFFSET[dir_type]
-        return DaskManager().mod(data, 360)
+        return dask_computations.mod(data, 360)
 
     @staticmethod
     def compute_magnitude(x, y):
@@ -70,6 +71,5 @@ class DirTypeManager:
         if x is None or y is None:
             return None
 
-        dask_manager = DaskManager()
-        math_dir = dask_manager.arctan2(y, x)
+        math_dir = dask_computations.arctan2(y, x)
         return math_dir

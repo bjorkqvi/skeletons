@@ -1,15 +1,14 @@
 import numpy as np
 
 from geo_skeletons.errors import DataWrongDimensionError
+from geo_skeletons import dask_computations
 
 
 class ReshapeManager:
     def __init__(
         self,
-        dask_manager,
         silent: bool = True,
     ) -> None:
-        self.dask_manager = dask_manager
         self.silent = silent
 
     def explicit_reshape(self, data, data_coords, expected_coords):
@@ -29,7 +28,7 @@ class ReshapeManager:
             raise DataWrongDimensionError(data.shape, len(coord_order))
 
         original_shape = data.shape
-        data = self.dask_manager.reshape_me(data, tuple(coord_order))
+        data = dask_computations.reshape_me(data, tuple(coord_order))
         if not self.silent:
             print(
                 f"Reshaping data {original_shape} -> {data.shape}: {data_coords} -> {expected_coords}"
@@ -74,7 +73,7 @@ class ReshapeManager:
 
         trivial_places = tuple(np.where(np.array(expected_shape) == 1)[0])
 
-        data = self.dask_manager.expand_dims(data, axis=trivial_places)
+        data = dask_computations.expand_dims(data, axis=trivial_places)
 
         if expected_shape != data.shape:
             return None

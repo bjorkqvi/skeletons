@@ -21,6 +21,8 @@ from copy import deepcopy
 from .decorators import add_datavar, add_magnitude
 from .iter import SkeletonIterator
 
+from geo_skeletons import dask_computations
+
 
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
@@ -43,9 +45,71 @@ class Skeleton:
         **kwargs,
     ) -> None:
         self.name = name
-        if chunks is not None:
-            self.chunks = chunks
-        self._init_structure(x, y, lon, lat, utm=utm, **kwargs)
+        self._init_structure(x, y, lon, lat, utm=utm, chunks=chunks, **kwargs)
+        self._init_managers(utm=utm, chunks=chunks)
+        self._init_metadata()
+
+    def _init_structure(
+        self, x=None, y=None, lon=None, lat=None, utm=None, chunks=None, **kwargs
+    ) -> None:
+        """Determines grid type (Cartesian/Spherical), generates a DatasetManager
+        and initializes the Xarray dataset within the DatasetManager.
+
+        The initial coordinates and variables are read from the method of the
+        subclass (e.g. PointSkeleton)
+        """
+
+        # Don't want to alter the CoordManager of the class
+        if not self.core._is_initialized():
+            self.core = deepcopy(self.core)  # Makes a copy of the class coord_manager
+            self.meta = deepcopy(self.meta)
+            self.meta._coord_manager = self.core
+
+        # # The manager will contain the Xarray Dataset
+        if self.ds() is None:
+            self._ds_manager = DatasetManager(self.core)
+        else:
+            self._ds_manager.coord_manager = self.core
+        self.meta._ds_manager = self._ds_manager
+
+        x, y, lon, lat, kwargs = sanitize.sanitize_input(
+            x, y, lon, lat, self.is_gridded(), **kwargs
+        )
+
+        x_str, y_str, xvec, yvec = sanitize.will_grid_be_spherical_or_cartesian(
+            x, y, lon, lat
+        )
+        self.core.x_str = x_str
+        self.core.y_str = y_str
+
+        # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
+        self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
+        self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
+
+        self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
+
+    def _init_managers(self, utm: tuple[str, int], chunks: tuple[int]):
+        self._dir_type_manager = DirTypeManager(coord_manager=self.core)
+
+        self.utm = UTMManager(
+            lat=self.edges("lat", strict=True),
+            lon=self.edges("lon", strict=True),
+            metadata_manager=self.meta,
+        )
+        self.utm.set(utm, silent=True)
+
+        if chunks is None:
+            if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
+                chunks = self._chunks
+
+        self.dask = DaskManager(skeleton=self, chunks=chunks)
+
+    def _init_metadata(self) -> None:
+        # Set metadata
+        for name in self.core.all_objects("all"):
+            metavar = self.core.get(name).meta
+            if metavar is not None:
+                self.meta.append(metavar.meta_dict(), name)
 
     def add_datavar(
         self, name: str, coord_group: str = "all", default_value: float = 0.0
@@ -124,60 +188,6 @@ class Skeleton:
         points.meta.set(ds.attrs)
 
         return points
-
-    def _init_structure(
-        self, x=None, y=None, lon=None, lat=None, utm=None, **kwargs
-    ) -> None:
-        """Determines grid type (Cartesian/Spherical), generates a DatasetManager
-        and initializes the Xarray dataset within the DatasetManager.
-
-        The initial coordinates and variables are read from the method of the
-        subclass (e.g. PointSkeleton)
-        """
-
-        # Don't want to alter the CoordManager of the class
-        if not self.core._is_initialized():
-            self.core = deepcopy(self.core)  # Makes a copy of the class coord_manager
-            self.meta = deepcopy(self.meta)
-            self.meta._coord_manager = self.core
-
-        # # The manager will contain the Xarray Dataset
-        if self.ds() is None:
-            self._ds_manager = DatasetManager(self.core)
-        else:
-            self._ds_manager.coord_manager = self.core
-        self.meta._ds_manager = self._ds_manager
-
-        x, y, lon, lat, kwargs = sanitize.sanitize_input(
-            x, y, lon, lat, self.is_gridded(), **kwargs
-        )
-
-        x_str, y_str, xvec, yvec = sanitize.will_grid_be_spherical_or_cartesian(
-            x, y, lon, lat
-        )
-        self.core.x_str = x_str
-        self.core.y_str = y_str
-
-        # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
-        self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
-        self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
-
-        self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
-
-        self._dir_type_manager = DirTypeManager(coord_manager=self.core)
-        self.utm = UTMManager(
-            lat=self.edges("lat", strict=True),
-            lon=self.edges("lon", strict=True),
-            metadata_manager=self.meta,
-        )
-
-        self.utm.set(utm, silent=True)
-
-        # Set metadata
-        for name in self.core.all_objects("all"):
-            metavar = self.core.get(name).meta
-            if metavar is not None:
-                self.meta.append(metavar.meta_dict(), name)
 
     def absorb(self, skeleton_to_absorb, dim: str) -> None:
         """Absorb another object of same type over a centrain dimension.
@@ -260,7 +270,7 @@ class Skeleton:
 
         data [None]: numpy/dask array. If None [Default], an empty array is set.
 
-        Any numpy array is converted to a dask-array if dask-mode is set with .activate_dask().
+        Any numpy array is converted to a dask-array if dask-mode is set with .dask.activate().
         If keyword 'chunks' is set, then conversion to dask is always done.
 
         If given data is a dask array, then it is never rechunked, but used as is.
@@ -287,31 +297,27 @@ class Skeleton:
                 f"'name' must be of type 'str', not '{type(name).__name__}'!"
             )
 
-        # Takes care of dask/numpy operations so we don't have to check every tim
-        dask_manager = DaskManager(chunks=chunks or self.chunks)
-
         if data is None:
             data = self.get(name, empty=True, squeeze=False, dir_type=dir_type)
 
+        data = dask_computations.atleast_1d(data)
+
         # Make constant array if given data has no shape
         # Return original data if it has shape
-        data = dask_manager.constant_array(
-            data, self.shape(name), dask=(self.dask() or chunks is not None)
-        )
+        data = self.dask.constant_array(data, self.shape(name), chunks=chunks)
 
         # If a DataArray is given, then read the dimensions from there if not explicitly provided in a keyword
         if isinstance(data, xr.DataArray):
             coords = coords or list(data.dims)
             data = data.data
 
-        if self.dask() or chunks is not None:
-            data = dask_manager.dask_me(data, chunks=chunks)
+        data = self.dask.dask_me(data, chunks=chunks)
 
         data = self._reshape_data(
             name,
             data,
             coords,
-            dask_manager,
+            self.dask,
             silent,
             allow_reshape,
             allow_transpose,
@@ -325,14 +331,12 @@ class Skeleton:
             self._set_magnitude(
                 name=name,
                 data=data,
-                dask_manager=dask_manager,
             )
         elif name in self.core.directions("all"):
             self._set_direction(
                 name=name,
                 data=data,
                 dir_type=dir_type,
-                dask_manager=dask_manager,
             )
         else:
             self._set_data(
@@ -371,7 +375,7 @@ class Skeleton:
 
         If data cannot be reshaped, a DataWrongDimensionError is raised.
         """
-        reshape_manager = ReshapeManager(dask_manager=dask_manager, silent=silent)
+        reshape_manager = ReshapeManager(silent=silent)
         coord_type = self.core.coord_group(name)
 
         # Do explicit reshape if coordinates of the provided data is given
@@ -420,7 +424,6 @@ class Skeleton:
         self,
         name: str,
         data,
-        dask_manager: DaskManager,
     ) -> None:
         """Sets a magnitude variable.
 
@@ -431,8 +434,8 @@ class Skeleton:
         x_component, y_component = obj.x, obj.y
         dir_data = self.get(obj.direction.name, dir_type="math")
 
-        s = dask_manager.sin(dir_data)
-        c = dask_manager.cos(dir_data)
+        s = dask_computations.sin(dir_data)
+        c = dask_computations.cos(dir_data)
         ux = data * c
         uy = data * s
 
@@ -450,7 +453,6 @@ class Skeleton:
         name: str,
         data,
         dir_type: str,
-        dask_manager: DaskManager,
     ) -> None:
         """Sets a directeion variable.
 
@@ -465,8 +467,8 @@ class Skeleton:
 
         data = self._dir_type_manager.convert_to_math_dir(data, dir_type)
 
-        s = dask_manager.sin(data)
-        c = dask_manager.cos(data)
+        s = dask_computations.sin(data)
+        c = dask_computations.cos(data)
         ux = mag_data * c
         uy = mag_data * s
 
@@ -572,15 +574,14 @@ class Skeleton:
 
         if squeeze:
             data = self._smart_squeeze(name, data)
-
         # Use dask mode default if not explicitly overridden
-        if dask is None:
-            dask = self.dask()
-        # Need to make sure we set chunks if dask mode is not activated
-        # Can't use chunks if dask is not requested
-        chunks = self.chunks or "auto" if dask else None
-        dask_manager = DaskManager(chunks)
-        data = dask_manager.dask_me(data) if dask else dask_manager.undask_me(data)
+
+        if dask is None:  # Use DaskManger defaults
+            data = self.dask.dask_me(data)
+        elif dask:  # Force dask array even if dask-mode deactivated
+            data = self.dask.dask_me(data, force=True)
+        elif not dask:
+            data = self.dask.undask_me(data)
 
         if not data_array:
             data = data.data
@@ -649,6 +650,11 @@ class Skeleton:
         **kwargs,
     ):
         data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
+        if not self.dask.is_active() and (
+            empty or self._ds_manager.get(name, strict=True) is None
+        ):
+            data = self.dask.undask_me(data)
+
         if data is None:
             return None
 
@@ -1210,70 +1216,6 @@ class Skeleton:
             }
         else:
             return {"inds": np.array(inds), "dx": np.array(dx)}
-
-    def activate_dask(
-        self, chunks="auto", primary_dim: str = None, rechunk: bool = True
-    ) -> None:
-        self.chunks = chunks
-        if rechunk:
-            self.rechunk(chunks, primary_dim)
-
-    def deactivate_dask(self, dechunk: bool = False) -> None:
-        """Deactivates the use of dask, meaning:
-
-        1) Data will not be converted to dask-arrays when set, unless chunks provided
-        2) Data will be converted from dask-arrays to numpy arrays when get
-        3) All data will be converted to numpy arrays if unchunk=True"""
-        self.chunks = None
-
-        if dechunk:
-            self._dechunk()
-
-    def rechunk(
-        self,
-        chunks: Union[tuple, dict, str] = "auto",
-        primary_dim: Union[str, list[str]] = None,
-    ) -> None:
-        if self.chunks is None:
-            raise ValueError(
-                "Dask mode is not activated! use .activate_dask() before rechunking"
-            )
-        if primary_dim:
-            if isinstance(primary_dim, str):
-                primary_dim = [primary_dim]
-            chunks = {}
-            for dim in primary_dim:
-                chunks[dim] = len(self.get(dim))
-
-        if isinstance(chunks, dict):
-            chunks = self._chunk_tuple_from_dict(chunks)
-        self.chunks = chunks
-        dask_manager = DaskManager(self.chunks)
-        for var in self.core.data_vars():
-            data = self.get(var)
-            if data is not None:
-                self.set(var, dask_manager.dask_me(data, chunks))
-        for var in self.core.masks():
-            data = self.get(var)
-            if data is not None:
-                self.set(var, dask_manager.dask_me(data, chunks))
-
-    def _dechunk(self) -> None:
-        """Computes all dask arrays and coverts them to numpy arrays.
-
-        If data is big this might taka a long time or kill Python."""
-        dask_manager = DaskManager()
-        for var in self.core.data_vars():
-            data = self.get(var)
-            if data is not None:
-                self.set(var, dask_manager.undask_me(data))
-        for var in self.core.masks():
-            data = self.get(var)
-            if data is not None:
-                self.set(var, dask_manager.undask_me(data))
-
-    def dask(self) -> bool:
-        return self.chunks is not None
 
     @property
     def name(self) -> str:

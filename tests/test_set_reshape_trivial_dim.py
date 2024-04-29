@@ -33,7 +33,7 @@ def test_trivial_dimension_explicit_starting_with_numpy():
     points.set_dummy(data_T, coords=["z", "inds"])
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert not data_is_dask(points.dummy())
@@ -68,7 +68,7 @@ def test_trivial_dimension_explicit_starting_with_dask():
     points.set_dummy(data_T, coords=["z", "inds"])
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert not data_is_dask(points.dummy())
@@ -89,7 +89,7 @@ def test_trivial_dimension_implicit_starting_with_numpy():
         pass
 
     points = DummySkeleton(lon=1, lat=2, z=range(4))
-    points.activate_dask()
+    points.dask.activate()
     data = np.zeros((1, 4))
     data_wrong_dim = np.zeros((4,))
     data_T = np.zeros((4, 1))
@@ -108,7 +108,7 @@ def test_trivial_dimension_implicit_starting_with_numpy():
     points.set_dummy(data_T, allow_reshape=True)
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert not data_is_dask(points.dummy())
@@ -134,7 +134,7 @@ def test_trivial_dimension_implicit_starting_with_dask():
         pass
 
     points = DummySkeleton(lon=1, lat=2, z=range(4))
-    points.activate_dask()
+    points.dask.activate()
     data = da.from_array(np.zeros((1, 4)))
     data_wrong_dim = da.from_array(np.zeros((4,)))
     data_T = da.from_array(np.zeros((4, 1)))
@@ -152,7 +152,7 @@ def test_trivial_dimension_implicit_starting_with_dask():
     points.set_dummy(data_T, allow_reshape=True)
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert not data_is_dask(points.dummy())
@@ -198,7 +198,7 @@ def test_squeeze_trivial_dimension_implicit_starting_with_numpy():
     points.set_dummy(data_wrong_dim2, allow_reshape=True)
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert not data_is_dask(points.dummy())
@@ -243,7 +243,7 @@ def test_squeeze_trivial_dimension_implicit_starting_with_dask():
     points.set_dummy(data_wrong_dim2, allow_reshape=True)
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert not data_is_dask(points.dummy())

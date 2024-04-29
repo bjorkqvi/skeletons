@@ -11,7 +11,7 @@ def data_is_dask(data) -> bool:
 
 def test_numpy():
     data = np.zeros((100, 100))
-    dask_manager = DaskManager(chunks="auto")
+    dask_manager = DaskManager(chunks="auto", skeleton=None)
 
     assert not data_is_dask(data)
     assert data_is_dask(data) == dask_manager.data_is_dask(data)
@@ -21,7 +21,7 @@ def test_numpy():
     assert data_is_dask(dask_manager.dask_me(data))
     assert not data_is_dask(dask_manager.undask_me(data))
 
-    dask_manager = DaskManager(chunks=(10, 10))
+    dask_manager = DaskManager(chunks=(10, 10), skeleton=None)
     assert dask_manager.dask_me(data).chunksize == (10, 10)
 
 
@@ -29,7 +29,7 @@ def test_dask_array():
     data = da.from_array(np.zeros((100, 100)))
     assert data.chunksize == (100, 100)
 
-    dask_manager = DaskManager(chunks=None)
+    dask_manager = DaskManager(chunks=None, skeleton=None)
 
     assert data_is_dask(data)
     assert data_is_dask(data) == dask_manager.data_is_dask(data)
@@ -39,7 +39,7 @@ def test_dask_array():
     assert not data_is_dask(dask_manager.dask_me(data))
     assert not data_is_dask(dask_manager.undask_me(data))
 
-    dask_manager2 = DaskManager(chunks=(10, 10))
+    dask_manager2 = DaskManager(chunks=(10, 10), skeleton=None)
     assert data_is_dask(dask_manager2.dask_me(data))
     assert not data_is_dask(dask_manager2.undask_me(data))
 
@@ -58,7 +58,7 @@ def test_data_array():
         ),
     )
 
-    dask_manager = DaskManager()
+    dask_manager = DaskManager(skeleton=None)
 
     assert not data_is_dask(daa)
     assert data_is_dask(daa) == dask_manager.data_is_dask(daa)
@@ -67,7 +67,7 @@ def test_data_array():
     assert data_is_dask(dask_manager.dask_me(daa))
     assert not data_is_dask(dask_manager.undask_me(daa))
 
-    dask_manager = DaskManager(chunks=(10, 10))
+    dask_manager = DaskManager(chunks=(10, 10), skeleton=None)
     assert not data_is_dask(dask_manager.undask_me(daa))
     assert data_is_dask(dask_manager.dask_me(daa))
     assert dask_manager.dask_me(daa, chunks=(10, 10)).data.chunksize == (10, 10)
@@ -84,7 +84,7 @@ def test_dask_data_array():
         ),
     )
 
-    dask_manager = DaskManager(chunks=None)
+    dask_manager = DaskManager(chunks=None, skeleton=None)
 
     assert data_is_dask(daa)
     assert data_is_dask(daa) == dask_manager.data_is_dask(daa)
@@ -94,7 +94,7 @@ def test_dask_data_array():
     assert not data_is_dask(dask_manager.dask_me(daa))
     assert not data_is_dask(dask_manager.undask_me(daa))
 
-    dask_manager = DaskManager(chunks=(10, 10))
+    dask_manager = DaskManager(chunks=(10, 10), skeleton=None)
     assert not data_is_dask(dask_manager.undask_me(daa))
     assert data_is_dask(dask_manager.dask_me(daa))
     assert dask_manager.dask_me(daa, chunks=(10, 10)).data.chunksize == (10, 10)

@@ -3,25 +3,108 @@ import xarray as xr
 from typing import Union
 import numpy as np
 
+from geo_skeletons.dask_computations import data_is_dask
+
 
 class DaskManager:
-    def __init__(self, chunks="auto"):
+    def __init__(self, skeleton, chunks="auto"):
         self.chunks = chunks
+        self._skeleton = skeleton
+
+    def activate(
+        self, chunks="auto", primary_dim: str = None, rechunk: bool = True
+    ) -> None:
+        self.chunks = chunks
+        if rechunk:
+            self.rechunk(chunks, primary_dim)
+
+    def deactivate(self, dechunk: bool = False) -> None:
+        """Deactivates the use of dask, meaning:
+
+        1) Data will not be converted to dask-arrays when set, unless chunks provided
+        2) Data will be converted from dask-arrays to numpy arrays when get
+        3) All data will be converted to numpy arrays if unchunk=True"""
+        self.chunks = None
+
+        if dechunk:
+            self.dechunk()
+
+    def rechunk(
+        self,
+        chunks: Union[tuple, dict, str] = "auto",
+        primary_dim: Union[str, list[str]] = None,
+    ) -> None:
+        if self.chunks is None:
+            raise ValueError(
+                "Dask mode is not activated! use .activate_dask() before rechunking"
+            )
+        if primary_dim:
+            if isinstance(primary_dim, str):
+                primary_dim = [primary_dim]
+            chunks = {}
+            for dim in primary_dim:
+                chunks[dim] = len(self._skeleton.get(dim))
+
+        if isinstance(chunks, dict):
+            chunks = self._skeleton._chunk_tuple_from_dict(chunks)
+        for var in self._skeleton.core.data_vars():
+            data = self._skeleton.get(var, strict=True)
+            if data is not None:
+                self._skeleton.set(var, self.dask_me(data, chunks))
+        for var in self._skeleton.core.masks():
+            data = self._skeleton.get(var, strict=True)
+            if data is not None:
+                self._skeleton.set(var, self.dask_me(data, chunks))
+
+    def dechunk(self) -> None:
+        """Computes all dask arrays and coverts them to numpy arrays.
+
+        If data is big this might taka a long time or kill Python."""
+        dask_manager = DaskManager()
+        for var in self._skeleton.core.data_vars():
+            data = self._skeleton.get(var)
+            if data is not None:
+                self._skeleton.set(var, dask_manager.undask_me(data))
+        for var in self._skeleton.core.masks():
+            data = self._skeleton.get(var)
+            if data is not None:
+                self._skeleton.set(var, dask_manager.undask_me(data))
+
+    def is_active(self) -> bool:
+        return self.chunks is not None
 
     @staticmethod
     def data_is_dask(data) -> bool:
         """Checks if a data array is a dask array"""
-        return hasattr(data, "chunks") and data.chunks is not None
+        return data_is_dask(data)
 
-    def dask_me(self, data, chunks=None):
-        """Convert a numpy array to a dask array if needed and wanted"""
+    def dask_me(self, data, chunks=None, force: bool = False):
+        """Convert a numpy array to a dask array if needed and wanted
+
+        If dask-mode is activated: returns dask array with set chunking
+            - Override set chunking with chunks = ...
+
+        If dask-mode is deactivate: return numpy array
+            - Dask is applied if chunks = ... is provided
+
+        force = True: Always return a dask array no matter what
+            - Use given chunks = ... or set chunks or 'auto'"""
+
         if data is None:
             return None
 
-        if self.chunks is None and chunks is None:
-            return np.array(data)
+        if force and not self.data_is_dask(data):
+            chunks = chunks or self.chunks or "auto"
+
+        # No dask-mode and dasking is not explicitly requested
+        if not self.is_active() and chunks is None and not force:
+            if not self.data_is_dask(data):
+                return data
+            else:
+                return data.compute()
 
         if self.data_is_dask(data):
+            # Rechunk already dasked data if explicitly requested
             if chunks is not None:
                 if not isinstance(data, xr.DataArray):
                     data = data.rechunk(chunks)
@@ -30,6 +113,7 @@ class DaskManager:
 
             return data
 
+        # Convert numpy array to dask array
         chunks = chunks or self.chunks
         if not isinstance(data, xr.DataArray):
             return da.from_array(data, chunks=chunks)
@@ -41,64 +125,34 @@ class DaskManager:
         """Convert a dask array to a numpy array if needed"""
         if data is None:
             return None
-        if not self.data_is_dask(data):
-            return data
-
-        return data.compute()
-
-    def constant_array(
-        self, data, shape: tuple[int], dask: bool = True
-    ) -> Union[da.array, np.array]:
-        """Creates an dask or numpy array of a certain shape is given data is shapeless."""
-        if isinstance(data, int) or isinstance(data, float) or isinstance(data, bool):
-            if dask or self.data_is_dask(data):
-                data = da.full(shape, data)
-            else:
-                data = np.full(shape, data)
-
-        if isinstance(data, list) or isinstance(data, tuple):
-            data = self.dask_me(data)
-
-        if data is not None and data.shape == ():
-            if dask or self.data_is_dask(data):
-                data = da.full(shape, data)
-            else:
-                data = np.full(shape, data)
-
+        if self.data_is_dask(data):
+            return data.compute()
         return data
 
-    def reshape_me(self, data, coord_order):
-        if self.data_is_dask(data):
-            return da.transpose(data, coord_order)
-        else:
-            return np.transpose(data, coord_order)
+    def constant_array(
+        self, data, shape: tuple[int], chunks: tuple[int]
+    ) -> Union[da.array, np.array]:
+        """Creates an dask or numpy array of a certain shape is given data is shapeless."""
+        chunks = chunks or self.chunks
+        use_dask = chunks is not None
 
-    def expand_dims(self, data, axis=tuple[int]):
-        if self.data_is_dask(data):
-            return da.expand_dims(data, axis=axis)
-        else:
-            return np.expand_dims(data, axis=axis)
+        if data.shape != (1,):
+            return data
 
-    def cos(self, data):
-        if self.data_is_dask(data):
-            return da.cos(data)
+        if use_dask or self.data_is_dask(data):
+            return da.full(shape, data, chunks=chunks)
         else:
-            return np.cos(data)
+            return np.full(shape, data)
 
-    def sin(self, data):
-        if self.data_is_dask(data):
-            return da.sin(data)
-        else:
-            return np.sin(data)
+        # if isinstance(data, int) or isinstance(data, float) or isinstance(data, bool):
 
-    def mod(self, data, mod):
-        if self.data_is_dask(data):
-            return da.mod(data, mod)
-        else:
-            return np.mod(data, mod)
+        # if isinstance(data, list) or isinstance(data, tuple):
+        #     data = self.dask_me(data, chunks=chunks)
 
-    def arctan2(self, y, x):
-        if self.data_is_dask(y) and self.data_is_dask(x):
-            return da.arctan2(y, x)
-        else:
-            return np.arctan2(y, x)
+        # if data is not None and np.array(data).shape == ():
+        #     if use_dask or self.data_is_dask(data):
+        #         data = da.full(shape, data, chunks=chunks)
+        #     else:
+        #         data = np.full(shape, data)
+
+        # return data
