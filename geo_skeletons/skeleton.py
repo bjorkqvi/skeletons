@@ -311,7 +311,10 @@ class Skeleton:
             coords = coords or list(data.dims)
             data = data.data
 
-        data = self.dask.dask_me(data, chunks=chunks)
+        if not self.dask.is_active() and chunks is None:
+            data = self.dask.undask_me(data)
+        else:
+            data = self.dask.dask_me(data, chunks=chunks)
 
         data = self._reshape_data(
             name,
@@ -577,7 +580,10 @@ class Skeleton:
         # Use dask mode default if not explicitly overridden
 
         if dask is None:  # Use DaskManger defaults
-            data = self.dask.dask_me(data)
+            if self.dask.is_active():
+                data = self.dask.dask_me(data)
+            else:
+                data = self.dask.undask_me(data)
         elif dask:  # Force dask array even if dask-mode deactivated
             data = self.dask.dask_me(data, force=True)
         elif not dask:

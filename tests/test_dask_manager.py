@@ -35,8 +35,7 @@ def test_dask_array():
     assert data_is_dask(data) == dask_manager.data_is_dask(data)
 
     np.testing.assert_almost_equal(data.compute(), dask_manager.undask_me(data))
-
-    assert not data_is_dask(dask_manager.dask_me(data))
+    assert data_is_dask(dask_manager.dask_me(data))
     assert not data_is_dask(dask_manager.undask_me(data))
 
     dask_manager2 = DaskManager(chunks=(10, 10), skeleton=None)
@@ -90,8 +89,7 @@ def test_dask_data_array():
     assert data_is_dask(daa) == dask_manager.data_is_dask(daa)
 
     np.testing.assert_almost_equal(daa.data.compute(), dask_manager.undask_me(daa).data)
-
-    assert not data_is_dask(dask_manager.dask_me(daa))
+    assert data_is_dask(dask_manager.dask_me(daa))
     assert not data_is_dask(dask_manager.undask_me(daa))
 
     dask_manager = DaskManager(chunks=(10, 10), skeleton=None)

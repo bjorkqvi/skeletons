@@ -84,7 +84,7 @@ class DaskManager:
         If dask-mode is activated: returns dask array with set chunking
             - Override set chunking with chunks = ...
 
-        If dask-mode is deactivate: return numpy array
+        If dask-mode is deactivate: return numpy array if numpy array is given
             - Dask is applied if chunks = ... is provided
 
         force = True: Always return a dask array no matter what
@@ -92,16 +92,6 @@ class DaskManager:
 
         if data is None:
             return None
-
-        if force and not self.data_is_dask(data):
-            chunks = chunks or self.chunks or "auto"
-
-        # No dask-mode and dasking is not explicitly requested
-        if not self.is_active() and chunks is None and not force:
-            if not self.data_is_dask(data):
-                return data
-            else:
-                return data.compute()
 
         if self.data_is_dask(data):
             # Rechunk already dasked data if explicitly requested
@@ -113,13 +103,17 @@ class DaskManager:
 
             return data
 
-        # Convert numpy array to dask array
-        chunks = chunks or self.chunks
-        if not isinstance(data, xr.DataArray):
-            return da.from_array(data, chunks=chunks)
-        else:
-            data.data = da.from_array(data.data, chunks=chunks)
+        if force:
+            chunks = chunks or self.chunks or "auto"
+
+        if self.is_active() or chunks:
+            if not isinstance(data, xr.DataArray):
+                return da.from_array(data, chunks=chunks or self.chunks)
+            else:
+                data.data = da.from_array(data.data, chunks=chunks or self.chunks)
             return data
+
+        return data
 
     def undask_me(self, data):
         """Convert a dask array to a numpy array if needed"""
@@ -136,23 +130,10 @@ class DaskManager:
         chunks = chunks or self.chunks
         use_dask = chunks is not None
 
-        if data.shape != (1,):
+        if data.shape != (1,) or data.shape == shape:
             return data
 
         if use_dask or self.data_is_dask(data):
-            return da.full(shape, data, chunks=chunks)
+            return da.full(shape, data[0], chunks=chunks or "auto")
         else:
             return np.full(shape, data)
-
-        # if isinstance(data, int) or isinstance(data, float) or isinstance(data, bool):
-
-        # if isinstance(data, list) or isinstance(data, tuple):
-        #     data = self.dask_me(data, chunks=chunks)
-
-        # if data is not None and np.array(data).shape == ():
-        #     if use_dask or self.data_is_dask(data):
-        #         data = da.full(shape, data, chunks=chunks)
-        #     else:
-        #         data = np.full(shape, data)
-
-        # return data
