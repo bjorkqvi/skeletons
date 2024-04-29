@@ -29,7 +29,7 @@ def test_single_point_starting_with_numpy():
     assert data_is_dask(points.ds().dummy.data)
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert not data_is_dask(points.ds().dummy.data)
@@ -43,13 +43,13 @@ def test_single_point_starting_with_numpy():
     assert not data_is_dask(points.ds().dummy.data)
     assert not data_is_dask(points.dummy())
 
-    points.activate_dask(rechunk=False)
+    points.dask.activate(rechunk=False)
     assert not data_is_dask(points.ds().dummy.data)
     assert not data_is_dask(points.dummy(dask=False))
     assert data_is_dask(points.dummy())
     assert data_is_dask(points.get("dummy"))
 
-    points.activate_dask()
+    points.dask.activate()
     assert data_is_dask(points.ds().dummy.data)
     assert data_is_dask(points.dummy())
     assert not data_is_dask(points.dummy(dask=False))
@@ -78,7 +78,7 @@ def test_single_point_starting_with_dask():
     assert data_is_dask(points.ds().dummy.data)
     assert data_is_dask(points.dummy())
 
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     points.set_dummy(data)
     assert data_is_dask(points.ds().dummy.data)
@@ -88,7 +88,7 @@ def test_single_point_starting_with_dask():
     assert data_is_dask(points.ds().dummy.data)
     assert not data_is_dask(points.dummy())
 
-    points.activate_dask()
+    points.dask.activate()
     points.set_dummy(data)
     assert data_is_dask(points.ds().dummy.data)
     assert data_is_dask(points.dummy())

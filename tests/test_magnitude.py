@@ -12,6 +12,7 @@ def test_magnitude_point():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
+    u = points.u()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), 1)
@@ -77,7 +78,7 @@ def test_magnitude_gridded():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8), chunks="auto")
-    points.deactivate_dask()
+    points.dask.deactivate()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), 1)
@@ -143,8 +144,8 @@ def test_add_magnitude():
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
     points.add_magnitude("wind", x="u", y="v", direction="wdir", dir_type="from")
-    points.activate_dask(rechunk=False)
-    points.deactivate_dask()
+    points.dask.activate(rechunk=False)
+    points.dask.deactivate()
 
     np.testing.assert_almost_equal(np.mean(points.u()), 1)
     np.testing.assert_almost_equal(np.mean(points.v()), 1)
@@ -384,7 +385,7 @@ def test_turn_direction():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
-    points.deactivate_dask()
+    points.dask.deactivate()
     points.set_u(3)
     points.set_v(3)
     ux = np.full(points.shape("wind"), 3)

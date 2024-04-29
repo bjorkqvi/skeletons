@@ -117,11 +117,10 @@ def add_mask(
             silent: bool = True,
         ) -> None:
 
-            dask_manager = DaskManager(chunks=chunks or self.chunks)
-            data = dask_manager.dask_me(data)
+            data = self.dask.dask_me(data)
 
             if data is not None:
-                if self.dask() or chunks is not None:
+                if self.dask.is_active() or chunks is not None:
                     data = dask.array.logical_not(data)
                 else:
                     data = np.logical_not(data)

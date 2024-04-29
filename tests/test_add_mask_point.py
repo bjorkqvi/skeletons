@@ -182,8 +182,9 @@ def test_add_mask_trigger_two():
         pass
 
     data = WaveHeight(lon=(10, 20, 30), lat=(30, 40, 50), chunks="auto")
-    data.deactivate_dask()
+    data.dask.deactivate()
     data.set_hs([0, -999, 3])
+
     np.testing.assert_almost_equal(data.sea_mask(), np.array([False, False, True]))
     np.testing.assert_almost_equal(data.land_mask(), np.array([True, True, False]))
     np.testing.assert_almost_equal(data.point_mask(), np.array([False, True, False]))
