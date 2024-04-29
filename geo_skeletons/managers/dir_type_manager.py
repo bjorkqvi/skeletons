@@ -16,6 +16,8 @@ class DirTypeManager:
         self.coord_manager = coord_manager
 
     def convert(self, data, in_type: str, out_type: str):
+        if out_type is None:
+            return data
         if in_type is None:
             raise ValueError(
                 "Cannot convert 'dir_type' for a non-directional variable!"

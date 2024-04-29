@@ -1,14 +1,8 @@
-from .coordinate_manager import (
-    CoordinateManager,
-    move_time_and_spatial_to_front,
-    SPATIAL_COORDS,
-)
-
 import pandas as pd
 import numpy as np
 from typing import Iterable
 
-from ..errors import (
+from geo_skeletons.errors import (
     DataWrongDimensionError,
     UnknownCoordinateError,
     CoordinateWrongLengthError,
@@ -16,101 +10,51 @@ from ..errors import (
 )
 
 
-class DataSanitizer:
-    def __init__(self, coord_manager: CoordinateManager) -> None:
-        self.coord_manager = coord_manager
+def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
+    """Sanitizes input. After this all variables are either
+    non-empty np.ndarrays with len >= 1 or None"""
 
-    @staticmethod
-    def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
-        """Sanitizes input. After this all variables are either
-        non-empty np.ndarrays with len >= 1 or None"""
+    spatial = {"x": x, "y": y, "lon": lon, "lat": lat}
+    for key, value in spatial.items():
+        spatial[key] = sanitize_singe_variable(key, value)
 
-        spatial = {"x": x, "y": y, "lon": lon, "lat": lat}
-        for key, value in spatial.items():
-            spatial[key] = sanitize_singe_variable(key, value)
-
-        other = {}
-        for key, value in kwargs.items():
-            if key == "time":
-                # other[key] = sanitize_singe_variable(key, value, fmt="datetime")
-                other[key] = sanitize_time_input(value)
-            else:
-                other[key] = sanitize_singe_variable(key, value)
-
-        if is_gridded_format:
-            spatial = get_unique_values(spatial)
-
+    other = {}
+    for key, value in kwargs.items():
+        if key == "time":
+            # other[key] = sanitize_singe_variable(key, value, fmt="datetime")
+            other[key] = sanitize_time_input(value)
         else:
-            spatial = sanitize_point_structure(spatial)
+            other[key] = sanitize_singe_variable(key, value)
 
-            for x, y in [("x", "y"), ("lon", "lat")]:
-                length_ok = check_that_variables_equal_length(spatial[x], spatial[y])
-                if not length_ok:
-                    raise Exception(
-                        f"{x} is length {len(spatial[x])} but {y} is length {len(spatial[y])}!"
-                    )
+    if is_gridded_format:
+        spatial = get_unique_values(spatial)
 
-        if np.all([a is None for a in spatial.values()]):
-            raise Exception("x, y, lon, lat cannot ALL be None!")
+    else:
+        spatial = sanitize_point_structure(spatial)
 
-        if spatial["lon"] is not None:
-            spatial["lon"] = clean_lons(spatial["lon"])
+        for x, y in [("x", "y"), ("lon", "lat")]:
+            check_that_variables_equal_length(spatial[x], spatial[y])
 
-        return spatial["x"], spatial["y"], spatial["lon"], spatial["lat"], other
+    if np.all([a is None for a in spatial.values()]):
+        raise GridError
 
-    @staticmethod
-    def force_to_iterable(x, fmt: str = None) -> Iterable:
-        """Returns an numpy array with at least one dimension and Nones removed
+    if spatial["lon"] is not None:
+        spatial["lon"] = clean_lons(spatial["lon"])
 
-        Will return None if given None."""
-        if x is None:
-            return None
+    return spatial["x"], spatial["y"], spatial["lon"], spatial["lat"], other
 
-        x = np.atleast_1d(x)
-        x = np.array([a for a in x if a is not None])
 
-        return x
+def force_to_iterable(x, fmt: str = None) -> Iterable:
+    """Returns an numpy array with at least one dimension and Nones removed
 
-    def check_consistency(self, coord_dict, var_dict) -> None:
-        """Checks that the provided coordinates are consistent with the
-        coordinates that the Skeleton is defined over."""
-        coords = list(coord_dict.keys())
-        # Check spatial coordinates
-        xy_set = "x" in coords and "y" in coords
-        lonlat_set = "lon" in coords and "lat" in coords
-        inds_set = "inds" in coords
-        if inds_set:
-            ind_len = len(coord_dict["inds"])
-            for key, value in var_dict.items():
-                if len(value[1]) != ind_len:
-                    raise CoordinateWrongLengthError(
-                        variable=key,
-                        len_of_variable=len(value[1]),
-                        index_variable="inds",
-                        len_of_index_variable=ind_len,
-                    )
-        if not (xy_set or lonlat_set or inds_set):
-            raise GridError
-        if sum([xy_set, lonlat_set, inds_set]) > 1:
-            raise GridError
+    Will return None if given None."""
+    if x is None:
+        return None
 
-        # Check that all added coordinates are provided
-        for coord in self.coord_manager.coords("all"):
-            if coord not in coords:
-                if self.get(coord) is not None:
-                    # Add in old coordinate if it is not provided now (can happen when using set_spacing)
-                    coord_dict[coord] = self.ds().get(coord).values
-                else:
-                    raise UnknownCoordinateError(
-                        f"Skeleton has coordinate '{coord}', but it was not provided on initialization: {coords}!"
-                    )
+    x = np.atleast_1d(x)
+    x = np.array([a for a in x if a is not None])
 
-        # Check that all provided coordinates have been added
-        for coord in set(coords) - set(SPATIAL_COORDS):
-            if coord not in self.coord_manager.coords("all"):
-                raise UnknownCoordinateError(
-                    f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.coords('all')}! Missing a decorator?"
-                )
+    return x
 
 
 def will_grid_be_spherical_or_cartesian(x, y, lon, lat):
@@ -171,7 +115,7 @@ def coord_len_to_max_two(xvec):
 
 def sanitize_singe_variable(name: str, x):
     """Forces to nump array and checks dimensions etc"""
-    x = DataSanitizer(None).force_to_iterable(x)
+    x = force_to_iterable(x)
 
     # np.array([None, None]) -> None
     if x is None or all(v is None for v in x):
@@ -229,14 +173,16 @@ def get_edges_of_arrays(spatial: dict) -> dict:
     return spatial
 
 
-def check_that_variables_equal_length(x, y) -> bool:
+def check_that_variables_equal_length(x, y):
     if x is None and y is None:
         return True
     if x is None:
         raise ValueError(f"x/lon variable None even though y/lat variable is not!")
     if y is None:
         raise ValueError(f"y/lat variable None even though x/lon variable is not!")
-    return len(x) == len(y)
+    if len(x) != len(y):
+        raise CoordinateWrongLengthError(x, len(spatial[x]), y, len(spatial[y]))
+    return
 
 
 def sanitize_time_input(time):

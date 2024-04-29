@@ -7,8 +7,9 @@ from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.metadata_manager import MetaDataManager
 from .managers.dir_type_manager import DirTypeManager
-from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
 
+# from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
+from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union
 from .aux_funcs import distance_funcs, utm_funcs
@@ -147,13 +148,13 @@ class Skeleton:
             self._ds_manager.coord_manager = self.core
         self.meta._ds_manager = self._ds_manager
 
-        self._data_sanitizer = DataSanitizer(coord_manager=self.core)
-
-        x, y, lon, lat, kwargs = self._data_sanitizer.sanitize_input(
+        x, y, lon, lat, kwargs = sanitize.sanitize_input(
             x, y, lon, lat, self.is_gridded(), **kwargs
         )
 
-        x_str, y_str, xvec, yvec = will_grid_be_spherical_or_cartesian(x, y, lon, lat)
+        x_str, y_str, xvec, yvec = sanitize.will_grid_be_spherical_or_cartesian(
+            x, y, lon, lat
+        )
         self.core.x_str = x_str
         self.core.y_str = y_str
 
@@ -161,13 +162,6 @@ class Skeleton:
         self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
         self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
 
-        # existing_coords = {
-        #     c: self.get(c, strict=True) for c in self.core.coords("nonspatial")
-        # }
-        # coord_dict = self._data_sanitizer.determine_coords(
-        #     x=xvec, y=yvec, new_coords=kwargs, existing_coords=existing_coords
-        # )
-        # var_dict = self._data_sanitizer.determine_vars(coord_dict, x=xvec, y=yvec)
         self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
         self._dir_type_manager = DirTypeManager(coord_manager=self.core)
@@ -558,15 +552,13 @@ class Skeleton:
                 **kwargs,
             )
         else:
-            data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
-            if data is None:
-                return None
-
-            if dir_type is not None:
-                set_dir_type = self._dir_type_manager.get_dir_type(name)
-                data = self._dir_type_manager.convert(
-                    data, in_type=set_dir_type, out_type=dir_type
-                )
+            data = self._get_data(
+                name=name,
+                strict=strict,
+                dir_type=dir_type,
+                empty=empty,
+                **kwargs,
+            )
 
         if not isinstance(data, xr.DataArray):
             return None
@@ -597,10 +589,10 @@ class Skeleton:
 
     def _get_direction(
         self,
-        name,
-        strict: bool = False,
-        empty: bool = False,
-        dir_type: str = None,
+        name: str,
+        strict: bool,
+        empty: bool,
+        dir_type: str,
         **kwargs,
     ):
 
@@ -628,9 +620,9 @@ class Skeleton:
 
     def _get_magnitude(
         self,
-        name,
-        strict: bool = False,
-        empty: bool = False,
+        name: str,
+        strict: bool,
+        empty: bool,
         **kwargs,
     ):
         x_data = self._ds_manager.get(
@@ -646,6 +638,25 @@ class Skeleton:
             **kwargs,
         )
         data = self._dir_type_manager.compute_magnitude(x_data, y_data)
+        return data
+
+    def _get_data(
+        self,
+        name: str,
+        strict: bool,
+        empty: bool,
+        dir_type: str,
+        **kwargs,
+    ):
+        data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
+        if data is None:
+            return None
+
+        set_dir_type = self._dir_type_manager.get_dir_type(name)
+        dir_type = dir_type or set_dir_type
+        data = self._dir_type_manager.convert(
+            data, in_type=set_dir_type, out_type=dir_type
+        )
         return data
 
     def _smart_squeeze(self, name: str, data):
@@ -1117,10 +1128,10 @@ class Skeleton:
 
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
 
-        x = self._data_sanitizer.force_to_iterable(x)
-        y = self._data_sanitizer.force_to_iterable(y)
-        lon = self._data_sanitizer.force_to_iterable(lon)
-        lat = self._data_sanitizer.force_to_iterable(lat)
+        x = sanitize.force_to_iterable(x)
+        y = sanitize.force_to_iterable(y)
+        lon = sanitize.force_to_iterable(lon)
+        lat = sanitize.force_to_iterable(lat)
 
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
