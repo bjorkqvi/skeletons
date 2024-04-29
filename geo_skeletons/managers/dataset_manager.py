@@ -28,15 +28,21 @@ class DatasetManager:
         existing_coords = {
             c: self.get(c, strict=True) for c in self.coord_manager.coords("nonspatial")
         }
-        # Updating dicts cause problems if one has a key that is explicitly value None
-        given_coords = existing_coords
+        # Updating dicts with .update() cause problems if one has a key that is explicitly value None
         for key in new_coords:
-            given_coords[key] = new_coords.get(key, given_coords.get(key))
+            if new_coords.get(key) is not None:
+                existing_coords[key] = new_coords.get(key)
+
+        given_coords = {}
+        for key, value in existing_coords.items():
+            given_coords[key] = value.data if hasattr(value, "data") else value
 
         coord_dict = self.create_coord_dict_from_input(
             x=x, y=y, given_coords=given_coords
         )
         var_dict = self.create_var_dict_from_input(x=x, y=y, coord_dict=coord_dict)
+
+        self.check_consistency(coord_dict=coord_dict, var_dict=var_dict)
         self.set_new_ds(xr.Dataset(coords=coord_dict, data_vars=var_dict))
 
     def create_coord_dict_from_input(self, x, y, given_coords) -> dict:
@@ -91,6 +97,43 @@ class DatasetManager:
             var_dict[self.coord_manager.x_str] = (coords, x)
 
         return var_dict
+
+    def check_consistency(self, coord_dict, var_dict) -> None:
+        """Checks that the provided coordinates are consistent with the
+        coordinates that the Skeleton is defined over."""
+        coords = list(coord_dict.keys())
+        # Check spatial coordinates
+        xy_set = "x" in coords and "y" in coords
+        lonlat_set = "lon" in coords and "lat" in coords
+        inds_set = "inds" in coords
+        if inds_set:
+            ind_len = len(coord_dict["inds"])
+            for key, value in var_dict.items():
+                if len(value[1]) != ind_len:
+                    raise CoordinateWrongLengthError(
+                        variable=key,
+                        len_of_variable=len(value[1]),
+                        index_variable="inds",
+                        len_of_index_variable=ind_len,
+                    )
+        if not (xy_set or lonlat_set or inds_set):
+            raise GridError
+        if sum([xy_set, lonlat_set, inds_set]) > 1:
+            raise GridError
+
+        # Check that all added coordinates are provided
+        for coord in self.coord_manager.coords("all"):
+            if coord not in coords:
+                raise UnknownCoordinateError(
+                    f"Skeleton has coordinate '{coord}', but it was not provided on initialization: {coords}!"
+                )
+
+        # Check that all provided coordinates have been added
+        for coord in set(coords) - set(SPATIAL_COORDS):
+            if coord not in self.coord_manager.coords("all"):
+                raise UnknownCoordinateError(
+                    f"Coordinate {coord} provided on initialization, but Skeleton doesn't have it: {self.coord_manager.coords('all')}! Missing a decorator?"
+                )
 
     def set_new_ds(self, ds: xr.Dataset) -> None:
         self.data = ds

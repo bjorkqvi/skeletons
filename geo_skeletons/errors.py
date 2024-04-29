@@ -14,7 +14,7 @@ class CoordinateWrongLengthError(Exception):
         len_of_index_variable: int,
     ):
         super().__init__(
-            f"Variable {variable} is {len_of_variable} long but the index variable {index_variable} is {len_of_index_variable} long!"
+            f"Variable {variable} is {len_of_variable} long but variable {index_variable} is {len_of_index_variable} long!"
         )
 
 
