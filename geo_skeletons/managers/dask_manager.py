@@ -120,7 +120,7 @@ class DaskManager:
         if data is None:
             return None
         if self.data_is_dask(data):
-            return data.compute()
+            data = data.compute()
         return data
 
     def constant_array(
