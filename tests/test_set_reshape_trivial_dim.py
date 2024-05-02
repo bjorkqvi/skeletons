@@ -43,7 +43,7 @@ def test_trivial_dimension_explicit_starting_with_numpy():
     points.set_dummy(data_T, coords=["z", "inds"])
     assert not data_is_dask(points.dummy())
     points.set_dummy(data_T, coords=["z", "inds"], chunks="auto", silent=False)
-    assert not data_is_dask(points.dummy())
+    assert data_is_dask(points.dummy())
 
 
 def test_trivial_dimension_explicit_starting_with_dask():
@@ -76,7 +76,7 @@ def test_trivial_dimension_explicit_starting_with_dask():
     points.set_dummy(data_wrong_dim)
 
     points.set_dummy(data_T, coords=["z", "inds"], chunks="auto", silent=False)
-    assert not data_is_dask(points.dummy())
+    assert data_is_dask(points.dummy())
     assert data_is_dask(points.ds().dummy)
 
 

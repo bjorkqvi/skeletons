@@ -25,9 +25,11 @@ def test_magnitude_point():
 
     wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
-    np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 45 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, dir_type="math")), np.pi / 4
+        np.median(points.wdir(empty=True, dask=False)), 45 + 180
+    )
+    np.testing.assert_almost_equal(
+        np.median(points.wdir(empty=True, dir_type="math", dask=False)), np.pi / 4
     )
 
     points.set_u(-1)
@@ -88,12 +90,16 @@ def test_magnitude_gridded():
     assert points.v(strict=True) is None
     assert points.wind(strict=True) is None
     assert points.wdir(strict=True) is None
-    wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
-    np.testing.assert_almost_equal(points.wind(empty=True), wind)
+    wind = (
+        points.u(empty=True, dask=False) ** 2 + points.v(empty=True, dask=False) ** 2
+    ) ** 0.5
+    np.testing.assert_almost_equal(points.wind(empty=True, dask=False), wind)
 
-    np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 45 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, dir_type="math")), np.pi / 4
+        np.median(points.wdir(empty=True, dask=False)), 45 + 180
+    )
+    np.testing.assert_almost_equal(
+        np.median(points.wdir(empty=True, dir_type="math", dask=False)), np.pi / 4
     )
 
     points.set_u(-1)
@@ -156,12 +162,16 @@ def test_add_magnitude():
     assert points.v(strict=True) is None
     assert points.wind(strict=True) is None
     assert points.wdir(strict=True) is None
-    wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
+    wind = (
+        points.u(empty=True, dask=False) ** 2 + points.v(empty=True, dask=False) ** 2
+    ) ** 0.5
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
 
-    np.testing.assert_almost_equal(np.median(points.wdir(empty=True)), 45 + 180)
     np.testing.assert_almost_equal(
-        np.median(points.wdir(empty=True, dir_type="math")), np.pi / 4
+        np.median(points.wdir(empty=True, dask=False)), 45 + 180
+    )
+    np.testing.assert_almost_equal(
+        np.median(points.wdir(empty=True, dir_type="math", dask=False)), np.pi / 4
     )
 
     points.set_u(-1)
@@ -334,18 +344,18 @@ def test_get_magnitude():
     np.testing.assert_almost_equal(points.wind(), points.get("wind"))
 
     np.testing.assert_almost_equal(
-        points.wdir(empty=True), points.get("wdir", empty=True)
+        points.wdir(empty=True, dask=False), points.get("wdir", empty=True, dask=False)
     )
 
     np.testing.assert_almost_equal(
-        points.wdir(dir_type="math", empty=True),
-        points.get("wdir", dir_type="math", empty=True),
+        points.wdir(dir_type="math", empty=True, dask=False),
+        points.get("wdir", dir_type="math", empty=True, dask=False),
     )
     np.testing.assert_almost_equal(
-        points.wind(empty=True), points.get("wind", empty=True)
+        points.wind(empty=True, dask=False), points.get("wind", empty=True, dask=False)
     )
     np.testing.assert_almost_equal(
-        points.wdir(empty=True), np.full(points.shape("wdir"), 225)
+        points.wdir(empty=True, dask=False), np.full(points.shape("wdir"), 225)
     )
 
 
