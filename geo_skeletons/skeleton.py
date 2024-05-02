@@ -582,6 +582,10 @@ class Skeleton:
         if dask is None:  # Use DaskManger defaults
             if self.dask.is_active():
                 data = self.dask.dask_me(data)
+            elif self.dask.data_is_dask(
+                data
+            ):  # Don't comput array since not explicitly requested
+                pass
             else:
                 data = self.dask.undask_me(data)
         elif dask:  # Force dask array even if dask-mode deactivated
