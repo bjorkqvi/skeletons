@@ -82,8 +82,9 @@ def test_utm_conversion():
 
     grid2 = GriddedSkeleton(x=x, y=y)
     grid2.set_spacing(nx=3, ny=3)
+
     grid2.utm.set((zone, letter))
-    assert grid.utm.zone() == (zone, letter)
+    assert grid2.utm.zone() == (zone, letter)
 
     assert grid2.nx() == 3
     assert grid2.ny() == 3
