@@ -877,53 +877,79 @@ class Skeleton:
 
         Set unique=True to remove any repeated points.
         Set fast=True to use UTM casrtesian search for low latitudes."""
+        if all([x is None for x in (x, y, lon, lat)]):
+            raise ValueError("Give either x-y pair or lon-lat pair!")
 
         if self.core.is_cartesian():
             fast = True
-
-        # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
 
         x = sanitize.force_to_iterable(x)
         y = sanitize.force_to_iterable(y)
         lon = sanitize.force_to_iterable(lon)
         lat = sanitize.force_to_iterable(lat)
-
-        if all([x is None for x in (x, y, lon, lat)]):
-            raise ValueError("Give either x-y pair or lon-lat pair!")
-
-        orig_zone = self.utm.zone()
+        # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
         if lon is not None and lat is not None:
-            if self.core.is_cartesian():
-                x, y, __, __ = utm_module.from_latlon(
-                    lat,
-                    lon,
-                    force_zone_number=orig_zone[0],
-                    force_zone_letter=orig_zone[1],
-                )
-            else:
-                x, y, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
-                self.utm.set((zone_number, zone_letter), silent=True)
+            x, y, utm_to_use = self._yank_using_lonlat(lon, lat, unique, fast)
         else:
-            if orig_zone[0] is not None:
-                lat, lon = utm_module.to_latlon(
-                    x,
-                    y,
-                    zone_number=orig_zone[0],
-                    zone_letter=orig_zone[1],
-                    strict=False,
-                )
-            else:
-                lat, lon = None, None
+            lon, lat, utm_to_use = self._yank_using_xy(x, y, unique, fast)
 
+        inds, dx = self._yank_inds(x, y, lon, lat, utm_to_use, fast)
+
+        if unique:
+            inds = np.unique(inds)
+
+        if self.is_gridded():
+            inds_x = []
+            inds_y = []
+            for ind in inds:
+                indy, indx = np.unravel_index(ind, self.size())
+                inds_x.append(indx)
+                inds_y.append(indy)
+            return {
+                "inds_x": np.array(inds_x),
+                "inds_y": np.array(inds_y),
+                "dx": np.array(dx),
+            }
+        else:
+            return {"inds": np.array(inds), "dx": np.array(dx)}
+
+    def _yank_using_xy(
+        self, x: np.ndarray, y: np.ndarray, unique: bool, fast: bool
+    ) -> np.ndarray:
+
+        if self.utm.is_set():
+            lat = self.utm._lat(x, y)
+            lon = self.utm._lon(x, y)
+        else:
+            lat, lon = None, None
+
+        return lon, lat, self.utm.zone()
+
+    def _yank_using_lonlat(
+        self, lon: np.ndarray, lat: np.ndarray, unique: bool, fast: bool
+    ) -> np.ndarray:
+        if self.core.is_cartesian():
+            utm_to_use = self.utm.zone()
+        else:
+            utm_to_use = self.utm.optimal_utm(lon=lon, lat=lat)
+
+        x = self.utm._x(lon=lon, lat=lat, utm=utm_to_use)
+        y = self.utm._y(lon=lon, lat=lat, utm=utm_to_use)
+        return x, y, utm_to_use
+
+    def _yank_inds(
+        self, x, y, lon, lat, utm_to_use: tuple[int, str], fast: bool
+    ) -> np.ndarray:
+        inds = []
+        dx = []
+
+        xlist, ylist = self.xy(utm=utm_to_use)
+        lonlist, latlist = self.lonlat()
         if lat is not None:
             posmask = np.logical_or(lat > 84, lat < -84)
         else:
             fast = True
-        inds = []
-        dx = []
 
-        xlist, ylist = self.xy()
-        lonlist, latlist = self.lonlat()
         for (
             n,
             (xx, yy),
@@ -946,25 +972,7 @@ class Skeleton:
             if dxx is not None:
                 inds.append(ii)
                 dx.append(dxx)
-        self.utm.set(orig_zone, silent=True)  # Reset UTM zone
-
-        if unique:
-            inds = np.unique(inds)
-
-        if self.is_gridded():
-            inds_x = []
-            inds_y = []
-            for ind in inds:
-                indy, indx = np.unravel_index(ind, self.size())
-                inds_x.append(indx)
-                inds_y.append(indy)
-            return {
-                "inds_x": np.array(inds_x),
-                "inds_y": np.array(inds_y),
-                "dx": np.array(dx),
-            }
-        else:
-            return {"inds": np.array(inds), "dx": np.array(dx)}
+        return inds, dx
 
     @property
     def name(self) -> str:
