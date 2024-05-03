@@ -131,24 +131,10 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lon", **kwargs).values.copy()
 
-        y = np.median(self.y(**kwargs))
         print(
             "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
         )
-
-        if self.utm.zone()[0] is None:
-            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
-            return None
-
-        __, lon = utm_module.to_latlon(
-            self.x(**kwargs),
-            np.mod(y, 10_000_000),
-            zone_number=self.utm.zone()[0],
-            zone_letter=self.utm.zone()[1],
-            strict=False,
-        )
-
-        return lon
+        return self.utm._lon(x=self.x(**kwargs), y=np.median(self.y(**kwargs)))
 
     def lat(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
         """Returns the spherical lat-coordinate.
@@ -171,23 +157,11 @@ class GriddedSkeleton(Skeleton):
 
         if not self.core.is_cartesian():
             return self._ds_manager.get("lat", **kwargs).values.copy()
-
-        x = np.median(self.x(**kwargs))
         print(
             "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
         )
 
-        if self.utm.zone()[0] is None:
-            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
-            return None
-        lat, __ = utm_module.to_latlon(
-            x,
-            np.mod(self.y(**kwargs), 10_000_000),
-            zone_number=self.utm.zone()[0],
-            zone_letter=self.utm.zone()[1],
-            strict=False,
-        )
-        return lat
+        return self.utm._lat(x=np.median(self.x(**kwargs)), y=self.y(**kwargs))
 
     def lonlat(
         self,

@@ -34,8 +34,8 @@ class UTMManager:
         self, lat: tuple[float], lon: tuple[float], metadata_manager: MetaDataManager
     ):
         self._zone: tuple[int, str] = (None, None)
-        self._lat: float = lat
-        self._lon: float = lon
+        self._lat_edges: float = lat
+        self._lon_edges: float = lon
         self._meta: MetaDataManager = metadata_manager
 
     def zone(self) -> tuple[int, str]:
@@ -54,11 +54,11 @@ class UTMManager:
         return True
 
     def reset(self) -> None:
-        if self._lat[0] is None:
+        if self._lat_edges[0] is None:
             zone_number, zone_letter = (None, None)
         else:
-            lat = np.mean(self._lat)
-            lon = np.mean(self._lon)
+            lat = np.mean(self._lat_edges)
+            lon = np.mean(self._lon_edges)
             lat = np.minimum(np.maximum(lat, -80), 84)
             # *** utm.error.OutOfRangeError: latitude out of range (must be between 80 deg S and 84 deg N)
             # raise OutOfRangeError('longitude out of range (must be between 180 deg W and 180 deg E)')
@@ -90,12 +90,35 @@ class UTMManager:
         if not silent:
             print(f"Setting UTM {self._zone}")
 
-    # def _lat(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-    #     lat, __ = utm_module.to_latlon(
-    #         x,
-    #         np.mod(y, 10_000_000),
-    #         zone_number=self._zone[0],
-    #         zone_letter=self._zone[1],
-    #         strict=False,
-    #     )
-    #     return lat
+    def _lat(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        if self._zone[0] is None:
+            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
+            return None
+
+        if not self.is_valid(self._zone):
+            raise ValueError(f"{self._zone} is not a valid UTM zone!")
+        lat, __ = utm_module.to_latlon(
+            x,
+            np.mod(y, 10_000_000),
+            zone_number=self._zone[0],
+            zone_letter=self._zone[1],
+            strict=False,
+        )
+        return lat
+
+    def _lon(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        if self._zone[0] is None:
+            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
+            return None
+
+        if not self.is_valid(self._zone):
+            raise ValueError(f"{self._zone} is not a valid UTM zone!")
+
+        __, lon = utm_module.to_latlon(
+            x,
+            np.mod(y, 10_000_000),
+            zone_number=self._zone[0],
+            zone_letter=self._zone[1],
+            strict=False,
+        )
+        return lon
