@@ -1,22 +1,18 @@
 import numpy as np
 import xarray as xr
-import utm as utm_module
-from copy import copy
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
-from .managers.metadata_manager import MetaDataManager
 from .managers.dir_type_manager import DirTypeManager
 
 # from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
-from typing import Iterable, Union
-from .aux_funcs import distance_funcs, utm_funcs
+from typing import Iterable, Union, Optional
+from .aux_funcs import distance_funcs
 from .errors import DataWrongDimensionError
 
 from typing import Iterable
-import dask.array as da
 from copy import deepcopy
 from .decorators import add_datavar, add_magnitude
 from .iter import SkeletonIterator
@@ -40,7 +36,7 @@ class Skeleton:
         lon=None,
         lat=None,
         name: str = "LonelySkeleton",
-        utm: tuple[int, str] = None,
+        utm: Optional[tuple[int, str]] = None,
         chunks: Union[tuple[int], str] = None,
         **kwargs,
     ) -> None:
@@ -320,7 +316,6 @@ class Skeleton:
             name,
             data,
             coords,
-            self.dask,
             silent,
             allow_reshape,
             allow_transpose,
@@ -354,7 +349,6 @@ class Skeleton:
         name: str,
         data,
         coords: list[str],
-        dask_manager: DaskManager,
         silent: bool,
         allow_reshape: bool,
         allow_transpose: bool,
@@ -889,11 +883,9 @@ class Skeleton:
         lat = sanitize.force_to_iterable(lat)
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
         if lon is not None and lat is not None:
-            x, y, utm_to_use = self._yank_using_lonlat(lon, lat, unique, fast)
+            inds, dx = self._yank_using_lonlat(lon, lat, fast)
         else:
-            lon, lat, utm_to_use = self._yank_using_xy(x, y, unique, fast)
-
-        inds, dx = self._yank_inds(x, y, lon, lat, utm_to_use, fast)
+            inds, dx = self._yank_using_xy(x, y, fast)
 
         if unique:
             inds = np.unique(inds)
@@ -913,9 +905,10 @@ class Skeleton:
         else:
             return {"inds": np.array(inds), "dx": np.array(dx)}
 
-    def _yank_using_xy(
-        self, x: np.ndarray, y: np.ndarray, unique: bool, fast: bool
-    ) -> np.ndarray:
+    def _yank_using_xy(self, x: np.ndarray, y: np.ndarray, fast: bool) -> tuple[
+        np.ndarray,
+        np.ndarray,
+    ]:
 
         if self.utm.is_set():
             lat = self.utm._lat(x, y)
@@ -923,11 +916,12 @@ class Skeleton:
         else:
             lat, lon = None, None
 
-        return lon, lat, self.utm.zone()
+        inds, dx = self._yank_inds(x, y, lon, lat, self.utm.zone(), fast)
+        return inds, dx
 
     def _yank_using_lonlat(
-        self, lon: np.ndarray, lat: np.ndarray, unique: bool, fast: bool
-    ) -> np.ndarray:
+        self, lon: np.ndarray, lat: np.ndarray, fast: bool
+    ) -> tuple[np.ndarray, np.ndarray]:
         if self.core.is_cartesian():
             utm_to_use = self.utm.zone()
         else:
@@ -935,11 +929,18 @@ class Skeleton:
 
         x = self.utm._x(lon=lon, lat=lat, utm=utm_to_use)
         y = self.utm._y(lon=lon, lat=lat, utm=utm_to_use)
-        return x, y, utm_to_use
+        inds, dx = self._yank_inds(x, y, lon, lat, utm_to_use, fast)
+        return inds, dx
 
     def _yank_inds(
-        self, x, y, lon, lat, utm_to_use: tuple[int, str], fast: bool
-    ) -> np.ndarray:
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        lon: np.ndarray,
+        lat: np.ndarray,
+        utm_to_use: tuple[int, str],
+        fast: bool,
+    ) -> tuple[np.ndarray, np.ndarray]:
         inds = []
         dx = []
 

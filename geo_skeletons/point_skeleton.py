@@ -5,8 +5,7 @@ from .managers.metadata_manager import MetaDataManager
 from .managers.dask_manager import DaskManager
 from .variables import DataVar, Coordinate
 import geo_parameters as gp
-import utm as utm_module
-from geo_skeletons.aux_funcs import utm_funcs
+from typing import Optional
 
 inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
 INITIAL_COORDS = [inds_coord]
@@ -93,7 +92,7 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         normalize: bool = False,
-        utm: tuple[int, str] = None,
+        utm: Optional[tuple[int, str]] = None,
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian x-coordinate.
@@ -132,7 +131,7 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         normalize: bool = False,
-        utm: tuple[int, str] = None,
+        utm: Optional[tuple[int, str]] = None,
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian y-coordinate.
@@ -251,7 +250,7 @@ class PointSkeleton(Skeleton):
         mask: np.ndarray = None,
         strict=False,
         normalize: bool = False,
-        utm: tuple[int, str] = None,
+        utm: Optional[tuple[int, str]] = None,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of x- and y-coordinates of all points.
