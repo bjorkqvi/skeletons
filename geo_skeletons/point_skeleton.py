@@ -103,10 +103,10 @@ class PointSkeleton(Skeleton):
         If native=True, then longitudes are returned for spherical grids instead
         If strict=True, then None is returned if grid is sperical
 
-        native=True overrides strict=True for spherical grids
-
         Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
 
         if self.ds() is None:
             return None
@@ -142,11 +142,10 @@ class PointSkeleton(Skeleton):
         If native=True, then latitudes are returned for spherical grids instead
         If strict=True, then None is returned if grid is sperical
 
-        native=True overrides strict=True for spherical grids
-
         Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.ds() is None:
             return None
 
@@ -176,8 +175,10 @@ class PointSkeleton(Skeleton):
         If native=True, then x-coordinatites are returned for cartesian grids instead
         If strict=True, then None is returned if grid is cartesian
 
-        native=True overrides strict=True for cartesian grids
         """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+
         if self.ds() is None:
             return None
 
@@ -200,8 +201,9 @@ class PointSkeleton(Skeleton):
         If native=True, then y-coordinatites are returned for cartesian grids instead
         If strict=True, then None is returned if grid is cartesian
 
-        native=True overrides strict=True for cartesian grids
         """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.ds() is None:
             return None
 

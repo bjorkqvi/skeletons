@@ -85,29 +85,29 @@ class GriddedSkeleton(Skeleton):
         """Returns a meshgrid of x-values"""
         if self.x(strict=strict) is None:
             return None
-        X, _ = np.meshgrid(self.x(native=native), self.y(native=native))
-        return X
+        x, _ = self.xy(native=native)
+        return np.reshape(x, self.size("spatial"))
 
     def ygrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
         """Returns a meshgrid of y-values"""
         if self.y(strict=strict) is None:
             return None
-        _, Y = np.meshgrid(self.x(native=native), self.y(native=native))
-        return Y
+        _, y = self.xy(native=native)
+        return np.reshape(y, self.size("spatial"))
 
     def longrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
         """Returns a meshgrid of x-values"""
         if self.lon(strict=strict) is None:
             return None
-        LON, _ = np.meshgrid(self.lon(native=native), self.lat(native=native))
-        return LON
+        lon, _ = self.lonlat(native=native)
+        return np.reshape(lon, self.size("spatial"))
 
     def latgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
         """Returns a meshgrid of y-values"""
         if self.lat(strict=strict) is None:
             return None
-        _, LAT = np.meshgrid(self.lon(native=native), self.lat(native=native))
-        return LAT
+        _, lat = self.lonlat(native=native)
+        return np.reshape(lat, self.size("spatial"))
 
     def lon(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
         """Returns the spherical lon-coordinate.
@@ -117,8 +117,10 @@ class GriddedSkeleton(Skeleton):
         If native=True, then x-coordinatites are returned for cartesian grids instead
         If strict=True, then None is returned if grid is cartesian
 
-        native=True overrides strict=True for cartesian grids
         """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+
         if self.ds() is None:
             return None
 
@@ -143,9 +145,10 @@ class GriddedSkeleton(Skeleton):
 
         If native=True, then y-coordinatites are returned for cartesian grids instead
         If strict=True, then None is returned if grid is cartesian
-
-        native=True overrides strict=True for cartesian grids
         """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+
         if self.ds() is None:
             return None
 
@@ -177,12 +180,13 @@ class GriddedSkeleton(Skeleton):
         mask is a boolean array (default True for all points)
         order_by = 'y' (default) or 'x'
         """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
 
-        if self.core.is_cartesian() and strict and (not native):
+        if self.core.is_cartesian() and strict:
             return None, None
 
         if mask is None:
-
             mask = np.full(super().size("spatial", **kwargs), True)
 
         mask = mask.ravel()
@@ -212,11 +216,10 @@ class GriddedSkeleton(Skeleton):
         If native=True, then longitudes are returned for spherical grids instead
         If strict=True, then None is returned if grid is sperical
 
-        native=True overrides strict=True for spherical grids
-
         Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.ds() is None:
             return None
 
@@ -252,11 +255,10 @@ class GriddedSkeleton(Skeleton):
         If native=True, then latitudes are returned for spherical grids instead
         If strict=True, then None is returned if grid is sperical
 
-        native=True overrides strict=True for spherical grids
-
         Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
         """
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.ds() is None:
             return None
 
@@ -294,8 +296,9 @@ class GriddedSkeleton(Skeleton):
         mask is a boolean array (default True for all points)
         order_by = 'y' (default) or 'x'
         """
-
-        if not self.core.is_cartesian() and strict and (not native):
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+        if not self.core.is_cartesian() and strict:
             return None, None
 
         if mask is None:
