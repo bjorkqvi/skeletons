@@ -29,6 +29,7 @@ def test_point_sphericalk():
     lon = (5, 6, 7, 8)
     lat = (60, 61, 62, 63)
     points = PointSkeleton(lon=lon, lat=lat)
+
     np.testing.assert_almost_equal(points.longrid(), lon)
     np.testing.assert_almost_equal(points.latgrid(), lat)
 
@@ -94,15 +95,12 @@ def test_gridded_spherical():
     np.testing.assert_almost_equal(latgrid[:, -1], lat)
     assert latgrid.shape == (5, 4)
 
-    xgrid = points.xgrid()
-    np.testing.assert_almost_equal(xgrid[0, :], points.x())
-    np.testing.assert_almost_equal(xgrid[-1, :], points.x())
-    assert xgrid.shape == (5, 4)
+    x, y = points.xy()
+    np.testing.assert_almost_equal(points.xgrid().ravel(), x)
+    assert points.xgrid().shape == (5, 4)
 
-    ygrid = points.ygrid()
-    np.testing.assert_almost_equal(ygrid[:, 0], points.y())
-    np.testing.assert_almost_equal(ygrid[:, -1], points.y())
-    assert ygrid.shape == (5, 4)
+    np.testing.assert_almost_equal(points.ygrid().ravel(), y)
+    assert points.ygrid().shape == (5, 4)
 
     assert points.xgrid(strict=True) is None
     assert points.ygrid(strict=True) is None
