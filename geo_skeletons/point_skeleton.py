@@ -173,20 +173,7 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lon", **kwargs).values.copy()
 
-        if self.utm.zone()[0] is None:
-            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
-            return None
-
-        y = self.y(**kwargs)
-        __, lon = utm_module.to_latlon(
-            self.x(**kwargs),
-            np.mod(y, 10_000_000),
-            zone_number=self.utm.zone()[0],
-            zone_letter=self.utm.zone()[1],
-            strict=False,
-        )
-
-        return lon
+        return self.utm._lon(x=self.x(**kwargs), y=self.y(**kwargs))
 
     def lat(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
         """Returns the spherical lat-coordinate.
@@ -210,19 +197,7 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lat", **kwargs).values.copy()
 
-        if self.utm.zone()[0] is None:
-            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
-            return None
-
-        x = self.x(**kwargs)
-        lat, __ = utm_module.to_latlon(
-            x,
-            np.mod(self.y(**kwargs), 10_000_000),
-            zone_number=self.utm.zone()[0],
-            zone_letter=self.utm.zone()[1],
-            strict=False,
-        )
-        return lat
+        return self.utm._lat(x=self.x(**kwargs), y=self.y(**kwargs))
 
     def lonlat(
         self,
