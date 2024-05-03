@@ -268,24 +268,6 @@ class DatasetManager:
         daa.name = name
         return daa
 
-    # def compile_to_ds(self, data: np.ndarray, name: str) -> xr.Dataset:
-    #     """This is used to compile a Dataset containing the given data using the
-    #     coordinates of the Skeleton.
-    #     """
-    #     coord_group = self.coord_manager.coord_group(name)
-    #     coords = self.coord_manager.coords(coord_group)
-    #     coords_dict = {coord: self.get(coord) for coord in coords}
-
-    #     coord_shape = self.coords_to_size(coords)
-    #     if coord_shape != data.shape:
-    #         raise DataWrongDimensionError(
-    #             data_shape=data.shape, coord_shape=coord_shape
-    #         )
-
-    #     vars_dict = {name: (coords_dict.keys(), data)}
-    #     ds = xr.Dataset(data_vars=vars_dict, coords=coords_dict)
-    #     return ds
-
     def coords_to_size(self, coords: list[str], **kwargs) -> tuple[int]:
         list = []
         data = self._slice_data(self.ds(), **kwargs)

@@ -84,7 +84,8 @@ class Skeleton:
 
         self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
-    def _init_managers(self, utm: tuple[str, int], chunks: tuple[int]):
+    def _init_managers(self, utm: tuple[str, int], chunks: tuple[int]) -> None:
+        """Initialized a DirTypeManager, UTMManager and DaskManager, and sets a UTM-zone"""
         self._dir_type_manager = DirTypeManager(coord_manager=self.core)
 
         self.utm = UTMManager(
@@ -101,7 +102,7 @@ class Skeleton:
         self.dask = DaskManager(skeleton=self, chunks=chunks)
 
     def _init_metadata(self) -> None:
-        # Set metadata
+        """Initialized the metadata by using availabe metadata in the GeoParameters"""
         for name in self.core.all_objects("all"):
             metavar = self.core.get(name).meta
             if metavar is not None:
@@ -110,6 +111,9 @@ class Skeleton:
     def add_datavar(
         self, name: str, coord_group: str = "all", default_value: float = 0.0
     ) -> None:
+        """Adds a data variable to an instance of a Skeleton.
+
+        Similar to using @add_datavar on a class, but only affects an instance."""
         self = add_datavar(
             name=name, coord_group=coord_group, default_value=default_value, append=True
         )(self)
@@ -119,6 +123,9 @@ class Skeleton:
     def add_magnitude(
         self, name: str, x: str, y: str, direction: str = None, dir_type: str = None
     ) -> None:
+        """Adds a magnitude to an instance of a Skeleton.
+
+        Similar to using @add_magnitude on a class, but only affects an instance."""
         self = add_magnitude(
             name=name, x=x, y=y, direction=direction, dir_type=dir_type, append=True
         )(self)
@@ -131,11 +138,13 @@ class Skeleton:
         ds: xr.Dataset,
         chunks: Union[tuple[int], str] = "auto",
         **kwargs,
-    ):
-        """Generats a PointSkeleton from an xarray Dataset. All coordinates must be present, but only matching data variables included.
+    ) -> "Skeleton":
+        """Generats an instance of a Skeleton form an xarray Dataset.
+        All coordinates must be present, but only matching data variables included.
 
-        Missing coordinates can be provided as kwargs."""
+        Missing coordinates can be provided as kwargs. If e.g. the z-variable doesn't exist in the DataSet:
 
+        new_instance = SkeletonClass.from_ds(ds, z=[1,2,3])"""
         # Getting mandatory spatial variables
         lon, lat = ds.get("lon"), ds.get("lat")
         x, y = ds.get("x"), ds.get("y")
@@ -185,7 +194,7 @@ class Skeleton:
 
         return points
 
-    def absorb(self, skeleton_to_absorb, dim: str) -> None:
+    def absorb(self, skeleton_to_absorb: "Skeleton", dim: str) -> "Skeleton":
         """Absorb another object of same type over a centrain dimension.
         For a PointSkeleton the inds-variable reorganized if dim='inds' is given."""
         if not self.is_gridded() and dim == "inds":
@@ -199,10 +208,18 @@ class Skeleton:
         )
         return new_skeleton
 
-    def sel(self, **kwargs):
+    def sel(self, **kwargs) -> "Skeleton":
+        """Creates a new instance by selecting only some of the wanted variables.
+        e.g. new_skeleton = skeleton.sel(lon=slice(10,20))
+
+        Calls the Xarray .sel method on the underlying DataSet"""
         return self.from_ds(self.ds().sel(**kwargs))
 
-    def isel(self, **kwargs):
+    def isel(self, **kwargs) -> "Skeleton":
+        """Creates a new instance by selecting only some of the wanted variables.
+        e.g. new_skeleton = skeleton.isel(lon=[0,1,2])
+
+        Calls the Xarray .isel method on the underlying DataSet"""
         return self.from_ds(self.ds().isel(**kwargs))
 
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
@@ -211,7 +228,7 @@ class Skeleton:
         If data named 'geodata' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then
         data_slice having the threshold=0.4 and time='2023-11-08 12:00:00' having shape=(10,) can be inserted by using the values:
 
-        .insert(name='geodata', data=data_slice, time='2023-11-08 12:00:00', threshold=0.4)
+        skeleton.insert(name='geodata', data=data_slice, time='2023-11-08 12:00:00', threshold=0.4)
         """
         dims = self.ds().dims
         index_kwargs = {}
@@ -228,7 +245,7 @@ class Skeleton:
         If data named 'geodata' has dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then
         data_slice having the first threshold and first time can be inserted by using the index values:
 
-        .ind_insert(name='geodata', data=data_slice, time=0, threshold=0)"""
+        skeleton.ind_insert(name='geodata', data=data_slice, time=0, threshold=0)"""
 
         dims = self.ds().dims
         index_list = list(np.arange(len(dims)))
@@ -254,13 +271,13 @@ class Skeleton:
     def set(
         self,
         name: str,
-        data=None,
-        dir_type: str = None,
+        data: Optional[Union[np.ndarray, xr.DataArray]] = None,
+        dir_type: Optional[str] = None,
         allow_reshape: bool = True,
         allow_transpose: bool = False,
-        coords: list[str] = None,
+        coords: Optional[list[str]] = None,
         silent: bool = True,
-        chunks: Union[tuple, str] = None,
+        chunks: Optional[Union[tuple, str]] = None,
     ) -> None:
         """Sets the data using the following logic:
 
@@ -347,12 +364,12 @@ class Skeleton:
     def _reshape_data(
         self,
         name: str,
-        data,
+        data: np.ndarray,
         coords: list[str],
         silent: bool,
         allow_reshape: bool,
         allow_transpose: bool,
-    ):
+    ) -> np.ndarray:
         """Reshapes the data using the following logic:
 
         allow_reshape [True]: Allow squeezing out trivial dimensions.
@@ -420,7 +437,7 @@ class Skeleton:
     def _set_magnitude(
         self,
         name: str,
-        data,
+        data: np.ndarray,
     ) -> None:
         """Sets a magnitude variable.
 
@@ -448,7 +465,7 @@ class Skeleton:
     def _set_direction(
         self,
         name: str,
-        data,
+        data: np.ndarray,
         dir_type: str,
     ) -> None:
         """Sets a directeion variable.
@@ -481,15 +498,17 @@ class Skeleton:
     def _set_data(
         self,
         name: str,
-        data,
+        data: np.ndarray,
     ) -> None:
         """Sets a data variable to the underlying dataset.
+
+        Data needs to be exactly right shape.
 
         Triggers setting metadata of the variable and possible connected masks."""
         self._ds_manager.set(data=data, name=name)
         self._trigger_masks(name, data)
 
-    def _trigger_masks(self, name: str, data) -> None:
+    def _trigger_masks(self, name: str, data: Union[np.ndarray, xr.DataArray]) -> None:
         """Set any masks that are triggered by setting a specific data variable
         E.g. Set new 'land_mask' when 'topo' is set."""
         for mask in self.core.triggers(name):
@@ -509,15 +528,15 @@ class Skeleton:
 
     def get(
         self,
-        name,
+        name: str,
         strict: bool = False,
         empty: bool = False,
         data_array: bool = False,
-        dir_type: str = None,
+        dir_type: Optional[str] = None,
         squeeze: bool = True,
-        dask: bool = None,
+        dask: Optional[bool] = None,
         **kwargs,
-    ):
+    ) -> Union[np.ndarray, xr.DataArray]:
         """Gets a mask or data variable as an array.
 
         strict [False]: Return 'None' if data not set. Otherwise returns empty array.
@@ -599,7 +618,7 @@ class Skeleton:
         empty: bool,
         dir_type: str,
         **kwargs,
-    ):
+    ) -> xr.DataArray:
 
         x_data = self._ds_manager.get(
             self.core.get(name).x,
@@ -629,7 +648,7 @@ class Skeleton:
         strict: bool,
         empty: bool,
         **kwargs,
-    ):
+    ) -> xr.DataArray:
         x_data = self._ds_manager.get(
             self.core.get(name).x,
             empty=empty,
@@ -652,7 +671,7 @@ class Skeleton:
         empty: bool,
         dir_type: str,
         **kwargs,
-    ):
+    ) -> xr.DataArray:
         data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
         if not self.dask.is_active() and (
             empty or self._ds_manager.get(name, strict=True) is None
@@ -669,7 +688,7 @@ class Skeleton:
         )
         return data
 
-    def _smart_squeeze(self, name: str, data):
+    def _smart_squeeze(self, name: str, data: xr.DataArray) -> xr.DataArray:
         """Squeezes the data but takes care that one dimension is kept.
 
         Spatial dims are not protected, but if the results is a 0-dim,
@@ -696,7 +715,8 @@ class Skeleton:
             "spatial"
         )
 
-    def ds(self):
+    def ds(self) -> Union[xr.Dataset, None]:
+        """Returns the underlying Xarray Dataset. None if dosen't exist."""
         if not hasattr(self, "_ds_manager"):
             return None
         return self._ds_manager.ds()
@@ -720,17 +740,13 @@ class Skeleton:
     def size(
         self, coord_group: str = "all", squeeze: bool = False, **kwargs
     ) -> tuple[int]:
-        """Returns the size of the Dataset.
+        """Returns the size of the Skeleton.
 
-        'all' [default]: size of entire Dataset
+        'all' [default]: size of entire Skeleton
         'spatial': size over coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': size over coordinates for the grid (e.g. z, time) ans the spatial coordinates
+        'grid': size over coordinates for the grid (e.g. z, time) and the spatial coordinates
         'gridpoint': size over coordinates for a grid point (e.g. frequency, direcion or time)
         """
-
-        if self.ds() is None:
-            return None
-
         if coord_group not in ["all", "spatial", "grid", "gridpoint"]:
             raise KeyError(
                 f"coords should be 'all', 'spatial', 'grid' or 'gridpoint', not {coord_group}!"
@@ -742,24 +758,20 @@ class Skeleton:
         return size
 
     def shape(self, var, squeeze: bool = False, **kwargs) -> tuple[int]:
-        """Returns the size of one specific data variable"""
+        """Returns the size of one specific data variable."""
         if var in self.core.coords("all"):
             return self.get(var, squeeze=False).shape
         coord_group = self.core.coord_group(var)
         return self.size(coord_group=coord_group, squeeze=squeeze, **kwargs)
 
     def inds(self, **kwargs) -> np.ndarray:
-        if self.ds() is None:
-            return None
+        """Returns the index variable for PointSkeletons. Defaults to None for GriddedSkeletons."""
         return self.get("inds", **kwargs)
 
     def edges(
         self, coord: str, native: bool = False, strict=False
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
-        if self.ds() is None:
-            return (None, None)
-
         if coord not in ["x", "y", "lon", "lat"]:
             print("coord need to be 'x', 'y', 'lon' or 'lat'.")
             return
@@ -781,22 +793,14 @@ class Skeleton:
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
-        if self.ds() is None:
-            return 0
         return len(self.x(native=True))
 
-    def ny(self):
+    def ny(self) -> int:
         """Length of y/lat-vector."""
-        if self.ds() is None:
-            return 0
         return len(self.y(native=True))
 
-    def dx(self, native: bool = False, strict: bool = False):
-        """Mean grid spacing of the x vector. Conversion made for
-        spherical grids."""
-        if self.ds() is None:
-            return None
-
+    def dx(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the x vector. Conversion made for spherical grids."""
         if not self.core.is_cartesian() and strict and (not native):
             return None
 
@@ -807,12 +811,8 @@ class Skeleton:
             self.nx() - 1
         )
 
-    def dy(self, native: bool = False, strict: bool = False):
-        """Mean grid spacing of the y vector. Conversion made for
-        spherical grids."""
-        if self.ds() is None:
-            return None
-
+    def dy(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
         if not self.core.is_cartesian() and strict and (not native):
             return None
 
@@ -824,34 +824,27 @@ class Skeleton:
         )
 
     def dlon(self, native: bool = False, strict: bool = False):
-        """Mean grid spacing of the longitude vector. Conversion made for
-        cartesian grids."""
-        if self.ds() is None:
-            return None
-
-        if self.core.is_cartesian() and strict and (not native):
-            return None
+        """Mean grid spacing of the longitude vector. Conversion made for cartesian grids."""
         if self.nx() == 1:
             return 0.0
 
-        return (max(self.lon(native=native)) - min(self.lon(native=native))) / (
-            self.nx() - 1
-        )
+        lon = self.lon(native=native, strict=strict)
+        if lon is not None:
+            return None
+
+        return (max(lon) - min(lon)) / (self.nx() - 1)
 
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""
-        if self.ds() is None:
-            return None
-
-        if self.core.is_cartesian() and strict and (not native):
-            return None
         if self.ny() == 1:
             return 0.0
 
-        return (max(self.lat(native=native)) - min(self.lat(native=native))) / (
-            self.ny() - 1
-        )
+        lat = self.lat(native=native, strict=strict)
+        if lat is not None:
+            return None
+
+        return (max(lat) - min(lat)) / (self.ny() - 1)
 
     def yank_point(
         self,
@@ -861,7 +854,7 @@ class Skeleton:
         y: Union[float, Iterable[float]] = None,
         unique: bool = False,
         fast: bool = False,
-    ) -> dict:
+    ) -> dict[str, np.ndarray]:
         """Finds points nearest to the x-y, lon-lat points provided and returns dict of corresponding indeces.
 
         All Skeletons: key 'dx' (distance to nearest point in km)
@@ -870,7 +863,8 @@ class Skeleton:
         GriddedSkeleton: keys 'inds_x' and 'inds_y'
 
         Set unique=True to remove any repeated points.
-        Set fast=True to use UTM casrtesian search for low latitudes."""
+        Set fast=True to use UTM cartesian search for low latitudes."""
+
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
 
@@ -905,11 +899,10 @@ class Skeleton:
         else:
             return {"inds": np.array(inds), "dx": np.array(dx)}
 
-    def _yank_using_xy(self, x: np.ndarray, y: np.ndarray, fast: bool) -> tuple[
-        np.ndarray,
-        np.ndarray,
-    ]:
-
+    def _yank_using_xy(
+        self, x: np.ndarray, y: np.ndarray, fast: bool
+    ) -> dict[str, np.ndarray]:
+        """Finds the indeces of nearest points and distances if x,y coordinates are provided"""
         if self.utm.is_set():
             lat = self.utm._lat(x, y)
             lon = self.utm._lon(x, y)
@@ -922,6 +915,7 @@ class Skeleton:
     def _yank_using_lonlat(
         self, lon: np.ndarray, lat: np.ndarray, fast: bool
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Finds the indeces of nearest points and distances if lon,lat coordinates are provided"""
         if self.core.is_cartesian():
             utm_to_use = self.utm.zone()
         else:
@@ -941,6 +935,7 @@ class Skeleton:
         utm_to_use: tuple[int, str],
         fast: bool,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Applies a cartesian or spherical search on given coordinates, finding nearest points and returning indeces and distances."""
         inds = []
         dx = []
 
@@ -982,7 +977,7 @@ class Skeleton:
         return self._name
 
     @name.setter
-    def name(self, new_name):
+    def name(self, new_name: str) -> None:
         if isinstance(new_name, str):
             self._name = new_name
         else:
@@ -995,11 +990,23 @@ class Skeleton:
             chunk_list.append(chunk_dict.get(coord, "auto"))
         return tuple(chunk_list)
 
-    def iterate(self, coords: list[str] = None):
+    def iterate(self, coords: Optional[list[str]] = None):
+        """Return an iterator object for iterating over a list of coordinates.
+
+        E.g. to iterates first over 'time' values, and then over 'z' values:
+        for slice in skeleton.iterate(['time','z']):
+            pass
+
+
+        Default is the defined 'grid' coord group (including basic spatial coords), which is identical to:
+        for slice in skeleton:
+            pass
+        """
         coords = coords or self.core.coords("grid")
         return iter(self)(coords)
 
     def __iter__(self):
+        """Equal to calling skeleton.iterate()"""
         coords_dict = {coord: self.get(coord) for coord in self.core.coords("all")}
         return SkeletonIterator(
             coords_dict,
