@@ -53,19 +53,24 @@ class UTMManager:
             return False
         return True
 
+    def is_set(self) -> bool:
+        return not self._zone == (None, None)
+
+    def optimal_utm(self, lon: np.ndarray, lat: np.ndarray) -> tuple[int, str]:
+        __, __, zone_number, zone_letter = utm_module.from_latlon(
+            np.array(lat), np.array(lon)
+        )
+        return (zone_number, zone_letter)
+
     def reset(self) -> None:
         if self._lat_edges[0] is None:
-            zone_number, zone_letter = (None, None)
+            self._zone = (None, None)
         else:
-            lat = np.mean(self._lat_edges)
-            lon = np.mean(self._lon_edges)
-            lat = np.minimum(np.maximum(lat, -80), 84)
+            lon = self._lon_edges
+            lat = np.minimum(np.maximum(self._lat_edges, -80), 84)
             # *** utm.error.OutOfRangeError: latitude out of range (must be between 80 deg S and 84 deg N)
             # raise OutOfRangeError('longitude out of range (must be between 180 deg W and 180 deg E)')
-
-            __, __, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
-
-        self._zone = (zone_number, zone_letter)
+            self._zone = self.optimal_utm(lon=lon, lat=lat)
         print(f"Setting UTM {self._zone}")
 
     def set(self, zone: tuple[int, str], silent: bool = False) -> None:
