@@ -43,6 +43,16 @@ class UTMManager:
         if it hasn't been set by the user in cartesian grids."""
         return self._zone
 
+    def is_valid(self, utm: tuple[int, str]) -> bool:
+        """Checks that the given utm zone is valid"""
+        if len(utm) != 2:
+            return False
+        if not utm[0] in VALID_UTM_NUMBERS:
+            return False
+        if not utm[1] in VALID_UTM_ZONES:
+            return False
+        return True
+
     def reset(self) -> None:
         if self._lat[0] is None:
             zone_number, zone_letter = (None, None)
@@ -63,27 +73,29 @@ class UTMManager:
 
         If not given for a spherical grid, they will be deduced.
         """
-        if zone is None or zone[0] is None:
+        if zone is None:
             self.reset()
             return
 
-        zone_number, zone_letter = zone
+        if zone == (None, None):
+            self.reset()
+            return
 
-        if isinstance(zone_number, int) or isinstance(zone_number, float):
-            zone_number = int(zone_number)
-        else:
-            raise ValueError(f"'zone' needs to be tuple[str,int], not {zone}!")
-
-        if isinstance(zone_letter, str):
-            zone_letter = str(zone_letter)
-        else:
-            raise ValueError(f"'zone' needs to be tuple[str,int], not {zone}!")
-
-        if not zone_number in VALID_UTM_NUMBERS or not zone_letter in VALID_UTM_ZONES:
+        if not self.is_valid(zone):
             raise ValueError(f"{zone} is not a valid UTM zone!")
 
-        self._zone = (zone_number, zone_letter)
-        self._meta.append({"utm_zone": f"{zone_number:02.0f}{zone_letter}"})
+        self._zone = (zone[0], zone[1])
+        self._meta.append({"utm_zone": f"{zone[0]:02.0f}{zone[1]}"})
 
         if not silent:
             print(f"Setting UTM {self._zone}")
+
+    # def _lat(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    #     lat, __ = utm_module.to_latlon(
+    #         x,
+    #         np.mod(y, 10_000_000),
+    #         zone_number=self._zone[0],
+    #         zone_letter=self._zone[1],
+    #         strict=False,
+    #     )
+    #     return lat
