@@ -119,37 +119,54 @@ class PointSkeleton(Skeleton):
 
         if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()
-            if normalize:
-                x = x - min(x)
-            return x
-
-        utm = utm or self.utm.zone()
-
-        lat = self.lat(**kwargs)
-        lat = utm_funcs.cap_lat_for_utm(lat)
-
-        posmask = lat >= 0
-        negmask = lat < 0
-        x = np.zeros(len(lat))
-        if np.any(posmask):
-            x[posmask], __, __, __ = utm_module.from_latlon(
-                lat[posmask],
-                self.lon(**kwargs)[posmask],
-                force_zone_number=utm[0],
-                force_zone_letter=utm[1],
-            )
-        if np.any(negmask):
-            x[negmask], __, __, __ = utm_module.from_latlon(
-                -lat[negmask],
-                self.lon(**kwargs)[negmask],
-                force_zone_number=utm[0],
-                force_zone_letter=utm[1],
-            )
+        else:
+            x = self.utm._x(lon=self.lon(**kwargs), lat=self.lat(**kwargs), utm=utm)
 
         if normalize:
             x = x - min(x)
 
         return x
+
+    def y(
+        self,
+        native: bool = False,
+        strict: bool = False,
+        normalize: bool = False,
+        utm: tuple[int, str] = None,
+        **kwargs,
+    ) -> np.ndarray:
+        """Returns the cartesian y-coordinate.
+
+        If the grid is spherical, a conversion to UTM coordinates is made based on the medain latitude.
+
+        If native=True, then latitudes are returned for spherical grids instead
+        If strict=True, then None is returned if grid is sperical
+
+        native=True overrides strict=True for spherical grids
+
+        Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
+        """
+
+        if self.ds() is None:
+            return None
+
+        if not self.core.is_cartesian() and native:
+            return self.lat(**kwargs)
+
+        if not self.core.is_cartesian() and strict:
+            return None
+
+        utm = utm or self.utm.zone()
+
+        if self.core.is_cartesian() and (self.utm.zone() == utm):
+            y = self._ds_manager.get("y", **kwargs).values.copy()
+        else:
+            y = self.utm._y(lon=self.lon(**kwargs), lat=self.lat(**kwargs), utm=utm)
+
+        if normalize:
+            y = y - min(y)
+
+        return y
 
     def lon(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
         """Returns the spherical lon-coordinate.
@@ -226,69 +243,6 @@ class PointSkeleton(Skeleton):
         if mask is not None:
             return lon[mask], lat[mask]
         return lon, lat
-
-    def y(
-        self,
-        native: bool = False,
-        strict: bool = False,
-        normalize: bool = False,
-        utm: tuple[int, str] = None,
-        **kwargs,
-    ) -> np.ndarray:
-        """Returns the cartesian y-coordinate.
-
-        If the grid is spherical, a conversion to UTM coordinates is made based on the medain latitude.
-
-        If native=True, then latitudes are returned for spherical grids instead
-        If strict=True, then None is returned if grid is sperical
-
-        native=True overrides strict=True for spherical grids
-
-        Give utm to get cartesian coordinates in specific utm system. Otherwise defaults to the one set for the grid.
-        """
-
-        if self.ds() is None:
-            return None
-
-        if not self.core.is_cartesian() and native:
-            return self.lat(**kwargs)
-
-        if not self.core.is_cartesian() and strict:
-            return None
-
-        utm = utm or self.utm.zone()
-
-        if self.core.is_cartesian() and (self.utm.zone() == utm):
-            y = self._ds_manager.get("y", **kwargs).values.copy()
-            if normalize:
-                y = y - min(y)
-            return y
-
-        posmask = self.lat(**kwargs) >= 0
-        negmask = self.lat(**kwargs) < 0
-
-        lat = utm_funcs.cap_lat_for_utm(self.lat(**kwargs))
-        y = np.zeros(len(self.lat(**kwargs)))
-        if np.any(posmask):
-            _, y[posmask], __, __ = utm_module.from_latlon(
-                lat[posmask],
-                self.lon(**kwargs)[posmask],
-                force_zone_number=utm[0],
-                force_zone_letter=utm[1],
-            )
-        if np.any(negmask):
-            _, y[negmask], __, __ = utm_module.from_latlon(
-                -lat[negmask],
-                self.lon(**kwargs)[negmask],
-                force_zone_number=utm[0],
-                force_zone_letter=utm[1],
-            )
-            y[negmask] = -y[negmask]
-
-        if normalize:
-            y = y - min(y)
-
-        return y
 
     def xy(
         self,

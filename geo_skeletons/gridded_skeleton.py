@@ -228,26 +228,13 @@ class GriddedSkeleton(Skeleton):
 
         if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()
-            if normalize:
-                x = x - min(x)
-            return x
-
-        utm = utm or self.utm.zone()
-
-        lat = np.median(self.lat(**kwargs))
-        print(
-            "Regridding spherical grid to cartesian coordinates will cause a rotation! Use 'x, _ = skeleton.xy()' to get a list of all points."
-        )
-        x, __, __, __ = utm_module.from_latlon(
-            lat,
-            self.lon(**kwargs),
-            force_zone_number=utm[0],
-            force_zone_letter=utm[1],
-        )
+        else:
+            x = self.utm._x(
+                lon=self.lon(**kwargs), lat=np.median(self.lat(**kwargs)), utm=utm
+            )
 
         if normalize:
             x = x - min(x)
-
         return x
 
     def y(
@@ -281,35 +268,10 @@ class GriddedSkeleton(Skeleton):
 
         if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             y = self._ds_manager.get("y", **kwargs).values.copy()
-            if normalize:
-                y = y - min(y)
-            return y
-
-        utm = utm or self.utm.zone()
-
-        posmask = self.lat(**kwargs) >= 0
-        negmask = self.lat(**kwargs) < 0
-
-        lon = np.median(self.lon(**kwargs))
-        print(
-            "Regridding spherical grid to cartesian coordinates will cause a rotation! Use '_, y = skeleton.xy()' to get a list of all points."
-        )
-        y = np.zeros(len(self.lat(**kwargs)))
-        if np.any(posmask):
-            _, y[posmask], __, __ = utm_module.from_latlon(
-                self.lat(**kwargs)[posmask],
-                lon,
-                force_zone_number=utm[0],
-                force_zone_letter=utm[1],
+        else:
+            y = self.utm._y(
+                lon=np.median(self.lon(**kwargs)), lat=self.lat(**kwargs), utm=utm
             )
-        if np.any(negmask):
-            _, y[negmask], __, __ = utm_module.from_latlon(
-                -self.lat(**kwargs)[negmask],
-                lon,
-                force_zone_number=utm[0],
-                force_zone_letter=utm[1],
-            )
-            y[negmask] = -y[negmask]
 
         if normalize:
             y = y - min(y)

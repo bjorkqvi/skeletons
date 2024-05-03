@@ -122,3 +122,83 @@ class UTMManager:
             strict=False,
         )
         return lon
+
+    def _x(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        utm = utm or self._zone
+        lat = cap_lat_for_utm(lat)
+        if len(lat) == 1:
+            x, __, __, __ = utm_module.from_latlon(
+                lat,
+                lon,
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+        else:
+            posmask = lat >= 0
+            negmask = lat < 0
+            x = np.zeros(len(lon))
+            if np.any(posmask):
+                x[posmask], __, __, __ = utm_module.from_latlon(
+                    lat[posmask],
+                    lon[posmask],
+                    force_zone_number=utm[0],
+                    force_zone_letter=utm[1],
+                )
+            if np.any(negmask):
+                x[negmask], __, __, __ = utm_module.from_latlon(
+                    -lat[negmask],
+                    lon[negmask],
+                    force_zone_number=utm[0],
+                    force_zone_letter=utm[1],
+                )
+        return x
+
+    def _y(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        utm = utm or self._zone
+        lat = cap_lat_for_utm(lat)
+        lon = np.atleast_1d(lon)
+        if len(lon) == 1:
+            _, y, __, __ = utm_module.from_latlon(
+                lat,
+                lon,
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+        else:
+            posmask = lat >= 0
+            negmask = lat < 0
+            y = np.zeros(len(lat))
+
+            if np.any(posmask):
+                _, y[posmask], __, __ = utm_module.from_latlon(
+                    lat[posmask],
+                    lon[posmask],
+                    force_zone_number=utm[0],
+                    force_zone_letter=utm[1],
+                )
+            if np.any(negmask):
+                _, y[negmask], __, __ = utm_module.from_latlon(
+                    -lat[negmask],
+                    lon[negmask],
+                    force_zone_number=utm[0],
+                    force_zone_letter=utm[1],
+                )
+                y[negmask] = -y[negmask]
+
+        return y
+
+
+def cap_lat_for_utm(lat):
+    if isinstance(lat, float):
+        lat = np.array([lat])
+    if len(lat) > 0 and max(lat) > 84:
+        print(
+            f"Max latitude {max(lat)}>84. These points well be capped to 84 deg in UTM conversion!"
+        )
+        lat[lat > 84.0] = 84.0
+    if len(lat) > 0 and min(lat) < -80:
+        lat[lat < -80.0] = -80.0
+        print(
+            f"Min latitude {min(lat)}<-80. These points well be capped to -80 deg in UTM conversion!"
+        )
+    return lat
