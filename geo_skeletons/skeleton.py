@@ -41,13 +41,11 @@ class Skeleton:
         **kwargs,
     ) -> None:
         self.name = name
-        self._init_structure(x, y, lon, lat, utm=utm, chunks=chunks, **kwargs)
+        self._init_structure(x, y, lon, lat, **kwargs)
         self._init_managers(utm=utm, chunks=chunks)
         self._init_metadata()
 
-    def _init_structure(
-        self, x=None, y=None, lon=None, lat=None, utm=None, chunks=None, **kwargs
-    ) -> None:
+    def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
         and initializes the Xarray dataset within the DatasetManager.
 
@@ -829,7 +827,7 @@ class Skeleton:
             return 0.0
 
         lon = self.lon(native=native, strict=strict)
-        if lon is not None:
+        if lon is None:
             return None
 
         return (max(lon) - min(lon)) / (self.nx() - 1)
@@ -839,9 +837,8 @@ class Skeleton:
         cartesian grids."""
         if self.ny() == 1:
             return 0.0
-
         lat = self.lat(native=native, strict=strict)
-        if lat is not None:
+        if lat is None:
             return None
 
         return (max(lat) - min(lat)) / (self.ny() - 1)

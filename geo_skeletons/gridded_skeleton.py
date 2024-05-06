@@ -83,30 +83,34 @@ class GriddedSkeleton(Skeleton):
 
     def xgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
         """Returns a meshgrid of x-values"""
-        if self.x(strict=strict) is None:
+        if not self.core.is_cartesian() and strict:
             return None
         x, _ = self.xy(native=native)
         return np.reshape(x, self.size("spatial"))
 
     def ygrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
         """Returns a meshgrid of y-values"""
-        if self.y(strict=strict) is None:
+        if not self.core.is_cartesian() and strict:
             return None
         _, y = self.xy(native=native)
         return np.reshape(y, self.size("spatial"))
 
     def longrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
-        """Returns a meshgrid of x-values"""
-        if self.lon(strict=strict) is None:
+        """Returns a meshgrid of lon-values"""
+        if self.core.is_cartesian() and strict:
             return None
         lon, _ = self.lonlat(native=native)
+        if lon is None:  # Might happen if UTM-zone is not set
+            return None
         return np.reshape(lon, self.size("spatial"))
 
     def latgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
-        """Returns a meshgrid of y-values"""
-        if self.lat(strict=strict) is None:
+        """Returns a meshgrid of lat-values"""
+        if self.core.is_cartesian() and strict:
             return None
         _, lat = self.lonlat(native=native)
+        if lat is None:  # Might happen if UTM-zone is not set
+            return None
         return np.reshape(lat, self.size("spatial"))
 
     def lon(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:

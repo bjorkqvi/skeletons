@@ -63,7 +63,6 @@ def test_gridded_cartesian():
     np.testing.assert_almost_equal(ygrid[:, 0], y)
     np.testing.assert_almost_equal(ygrid[:, -1], y)
     assert ygrid.shape == (4, 5)
-
     longrid = points.longrid()
     assert longrid is None  # No UTM zone
 

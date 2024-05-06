@@ -40,7 +40,7 @@ class CoordinateManager:
         return not (p1 and p2 and p3 and p4 and p5)
 
     def is_cartesian(self) -> bool:
-        """Checks if the grid is cartesian (True) or spherical (False)."""
+        """Checks if the grid is cartesian"""
         if self.x_str == "x" and self.y_str == "y":
             return True
         elif self.x_str == "lon" and self.y_str == "lat":
@@ -48,6 +48,10 @@ class CoordinateManager:
         raise ValueError(
             f"Expected x- and y string to be either 'x' and 'y' or 'lon' and 'lat', but they were {self.x_str} and {self.y_str}"
         )
+
+    def is_spherical(self) -> bool:
+        """Checks if the grid is cartesian"""
+        return not self.is_cartesian()
 
     def add_var(self, data_var: DataVar) -> None:
         if self.get(data_var.name) is not None:

@@ -63,7 +63,7 @@ class UTMManager:
         )
         return (zone_number, zone_letter)
 
-    def reset(self) -> None:
+    def reset(self, silent: bool = False) -> None:
         if self._lat_edges[0] is None:
             self._zone = (None, None)
         else:
@@ -72,7 +72,8 @@ class UTMManager:
             # *** utm.error.OutOfRangeError: latitude out of range (must be between 80 deg S and 84 deg N)
             # raise OutOfRangeError('longitude out of range (must be between 180 deg W and 180 deg E)')
             self._zone = self.optimal_utm(lon=lon, lat=lat)
-        print(f"Setting UTM {self._zone}")
+        if not silent:
+            print(f"Setting UTM {self._zone}")
 
     def set(self, zone: tuple[int, str], silent: bool = False) -> None:
         """Set UTM zone and number to be used for cartesian coordinates.
@@ -80,11 +81,11 @@ class UTMManager:
         If not given for a spherical grid, they will be deduced.
         """
         if zone is None:
-            self.reset()
+            self.reset(silent=silent)
             return
 
         if zone == (None, None):
-            self.reset()
+            self.reset(silent=silent)
             return
 
         if not self.is_valid(zone):
@@ -114,7 +115,7 @@ class UTMManager:
 
     def _lon(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         if self._zone[0] is None:
-            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
+            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get longitudes!")
             return None
 
         if not self.is_valid(self._zone):
