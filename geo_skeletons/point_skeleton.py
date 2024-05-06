@@ -38,7 +38,7 @@ class PointSkeleton(Skeleton):
     def from_skeleton(
         cls,
         skeleton: Skeleton,
-        mask: np.ndarray = None,
+        mask: Optional[np.ndarray] = None,
     ) -> PointSkeleton:
         """Creates a new PointSkeleton containing only points from another Gridded- or PointSkeleton.
 
@@ -76,24 +76,28 @@ class PointSkeleton(Skeleton):
         else:
             return INITIAL_CARTESIAN_VARS
 
-    def xgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+    def xgrid(
+        self, native: bool = False, strict: bool = False, normalize: bool = False
+    ) -> np.ndarray:
         """Gives a meshgrid of UTM x-values.
 
         NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
 
         strict = True gives 'None' if Skeleton is spherical
         native = True gives longitude values if Skeleton is spherical"""
-        x, _ = self.xy(native=native, strict=strict)
+        x, _ = self.xy(native=native, strict=strict, normalize=normalize)
         return x
 
-    def ygrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+    def ygrid(
+        self, native: bool = False, strict: bool = False, normalize: bool = False
+    ) -> np.ndarray:
         """Gives a meshgrid of UTM x-values.
 
         NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
 
         strict = True gives 'None' if Skeleton is spherical
         native = True gives longitude values if Skeleton is spherical"""
-        _, y = self.xy(native=native, strict=strict)
+        _, y = self.xy(native=native, strict=strict, normalize=normalize)
         return y
 
     def longrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
@@ -125,8 +129,6 @@ class PointSkeleton(Skeleton):
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian x-coordinate.
-
-        If the grid is spherical, a conversion to UTM coordinates is made based on the median latitude.
 
         strict = True gives 'None' if Skeleton is spherical
         native = True gives longitude values if Skeleton is spherical
@@ -165,10 +167,8 @@ class PointSkeleton(Skeleton):
     ) -> np.ndarray:
         """Returns the cartesian y-coordinate.
 
-        If the grid is spherical, a conversion to UTM coordinates is made based on the median latitude.
-
         strict = True gives 'None' if Skeleton is spherical
-        native = True gives longitude values if Skeleton is spherical
+        native = True gives latitude values if Skeleton is spherical
 
         Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
         """
@@ -198,8 +198,6 @@ class PointSkeleton(Skeleton):
     def lon(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
         """Returns the spherical lon-coordinate. 'None' for cartesian grids that have no UTM-zone.
 
-        If the grid is cartesian, a conversion from UTM coordinates is made based on the median y-coordinate.
-
         strict = True gives 'None' if Skeleton is cartesian
         native = True gives UTM x-values if Skeleton is cartesian
         """
@@ -223,8 +221,6 @@ class PointSkeleton(Skeleton):
     def lat(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
         """Returns the spherical lat-coordinate. 'None' for cartesian grids that have no UTM-zone.
 
-        If the grid is cartesian, a conversion from UTM coordinates is made based on the median y-coordinate.
-
         strict = True gives 'None' if Skeleton is cartesian
         native = True gives UTM x-values if Skeleton is cartesian
         """
@@ -243,32 +239,6 @@ class PointSkeleton(Skeleton):
             return self._ds_manager.get("lat", **kwargs).values.copy()
 
         return self.utm._lat(x=self.x(**kwargs), y=self.y(**kwargs))
-
-    def lonlat(
-        self,
-        native: bool = False,
-        strict: bool = False,
-        mask: Optional[np.ndarray] = None,
-        **kwargs,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Returns a tuple of longitude and latitude of all points.
-
-        strict = True gives '(None, None)' if Skeleton is cartesian
-        native = True gives UTM x,y-values if Skeleton is cartesian
-
-        Identical to (.lon(), .lat()) (with no mask)
-        mask is a boolean array (default True for all points)
-        """
-
-        lon, lat = self.lon(native=native, strict=strict, **kwargs), self.lat(
-            native=native, strict=strict, **kwargs
-        )
-
-        if lon is None:
-            return None, None
-        if mask is not None:
-            return lon[mask], lat[mask]
-        return lon, lat
 
     def xy(
         self,
@@ -300,3 +270,29 @@ class PointSkeleton(Skeleton):
         if mask is not None:
             return x[mask], y[mask]
         return x, y
+
+    def lonlat(
+        self,
+        native: bool = False,
+        strict: bool = False,
+        mask: Optional[np.ndarray] = None,
+        **kwargs,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Returns a tuple of longitude and latitude of all points.
+
+        strict = True gives '(None, None)' if Skeleton is cartesian
+        native = True gives UTM x,y-values if Skeleton is cartesian
+
+        Identical to (.lon(), .lat()) (with no mask)
+        mask is a boolean array (default True for all points)
+        """
+
+        lon, lat = self.lon(native=native, strict=strict, **kwargs), self.lat(
+            native=native, strict=strict, **kwargs
+        )
+
+        if lon is None:
+            return None, None
+        if mask is not None:
+            return lon[mask], lat[mask]
+        return lon, lat
