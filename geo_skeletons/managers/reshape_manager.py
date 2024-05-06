@@ -2,6 +2,8 @@ import numpy as np
 
 from geo_skeletons.errors import DataWrongDimensionError
 from geo_skeletons import dask_computations
+import dask.array as da
+from typing import Union
 
 
 class ReshapeManager:
@@ -11,7 +13,13 @@ class ReshapeManager:
     ) -> None:
         self.silent = silent
 
-    def explicit_reshape(self, data, data_coords, expected_coords):
+    def explicit_reshape(
+        self,
+        data: Union[np.ndarray, da.array],
+        data_coords: list[str],
+        expected_coords: list[str],
+    ) -> Union[np.ndarray, da.array]:
+        """Reshapes the data by using explicitly given coordinate names for the data and the expected coords."""
         if data is None:
             return None
 
@@ -36,7 +44,9 @@ class ReshapeManager:
 
         return data
 
-    def transpose_2d(self, data, expected_squeezed_shape: tuple[int]):
+    def transpose_2d(
+        self, data: Union[np.ndarray, da.array], expected_squeezed_shape: tuple[int]
+    ) -> Union[np.ndarray, da.array]:
         """Transposes given data if it is a two dimensional transpose of the wanted size after removing all trivial dimension.
 
         If sizes match, it just squeezes the data.
@@ -60,7 +70,9 @@ class ReshapeManager:
         if tuple(np.flip(actual_squeezed_shape)) == expected_squeezed_shape:
             return data.squeeze().T
 
-    def unsqueeze(self, data, expected_shape: tuple[int]):
+    def unsqueeze(
+        self, data: Union[np.ndarray, da.array], expected_shape: tuple[int]
+    ) -> Union[np.ndarray, da.array]:
         """Unsqueezes the data by inserting trivial dimensions at the right places
         Returns None if not possible"""
         if data is None:
