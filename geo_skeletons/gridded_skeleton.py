@@ -459,6 +459,3 @@ class GriddedSkeleton(Skeleton):
             y = None
 
         self._init_structure(x, y, lon, lat, utm=self.utm.zone())
-
-
-# dummy(time, y, x)
