@@ -12,6 +12,7 @@ from ..errors import (
     CoordinateWrongLengthError,
     GridError,
 )
+from typing import Any
 
 import dask
 
@@ -23,7 +24,9 @@ class DatasetManager:
     def __init__(self, coordinate_manager: CoordinateManager) -> None:
         self.coord_manager = coordinate_manager
 
-    def create_structure(self, x, y, new_coords):
+    def create_structure(
+        self, x: np.ndarray, y: np.ndarray, new_coords: dict[str, np.ndarray]
+    ):
         """Create a Dataset containing only the relevant coordinates."""
         existing_coords = {
             c: self.get(c, strict=True) for c in self.coord_manager.coords("nonspatial")
@@ -45,9 +48,10 @@ class DatasetManager:
         self.check_consistency(coord_dict=coord_dict, var_dict=var_dict)
         self.set_new_ds(xr.Dataset(coords=coord_dict, data_vars=var_dict))
 
-    def create_coord_dict_from_input(self, x, y, given_coords) -> dict:
+    def create_coord_dict_from_input(
+        self, x: np.ndarray, y: np.ndarray, given_coords: dict[str, np.ndarray]
+    ) -> dict[str, np.ndarray]:
         """Creates dictonary of the coordinates to be used for initializing the dataset"""
-
         coord_dict = {}
 
         if "inds" in self.coord_manager.coords("spatial"):
@@ -72,8 +76,10 @@ class DatasetManager:
 
         return coord_dict
 
-    def create_var_dict_from_input(self, x, y, coord_dict) -> dict:
-        """Creates dictionary of variables"""
+    def create_var_dict_from_input(
+        self, x: np.ndarray, y: np.ndarray, coord_dict: dict[str, np.ndarray]
+    ) -> dict[str, np.ndarray]:
+        """Creates dictionary of variables given the x,y-vectors and provided data"""
         var_dict = {}
         initial_vars = self.coord_manager.data_vars("spatial")
         initial_x = "x" if "x" in initial_vars else "lon"
@@ -98,7 +104,9 @@ class DatasetManager:
 
         return var_dict
 
-    def check_consistency(self, coord_dict, var_dict) -> None:
+    def check_consistency(
+        self, coord_dict: dict[str, np.ndarray], var_dict: dict[str, np.ndarray]
+    ) -> None:
         """Checks that the provided coordinates are consistent with the
         coordinates that the Skeleton is defined over."""
         coords = list(coord_dict.keys())
@@ -138,7 +146,7 @@ class DatasetManager:
     def set_new_ds(self, ds: xr.Dataset) -> None:
         self.data = ds
 
-    def ds(self):
+    def ds(self) -> xr.Dataset:
         """Resturns the Dataset (None if doesn't exist)."""
         if not hasattr(self, "data"):
             return None
@@ -210,7 +218,7 @@ class DatasetManager:
 
         return self._slice_data(data, **kwargs)
 
-    def get_attrs(self) -> dict:
+    def get_attrs(self) -> dict[str, Any]:
         """Gets a dictionary of all the data variable and global atributes.
         General attributes has key '_global_'"""
         meta_dict = {}
@@ -221,7 +229,9 @@ class DatasetManager:
 
         return meta_dict
 
-    def set_attrs(self, attributes: dict, data_array_name: str = None) -> None:
+    def set_attrs(
+        self, attributes: dict[str, Any], data_array_name: str = None
+    ) -> None:
         """Sets attributes to DataArray da_name.
 
         If data_array_name is not given, sets global attributes
@@ -231,7 +241,7 @@ class DatasetManager:
         else:
             self.data.get(data_array_name).attrs = attributes
 
-    def _slice_data(self, data, **kwargs) -> xr.DataArray:
+    def _slice_data(self, data: xr.DataArray, **kwargs) -> xr.DataArray:
         coordinates = {}
         keywords = {}
         for key, value in kwargs.items():
@@ -241,7 +251,6 @@ class DatasetManager:
                 keywords[key] = value
 
         for key, value in coordinates.items():
-            # data = eval(f"data.sel({key}={value}, **keywords)")
             data = data.sel({key: value}, **keywords)
 
         return data
@@ -256,6 +265,7 @@ class DatasetManager:
             self.set_new_ds(ds.merge(self.ds(), compat="override"))
 
     def compile_data_array(self, data: np.ndarray, name: str) -> xr.DataArray:
+        """Creates an xr.DataArray based on the np.array data and the variable name"""
         if name in self.coord_manager.coords("all"):
             # E.g. 'lon' should only depend on dim 'lon', not ['lat','lon']
             coord_dict = {name: ([name], data)}
@@ -269,6 +279,7 @@ class DatasetManager:
         return daa
 
     def coords_to_size(self, coords: list[str], **kwargs) -> tuple[int]:
+        """Gets the size of the data for a list of coordinates"""
         list = []
         data = self._slice_data(self.ds(), **kwargs)
         for coord in coords:
