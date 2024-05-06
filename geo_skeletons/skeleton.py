@@ -31,10 +31,10 @@ class Skeleton:
 
     def __init__(
         self,
-        x=None,
-        y=None,
-        lon=None,
-        lat=None,
+        x: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
+        y: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
+        lon: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
+        lat: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
         name: str = "LonelySkeleton",
         utm: Optional[tuple[int, str]] = None,
         chunks: Union[tuple[int], str] = None,
