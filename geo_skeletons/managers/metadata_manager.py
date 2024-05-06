@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Optional, Any
 
 if TYPE_CHECKING:
     from .coordinate_manager import CoordinateManager
@@ -18,7 +18,7 @@ class MetaDataManager:
         # This will be used to make a deepcopy of the manager for instances
         self._uninitialized = True
 
-    def _ds_set_possible(self, name: Union[str, None]):
+    def _ds_set_possible(self, name: Optional[str]):
         """Checks if it is possible to set metadata to the dataset"""
         if self._ds_manager is None:
             return False
@@ -32,10 +32,13 @@ class MetaDataManager:
 
     def set(
         self,
-        metadata: dict,
-        name: str = None,
+        metadata: dict[str, Any],
+        name: Optional[str] = None,
     ) -> None:
-        """Sets metadata to the class. Overwrites any old metadata."""
+        """Sets metadata to the class. Overwrites any old metadata.
+
+        If 'name' is not given, the metadata is saved as general metadata not connected to any variable.
+        """
         if not isinstance(metadata, dict):
             raise TypeError(f"metadata needs to be a dict, not '{metadata}'!")
 
@@ -49,14 +52,24 @@ class MetaDataManager:
         if self._ds_set_possible(name):
             self._ds_manager.set_attrs(metadata, name)
 
-    def append(self, metadata: dict, name: str = None):
-        """Appends metadata to the class"""
+    def append(
+        self,
+        metadata: dict[str, Any],
+        name: Optional[str] = None,
+    ):
+        """Appends metadata to the class.
+
+        If 'name' is not given, the metadata is saved as general metadata not connected to any variable.
+        """
         old_metadata = self.get(name)
         old_metadata.update(metadata)
         self.set(old_metadata, name)
 
-    def get(self, name: str = None) -> dict:
-        """Return generic or data variable specific metadata"""
+    def get(self, name: Optional[str] = None) -> dict[str, Any]:
+        """Return metadata.
+
+        If 'name' is not given, it return the metadata not connected to any variable.
+        """
         if name is None:
             return self._metadata.get("__general__", {})
 

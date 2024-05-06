@@ -141,7 +141,9 @@ class UTMManager:
         return lon
 
     def _x(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
-        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone"""
+        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone.
+
+        latitudes higher than 84 or lower than -80 will produce np.nan"""
         assert len(lon) == len(
             lat
         ), f"lon and lat vectors need to be of equal length ({len(lon)}, {len(lat)})!"
@@ -171,7 +173,9 @@ class UTMManager:
         return x
 
     def _y(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
-        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone"""
+        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone.
+
+        latitudes higher than 84 or lower than -80 will produce np.nan"""
 
         assert len(lon) == len(
             lat
@@ -206,17 +210,17 @@ class UTMManager:
         return y
 
 
-def cap_lat_for_utm(lat):
-    if isinstance(lat, float):
-        lat = np.array([lat])
-    if len(lat) > 0 and max(lat) > 84:
-        print(
-            f"Max latitude {max(lat)}>84. These points well be capped to 84 deg in UTM conversion!"
-        )
-        lat[lat > 84.0] = 84.0
-    if len(lat) > 0 and min(lat) < -80:
-        lat[lat < -80.0] = -80.0
-        print(
-            f"Min latitude {min(lat)}<-80. These points well be capped to -80 deg in UTM conversion!"
-        )
-    return lat
+# def cap_lat_for_utm(lat):
+#     if isinstance(lat, float):
+#         lat = np.array([lat])
+#     if len(lat) > 0 and max(lat) > 84:
+#         print(
+#             f"Max latitude {max(lat)}>84. These points well be capped to 84 deg in UTM conversion!"
+#         )
+#         lat[lat > 84.0] = 84.0
+#     if len(lat) > 0 and min(lat) < -80:
+#         lat[lat < -80.0] = -80.0
+#         print(
+#             f"Min latitude {min(lat)}<-80. These points well be capped to -80 deg in UTM conversion!"
+#         )
+#     return lat
