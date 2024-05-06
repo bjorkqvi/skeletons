@@ -2,7 +2,7 @@ from .metadata_manager import MetaDataManager
 import numpy as np
 import numpy as np
 import utm as utm_module
-
+from typing import Optional
 
 VALID_UTM_ZONES = [
     "C",
@@ -55,15 +55,23 @@ class UTMManager:
         return True
 
     def is_set(self) -> bool:
+        """Checks if the UTM zone has been set"""
         return not self._zone == (None, None)
 
     def optimal_utm(self, lon: np.ndarray, lat: np.ndarray) -> tuple[int, str]:
-        __, __, zone_number, zone_letter = utm_module.from_latlon(
-            np.array(lat), np.array(lon)
-        )
+        """Determines an optimat UTM-zone given longitude and latitude coordinates."""
+        try:
+            __, __, zone_number, zone_letter = utm_module.from_latlon(
+                np.array(lat), np.array(lon)
+            )
+        except ValueError:  # ValueError: latitudes must all have the same sign
+            __, __, zone_number, zone_letter = utm_module.from_latlon(
+                np.median(np.array(lat)), np.median(np.array(lon))
+            )
         return (zone_number, zone_letter)
 
     def reset(self, silent: bool = False) -> None:
+        """Resets the UTM-zone based on the lon/lat edges"""
         if self._lat_edges[0] is None:
             self._zone = (None, None)
         else:
@@ -75,10 +83,10 @@ class UTMManager:
         if not silent:
             print(f"Setting UTM {self._zone}")
 
-    def set(self, zone: tuple[int, str], silent: bool = False) -> None:
+    def set(self, zone: Optional[tuple[int, str]], silent: bool = False) -> None:
         """Set UTM zone and number to be used for cartesian coordinates.
 
-        If not given for a spherical grid, they will be deduced.
+        If 'None' for a spherical grid, they will be deduced.
         """
         if zone is None:
             self.reset(silent=silent)
@@ -98,6 +106,7 @@ class UTMManager:
             print(f"Setting UTM {self._zone}")
 
     def _lat(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Calculates latitudes based on given x,y-coordinates and the set UTM-zone"""
         if self._zone[0] is None:
             print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
             return None
@@ -114,6 +123,7 @@ class UTMManager:
         return lat
 
     def _lon(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Calculates longitudes based on given x,y-coordinates and the set UTM-zone"""
         if self._zone[0] is None:
             print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get longitudes!")
             return None
@@ -131,66 +141,67 @@ class UTMManager:
         return lon
 
     def _x(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone"""
+        assert len(lon) == len(
+            lat
+        ), f"lon and lat vectors need to be of equal length ({len(lon)}, {len(lat)})!"
         utm = utm or self._zone
-        lat = cap_lat_for_utm(lat)
-        if len(lat) == 1:
-            x, __, __, __ = utm_module.from_latlon(
-                lat,
-                lon,
+        # lat = cap_lat_for_utm(lat)
+        # High/low latitudes cannot be transformed to UTM
+        good_mask = np.logical_and(lat <= 84, lat >= -80)
+        posmask = np.logical_and(lat >= 0, good_mask)
+        negmask = np.logical_and(lat < 0, good_mask)
+        x = np.zeros(len(lon))
+        if np.any(posmask):
+            x[posmask], __, __, __ = utm_module.from_latlon(
+                lat[posmask],
+                lon[posmask],
                 force_zone_number=utm[0],
                 force_zone_letter=utm[1],
             )
-        else:
-            posmask = lat >= 0
-            negmask = lat < 0
-            x = np.zeros(len(lon))
-            if np.any(posmask):
-                x[posmask], __, __, __ = utm_module.from_latlon(
-                    lat[posmask],
-                    lon[posmask],
-                    force_zone_number=utm[0],
-                    force_zone_letter=utm[1],
-                )
-            if np.any(negmask):
-                x[negmask], __, __, __ = utm_module.from_latlon(
-                    -lat[negmask],
-                    lon[negmask],
-                    force_zone_number=utm[0],
-                    force_zone_letter=utm[1],
-                )
+        if np.any(negmask):
+            x[negmask], __, __, __ = utm_module.from_latlon(
+                -lat[negmask],
+                lon[negmask],
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+        if not np.all(good_mask):
+            x[np.logical_not(good_mask)] = np.nan
         return x
 
     def _y(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone"""
+
+        assert len(lon) == len(
+            lat
+        ), f"lon and lat vectors need to be of equal length ({len(lon)}, {len(lat)})!"
         utm = utm or self._zone
-        lat = cap_lat_for_utm(lat)
+        # lat = cap_lat_for_utm(lat)
+        # High/low latitudes cannot be transformed to UTM
+        good_mask = np.logical_and(lat <= 84, lat >= -80)
         lon = np.atleast_1d(lon)
-        if len(lon) == 1:
-            _, y, __, __ = utm_module.from_latlon(
-                lat,
-                lon,
+        posmask = np.logical_and(lat >= 0, good_mask)
+        negmask = np.logical_and(lat < 0, good_mask)
+        y = np.zeros(len(lat))
+
+        if np.any(posmask):
+            _, y[posmask], __, __ = utm_module.from_latlon(
+                lat[posmask],
+                lon[posmask],
                 force_zone_number=utm[0],
                 force_zone_letter=utm[1],
             )
-        else:
-            posmask = lat >= 0
-            negmask = lat < 0
-            y = np.zeros(len(lat))
-
-            if np.any(posmask):
-                _, y[posmask], __, __ = utm_module.from_latlon(
-                    lat[posmask],
-                    lon[posmask],
-                    force_zone_number=utm[0],
-                    force_zone_letter=utm[1],
-                )
-            if np.any(negmask):
-                _, y[negmask], __, __ = utm_module.from_latlon(
-                    -lat[negmask],
-                    lon[negmask],
-                    force_zone_number=utm[0],
-                    force_zone_letter=utm[1],
-                )
-                y[negmask] = -y[negmask]
+        if np.any(negmask):
+            _, y[negmask], __, __ = utm_module.from_latlon(
+                -lat[negmask],
+                lon[negmask],
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+            y[negmask] = -y[negmask]
+        if not np.all(good_mask):
+            y[np.logical_not(good_mask)] = np.nan
 
         return y
 
