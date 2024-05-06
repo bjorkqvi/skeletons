@@ -1,29 +1,33 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, Optional, Union
+
+if TYPE_CHECKING:
+    from ..skeleton import Skeleton
 import dask.array as da
 import xarray as xr
-from typing import Union
 import numpy as np
 
 from geo_skeletons.dask_computations import data_is_dask
 
 
 class DaskManager:
-    def __init__(self, skeleton, chunks="auto"):
+    def __init__(self, skeleton: Skeleton, chunks: Union[tuple[int], str] = "auto"):
         self.chunks = chunks
         self._skeleton = skeleton
 
     def activate(
-        self, chunks="auto", primary_dim: str = None, rechunk: bool = True
+        self,
+        chunks: Union[tuple[int], str] = "auto",
+        primary_dim: Optional[str] = None,
+        rechunk: bool = True,
     ) -> None:
+        """Activates dask-mode and rechunks the data unless 'rechunk' is set to False"""
         self.chunks = chunks
         if rechunk:
             self.rechunk(chunks, primary_dim)
 
     def deactivate(self, dechunk: bool = False) -> None:
-        """Deactivates the use of dask, meaning:
-
-        1) Data will not be converted to dask-arrays when set, unless chunks provided
-        2) Data will be converted from dask-arrays to numpy arrays when get
-        3) All data will be converted to numpy arrays if unchunk=True"""
+        """Deactivates dask-mode. Data converted to numpy arrays if 'dechunk' set to True"""
         self.chunks = None
 
         if dechunk:
@@ -31,9 +35,10 @@ class DaskManager:
 
     def rechunk(
         self,
-        chunks: Union[tuple, dict, str] = "auto",
+        chunks: Union[tuple[int], dict[str, int], str] = "auto",
         primary_dim: Union[str, list[str]] = None,
     ) -> None:
+        """Rechunks all the data"""
         if self.chunks is None:
             raise ValueError(
                 "Dask mode is not activated! use .activate_dask() before rechunking"
@@ -71,14 +76,20 @@ class DaskManager:
                 self._skeleton.set(var, dask_manager.undask_me(data))
 
     def is_active(self) -> bool:
+        """Checks if dask-mode is activated"""
         return self.chunks is not None
 
     @staticmethod
-    def data_is_dask(data) -> bool:
-        """Checks if a data array is a dask array"""
+    def data_is_dask(data: Union[np.ndarray, da.array, xr.DataArray]) -> bool:
+        """Checks if a data array is a dask array (or contains a dask array)"""
         return data_is_dask(data)
 
-    def dask_me(self, data, chunks=None, force: bool = False):
+    def dask_me(
+        self,
+        data: Union[np.ndarray, da.array, xr.DataArray],
+        chunks: Optional[Union[tuple[int], str]] = None,
+        force: bool = False,
+    ) -> Union[np.ndarray, da.array, xr.DataArray]:
         """Convert a numpy array to a dask array if needed and wanted
 
         If dask-mode is activated: returns dask array with set chunking
@@ -115,7 +126,9 @@ class DaskManager:
 
         return data
 
-    def undask_me(self, data):
+    def undask_me(
+        self, data: Union[np.ndarray, da.array, xr.DataArray]
+    ) -> Union[np.ndarray, da.array, xr.DataArray]:
         """Convert a dask array to a numpy array if needed"""
         if data is None:
             return None
@@ -124,8 +137,8 @@ class DaskManager:
         return data
 
     def constant_array(
-        self, data, shape: tuple[int], chunks: tuple[int]
-    ) -> Union[da.array, np.array]:
+        self, data, shape: tuple[int], chunks: Union[tuple[int], str]
+    ) -> Union[da.array, np.ndarray]:
         """Creates an dask or numpy array of a certain shape is given data is shapeless."""
         chunks = chunks or self.chunks
         use_dask = chunks is not None
