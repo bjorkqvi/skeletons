@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from geo_parameters.metaparameter import MetaParameter
-import geo_parameters as gp
 
 
 @dataclass

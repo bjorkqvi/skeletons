@@ -164,9 +164,9 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()
         else:
-            x = self.utm._x(
-                lon=self.lon(**kwargs), lat=np.median(self.lat(**kwargs)), utm=utm
-            )
+            lons, lats = self.lon(**kwargs), self.lat(**kwargs)
+            lat = np.full(len(lons), np.median(lats))
+            x = self.utm._x(lon=self.lon(**kwargs), lat=lat, utm=utm)
 
         if normalize:
             x = x - min(x)
@@ -203,9 +203,9 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             y = self._ds_manager.get("y", **kwargs).values.copy()
         else:
-            y = self.utm._y(
-                lon=np.median(self.lon(**kwargs)), lat=self.lat(**kwargs), utm=utm
-            )
+            lons, lats = self.lon(**kwargs), self.lat(**kwargs)
+            lon = np.full(len(lats), np.median(lons))
+            y = self.utm._y(lon=lon, lat=self.lat(**kwargs), utm=utm)
 
         if normalize:
             y = y - min(y)
