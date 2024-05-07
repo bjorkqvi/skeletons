@@ -105,7 +105,7 @@ def test_coords_two_trivial_spatial():
     assert set(gp_coords) == set(["another_trivial", "another"])
     assert set(grid.coord_squeeze(g_coords)) == set(["test"])
     assert set(grid.coord_squeeze(gp_coords)) == set(["another"])
-    assert set(grid.coord_squeeze(s_coords)) == set(["y", "x"])
+    assert set(grid.coord_squeeze(s_coords)) == set(["y"])
     assert set(grid.coord_squeeze(a_coords)) == set(["test", "another"])
 
 
