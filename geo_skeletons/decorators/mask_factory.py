@@ -4,7 +4,7 @@ from copy import deepcopy
 CARTESIAN_STRINGS = ["x", "y", "xy"]
 SPHERICAL_STRINGS = ["lon", "lat", "lonlat"]
 
-from typing import Union
+from typing import Union, Optional
 import dask
 from geo_parameters.metaparameter import MetaParameter
 
@@ -18,10 +18,10 @@ def add_mask(
     name: Union[str, MetaParameter],
     default_value: int = 0,
     coord_group: str = "grid",
-    opposite_name: Union[str, MetaParameter] = None,
-    triggered_by: str = None,
+    opposite_name: Optional[Union[str, MetaParameter]] = None,
+    triggered_by: Optional[str] = None,
     valid_range: tuple[float] = (0.0, None),
-    range_inclusive: float = True,
+    range_inclusive: bool = True,
 ):
     """coord_type = 'all', 'spatial', 'grid' or 'gridpoint'"""
 
@@ -51,7 +51,7 @@ def add_mask(
             type: str = "lonlat",
             native: bool = True,
             order_by: str = "lat",
-            strict=False,
+            strict: bool = False,
             **kwargs,
         ):
             mask = get_mask(self, **kwargs)
@@ -72,7 +72,7 @@ def add_mask(
             type: str = "lonlat",
             native: bool = True,
             order_by: str = "lat",
-            strict=False,
+            strict: bool = False,
             **kwargs,
         ):
             mask = get_not_mask(self, **kwargs)
@@ -93,8 +93,8 @@ def add_mask(
             data: Union[np.ndarray, int, bool] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
-            coords: list[str] = None,
-            chunks: Union[tuple, str] = None,
+            coords: Optional[list[str]] = None,
+            chunks: Optional[Union[tuple, str]] = None,
             silent: bool = True,
         ) -> None:
             self.set(
@@ -112,8 +112,8 @@ def add_mask(
             data: Union[np.ndarray, int, bool] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
-            coords: list[str] = None,
-            chunks: Union[tuple, str] = None,
+            coords: Optional[list[str]] = None,
+            chunks: Optional[Union[tuple, str]] = None,
             silent: bool = True,
         ) -> None:
 
