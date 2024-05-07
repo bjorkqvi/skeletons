@@ -709,9 +709,34 @@ class Skeleton:
         return data
 
     def coord_squeeze(self, coords: list[str]) -> list[str]:
-        return [c for c in coords if len(self.get(c)) > 1] or self.core.coords(
-            "spatial"
-        )
+        """Smart squeezes a list of coordinates according to the following rules:
+        
+        1) Empty list return empty
+        2) Trivial one coordinate list returns itself
+        3) All coordinates that are of trivial length are removed and returned if not empty
+        4) If 3) resulted in an empty list, then ['inds'], ['lat']/['y'] or ['lon']/['x'] is returned"""
+        if not coords or len(coords) == 1:
+            return coords
+
+        long_coords = [c for c in coords if len(self.get(c)) > 1]
+
+        if long_coords:
+            return long_coords
+
+        present_spatial_coords = set(coords).intersection(self.core.coords("spatial"))
+        if not present_spatial_coords:
+            return []
+
+        if "inds" in present_spatial_coords:
+            return ["inds"]
+        if "lat" in present_spatial_coords:
+            return ["lat"]
+        if "y" in present_spatial_coords:
+            return ["y"]
+        if "lon" in present_spatial_coords:
+            return ["lon"]
+        if "x" in present_spatial_coords:
+            return ["x"]
 
     def ds(self) -> Union[xr.Dataset, None]:
         """Returns the underlying Xarray Dataset. None if dosen't exist."""
@@ -749,11 +774,11 @@ class Skeleton:
             raise KeyError(
                 f"coords should be 'all', 'spatial', 'grid' or 'gridpoint', not {coord_group}!"
             )
-        size = self._ds_manager.coords_to_size(self.core.coords(coord_group), **kwargs)
-
+        coords = self.core.coords(coord_group)
         if squeeze:
-            size = tuple([s for s in size if s > 1])
-        return size
+            coords = self.coord_squeeze(coords)
+
+        return self._ds_manager.coords_to_size(coords, **kwargs)
 
     def shape(self, var, squeeze: bool = False, **kwargs) -> tuple[int]:
         """Returns the size of one specific data variable."""
