@@ -1,68 +1,191 @@
 # skeletons
 
-Skeletons is an easy extendable way to represent gridded and non-gridded geophysical data. It provides the basic structure to work with spherical and cartesian coordinates, and can be extended to data-specific objects by adding coordinates, data variables and logical masks.
+Geo-skeletons is an easy extendable way to build python classes to represent gridded and non-gridded geophysical data. It provides the basic structure to work with spherical and cartesian coordinates, and can be extended to data-specific objects by adding coordinates, data variables and logical masks. It also integrates with the geo-parameters module to provide easy access to metadata.
 
 Please see https://data-skeletons.readthedocs.io/en/latest/ for a documentation.
 
-For example, to create a python class representing a 3D grid of water temperature data:
+For example, to create a python class representing wind data as x, and y components, but connencted magnitude and direction wrappers for convinience:
 ```python
-from geo_skeletons.gridded_skeleton import GriddedSkeleton
-from geo_skeletons.decorators import add_coord, add_datavar
-import numpy as np
-
-@add_datavar(name="water_temperature", default_value=10.0)
-@add_coord(name="z", grid_coord=True)
-class TemperatureData(GriddedSkeleton):
-    pass
-
-grid = TemperatureData(lon=(5, 10), lat=(58, 62), z=(0, 100))
-grid.set_spacing(dnmi=1) # Set horizontal spacing to 1 nautical mile
-grid.set_z_spacing(dx=1) # Set vertical spacing to 1 meter
-
-# Replace the default values with random temperature values
-n1, n2, n3 = grid.size()
-new_data = np.random.rand(n1, n2, n3)
-grid.set_water_temperature(new_data)
-
-# Replace all values in the grid with the mean surface temperature
-mean_surface_temperature = np.mean(grid.water_temperature(z=0))
-grid.set_water_temperature(mean_surface_temperature)
-
-# Get a list of all horizontal points of cartesian coordinates in UTM zone 33 N
-grid.set_utm((33,'N'))
-x, y = grid.xy()
-
-# Reset UTM zone to the best match determined at initialization (32, 'V')
-grid.set_utm()
-```
-
-To create a non-gridded object with wave height time series data and initialize it with cartesian coordinates in the UTM zone 33, N:
-
-```python
-from geo_skeletons.point_skeleton import PointSkeleton
-from goe_skeletons.decorators import add_datavar, add_time
+from geo_skeletons import GriddedSkeleton
+from geo_skeletons.decorators import add_datavar, add_time, add_magnitude
+import geo_parameters as gp
 import pandas as pd
 
-@add_datavar(name="hs", default_value=0.0)
-@add_time(name="time", grid_coord=False)
-class WaveHeight(PointSkeleton):
+
+@add_magnitude(gp.wind.Wind("wind"), x="u", y="v", direction=gp.wind.WindDir("wdir"))
+@add_datavar(gp.wind.YWind("v"))
+@add_datavar(gp.wind.XWind("u"))
+@add_time()
+class Wind(GriddedSkeleton):
     pass
 
-data = WaveHeight(
-    x=(165640, 180189, 283749),
-    y=(6666593, 6766055, 6769393),
-    time=pd.date_range("2020-01-01 00:00", "2020-01-31 23:00", freq="1H"),
-)
-data.set_utm((33, "N"))
+>> Wind.core
 
-lon, lat = data.lonlat() # Converts the UTM coordinates to spherical coordinates
-
-data.time() # Get times as a DatetimeIndex
-data.days(datetime=False) # Get all days as a list of strings in the format ['YYYY-MM-dd', ...]
-data.hours(datetime=False, fmt="%Y%M%d %H00") # Hours the format ['YYYYMMdd HH00', ...]
-
-data.set_hs(1.5) # Set a new constant Hs-value
-data.hs(data_array=True) # Get the Hs-values as a Xarray DataArray
-
-point_dict = data.yank_point(lon=9, lat=60) # Get index and distance to closest point
+------------------------------ Coordinate groups -------------------------------
+Spatial:    (y, x)
+Grid:       (y, x)
+Gridpoint:  (time)
+All:        (time, y, x)
+------------------------------------- Data -------------------------------------
+Variables:
+    u  (time, y, x):  0.0 [m/s] x_wind
+    v  (time, y, x):  0.0 [m/s] y_wind
+Masks:
+    *empty*
+Magnitudes:
+  wind: magnitude of (u,v) [m/s] wind_speed
+Directions:
+  wdir: direction of (u,v) [deg] wind_from_direction
+--------------------------------------------------------------------------------
 ```
+To create an instance of this class, provide the coordinate values at initialization. The spatial coordinates can be either lon/lat or UTM x/y. Here we will use spherical coordinates, but set the spatial resolution to about 4 km.
+
+```python
+data = Wind(
+    lon=(0, 10),
+    lat=(60, 70),
+    time=pd.date_range("2020-01-01 00:00", "2020-01-10 00:00", freq="1h"),
+)
+data.set_spacing(dm=4000)
+
+>> data
+
+<Wind (GriddedSkeleton)>
+------------------------------ Coordinate groups -------------------------------
+Spatial:    (lat, lon)
+Grid:       (lat, lon)
+Gridpoint:  (time)
+All:        (time, lat, lon)
+------------------------------------ Xarray ------------------------------------
+<xarray.Dataset> Size: 5kB
+Dimensions:  (time: 217, lat: 282, lon: 140)
+Coordinates:
+  * time     (time) datetime64[ns] 2kB 2020-01-01 ... 2020-01-10
+  * lat      (lat) float64 2kB 60.0 60.04 60.07 60.11 ... 69.89 69.93 69.96 70.0
+  * lon      (lon) float64 1kB 0.0 0.07194 0.1439 0.2158 ... 9.856 9.928 10.0
+Data variables:
+    *empty*
+---------------------------------- Empty data ----------------------------------
+Empty variables:
+    u  (time, lat, lon):  0.0 [m/s] x_wind
+    v  (time, lat, lon):  0.0 [m/s] y_wind
+-------------------------- Magnitudes and directions ---------------------------
+  wind: magnitude of (u,v) [m/s] wind_speed
+  wdir: direction of (u,v) [deg] wind_from_direction
+--------------------------------------------------------------------------------
+```
+
+As we can see, no data is yet stored in the underlying xarray Dataset. We can now set and get the data:
+```python
+>> data.set_u(3) # For non-constant value set numpy array
+>> data.set_v(6)
+```
+
+The wind speed and direction can be retrieved and is calculated from the x,y-components:
+```python
+>> data.wind()
+array([[[6.70820393, 6.70820393, 6.70820393, ..., 6.70820393,
+         6.70820393, 6.70820393],
+        [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393,
+         6.70820393, 6.70820393],
+        [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393,
+         6.70820393, 6.70820393],
+        ...,
+
+>> data.wdir()
+array([[[206.56505118, 206.56505118, 206.56505118, ..., 206.56505118,
+         206.56505118, 206.56505118],
+        [206.56505118, 206.56505118, 206.56505118, ..., 206.56505118,
+         206.56505118, 206.56505118],
+        [206.56505118, 206.56505118, 206.56505118, ..., 206.56505118,
+         206.56505118, 206.56505118],
+        ...,
+
+>> data.wdir(dir_type='to')
+array([[[26.56505118, 26.56505118, 26.56505118, ..., 26.56505118,
+         26.56505118, 26.56505118],
+        [26.56505118, 26.56505118, 26.56505118, ..., 26.56505118,
+         26.56505118, 26.56505118],
+        [26.56505118, 26.56505118, 26.56505118, ..., 26.56505118,
+         26.56505118, 26.56505118],
+        ...,
+```
+
+The direction (direction from) was parsed using the metadata in the gp.Wind.WindDir-parameters standard_name (wind_**from**_direction). The direction of the data can also be specified when setting data. 
+
+For example, to set the wind direction that is in mathematical convention (radians, 0=east, pi/2=north). Here we set data that is transposed and has an extra trivial dimension, but it can be reshaped by providing information about non-trivial dimensions:
+```python
+# Defined over 'lat', 'lon', 'ensamble', 'time', instead of the 'time','lat','lon' that we want.
+>> wind_data = np.full((282,140,1,217),0)
+# We can ignore the trivial 'ensemble' dimension that we don't use
+>> data.set_wdir(wind_data, coords=('lat','lon','time'), dir_type='math')
+
+>> data
+<Wind (GriddedSkeleton)>
+------------------------------ Coordinate groups -------------------------------
+Spatial:    (lat, lon)
+Grid:       (lat, lon)
+Gridpoint:  (time)
+All:        (time, lat, lon)
+------------------------------------ Xarray ------------------------------------
+<xarray.Dataset> Size: 137MB
+Dimensions:  (time: 217, lat: 282, lon: 140)
+Coordinates:
+  * time     (time) datetime64[ns] 2kB 2020-01-01 ... 2020-01-10
+  * lat      (lat) float64 2kB 60.0 60.04 60.07 60.11 ... 69.89 69.93 69.96 70.0
+  * lon      (lon) float64 1kB 0.0 0.07194 0.1439 0.2158 ... 9.856 9.928 10.0
+Data variables:
+    u        (time, lat, lon) float64 69MB 6.708 6.708 6.708 ... 6.708 6.708
+    v        (time, lat, lon) float64 69MB 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+-------------------------- Magnitudes and directions ---------------------------
+  wind: magnitude of (u,v) [m/s] wind_speed
+  wdir: direction of (u,v) [deg] wind_from_direction
+--------------------------------------------------------------------------------
+```
+
+We can see that the wind speed is kept as it is and the direction is rotated in a way that correspons to westerly winds, and this is also what we get when the wind direction is retrieved:
+```python
+>> data.wdir()
+array([[[270., 270., 270., ..., 270., 270., 270.],
+        [270., 270., 270., ..., 270., 270., 270.],
+        [270., 270., 270., ..., 270., 270., 270.],
+        ...,
+```
+For large data the arrays can be stored as dask arrays. This can be activated for an instance:
+
+```python
+>> data.dask.activate()
+>> data.u()
+dask.array<array, shape=(217, 282, 140), dtype=float64, chunksize=(217, 282, 140), chunktype=numpy.ndarray>
+
+>> data.u(dask=False)
+array([[[6.70820393, 6.70820393, 6.70820393, ..., 6.70820393,
+         6.70820393, 6.70820393],
+        [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393,
+         6.70820393, 6.70820393],
+        [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393,
+         6.70820393, 6.70820393],
+        ...,
+
+>> data.u(dask=False, data_array=True, lon=slice(0,1), time='2020-01-01 15:00')
+<xarray.DataArray 'u' (lat: 282, lon: 14)> Size: 32kB
+array([[6.70820393, 6.70820393, 6.70820393, ..., 6.70820393, 6.70820393,
+        6.70820393],
+       [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393, 6.70820393,
+        6.70820393],
+       [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393, 6.70820393,
+        6.70820393],
+       ...,
+       [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393, 6.70820393,
+        6.70820393],
+       [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393, 6.70820393,
+        6.70820393],
+       [6.70820393, 6.70820393, 6.70820393, ..., 6.70820393, 6.70820393,
+        6.70820393]])
+Coordinates:
+    time     datetime64[ns] 8B 2020-01-01T15:00:00
+  * lat      (lat) float64 2kB 60.0 60.04 60.07 60.11 ... 69.89 69.93 69.96 70.0
+  * lon      (lon) float64 112B 0.0 0.07194 0.1439 ... 0.7914 0.8633 0.9353
+```
+
+To have this as the default behavious for the class, just add the @activate_dask-decorator.
