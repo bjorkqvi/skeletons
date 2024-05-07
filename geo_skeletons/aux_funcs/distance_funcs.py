@@ -2,7 +2,9 @@ import geopy.distance
 import numpy as np
 
 
-def min_distance(lon, lat, lon_vec, lat_vec) -> tuple[float, int]:
+def min_distance(
+    lon: float, lat: float, lon_vec: np.ndarray, lat_vec: np.ndarray
+) -> tuple[float, int]:
     """Calculates minimum distance [m] between a given point and a list of
     points given in spherical coordinates (lon/lat degrees).
 
@@ -15,7 +17,9 @@ def min_distance(lon, lat, lon_vec, lat_vec) -> tuple[float, int]:
     return np.array(dx).min(), np.array(dx).argmin()
 
 
-def min_cartesian_distance(x, y, x_vec, y_vec) -> tuple[float, int]:
+def min_cartesian_distance(
+    x: float, y: float, x_vec: np.ndarray, y_vec: np.ndarray
+) -> tuple[float, int]:
     """ "Calculates minimum distance [m] between a given point and list of points given
     in cartesian coordinates [m].
 
@@ -27,13 +31,11 @@ def min_cartesian_distance(x, y, x_vec, y_vec) -> tuple[float, int]:
 
 def lon_in_km(lat: float) -> float:
     """Converts one longitude degree to km for a given latitude."""
-
     return distance_2points(lat, 0, lat, 1) / 1000
 
 
 def lat_in_km(lat: float) -> float:
     """Converts one latitude degree to km for a given latitude."""
-
     return distance_2points(lat, 0, lat + 1, 0) / 1000
 
 
@@ -41,7 +43,6 @@ def domain_size_in_km(
     lon: tuple[float, float], lat: tuple[float, float]
 ) -> tuple[float, float]:
     """Calculates approximate size of grid in km."""
-
     km_x = (
         distance_2points((lat[0] + lat[1]) / 2, lon[0], (lat[0] + lat[1]) / 2, lon[1])
         / 1000

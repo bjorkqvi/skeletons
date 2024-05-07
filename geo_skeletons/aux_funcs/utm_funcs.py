@@ -44,17 +44,17 @@ def valid_utm_zone(utm_zone: tuple[int, str]) -> bool:
     return True
 
 
-def cap_lat_for_utm(lat):
-    if isinstance(lat, float):
-        lat = np.array([lat])
-    if len(lat) > 0 and max(lat) > 84:
-        print(
-            f"Max latitude {max(lat)}>84. These points well be capped to 84 deg in UTM conversion!"
-        )
-        lat[lat > 84.0] = 84.0
-    if len(lat) > 0 and min(lat) < -80:
-        lat[lat < -80.0] = -80.0
-        print(
-            f"Min latitude {min(lat)}<-80. These points well be capped to -80 deg in UTM conversion!"
-        )
-    return lat
+# def cap_lat_for_utm(lat):
+#     if isinstance(lat, float):
+#         lat = np.array([lat])
+#     if len(lat) > 0 and max(lat) > 84:
+#         print(
+#             f"Max latitude {max(lat)}>84. These points well be capped to 84 deg in UTM conversion!"
+#         )
+#         lat[lat > 84.0] = 84.0
+#     if len(lat) > 0 and min(lat) < -80:
+#         lat[lat < -80.0] = -80.0
+#         print(
+#             f"Min latitude {min(lat)}<-80. These points well be capped to -80 deg in UTM conversion!"
+#         )
+#     return lat
