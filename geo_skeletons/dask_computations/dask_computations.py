@@ -5,7 +5,9 @@ import xarray as xr
 from typing import Union
 
 
-def reshape_me(data: Union[np.ndarray, da.array], coord_order: tuple[int]):
+def reshape_me(
+    data: Union[np.ndarray, da.array], coord_order: tuple[int]
+) -> Union[np.ndarray, da.array]:
     """Transpose a dask or numpy array"""
     if data_is_dask(data):
         return da.transpose(data, coord_order)
@@ -13,7 +15,9 @@ def reshape_me(data: Union[np.ndarray, da.array], coord_order: tuple[int]):
         return np.transpose(data, coord_order)
 
 
-def expand_dims(data: Union[np.ndarray, da.array], axis=tuple[int]):
+def expand_dims(
+    data: Union[np.ndarray, da.array], axis=tuple[int]
+) -> Union[np.ndarray, da.array]:
     """Expand the dimensions of a dask or numpy array"""
     if data_is_dask(data):
         return da.expand_dims(data, axis=axis)
@@ -21,7 +25,7 @@ def expand_dims(data: Union[np.ndarray, da.array], axis=tuple[int]):
         return np.expand_dims(data, axis=axis)
 
 
-def cos(data: Union[np.ndarray, da.array]):
+def cos(data: Union[np.ndarray, da.array]) -> Union[np.ndarray, da.array]:
     """cos on either dask or numpy array"""
     if data_is_dask(data):
         return da.cos(data)
@@ -29,7 +33,7 @@ def cos(data: Union[np.ndarray, da.array]):
         return np.cos(data)
 
 
-def sin(data: Union[np.ndarray, da.array]):
+def sin(data: Union[np.ndarray, da.array]) -> Union[np.ndarray, da.array]:
     """sin on either dask or numpy array"""
     if data_is_dask(data):
         return da.sin(data)
@@ -37,7 +41,9 @@ def sin(data: Union[np.ndarray, da.array]):
         return np.sin(data)
 
 
-def mod(data: Union[np.ndarray, da.array], mod: Union[float, int]):
+def mod(
+    data: Union[np.ndarray, da.array], mod: Union[float, int]
+) -> Union[np.ndarray, da.array]:
     """mod on either dask or numpy array"""
     if data_is_dask(data):
         return da.mod(data, mod)
@@ -45,7 +51,9 @@ def mod(data: Union[np.ndarray, da.array], mod: Union[float, int]):
         return np.mod(data, mod)
 
 
-def arctan2(y: Union[np.ndarray, da.array], x: Union[np.ndarray, da.array]):
+def arctan2(
+    y: Union[np.ndarray, da.array], x: Union[np.ndarray, da.array]
+) -> Union[np.ndarray, da.array]:
     """arctan2 on either dask or numpy array"""
     if data_is_dask(y) and data_is_dask(x):
         return da.arctan2(y, x)
