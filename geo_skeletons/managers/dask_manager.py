@@ -65,15 +65,14 @@ class DaskManager:
         """Computes all dask arrays and coverts them to numpy arrays.
 
         If data is big this might taka a long time or kill Python."""
-        dask_manager = DaskManager()
         for var in self._skeleton.core.data_vars():
             data = self._skeleton.get(var)
             if data is not None:
-                self._skeleton.set(var, dask_manager.undask_me(data))
+                self._skeleton.set(var, self.undask_me(data))
         for var in self._skeleton.core.masks():
             data = self._skeleton.get(var)
             if data is not None:
-                self._skeleton.set(var, dask_manager.undask_me(data))
+                self._skeleton.set(var, self.undask_me(data))
 
     def is_active(self) -> bool:
         """Checks if dask-mode is activated"""

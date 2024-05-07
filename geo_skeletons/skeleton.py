@@ -634,6 +634,15 @@ class Skeleton:
         if x_data is None or y_data is None:
             return None
 
+        if not self.dask.is_active() and (
+            empty or self._ds_manager.get(self.core.get(name).y, strict=True) is None
+        ):
+            y_data = self.dask.undask_me(y_data)
+        if not self.dask.is_active() and (
+            empty or self._ds_manager.get(self.core.get(name).x, strict=True) is None
+        ):
+            x_data = self.dask.undask_me(x_data)
+
         dir_type = dir_type or self.core.get(name).dir_type
         data = self._dir_type_manager.compute_math_direction(x_data, y_data)
         data = self._dir_type_manager.convert_from_math_dir(data, dir_type=dir_type)
@@ -659,7 +668,21 @@ class Skeleton:
             strict=strict,
             **kwargs,
         )
+
+        if x_data is None or y_data is None:
+            return None
+
+        if not self.dask.is_active() and (
+            empty or self._ds_manager.get(self.core.get(name).y, strict=True) is None
+        ):
+            y_data = self.dask.undask_me(y_data)
+        if not self.dask.is_active() and (
+            empty or self._ds_manager.get(self.core.get(name).x, strict=True) is None
+        ):
+            x_data = self.dask.undask_me(x_data)
+
         data = self._dir_type_manager.compute_magnitude(x_data, y_data)
+
         return data
 
     def _get_data(
