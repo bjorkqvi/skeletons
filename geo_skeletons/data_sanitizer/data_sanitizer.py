@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Iterable
+from typing import Iterable, Union, Optional
 
 from geo_skeletons.errors import (
     DataWrongDimensionError,
@@ -10,7 +10,14 @@ from geo_skeletons.errors import (
 )
 
 
-def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
+def sanitize_input(
+    x: Optional[Union[Iterable[float], Iterable[int], float, int]],
+    y: Optional[Union[Iterable[float], Iterable[int], float, int]],
+    lon: Optional[Union[Iterable[float], Iterable[int], float, int]],
+    lat: Optional[Union[Iterable[float], Iterable[int], float, int]],
+    is_gridded_format: bool,
+    **kwargs,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, np.ndarray]]:
     """Sanitizes input. After this all variables are either
     non-empty np.ndarrays with len >= 1 or None"""
 
@@ -44,7 +51,7 @@ def sanitize_input(x, y, lon, lat, is_gridded_format, **kwargs):
     return spatial["x"], spatial["y"], spatial["lon"], spatial["lat"], other
 
 
-def force_to_iterable(x, fmt: str = None) -> Iterable:
+def force_to_iterable(x) -> Iterable:
     """Returns an numpy array with at least one dimension and Nones removed
 
     Will return None if given None."""
@@ -57,7 +64,9 @@ def force_to_iterable(x, fmt: str = None) -> Iterable:
     return x
 
 
-def will_grid_be_spherical_or_cartesian(x, y, lon, lat):
+def will_grid_be_spherical_or_cartesian(
+    x: np.ndarray, y: np.ndarray, lon: np.ndarray, lat: np.ndarray
+) -> tuple[str, str, np.ndarray, np.ndarray]:
     """Determines if the grid will be spherical or cartesian based on which
     inputs are given and which are None.
 
@@ -107,13 +116,13 @@ def will_grid_be_spherical_or_cartesian(x, y, lon, lat):
     return native_x, native_y, xvec, yvec
 
 
-def coord_len_to_max_two(xvec):
+def coord_len_to_max_two(xvec: Optional[np.ndarray]) -> Union[np.ndarray, None]:
     if xvec is not None and len(xvec) > 2:
         xvec = np.array([min(xvec), max(xvec)])
     return xvec
 
 
-def sanitize_singe_variable(name: str, x):
+def sanitize_singe_variable(name: str, x: Optional[np.ndarray]) -> np.ndarray:
     """Forces to nump array and checks dimensions etc"""
     x = force_to_iterable(x)
 
@@ -133,7 +142,7 @@ def sanitize_singe_variable(name: str, x):
     return x
 
 
-def sanitize_point_structure(spatial: dict) -> dict:
+def sanitize_point_structure(spatial: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     """Repeats a single value to match lenths of arrays"""
     x = spatial.get("x")
     y = spatial.get("y")
@@ -164,7 +173,7 @@ def sanitize_point_structure(spatial: dict) -> dict:
     return spatial
 
 
-def get_edges_of_arrays(spatial: dict) -> dict:
+def get_edges_of_arrays(spatial: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     """Takes only edges of arrays, so [1,2,3] -> [1,3]"""
     for key, value in spatial.items():
         if value is not None:
@@ -173,7 +182,8 @@ def get_edges_of_arrays(spatial: dict) -> dict:
     return spatial
 
 
-def check_that_variables_equal_length(x, y):
+def check_that_variables_equal_length(x: np.ndarray, y: np.ndarray):
+    """Checks that two variables are of equal lengt and raises error if not. 'None' and 'None' are equal length."""
     if x is None and y is None:
         return True
     if x is None:
@@ -181,11 +191,14 @@ def check_that_variables_equal_length(x, y):
     if y is None:
         raise ValueError(f"y/lat variable None even though x/lon variable is not!")
     if len(x) != len(y):
-        raise CoordinateWrongLengthError(x, len(spatial[x]), y, len(spatial[y]))
+        raise CoordinateWrongLengthError("x", len(x), "y", len(y))
     return
 
 
-def sanitize_time_input(time):
+def sanitize_time_input(
+    time: Union[str, list[str], np.ndarray, pd.DatetimeIndex]
+) -> pd.DatetimeIndex:
+    """Sanitized time input to pandas DatetimeIndex"""
     if isinstance(time, str):
         return pd.DatetimeIndex([time])
     if isinstance(time, np.ndarray):
@@ -195,7 +208,8 @@ def sanitize_time_input(time):
     return pd.DatetimeIndex(time)
 
 
-def clean_lons(lon):
+def clean_lons(lon: np.ndarray) -> np.ndarray:
+    """Makes sure longitudes are between -180 and 180 degrees"""
     mask = lon < -180
     lon[mask] = lon[mask] + 360
     mask = lon > 180
@@ -203,7 +217,7 @@ def clean_lons(lon):
     return lon
 
 
-def get_unique_values(spatial):
+def get_unique_values(spatial: Union[float, Iterable[float]]):
     """e.g. lon=(4.0, 4.0) should behave like lon=4.0 if data is gridded"""
     if spatial.get("lon") is not None and spatial.get("lat") is not None:
         coords = ["lon", "lat"]
