@@ -371,6 +371,85 @@ class CoordinateManager:
             return None
         return param.default_value
 
+    def __repr__(self):
+        def string_of_coords(list_of_coords) -> str:
+            if not list_of_coords:
+                return ""
+            string = "("
+            for c in list_of_coords:
+                string += f"{c}, "
+            string = string[:-2]
+            string += ")"
+            return string
+
+        string = f"{' Coordinate groups ':-^80}" + "\n"
+        string += f"{'Spatial:':12}"
+
+        string += string_of_coords(self.coords("spatial")) or "*empty*"
+        string += f"\n{'Grid:':12}"
+        string += string_of_coords(self.coords("grid")) or "*empty*"
+        string += f"\n{'Gridpoint:':12}"
+        string += string_of_coords(self.coords("gridpoint")) or "*empty*"
+
+        string += f"\n{'All:':12}"
+        string += string_of_coords(self.coords("all")) or "*empty*"
+
+        string += f"\n{' Data ':-^80}"
+        string += "\n" + "Variables:"
+        if self.data_vars():
+            max_len = len(max(self.data_vars(), key=len))
+            for var in self.data_vars():
+                string += f"\n    {var:{max_len+2}}"
+                string += string_of_coords(self.coords(self.coord_group(var)))
+                string += f":  {self.default_value(var)}"
+                meta_parameter = self.meta_parameter(var)
+                if meta_parameter is not None:
+                    string += f" [{meta_parameter.unit()}]"
+                    string += f" {meta_parameter.standard_name()}"
+        else:
+            string += "\n    *empty*"
+
+        string += "\n" + "Masks:"
+        if self.masks():
+            max_len = len(max(self.masks(), key=len))
+            for mask in self.masks:
+                string += f"\n    {mask:{max_len+2}}"
+                string += string_of_coords(self.coords(self.coord_group(mask)))
+                string += f":  {bool(self.default_value(mask))}"
+        else:
+            string += "\n    *empty*"
+
+        magnitudes = self.magnitudes()
+        string += "\n" + "Magnitudes:"
+        if magnitudes:
+
+            for key in magnitudes:
+                value = self.get(key)
+                string += f"\n  {key}: magnitude of ({value.x},{value.y})"
+
+                meta_parameter = self.meta_parameter(key)
+                if meta_parameter is not None:
+                    string += f" [{meta_parameter.unit()}]"
+                    string += f" {meta_parameter.standard_name()}"
+        else:
+            string += "\n    *empty*"
+        directions = self.directions()
+        string += "\n" + "Directions:"
+        if directions:
+
+            for key in directions:
+                value = self.get(key)
+                string += f"\n  {key}: direction of ({value.x},{value.y})"
+                meta_parameter = self.meta_parameter(key)
+                if meta_parameter is not None:
+                    string += f" [{meta_parameter.unit()}]"
+                    string += f" {meta_parameter.standard_name()}"
+        else:
+            string += "\n    *empty*"
+
+        string += "\n" + "-" * 80
+        return string
+
 
 def move_time_and_spatial_to_front(coord_list: list[str]) -> list[str]:
     """Makes sure that the coordinate list starts with 'time', followed by the spatial coords"""

@@ -1,8 +1,8 @@
 import dask.array as da
 import numpy as np
 import xarray as xr
-from geo_skeletons import PointSkeleton
-from geo_skeletons.decorators import add_datavar
+from geo_skeletons import PointSkeleton, GriddedSkeleton
+from geo_skeletons.decorators import add_datavar, add_magnitude
 import pytest
 
 """Functionality to set dask arrays
@@ -74,3 +74,27 @@ def test_numpy_array(wave_data):
 
     points.set_hs(data)
     assert not data_is_dask(points.ds().hs)
+
+
+def test_set_magnitude():
+    @add_magnitude("wind", x="u", y="v", direction="wdir", dir_type="from")
+    @add_datavar("v")
+    @add_datavar("u")
+    class Wind(GriddedSkeleton):
+        pass
+
+    data = Wind(
+        lon=range(0, 10),
+        lat=range(60, 70),
+    )
+    data.set_wind(10)
+    assert not data_is_dask(data.ds().u)
+
+    data.set_wdir(90)
+    assert not data_is_dask(data.ds().u)
+
+    data.set_wind(10, chunks="auto")
+    assert data_is_dask(data.ds().u)
+
+    data.dask.dechunk()
+    assert not data_is_dask(data.ds().u)
