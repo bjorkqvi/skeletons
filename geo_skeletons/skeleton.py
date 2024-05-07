@@ -9,7 +9,7 @@ from .managers.dir_type_manager import DirTypeManager
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
-from .aux_funcs import distance_funcs
+from . import distance_funcs
 from .errors import DataWrongDimensionError
 
 from typing import Iterable
@@ -710,11 +710,12 @@ class Skeleton:
 
     def coord_squeeze(self, coords: list[str]) -> list[str]:
         """Smart squeezes a list of coordinates according to the following rules:
-        
+
         1) Empty list return empty
         2) Trivial one coordinate list returns itself
         3) All coordinates that are of trivial length are removed and returned if not empty
-        4) If 3) resulted in an empty list, then ['inds'], ['lat']/['y'] or ['lon']/['x'] is returned"""
+        4) If 3) resulted in an empty list, then ['inds'], ['lat']/['y'] or ['lon']/['x'] is returned
+        """
         if not coords or len(coords) == 1:
             return coords
 

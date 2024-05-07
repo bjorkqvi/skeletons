@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
-from .aux_funcs import distance_funcs
+from . import distance_funcs
 from .managers.coordinate_manager import CoordinateManager
 from .managers.dask_manager import DaskManager
 from .managers.metadata_manager import MetaDataManager
