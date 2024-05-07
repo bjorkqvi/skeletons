@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 from geo_parameters.metaparameter import MetaParameter
 from geo_parameters.wave import Freq, DirsTo, DirsFrom
-from typing import Union
+from typing import Union, Optional
 
 import geo_parameters as gp
 from geo_skeletons.variables import Coordinate
@@ -16,7 +16,7 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
 
     This allows for alternative definitions of the get-method elsewere."""
 
-    def set_spacing(self, nx: int = None, dx: float = None):
+    def set_spacing(self, nx: Optional[int] = None, dx: Optional[float] = None):
         """Sets spacing for added variable"""
         z = self.get(name_str)
 
@@ -32,7 +32,7 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
             **kwargs,
         )
 
-    def get_coord(self, data_array=False, **kwargs):
+    def get_coord(self, data_array: bool = False, **kwargs):
         if self.ds() is None:
             return None
         data = self._ds_manager.get(name_str, **kwargs)
@@ -196,7 +196,7 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
 
 
 def add_direction(
-    name: Union[str, MetaParameter] = None,
+    name: Optional[Union[str, MetaParameter]] = None,
     grid_coord: bool = False,
     direction_from: bool = True,
 ):
