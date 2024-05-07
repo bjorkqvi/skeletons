@@ -1,10 +1,9 @@
 from geo_parameters.metaparameter import MetaParameter
 import numpy as np
 from geo_skeletons.errors import VariableExistsError
-from geo_skeletons.managers.dask_manager import DaskManager
-import xarray as xr
-from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coordinate
 
+from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coordinate
+from typing import Union
 
 SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
 
@@ -13,7 +12,9 @@ class CoordinateManager:
     """Keeps track of coordinates and data variables that are added to classes
     by the decorators."""
 
-    def __init__(self, initial_coords, initial_vars) -> None:
+    def __init__(
+        self, initial_coords: list[Coordinate], initial_vars: list[DataVar]
+    ) -> None:
         self.x_str = None
         self.y_str = None
         self._added_coords = {}
@@ -29,9 +30,11 @@ class CoordinateManager:
         self.set_initial_vars(initial_vars)
 
     def _is_initialized(self) -> bool:
+        """Check if the Dataset had been initialized"""
         return self.x_str is not None and self.y_str is not None
 
     def _is_altered(self) -> bool:
+        """Check if the coordinate structure has been altered"""
         p1 = set(self.coords("all")) == set(self._set_initial_coords)
         p2 = set(self.data_vars("all")) == set(self._set_initial_vars)
         p3 = self._added_magnitudes == {}
@@ -54,11 +57,13 @@ class CoordinateManager:
         return not self.is_cartesian()
 
     def add_var(self, data_var: DataVar) -> None:
+        """Adds a data variable to the structure"""
         if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
 
     def add_mask(self, grid_mask: GridMask) -> None:
+        """Adds a mask to the structure"""
         if self.get(grid_mask.name) is not None:
             raise VariableExistsError(grid_mask.name)
         if grid_mask.triggered_by:
@@ -73,22 +78,25 @@ class CoordinateManager:
         self._added_masks[grid_mask.name] = grid_mask
 
     def triggers(self, name: str) -> list[str]:
+        """Returns the masks that are triggered by a specific variable"""
         return [
             mask for mask in self._added_masks.values() if mask.triggered_by == name
         ]
 
     def add_coord(self, coord: Coordinate) -> str:
-        """Add a coordinate that the Skeleton will use."""
+        """Adds a coordinate to the structure"""
         if self.get(coord.name) is not None:
             raise VariableExistsError(coord.name)
         self._added_coords[coord.name] = coord
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
+        """Adds a magnitude to the structure"""
         if self.get(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
         self._added_magnitudes[magnitude.name] = magnitude
 
     def add_direction(self, direction: Direction) -> None:
+        """Adds a direction to the structure"""
         if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self._added_directions[direction.name] = direction
@@ -120,7 +128,7 @@ class CoordinateManager:
 
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
@@ -158,7 +166,7 @@ class CoordinateManager:
 
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
@@ -196,7 +204,7 @@ class CoordinateManager:
 
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
@@ -232,7 +240,7 @@ class CoordinateManager:
 
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
@@ -270,7 +278,7 @@ class CoordinateManager:
 
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
@@ -330,13 +338,15 @@ class CoordinateManager:
         mags = [v for v in self._added_magnitudes.values() if v.name == var]
         dirs = [v for v in self._added_directions.values() if v.name == var]
         all_vars = coords + vars + masks + mags + dirs
-        # coord_group = var_coords or mask_coords or mag_coords or dir_coords
         if not all_vars:
             raise KeyError(f"Cannot find the data {var}!")
 
         return all_vars[0].coord_group
 
-    def get(self, var: str):
+    def get(
+        self, var: str
+    ) -> Union[Coordinate, DataVar, Magnitude, Direction, GridMask]:
+        """Returns a Coordinate, data variabel, magnitude, direction of mask with a given name"""
         return (
             self._added_coords.get(var)
             or self._added_vars.get(var)
@@ -345,13 +355,15 @@ class CoordinateManager:
             or self._added_masks.get(var)
         )
 
-    def meta_parameter(self, var: str) -> MetaParameter:
+    def meta_parameter(self, var: str) -> Union[MetaParameter, None]:
+        """Returns a metaparameter for a given parameter"""
         param = self.get(var)
         if param is None:
             return None
         return param.meta
 
-    def default_value(self, var: str):
+    def default_value(self, var: str) -> Union[int, float, None]:
+        """Returns default value for a given parameter"""
         param = self.get(var)
         if param is None:
             return None
@@ -360,7 +372,8 @@ class CoordinateManager:
         return param.default_value
 
 
-def move_time_and_spatial_to_front(coord_list) -> list[str]:
+def move_time_and_spatial_to_front(coord_list: list[str]) -> list[str]:
+    """Makes sure that the coordinate list starts with 'time', followed by the spatial coords"""
     if "inds" in coord_list:
         coord_list.insert(0, coord_list.pop(coord_list.index("inds")))
     if "x" in coord_list:
