@@ -90,7 +90,7 @@ def add_mask(
 
         def set_mask(
             self,
-            data: Union[np.ndarray, int, bool] = None,
+            data: Optional[Union[np.ndarray, int, bool]] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
@@ -109,7 +109,7 @@ def add_mask(
 
         def set_opposite_mask(
             self,
-            data: Union[np.ndarray, int, bool] = None,
+            data: Optional[Union[np.ndarray, int, bool]] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,

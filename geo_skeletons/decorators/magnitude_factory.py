@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Union
+from typing import Union, Optional
 from copy import deepcopy
 from functools import partial
 import dask.array as da
@@ -13,9 +13,9 @@ def add_magnitude(
     name: Union[str, MetaParameter],
     x: str,
     y: str,
-    direction: Union[str, MetaParameter] = None,
-    dir_type: str = None,
-    append=False,
+    direction: Optional[Union[str, MetaParameter]] = None,
+    dir_type: Optional[str] = None,
+    append: bool = False,
 ):
     """stash_get = True means that the coordinate data can be accessed
     by method ._{name}() instead of .{name}()
@@ -31,8 +31,8 @@ def add_magnitude(
             data_array: bool = False,
             strict: bool = False,
             squeeze: bool = False,
-            dask: bool = None,
-            dir_type: str = None,
+            dask: Optional[bool] = None,
+            dir_type: Optional[str] = None,
             **kwargs,
         ) -> np.ndarray:
             """Returns the magnitude.
@@ -60,7 +60,7 @@ def add_magnitude(
             data_array: bool = False,
             strict: bool = False,
             squeeze: bool = False,
-            dask: bool = None,
+            dask: Optional[bool] = None,
             **kwargs,
         ) -> np.ndarray:
             """Returns the magnitude.
@@ -84,11 +84,11 @@ def add_magnitude(
 
         def set_magnitude(
             self,
-            magnitude: Union[np.ndarray, int, float] = None,
+            magnitude: Optional[Union[np.ndarray, int, float]] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
-            coords: list[str] = None,
-            chunks: Union[tuple, str] = None,
+            coords: Optional[list[str]] = None,
+            chunks: Optional[Union[tuple, str]] = None,
             silent: bool = True,
         ):
             self.set(
@@ -103,12 +103,12 @@ def add_magnitude(
 
         def set_direction(
             self,
-            direction: Union[np.ndarray, int, float] = None,
-            dir_type: str = None,
+            direction: Optional[Union[np.ndarray, int, float]] = None,
+            dir_type: Optional[str] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
-            coords: list[str] = None,
-            chunks: Union[tuple, str] = None,
+            coords: Optional[list[str]] = None,
+            chunks: Optional[Union[tuple, str]] = None,
             silent: bool = True,
         ):
             self.set(
