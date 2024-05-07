@@ -1,19 +1,19 @@
 import numpy as np
-from typing import Union
+from typing import Union, Optional
 from copy import deepcopy
 from functools import partial
 from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 import dask.array as da
+import xarray as xr
 from geo_skeletons.variables import DataVar
-from geo_skeletons.managers.dataset_manager import DatasetManager
 
 
 def add_datavar(
     name: Union[str, MetaParameter],
     coord_group: str = "all",
     default_value: float = 0.0,
-    dir_type: bool = None,
+    dir_type: Optional[bool] = None,
     append: bool = False,
 ):
     """stash_get = True means that the coordinate data can be accessed
@@ -29,12 +29,12 @@ def add_datavar(
             self,
             empty: bool = False,
             strict: bool = False,
-            dir_type: str = None,
+            dir_type: Optional[str] = None,
             data_array: bool = False,
             squeeze: bool = True,
-            dask: bool = None,
+            dask: Optional[bool] = None,
             **kwargs,
-        ) -> np.ndarray:
+        ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the data variable.
 
             Set empty=True to get an empty data variable (even if it doesn't exist).
@@ -56,11 +56,11 @@ def add_datavar(
 
         def set_var(
             self,
-            data: Union[np.ndarray, int, float] = None,
+            data: Optional[Union[np.ndarray, int, float]] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
-            coords: list[str] = None,
-            chunks: Union[tuple, str] = None,
+            coords: Optional[list[str]] = None,
+            chunks: Optional[Union[tuple, str]] = None,
             silent: bool = True,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):

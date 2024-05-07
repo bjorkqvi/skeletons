@@ -3,8 +3,8 @@ from typing import Union, Optional
 from copy import deepcopy
 from functools import partial
 import dask.array as da
+import xarray as xr
 from geo_parameters.metaparameter import MetaParameter
-from ..managers.dask_manager import DaskManager
 import geo_parameters as gp
 from geo_skeletons.variables import Magnitude, Direction
 
@@ -34,7 +34,7 @@ def add_magnitude(
             dask: Optional[bool] = None,
             dir_type: Optional[str] = None,
             **kwargs,
-        ) -> np.ndarray:
+        ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
 
             Set empty=True to get an empty data variable (even if it doesn't exist).
@@ -62,7 +62,7 @@ def add_magnitude(
             squeeze: bool = False,
             dask: Optional[bool] = None,
             **kwargs,
-        ) -> np.ndarray:
+        ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
 
             Set empty=True to get an empty data variable (even if it doesn't exist).
