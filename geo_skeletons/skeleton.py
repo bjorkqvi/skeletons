@@ -134,7 +134,7 @@ class Skeleton:
     def from_ds(
         cls,
         ds: xr.Dataset,
-        chunks: Union[tuple[int], str] = "auto",
+        chunks: Optional[Union[tuple[int], str]] = None,
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton form an xarray Dataset.
@@ -181,10 +181,10 @@ class Skeleton:
 
         # Initialize Skeleton
         points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, **additional_coords)
-
         # Set data variables and masks that exist
         for data_var in points.core.non_coord_objects():
             val = ds.get(data_var)
+
             if val is not None:
                 points.set(data_var, val)
                 points.meta.set(ds.get(data_var).attrs, name=data_var)
