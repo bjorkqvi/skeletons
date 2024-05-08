@@ -98,3 +98,19 @@ def test_set_magnitude():
 
     data.dask.dechunk()
     assert not data_is_dask(data.ds().u)
+
+
+def test_from_ds(wave_data):
+    @add_datavar("hs")
+    class WaveData(PointSkeleton):
+        pass
+
+    wave_data = WaveData(x=range(10), y=range(10))
+
+    data = np.array(np.zeros((10,)))
+    points = wave_data
+    points.set_hs(data)
+    assert not data_is_dask(points.ds().hs)
+    aa = WaveData.from_ds(wave_data.ds())
+
+    assert not data_is_dask(aa.ds().hs)
