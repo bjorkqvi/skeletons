@@ -139,6 +139,7 @@ class GriddedSkeleton(Skeleton):
         strict: bool = False,
         normalize: bool = False,
         utm: tuple[int, str] = None,
+        suppress_warning: bool = False,
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian x-coordinate.
@@ -164,9 +165,13 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()
         else:
-            lons, lats = self.lon(**kwargs), self.lat(**kwargs)
-            lat = np.full(len(lons), np.median(lats))
-            x = self.utm._x(lon=self.lon(**kwargs), lat=lat, utm=utm)
+            lon, lat = self.lon(**kwargs), self.lat(**kwargs)
+            median_lat = np.full(len(lon), np.median(lat))
+            if not suppress_warning and len(lat) > 1:
+                print(
+                    "Regridding spherical grid to cartesian coordinates will cause a rotation! Use '_, y = skeleton.xy()' to get a list of all points."
+                )
+            x = self.utm._x(lon=lon, lat=median_lat, utm=utm)
 
         if normalize:
             x = x - min(x)
@@ -178,6 +183,7 @@ class GriddedSkeleton(Skeleton):
         strict: bool = False,
         normalize: bool = False,
         utm: tuple[int, str] = None,
+        suppress_warning: bool = False,
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian y-coordinate.
@@ -203,16 +209,26 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
             y = self._ds_manager.get("y", **kwargs).values.copy()
         else:
-            lons, lats = self.lon(**kwargs), self.lat(**kwargs)
-            lon = np.full(len(lats), np.median(lons))
-            y = self.utm._y(lon=lon, lat=self.lat(**kwargs), utm=utm)
+            lon, lat = self.lon(**kwargs), self.lat(**kwargs)
+            median_lon = np.full(len(lat), np.median(lon))
+            if not suppress_warning and len(lon) > 1:
+                print(
+                    "Regridding spherical grid to cartesian coordinates will cause a rotation! Use 'x, _ = skeleton.xy()' to get a list of all points."
+                )
+            y = self.utm._y(lon=median_lon, lat=lat, utm=utm)
 
         if normalize:
             y = y - min(y)
 
         return y
 
-    def lon(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
+    def lon(
+        self,
+        native: bool = False,
+        strict=False,
+        suppress_warning: bool = False,
+        **kwargs,
+    ) -> np.ndarray:
         """Returns the spherical lon-coordinate. 'None' for cartesian grids that have no UTM-zone.
 
         If the grid is cartesian, a conversion from UTM coordinates is made based on the median y-coordinate.
@@ -235,12 +251,22 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lon", **kwargs).values.copy()
 
-        print(
-            "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
-        )
-        return self.utm._lon(x=self.x(**kwargs), y=np.median(self.y(**kwargs)))
+        x, y = self.x(**kwargs), self.y(**kwargs)
+        median_y = np.full(len(x), np.median(y))
 
-    def lat(self, native: bool = False, strict=False, **kwargs) -> np.ndarray:
+        if not suppress_warning:
+            print(
+                "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
+            )
+        return self.utm._lon(x=x, y=median_y)
+
+    def lat(
+        self,
+        native: bool = False,
+        strict=False,
+        suppress_warning: bool = False,
+        **kwargs,
+    ) -> np.ndarray:
         """Returns the spherical lat-coordinate. 'None' for cartesian grids that have no UTM-zone.
 
         If the grid is cartesian, a conversion from UTM coordinates is made based on the median y-coordinate.
@@ -262,11 +288,15 @@ class GriddedSkeleton(Skeleton):
 
         if not self.core.is_cartesian():
             return self._ds_manager.get("lat", **kwargs).values.copy()
-        print(
-            "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
-        )
 
-        return self.utm._lat(x=np.median(self.x(**kwargs)), y=self.y(**kwargs))
+        x, y = self.x(**kwargs), self.y(**kwargs)
+        median_x = np.full(len(y), np.median(x))
+        if not suppress_warning:
+            print(
+                "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
+            )
+
+        return self.utm._lat(x=median_x, y=y)
 
     def xy(
         self,

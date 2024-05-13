@@ -97,7 +97,6 @@ def test_utm_conversion():
     np.testing.assert_array_almost_equal(grid2.y(strict=True), y)
 
     np.testing.assert_array_almost_equal(grid2.xy(strict=True), (x_vec, y_vec))
-
     np.testing.assert_array_almost_equal(grid2.lon(), lon_rot, decimal=5)
     np.testing.assert_array_almost_equal(grid2.lat(), lat_rot, decimal=5)
     np.testing.assert_array_almost_equal(grid2.lonlat(), (lon_vec, lat_vec), decimal=5)

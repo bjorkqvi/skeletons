@@ -840,11 +840,11 @@ class Skeleton:
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
-        return len(self.x(native=True))
+        return len(self.x(native=True, suppress_warning=True))
 
     def ny(self) -> int:
         """Length of y/lat-vector."""
-        return len(self.y(native=True))
+        return len(self.y(native=True, suppress_warning=True))
 
     def dx(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the x vector. Conversion made for spherical grids."""
@@ -854,9 +854,10 @@ class Skeleton:
         if self.nx() == 1:
             return 0.0
 
-        return (max(self.x(native=native)) - min(self.x(native=native))) / (
-            self.nx() - 1
-        )
+        return (
+            max(self.x(native=native, suppress_warning=True))
+            - min(self.x(native=native, suppress_warning=True))
+        ) / (self.nx() - 1)
 
     def dy(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
@@ -866,16 +867,17 @@ class Skeleton:
         if self.ny() == 1:
             return 0.0
 
-        return (max(self.y(native=native)) - min(self.y(native=native))) / (
-            self.ny() - 1
-        )
+        return (
+            max(self.y(native=native, suppress_warning=True))
+            - min(self.y(native=native, suppress_warning=True))
+        ) / (self.ny() - 1)
 
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the longitude vector. Conversion made for cartesian grids."""
         if self.nx() == 1:
             return 0.0
 
-        lon = self.lon(native=native, strict=strict)
+        lon = self.lon(native=native, strict=strict, suppress_warning=True)
         if lon is None:
             return None
 
@@ -886,7 +888,7 @@ class Skeleton:
         cartesian grids."""
         if self.ny() == 1:
             return 0.0
-        lat = self.lat(native=native, strict=strict)
+        lat = self.lat(native=native, strict=strict, suppress_warning=True)
         if lat is None:
             return None
 
