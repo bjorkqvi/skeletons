@@ -254,7 +254,7 @@ class GriddedSkeleton(Skeleton):
         x, y = self.x(**kwargs), self.y(**kwargs)
         median_y = np.full(len(x), np.median(y))
 
-        if not suppress_warning:
+        if not suppress_warning and len(y) > 1:
             print(
                 "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
             )
@@ -291,7 +291,7 @@ class GriddedSkeleton(Skeleton):
 
         x, y = self.x(**kwargs), self.y(**kwargs)
         median_x = np.full(len(y), np.median(x))
-        if not suppress_warning:
+        if not suppress_warning and len(x) > 1:
             print(
                 "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
             )
