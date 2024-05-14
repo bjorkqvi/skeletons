@@ -128,3 +128,20 @@ def test_slice_magnitude():
         points.v(),
         np.array([[(2**0.5), 0], [(2**0.5), 0], [(2**0.5), 0]]),
     )
+
+
+def test_insert_time():
+    @add_datavar(name="hs", default_value=0)
+    @add_coord("threshold")
+    @add_time()
+    class WaveHeight(PointSkeleton):
+        pass
+
+    time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
+    points = WaveHeight(x=(0), y=(5), threshold=[6.0, 7.0], time=time)
+    points.set_hs()
+    data = np.zeros((24, 2))
+
+    np.testing.assert_array_almost_equal(points.hs(), data)
+    points.ind_insert("hs", 1, time=1, threshold=0)
+    np.testing.assert_almost_equal(points.hs()[1, 0], 1)
