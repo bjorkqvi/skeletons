@@ -228,7 +228,9 @@ class Skeleton:
 
         skeleton.insert(name='geodata', data=data_slice, time='2023-11-08 12:00:00', threshold=0.4)
         """
-        dims = self.ds().dims
+        coord_group = self.core.coord_group(name)
+        dims = self.core.coords(coord_group)
+
         index_kwargs = {}
         for dim in dims:
             val = kwargs.get(dim)
@@ -245,7 +247,8 @@ class Skeleton:
 
         skeleton.ind_insert(name='geodata', data=data_slice, time=0, threshold=0)"""
 
-        dims = self.ds().dims
+        coord_group = self.core.coord_group(name)
+        dims = self.core.coords(coord_group)
         index_list = list(np.arange(len(dims)))
 
         for n, dim in enumerate(dims):
