@@ -278,6 +278,14 @@ class DatasetManager:
         daa.name = name
         return daa
 
+    def force_compile_data_array(
+        self, data: np.ndarray, coord_dict: dict
+    ) -> xr.DataArray:
+        """Compiles a DataArray without any regards to structure. This is useful if slicing has
+        produced a shapeless DataArray that needs to be recompiles."""
+
+        return xr.DataArray(data=data, coords=coord_dict)
+
     def coords_to_size(self, coords: list[str], **kwargs) -> tuple[int]:
         """Gets the size of the data for a list of coordinates"""
         list = []
