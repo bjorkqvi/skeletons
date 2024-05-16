@@ -1,4 +1,4 @@
-from geo_skeletons.gridded_skeleton import GriddedSkeleton
+from geo_skeletons.gridded_skeleton import GriddedSkeleton, PointSkeleton
 from geo_skeletons.decorators import add_coord, add_time, add_datavar
 
 import numpy as np
@@ -32,3 +32,40 @@ def test_add_z_and_time_coord():
     assert ts.hs(
         x=0, y=10, time=slice("2018-01-01 01:00", "2018-01-01 12:00")
     ).shape == (12, len(ts.z()))
+
+
+def test_added_trivial_dim():
+    @add_datavar(name="hs", default_value=0.0, coord_group="all")
+    @add_coord(grid_coord=True, name="z")
+    class Expanded(GriddedSkeleton):
+        pass
+
+    data = Expanded(lon=(1, 2, 4), lat=(5, 6), z=0)
+    data.set_hs(1)
+
+    assert data.hs(z=0).shape == (2, 3)
+
+
+def test_slice_down_to_single_value():
+    @add_datavar(name="hs", default_value=0.0, coord_group="all")
+    @add_coord(grid_coord=True, name="z")
+    class Expanded(PointSkeleton):
+        pass
+
+    data = Expanded(lon=(1, 2, 4), lat=(5, 6, 7), z=0)
+    data.set_hs(1)
+
+    assert data.hs(z=0, inds=0).shape == (1,)
+
+
+def test_slice_down_to_single_value_gridded():
+    @add_datavar(name="hs", default_value=0.0, coord_group="all")
+    @add_coord(grid_coord=True, name="z")
+    class Expanded(GriddedSkeleton):
+        pass
+
+    data = Expanded(lon=(1, 2, 4), lat=(5, 6), z=0)
+    data.set_hs(1)
+
+    assert data.hs(z=0, lon=1).shape == (2,)
+    assert data.hs(z=0, lon=1, lat=6).shape == (1,)

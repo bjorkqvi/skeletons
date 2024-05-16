@@ -720,7 +720,7 @@ class Skeleton:
         dims_to_drop = [
             dim
             for dim in self.core.coords("all")
-            if self.shape(dim)[0] == 1 and dim in data.coords
+            if self.shape(dim)[0] == 1 and dim in data.dims
         ]
 
         # If it looks like we are dropping all coords, then save the spatial ones
@@ -731,6 +731,18 @@ class Skeleton:
 
         if dims_to_drop:
             data = data.squeeze(dim=dims_to_drop, drop=True)
+
+        # If slicing down to one point, we have to make sure we still have some dimension in the DataArray
+        if data.shape == ():
+            if "inds" in self.core.coords("spatial"):
+                coord_to_create = "inds"
+            else:
+                coord_to_create = "lat"
+            val = np.atleast_1d(data[coord_to_create].values)
+
+            data = self._ds_manager.force_compile_data_array(
+                np.atleast_1d(data.values), {coord_to_create: val}
+            )
 
         return data
 
