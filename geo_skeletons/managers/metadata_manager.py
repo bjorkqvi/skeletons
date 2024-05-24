@@ -48,8 +48,12 @@ class MetaDataManager:
         else:
             self._metadata["__general__"] = metadata
 
-        # Store is dataset if possible
+        self.metadata_to_ds(name)
+
+    def metadata_to_ds(self, name: Optional[str]) -> None:
+        """Sets the stored metadata the the underlying dataset if possible"""
         if self._ds_set_possible(name):
+            metadata = self.get(name)
             self._ds_manager.set_attrs(metadata, name)
 
     def append(
