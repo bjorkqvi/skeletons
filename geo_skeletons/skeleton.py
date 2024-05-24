@@ -507,6 +507,7 @@ class Skeleton:
 
         Triggers setting metadata of the variable and possible connected masks."""
         self._ds_manager.set(data=data, name=name)
+        self.meta.metadata_to_ds(name)
         self._trigger_masks(name, data)
 
     def _trigger_masks(self, name: str, data: Union[np.ndarray, xr.DataArray]) -> None:

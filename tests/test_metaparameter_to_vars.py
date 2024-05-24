@@ -34,6 +34,10 @@ def test_lonlat():
         "unit": "-",
     }
 
+    assert points.meta.get("lat") == points.ds().lat.attrs
+    assert points.meta.get("lon") == points.ds().lon.attrs
+    assert points.meta.get("inds") == points.ds().inds.attrs
+
 
 def test_xy():
     points = PointSkeleton(x=[1, 2], y=[4, 5])
@@ -57,6 +61,10 @@ def test_xy():
         "unit": "-",
     }
 
+    assert points.meta.get("y") == points.ds().y.attrs
+    assert points.meta.get("x") == points.ds().x.attrs
+    assert points.meta.get("inds") == points.ds().inds.attrs
+
 
 def test_lonlat_gridded():
     points = GriddedSkeleton(lon=[1, 2], lat=[4, 5])
@@ -73,6 +81,8 @@ def test_lonlat_gridded():
         "unit": "degrees_north",
     }
     assert points.meta.get("inds") == {}
+    assert points.meta.get("lat") == points.ds().lat.attrs
+    assert points.meta.get("lon") == points.ds().lon.attrs
 
 
 def test_freq_dir_time():
@@ -103,6 +113,8 @@ def test_freq_dir_time():
         "unit": "deg",
     }
     assert points.meta.get("time") == {}
+    assert points.meta.get("freq") == points.ds().freq.attrs
+    assert points.meta.get("dirs") == points.ds().dirs.attrs
 
 
 def test_dirto():
@@ -119,6 +131,8 @@ def test_dirto():
         "standard_name": "sea_surface_wave_to_direction",
         "unit": "deg",
     }
+
+    assert points.meta.get("dirs") == points.ds().dirs.attrs
 
 
 def test_add_datavar():
@@ -137,6 +151,8 @@ def test_add_datavar():
     points.set_u(0)
     assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
     assert points.meta.get("u") == gp.wind.XWind.meta_dict()
+    assert points.meta.get("u") == points.ds().u.attrs
+
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
     assert points.meta.get() == {
@@ -147,6 +163,7 @@ def test_add_datavar():
 
     assert gp.wind.XWind.meta_dict().items() <= points.meta.get("u").items()
     assert points.meta.get("u").get("new") == "u-specific"
+    assert points.meta.get("u") == points.ds().u.attrs
 
 
 def test_add_magnitude():
@@ -169,6 +186,7 @@ def test_add_magnitude():
     points.meta.append({"general_info": "who knew!?"})
     assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
     points.set_u(0)
+    points.set_v(1)
     assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
     assert points.meta.get("u") == gp.wind.XWind.meta_dict()
     points.meta.append({"new": "global"})
@@ -183,6 +201,8 @@ def test_add_magnitude():
     assert points.meta.get("u").get("new") == "u-specific"
     assert points.core.magnitudes() == ["wnd"]
     assert points.core.directions() == [gp.wind.WindDir.name]
+    assert points.meta.get("u") == points.ds().u.attrs
+    assert points.meta.get("v") == points.ds().v.attrs
 
 
 def test_add_mask():
