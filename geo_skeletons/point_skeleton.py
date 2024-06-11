@@ -8,6 +8,7 @@ from .managers.dask_manager import DaskManager
 from .variables import DataVar, Coordinate
 import geo_parameters as gp
 from typing import Optional
+from .dask_computations import undask_me
 
 inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
 INITIAL_COORDS = [inds_coord]
@@ -46,8 +47,7 @@ class PointSkeleton(Skeleton):
 
         if mask is None:
             mask = np.full(skeleton.size("spatial"), True)
-        dask_manager = DaskManager()
-        mask = dask_manager.undask_me(mask)
+        mask = undask_me(mask)
         lon, lat = skeleton.lonlat(strict=True, mask=mask)
         x, y = skeleton.xy(strict=True, mask=mask)
 
