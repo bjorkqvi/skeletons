@@ -77,7 +77,11 @@ class PointSkeleton(Skeleton):
             return INITIAL_CARTESIAN_VARS
 
     def xgrid(
-        self, native: bool = False, strict: bool = False, normalize: bool = False
+        self,
+        native: bool = False,
+        strict: bool = False,
+        mask: Optional[np.ndarray] = None,
+        normalize: bool = False,
     ) -> np.ndarray:
         """Gives a meshgrid of UTM x-values.
 
@@ -85,11 +89,15 @@ class PointSkeleton(Skeleton):
 
         strict = True gives 'None' if Skeleton is spherical
         native = True gives longitude values if Skeleton is spherical"""
-        x, _ = self.xy(native=native, strict=strict, normalize=normalize)
+        x, _ = self.xy(native=native, strict=strict, normalize=normalize, mask=mask)
         return x
 
     def ygrid(
-        self, native: bool = False, strict: bool = False, normalize: bool = False
+        self,
+        native: bool = False,
+        strict: bool = False,
+        mask: Optional[np.ndarray] = None,
+        normalize: bool = False,
     ) -> np.ndarray:
         """Gives a meshgrid of UTM x-values.
 
@@ -97,27 +105,37 @@ class PointSkeleton(Skeleton):
 
         strict = True gives 'None' if Skeleton is spherical
         native = True gives longitude values if Skeleton is spherical"""
-        _, y = self.xy(native=native, strict=strict, normalize=normalize)
+        _, y = self.xy(native=native, strict=strict, normalize=normalize, mask=mask)
         return y
 
-    def longrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+    def longrid(
+        self,
+        native: bool = False,
+        strict: bool = False,
+        mask: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
         """Gives a meshgrid of longitude values. 'None' for cartesian grids that have no UTM-zone.
 
         NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
 
         strict = True gives 'None' if Skeleton is cartesian
         native = True gives UTM x-values if Skeleton is cartesian"""
-        lon, _ = self.lonlat(native=native, strict=strict)
+        lon, _ = self.lonlat(native=native, strict=strict, mask=mask)
         return lon
 
-    def latgrid(self, native: bool = False, strict: bool = False) -> np.ndarray:
+    def latgrid(
+        self,
+        native: bool = False,
+        strict: bool = False,
+        mask: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
         """Gives a meshgrid of latitude values. 'None' for cartesian grids that have no UTM-zone.
 
         NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
 
         strict = True gives 'None' if Skeleton is cartesian
         native = True gives UTM y-values if Skeleton is cartesian"""
-        _, lat = self.lonlat(native=native, strict=strict)
+        _, lat = self.lonlat(native=native, strict=strict, mask=mask)
         return lat
 
     def x(
