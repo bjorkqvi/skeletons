@@ -48,9 +48,8 @@ def add_mask(
 
         def get_masked_points(
             self,
-            type: str = "lonlat",
-            native: bool = True,
-            order_by: str = "lat",
+            coord: Optional[str] = None,
+            native: bool = False,
             strict: bool = False,
             **kwargs,
         ):
@@ -58,20 +57,17 @@ def add_mask(
             if mask is None:
                 mask = get_mask(self, empty=True, **kwargs)
 
-            if type in CARTESIAN_STRINGS:
-                return self.xy(
-                    mask=mask, native=native, order_by=order_by, strict=strict, **kwargs
-                )
-            elif type in SPHERICAL_STRINGS:
-                return self.lonlat(
-                    mask=mask, native=native, order_by=order_by, strict=strict, **kwargs
-                )
+            coord = coord or self.core.x_str
+
+            if coord in CARTESIAN_STRINGS:
+                return self.xy(mask=mask, native=native, strict=strict, **kwargs)
+            elif coord in SPHERICAL_STRINGS:
+                return self.lonlat(mask=mask, native=native, strict=strict, **kwargs)
 
         def get_not_points(
             self,
-            type: str = "lonlat",
-            native: bool = True,
-            order_by: str = "lat",
+            coord: Optional[str] = None,
+            native: bool = False,
             strict: bool = False,
             **kwargs,
         ):
@@ -79,14 +75,12 @@ def add_mask(
             if mask is None:
                 mask = get_not_mask(self, empty=True, **kwargs)
 
-            if type in CARTESIAN_STRINGS:
-                return self.xy(
-                    mask=mask, native=native, order_by=order_by, strict=strict, **kwargs
-                )
-            elif type in SPHERICAL_STRINGS:
-                return self.lonlat(
-                    mask=mask, native=native, order_by=order_by, strict=strict, **kwargs
-                )
+            coord = coord or self.core.x_str
+
+            if coord in CARTESIAN_STRINGS:
+                return self.xy(mask=mask, native=native, strict=strict, **kwargs)
+            elif coord in SPHERICAL_STRINGS:
+                return self.lonlat(mask=mask, native=native, strict=strict, **kwargs)
 
         def set_mask(
             self,
