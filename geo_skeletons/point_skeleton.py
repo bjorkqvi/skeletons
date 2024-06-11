@@ -315,16 +315,16 @@ class PointSkeleton(Skeleton):
         mask is a boolean array (default True for all points)
         """
 
+        mask = self._check_mask_right_shape(mask)
+
         # Transforms x-y to lon-lat if necessary
-        x, y = self.x(strict=strict, normalize=normalize, utm=utm, **kwargs), self.y(
-            strict=strict, normalize=normalize, utm=utm, **kwargs
-        )
+        x, y = self.x(
+            strict=strict, normalize=normalize, utm=utm, mask=mask, **kwargs
+        ), self.y(strict=strict, normalize=normalize, utm=utm, mask=mask, **kwargs)
 
         if x is None:
             return None, None
 
-        if mask is not None:
-            return x[mask], y[mask]
         return x, y
 
     def lonlat(
@@ -343,14 +343,14 @@ class PointSkeleton(Skeleton):
         mask is a boolean array (default True for all points)
         """
 
-        lon, lat = self.lon(native=native, strict=strict, **kwargs), self.lat(
-            native=native, strict=strict, **kwargs
-        )
+        mask = self._check_mask_right_shape(mask)
+
+        lon, lat = self.lon(
+            native=native, strict=strict, mask=mask, **kwargs
+        ), self.lat(native=native, strict=strict, mask=mask, **kwargs)
 
         if lon is None:
             return None, None
-        if mask is not None:
-            return lon[mask], lat[mask]
         return lon, lat
 
     def _check_mask_right_shape(self, mask: np.ndarray) -> np.array:

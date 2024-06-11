@@ -52,3 +52,18 @@ def test_drop_one_point_gridmethod():
     points2 = PointSkeleton(x=points.x(), y=points.y())
     np.testing.assert_array_almost_equal(points2.x()[:-1], points2.xgrid(mask=mask))
     np.testing.assert_array_almost_equal(points2.y()[:-1], points2.ygrid(mask=mask))
+
+
+def test_drop_one_point_lonlat_method():
+    points = PointSkeleton(lon=(1, 2, 3, 4), lat=(6, 7, 8, 9))
+    mask = np.full((4,), True)
+    mask[-1] = False
+
+    lon, lat = points.lonlat(mask=mask)
+    np.testing.assert_array_almost_equal(points.lon()[:-1], lon)
+    np.testing.assert_array_almost_equal(points.lat()[:-1], lat)
+
+    points2 = PointSkeleton(x=points.x(), y=points.y())
+    x, y = points.xy(mask=mask)
+    np.testing.assert_array_almost_equal(points2.x()[:-1], x)
+    np.testing.assert_array_almost_equal(points2.y()[:-1], y)
