@@ -132,7 +132,6 @@ class GriddedSkeleton(Skeleton):
 
         if lat is None:  # Might happen if UTM-zone is not set
             return None
-        _, Y = np.meshgrid(lon, lat)
         return np.reshape(lat, self.size("spatial"))
 
     def x(
@@ -528,6 +527,8 @@ class GriddedSkeleton(Skeleton):
         Creates a full True maks if mask is None"""
         if mask is None:
             return np.full(self.size("spatial"), True)
+
+        mask = np.array(mask)
 
         if mask.shape != self.size("spatial") and mask.shape != self.shape(coord):
             raise ValueError(

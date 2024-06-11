@@ -358,6 +358,7 @@ class PointSkeleton(Skeleton):
         Creates a full True maks if mask is None"""
         if mask is None:
             return np.full(self.size("spatial"), True)
+        mask = np.array(mask)
 
         if mask.shape != self.size("spatial"):
             raise ValueError(
