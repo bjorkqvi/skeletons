@@ -86,18 +86,18 @@ class Skeleton:
         """Initialized a DirTypeManager, UTMManager and DaskManager, and sets a UTM-zone"""
         self._dir_type_manager = DirTypeManager(coord_manager=self.core)
 
+        if chunks is None:
+            if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
+                chunks = self._chunks
+
+        self.dask = DaskManager(skeleton=self, chunks=chunks)
+
         self.utm = UTMManager(
             lat=self.edges("lat", strict=True),
             lon=self.edges("lon", strict=True),
             metadata_manager=self.meta,
         )
         self.utm.set(utm, silent=True)
-
-        if chunks is None:
-            if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
-                chunks = self._chunks
-
-        self.dask = DaskManager(skeleton=self, chunks=chunks)
 
     def _init_metadata(self) -> None:
         """Initialized the metadata by using availabe metadata in the GeoParameters"""
