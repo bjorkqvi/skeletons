@@ -154,7 +154,7 @@ class GriddedSkeleton(Skeleton):
         Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
         """
 
-        mask = self._check_mask_right_shape(mask, self.core.x_str)
+        mask = self._check_mask_right_shape(mask, self.core.x_str, **kwargs)
         vec_mask = np.any(mask, axis=0)
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -202,7 +202,7 @@ class GriddedSkeleton(Skeleton):
         Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
         """
 
-        mask = self._check_mask_right_shape(mask, self.core.y_str)
+        mask = self._check_mask_right_shape(mask, self.core.y_str, **kwargs)
         vec_mask = np.any(mask, axis=1)
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -247,7 +247,7 @@ class GriddedSkeleton(Skeleton):
         native = True gives UTM x-values if Skeleton is cartesian
         """
 
-        mask = self._check_mask_right_shape(mask, self.core.x_str)
+        mask = self._check_mask_right_shape(mask, self.core.x_str, **kwargs)
         vec_mask = np.any(mask, axis=0)
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -289,7 +289,7 @@ class GriddedSkeleton(Skeleton):
         native = True gives UTM y-values if Skeleton is cartesian
         """
 
-        mask = self._check_mask_right_shape(mask, self.core.y_str)
+        mask = self._check_mask_right_shape(mask, self.core.y_str, **kwargs)
         vec_mask = np.any(mask, axis=1)
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -340,7 +340,7 @@ class GriddedSkeleton(Skeleton):
             return None, None
 
         if mask is None:
-            mask = np.full(super().size("spatial"), True)
+            mask = np.full(super().size("spatial", **kwargs), True)
 
         num_of_elements = (
             self.shape(self.core.x_str)[0] * self.shape(self.core.y_str)[0]
@@ -383,7 +383,7 @@ class GriddedSkeleton(Skeleton):
             return None, None
 
         if mask is None:
-            mask = np.full(super().size("spatial"), True)
+            mask = np.full(super().size("spatial", **kwargs), True)
 
         num_of_elements = (
             self.shape(self.core.x_str)[0] * self.shape(self.core.y_str)[0]
@@ -522,16 +522,20 @@ class GriddedSkeleton(Skeleton):
 
         self._init_structure(x, y, lon, lat, utm=self.utm.zone())
 
-    def _check_mask_right_shape(self, mask: np.ndarray, coord: str) -> np.array:
+    def _check_mask_right_shape(
+        self, mask: np.ndarray, coord: str, **kwargs
+    ) -> np.array:
         """Checks that the given mask is same shape as the skeleton.
         Creates a full True maks if mask is None"""
         if mask is None:
-            return np.full(self.size("spatial"), True)
+            return np.full(self.size("spatial", **kwargs), True)
 
         mask = np.array(mask)
 
-        if mask.shape != self.size("spatial") and mask.shape != self.shape(coord):
+        if mask.shape != self.size("spatial", **kwargs) and mask.shape != self.shape(
+            coord
+        ):
             raise ValueError(
-                f"Skeleton has shape {self.size('spatial')} and {coord} has shape {self.shape(coord)} but mask is shape {mask.shape}"
+                f"Skeleton has shape {self.size('spatial',**kwargs)} and {coord} has shape {self.shape(coord)} but mask is shape {mask.shape}"
             )
         return mask

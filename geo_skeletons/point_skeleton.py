@@ -155,7 +155,7 @@ class PointSkeleton(Skeleton):
         Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
         """
 
-        mask = self._check_mask_right_shape(mask)
+        mask = self._check_mask_right_shape(mask, **kwargs)
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
 
@@ -163,7 +163,7 @@ class PointSkeleton(Skeleton):
             return None
 
         if not self.core.is_cartesian() and native:
-            return self.lon(**kwargs)
+            return self.lon(mask=mask, **kwargs)
 
         if not self.core.is_cartesian() and strict:
             return None
@@ -199,7 +199,7 @@ class PointSkeleton(Skeleton):
         Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
         """
 
-        mask = self._check_mask_right_shape(mask)
+        mask = self._check_mask_right_shape(mask, **kwargs)
 
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -207,7 +207,7 @@ class PointSkeleton(Skeleton):
             return None
 
         if not self.core.is_cartesian() and native:
-            return self.lat(**kwargs)
+            return self.lat(mask=mask, **kwargs)
 
         if not self.core.is_cartesian() and strict:
             return None
@@ -241,7 +241,7 @@ class PointSkeleton(Skeleton):
         native = True gives UTM x-values if Skeleton is cartesian
         """
 
-        mask = self._check_mask_right_shape(mask)
+        mask = self._check_mask_right_shape(mask, **kwargs)
 
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -250,7 +250,7 @@ class PointSkeleton(Skeleton):
             return None
 
         if self.core.is_cartesian() and native:
-            return self.x(**kwargs)
+            return self.x(mask=mask, **kwargs)
 
         if self.core.is_cartesian() and strict:
             return None
@@ -275,7 +275,7 @@ class PointSkeleton(Skeleton):
         native = True gives UTM x-values if Skeleton is cartesian
         """
 
-        mask = self._check_mask_right_shape(mask)
+        mask = self._check_mask_right_shape(mask, **kwargs)
 
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -284,7 +284,7 @@ class PointSkeleton(Skeleton):
             return None
 
         if self.core.is_cartesian() and native:
-            return self.y(**kwargs)
+            return self.y(mask=mask, **kwargs)
 
         if self.core.is_cartesian() and strict:
             return None
@@ -315,7 +315,7 @@ class PointSkeleton(Skeleton):
         mask is a boolean array (default True for all points)
         """
 
-        mask = self._check_mask_right_shape(mask)
+        mask = self._check_mask_right_shape(mask, **kwargs)
 
         # Transforms x-y to lon-lat if necessary
         x, y = self.x(
@@ -353,15 +353,15 @@ class PointSkeleton(Skeleton):
             return None, None
         return lon, lat
 
-    def _check_mask_right_shape(self, mask: np.ndarray) -> np.array:
+    def _check_mask_right_shape(self, mask: np.ndarray, **kwargs) -> np.array:
         """Checks that the given mask is same shape as the skeleton.
         Creates a full True maks if mask is None"""
         if mask is None:
-            return np.full(self.size("spatial"), True)
+            return np.full(self.size("spatial", **kwargs), True)
         mask = np.array(mask)
 
-        if mask.shape != self.size("spatial"):
+        if mask.shape != self.size("spatial", **kwargs):
             raise ValueError(
-                f"Skeleton has shape {self.size('spatial')} but mask is shape {mask.shape}"
+                f"Skeleton has shape {self.size('spatial',**kwargs)} but mask is shape {mask.shape}"
             )
         return mask

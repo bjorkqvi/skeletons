@@ -117,6 +117,9 @@ def test_get_points():
 
     mask[0] = False
     data.set_sea_mask(mask)
+    lon, lat = data.sea_points(coord="lon")
+    assert lon is None  # No UTM set
+    assert lat is None
     lon, lat = data.sea_points()
     np.testing.assert_array_almost_equal(lon, np.array([20, 30]))
     np.testing.assert_array_almost_equal(lat, np.array([40, 50]))
