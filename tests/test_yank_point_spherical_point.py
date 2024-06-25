@@ -86,3 +86,25 @@ def test_yank_point_over84lat():
         yanked_points["inds"], yanked_points_fast["inds"]
     )
     np.testing.assert_array_almost_equal(yanked_points["dx"], yanked_points_fast["dx"])
+
+
+def test_yank_point_under80lat_in_list():
+    grid = PointSkeleton(lon=(10, 11, 12, 13, 14), lat=(-81, 30, 40, 80, 81))
+    yanked_points_fast = grid.yank_point(lon=13.2, lat=81.1, fast=True)
+    yanked_points = grid.yank_point(lon=13.2, lat=81.1, fast=False)
+
+    np.testing.assert_array_almost_equal(
+        yanked_points["inds"], yanked_points_fast["inds"]
+    )
+    np.testing.assert_array_almost_equal(yanked_points["dx"], yanked_points_fast["dx"])
+
+
+def test_yank_point_under80lat():
+    grid = PointSkeleton(lon=(10, 11, 12, 13, 14), lat=(-79, 30, 40, 80, 86))
+    yanked_points_fast = grid.yank_point(lon=10.5, lat=-81, fast=True)
+    yanked_points = grid.yank_point(lon=10.5, lat=-81, fast=False)
+
+    np.testing.assert_array_almost_equal(
+        yanked_points["inds"], yanked_points_fast["inds"]
+    )
+    np.testing.assert_array_almost_equal(yanked_points["dx"], yanked_points_fast["dx"])
