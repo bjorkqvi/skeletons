@@ -60,13 +60,20 @@ class UTMManager:
 
     def optimal_utm(self, lon: np.ndarray, lat: np.ndarray) -> tuple[int, str]:
         """Determines an optimat UTM-zone given longitude and latitude coordinates."""
+        lat = np.array(lat)
+        lon = np.array(lon)
+
+        mask = np.logical_and(lat <= 84, lat >= -80)
+        if np.logical_not(np.all(mask)):
+            return (None, None)
+
+        lat = lat[mask]
+        lon = lon[mask]
         try:
-            __, __, zone_number, zone_letter = utm_module.from_latlon(
-                np.array(lat), np.array(lon)
-            )
+            __, __, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
         except ValueError:  # ValueError: latitudes must all have the same sign
             __, __, zone_number, zone_letter = utm_module.from_latlon(
-                np.median(np.array(lat)), np.median(np.array(lon))
+                np.median(lat), np.median(lon)
             )
         return (zone_number, zone_letter)
 
