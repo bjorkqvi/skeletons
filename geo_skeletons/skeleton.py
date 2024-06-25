@@ -985,8 +985,11 @@ class Skeleton:
         else:
             utm_to_use = self.utm.optimal_utm(lon=lon, lat=lat)
 
-        x = self.utm._x(lon=lon, lat=lat, utm=utm_to_use)
-        y = self.utm._y(lon=lon, lat=lat, utm=utm_to_use)
+        if utm_to_use[0] is not None:
+            x = self.utm._x(lon=lon, lat=lat, utm=utm_to_use)
+            y = self.utm._y(lon=lon, lat=lat, utm=utm_to_use)
+        else:
+            x, y = None, None
         inds, dx = self._yank_inds(x, y, lon, lat, utm_to_use, fast)
         return inds, dx
 
@@ -1005,30 +1008,55 @@ class Skeleton:
 
         xlist, ylist = self.xy(utm=utm_to_use)
         lonlist, latlist = self.lonlat()
-        if lat is not None:
-            posmask = np.logical_or(lat > 84, lat < -84)
-        else:
+
+        if (
+            x is None
+        ):  # x is None e.g. when all lat are over 84 deg or no UTM zone is set
+            fast = False
+        elif lat is None:  # lat is None e.g. when no UTM zone is set
             fast = True
 
-        for (
-            n,
-            (xx, yy),
-        ) in enumerate(zip(x, y)):
+        if np.any(
+            np.isnan(ylist)
+        ):  # Some over 84 deg latitudes means we can't calculate shorest cartesian distance
+            fast = False
+
+        if x is not None:
+            number_of_points = len(x)
+        else:
+            number_of_points = len(lon)
+
+        if lat is not None:
+            out_of_range_lats = np.logical_or(lat > 84, lat < -80)
+        else:
+            out_of_range_lats = np.full(number_of_points, False)
+
+        for n in range(number_of_points):
             dxx, ii = None, None
-            if lat is None:  # No UTM zone set so only option to use cartesian check-up
-                dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
-            elif posmask[n]:  # Over 84 lat so using slow method even if fast requested
-                if latlist is not None:
-                    dxx, ii = distance_funcs.min_distance(
-                        lon[n], lat[n], lonlist, latlist
-                    )
-            elif fast:
-                dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
+
+            if out_of_range_lats[n]:  # Over 84 lat so using slow method
+                dxx, ii = distance_funcs.min_distance(lon[n], lat[n], lonlist, latlist)
             else:
-                if latlist is not None:
-                    dxx, ii = distance_funcs.min_distance(
-                        lon[n], lat[n], lonlist, latlist
-                    )
+                dxx, ii = distance_funcs.min_cartesian_distance(
+                    x[n], y[n], xlist, ylist
+                )
+            # if lat is None:
+            #     dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
+            # elif posmask[n] or np.any(
+            #     np.isnan(ylist)
+            # ):
+            #     if latlist is not None:
+            #         dxx, ii = distance_funcs.min_distance(
+            #             lon[n], lat[n], lonlist, latlist
+            #         )
+            # elif fast:
+            #     dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
+            # else:
+            #     if latlist is not None:
+            #         dxx, ii = distance_funcs.min_distance(
+            #             lon[n], lat[n], lonlist, latlist
+            #         )
+
             if dxx is not None:
                 inds.append(ii)
                 dx.append(dxx)
