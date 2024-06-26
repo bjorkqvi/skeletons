@@ -500,7 +500,7 @@ class GriddedSkeleton(Skeleton):
                 return int(nx), x_end
 
             # Nothing given
-            return len(self.x()), x_end
+            return len(self.x(native=True)), x_end
 
         nx, native_x_end = determine_nx("x", nx, dx, dm, dlon, dnmi)
         ny, native_y_end = determine_nx("y", ny, dy, dm, dlat, dnmi)
