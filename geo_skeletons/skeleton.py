@@ -18,6 +18,7 @@ from .decorators import add_datavar, add_magnitude
 from .iter import SkeletonIterator
 
 from geo_skeletons import dask_computations
+import itertools
 
 
 class Skeleton:
@@ -918,6 +919,7 @@ class Skeleton:
         y: Union[float, Iterable[float]] = None,
         unique: bool = False,
         fast: bool = False,
+        npoints: int = 1,
     ) -> dict[str, np.ndarray]:
         """Finds points nearest to the x-y, lon-lat points provided and returns dict of corresponding indeces.
 
@@ -941,9 +943,9 @@ class Skeleton:
         lat = sanitize.force_to_iterable(lat)
         # If lon/lat is given, convert to cartesian and set grid UTM zone to match the query point
         if lon is not None and lat is not None:
-            inds, dx = self._yank_using_lonlat(lon, lat, fast)
+            inds, dx = self._yank_using_lonlat(lon, lat, fast, npoints)
         else:
-            inds, dx = self._yank_using_xy(x, y, fast)
+            inds, dx = self._yank_using_xy(x, y, fast, npoints)
 
         if unique:
             inds = np.unique(inds)
@@ -964,7 +966,7 @@ class Skeleton:
             return {"inds": np.array(inds), "dx": np.array(dx)}
 
     def _yank_using_xy(
-        self, x: np.ndarray, y: np.ndarray, fast: bool
+        self, x: np.ndarray, y: np.ndarray, fast: bool, npoints: int
     ) -> dict[str, np.ndarray]:
         """Finds the indeces of nearest points and distances if x,y coordinates are provided"""
         if self.utm.is_set():
@@ -973,11 +975,11 @@ class Skeleton:
         else:
             lat, lon = None, None
 
-        inds, dx = self._yank_inds(x, y, lon, lat, self.utm.zone(), fast)
+        inds, dx = self._yank_inds(x, y, lon, lat, self.utm.zone(), fast, npoints)
         return inds, dx
 
     def _yank_using_lonlat(
-        self, lon: np.ndarray, lat: np.ndarray, fast: bool
+        self, lon: np.ndarray, lat: np.ndarray, fast: bool, npoints: int
     ) -> tuple[np.ndarray, np.ndarray]:
         """Finds the indeces of nearest points and distances if lon,lat coordinates are provided"""
         if self.core.is_cartesian():
@@ -990,7 +992,7 @@ class Skeleton:
             y = self.utm._y(lon=lon, lat=lat, utm=utm_to_use)
         else:
             x, y = None, None
-        inds, dx = self._yank_inds(x, y, lon, lat, utm_to_use, fast)
+        inds, dx = self._yank_inds(x, y, lon, lat, utm_to_use, fast, npoints)
         return inds, dx
 
     def _yank_inds(
@@ -1001,6 +1003,7 @@ class Skeleton:
         lat: np.ndarray,
         utm_to_use: tuple[int, str],
         fast: bool,
+        npoints: int,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Applies a cartesian or spherical search on given coordinates, finding nearest points and returning indeces and distances."""
         inds = []
@@ -1035,10 +1038,10 @@ class Skeleton:
             dxx, ii = None, None
 
             if out_of_range_lats[n]:  # Over 84 lat so using slow method
-                dxx, ii = distance_funcs.min_distance(lon[n], lat[n], lonlist, latlist)
+                dxx, ii = distance_funcs.min_distance(lon[n], lat[n], lonlist, latlist, npoints)
             else:
                 dxx, ii = distance_funcs.min_cartesian_distance(
-                    x[n], y[n], xlist, ylist
+                    x[n], y[n], xlist, ylist, npoints
                 )
             # if lat is None:
             #     dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
@@ -1060,7 +1063,9 @@ class Skeleton:
             if dxx is not None:
                 inds.append(ii)
                 dx.append(dxx)
-        return inds, dx
+        return list(itertools.chain.from_iterable(inds)), list(
+            itertools.chain.from_iterable(dx)
+        )
 
     @property
     def name(self) -> str:
