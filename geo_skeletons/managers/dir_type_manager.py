@@ -53,6 +53,8 @@ class DirTypeManager:
         mask = dask_computations.undask_me(math_dir > np.pi)
         if isinstance(mask, xr.DataArray):
             mask = mask.data
+        if dask_computations.data_is_dask(mask.data):
+            mask = mask.squeeze()
         if isinstance(math_dir, xr.DataArray):
             # squeeze is needed for it to work with dask arrays
             math_dir.data[mask.squeeze()] = math_dir.data[mask.squeeze()] - 2 * np.pi
