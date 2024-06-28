@@ -120,3 +120,14 @@ def test_yank_point_several_points():
     np.testing.assert_array_almost_equal(
         np.array([20, 30, 50, 60]), grid.sel(inds=inds).lat()
     )
+
+
+# def test_yank_point_all_points():
+#     grid = PointSkeleton(lon=(10, 11, 12, 13, 14), lat=(20, 30, 40, 50, 60))
+#     yanked_points = grid.yank_point(lon=(10.5, 13), lat=(25, 55), npoints=5)
+#     np.testing.assert_array_almost_equal(
+#         np.array([10, 11, 12, 13, 14]), grid.sel(inds=inds).lon()
+#     )
+#     np.testing.assert_array_almost_equal(
+#         np.array([20, 30, 40, 50, 60]), grid.sel(inds=inds).lat()
+#     )

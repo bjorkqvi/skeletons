@@ -4,7 +4,7 @@ import numpy as np
 
 def min_distance(
     lon: float, lat: float, lon_vec: np.ndarray, lat_vec: np.ndarray, npoints: int = 1
-) -> tuple[np.array[float], np.array[int]]:
+) -> tuple[np.ndarray[float], np.ndarray[int]]:
     """Calculates minimum distance [m] between a given point and a list of
     points given in spherical coordinates (lon/lat degrees).
 
@@ -21,7 +21,7 @@ def min_distance(
 
 def min_cartesian_distance(
     x: float, y: float, x_vec: np.ndarray, y_vec: np.ndarray, npoints: int = 1
-) -> tuple[np.array[float], np.array[int]]:
+) -> tuple[np.ndarray[float], np.ndarray[int]]:
     """ "Calculates minimum distance [m] between a given point and list of points given
     in cartesian coordinates [m].
 
