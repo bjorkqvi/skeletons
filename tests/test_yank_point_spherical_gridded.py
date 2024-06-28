@@ -63,3 +63,36 @@ def test_yank_several_points_with_close_coordinates():
     np.testing.assert_array_almost_equal(
         (0.1 * yanked_points["dx"]).astype(int), (0.1 * expected_dx).astype(int)
     )
+
+
+def test_yank_point_several_points():
+    grid = GriddedSkeleton(lon=(10, 14), lat=(20, 60))
+    grid.set_spacing(nx=5, ny=5)
+    yanked_points = grid.yank_point(lon=(13, 13.5), lat=(55, 60), npoints=2, fast=True)
+
+    inds_x = yanked_points["inds_x"]
+    inds_y = yanked_points["inds_y"]
+
+    np.testing.assert_array_almost_equal(
+        np.array([13, 14]), grid.isel(lon=inds_x, lat=inds_y).lon()
+    )
+    np.testing.assert_array_almost_equal(
+        np.array([50, 60]), grid.isel(lon=inds_x, lat=inds_y).lat()
+    )
+
+
+def test_yank_point_all_points():
+    grid = GriddedSkeleton(lon=(10, 14), lat=(20, 60))
+    grid.set_spacing(nx=5, ny=5)
+    yanked_points = grid.yank_point(lon=(13), lat=(55), npoints=25, fast=False)
+
+    inds_x = yanked_points["inds_x"]
+    inds_y = yanked_points["inds_y"]
+    lon, lat = grid.lonlat()
+
+    np.testing.assert_array_almost_equal(
+        np.sort(np.unique(lon)), np.sort(grid.isel(lon=inds_x, lat=inds_y).lon())
+    )
+    np.testing.assert_array_almost_equal(
+        np.sort(np.unique(lat)), np.sort(grid.isel(lon=inds_x, lat=inds_y).lat())
+    )

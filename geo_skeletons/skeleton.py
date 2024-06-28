@@ -970,8 +970,8 @@ class Skeleton:
     ) -> dict[str, np.ndarray]:
         """Finds the indeces of nearest points and distances if x,y coordinates are provided"""
         if self.utm.is_set():
-            lat = self.utm._lat(x, y)
-            lon = self.utm._lon(x, y)
+            lat = self.utm._lat(x, y, self.utm.zone())
+            lon = self.utm._lon(x, y, self.utm.zone())
         else:
             lat, lon = None, None
 
@@ -1008,8 +1008,6 @@ class Skeleton:
         """Applies a cartesian or spherical search on given coordinates, finding nearest points and returning indeces and distances."""
         inds = []
         dx = []
-        if npoints > 1:
-            breakpoint()
         xlist, ylist = self.xy(utm=utm_to_use)
         lonlist, latlist = self.lonlat()
 
