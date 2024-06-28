@@ -1008,7 +1008,8 @@ class Skeleton:
         """Applies a cartesian or spherical search on given coordinates, finding nearest points and returning indeces and distances."""
         inds = []
         dx = []
-
+        if npoints > 1:
+            breakpoint()
         xlist, ylist = self.xy(utm=utm_to_use)
         lonlist, latlist = self.lonlat()
 
@@ -1037,8 +1038,10 @@ class Skeleton:
         for n in range(number_of_points):
             dxx, ii = None, None
 
-            if out_of_range_lats[n]:  # Over 84 lat so using slow method
-                dxx, ii = distance_funcs.min_distance(lon[n], lat[n], lonlist, latlist, npoints)
+            if out_of_range_lats[n] or not fast:  # Over 84 lat so using slow method
+                dxx, ii = distance_funcs.min_distance(
+                    lon[n], lat[n], lonlist, latlist, npoints
+                )
             else:
                 dxx, ii = distance_funcs.min_cartesian_distance(
                     x[n], y[n], xlist, ylist, npoints

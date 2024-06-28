@@ -13,10 +13,12 @@ def min_distance(
     dx = []
     for n, __ in enumerate(lat_vec):
         dx.append(distance_2points(lat, lon, lat_vec[n], lon_vec[n]))
-    inds = np.argpartition(dx, npoints)[:npoints]
+    inds = np.argpartition(dx, npoints - 1)[:npoints]
+    if npoints > 1:
+        breakpoint()
     return np.array(dx)[inds], inds
 
-    # return np.array(dx).min(), np.array(dx).argmin()
+    # return [np.array(dx).min()], [np.array(dx).argmin()]
 
 
 def min_cartesian_distance(
@@ -27,7 +29,9 @@ def min_cartesian_distance(
 
     Also returns incex of found minimum"""
     dx = ((y - y_vec) ** 2 + (x - x_vec) ** 2) ** 0.5
-    inds = np.argpartition(dx, npoints)[:npoints]
+    inds = np.argpartition(dx, npoints - 1)[:npoints]
+    if npoints > 1:
+        breakpoint()
     return dx[inds], inds
     # return dx.min(), dx.argmin()
 
