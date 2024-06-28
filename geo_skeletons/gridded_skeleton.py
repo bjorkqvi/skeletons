@@ -163,7 +163,7 @@ class GriddedSkeleton(Skeleton):
             return None
 
         if not self.core.is_cartesian() and native:
-            return self.lon(**kwargs)
+            return self.lon(utm=utm, **kwargs)
 
         if not self.core.is_cartesian() and strict:
             return None
@@ -211,7 +211,7 @@ class GriddedSkeleton(Skeleton):
             return None
 
         if not self.core.is_cartesian() and native:
-            return self.lat(**kwargs)
+            return self.lat(utm=utm, **kwargs)
 
         if not self.core.is_cartesian() and strict:
             return None
@@ -237,6 +237,7 @@ class GriddedSkeleton(Skeleton):
         native: bool = False,
         strict=False,
         mask: Optional[np.ndarray] = None,
+        utm: Optional[tuple[int, str]] = None,
         suppress_warning: bool = False,
         **kwargs,
     ) -> np.ndarray:
@@ -257,7 +258,7 @@ class GriddedSkeleton(Skeleton):
             return None
 
         if self.core.is_cartesian() and native:
-            return self.x(**kwargs)
+            return self.x(utm=utm, **kwargs)
 
         if self.core.is_cartesian() and strict:
             return None
@@ -265,20 +266,23 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lon", **kwargs).values.copy()[vec_mask]
 
-        x, y = self.x(mask=mask, **kwargs), self.y(mask=mask, **kwargs)
+        x, y = self.x(mask=mask, utm=utm, **kwargs), self.y(
+            mask=mask, utm=utm, **kwargs
+        )
         median_y = np.full(len(x), np.median(y))
 
         if not suppress_warning and len(y) > 1:
             print(
                 "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
             )
-        return self.utm._lon(x=x, y=median_y)
+        return self.utm._lon(x=x, y=median_y, utm=utm)
 
     def lat(
         self,
         native: bool = False,
         strict=False,
         mask: Optional[np.ndarray] = None,
+        utm: Optional[tuple[int, str]] = None,
         suppress_warning: bool = False,
         **kwargs,
     ) -> np.ndarray:
@@ -299,7 +303,7 @@ class GriddedSkeleton(Skeleton):
             return None
 
         if self.core.is_cartesian() and native:
-            return self.y(**kwargs)
+            return self.y(utm=utm, **kwargs)
 
         if self.core.is_cartesian() and strict:
             return None
@@ -307,14 +311,16 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lat", **kwargs).values.copy()[vec_mask]
 
-        x, y = self.x(mask=mask, **kwargs), self.y(mask=mask, **kwargs)
+        x, y = self.x(mask=mask, utm=utm, **kwargs), self.y(
+            mask=mask, utm=utm, **kwargs
+        )
         median_x = np.full(len(y), np.median(x))
         if not suppress_warning and len(x) > 1:
             print(
                 "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
             )
 
-        return self.utm._lat(x=median_x, y=y)
+        return self.utm._lat(x=median_x, y=y, utm=utm)
 
     def xy(
         self,
@@ -358,7 +364,7 @@ class GriddedSkeleton(Skeleton):
 
         # Only convert if skeleton is not Cartesian and native output is not requested
         points = PointSkeleton(lon=x, lat=y)
-        points.utm.set(self.utm.zone(), silent=True)
+        points.utm.set(utm or self.utm.zone(), silent=True)
 
         return points.xy(mask=mask, normalize=normalize)
 
@@ -367,6 +373,7 @@ class GriddedSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
+        utm: Optional[tuple[int, str]] = None,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of longitude and latitude of all points.
@@ -394,7 +401,7 @@ class GriddedSkeleton(Skeleton):
                 f"Skeleton has {num_of_elements} elements but mask has shape {mask.shape}, not ({num_of_elements},)!"
             )
         mask = mask.ravel()
-        x, y = self._native_xy(**kwargs)
+        x, y = self._native_xy(utm=utm, **kwargs)
 
         if not self.core.is_cartesian() or native:
             return x[mask], y[mask]
