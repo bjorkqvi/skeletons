@@ -226,6 +226,6 @@ def get_unique_values(spatial: Union[float, Iterable[float]]):
 
     for coord in coords:
         val = spatial.get(coord)
-        if len(np.unique(val)) == 1 and len(val) == 2:
-            spatial[coord] = np.unique(val)
+        # if len(np.unique(val)) == 1 and len(val) == 2:
+        spatial[coord] = np.unique(val)
     return spatial
