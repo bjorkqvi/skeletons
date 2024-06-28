@@ -57,7 +57,9 @@ class DirTypeManager:
             mask = mask.squeeze()
         if isinstance(math_dir, xr.DataArray):
             # squeeze is needed for it to work with dask arrays
-            math_dir.data[mask.squeeze()] = math_dir.data[mask.squeeze()] - 2 * np.pi
+            mask_reshaped = mask.reshape(math_dir.data.shape)
+            math_dir.data[mask_reshaped] = math_dir.data[mask_reshaped] - 2 * np.pi
+            #math_dir.data[mask.squeeze()] = math_dir.data[mask.squeeze()] - 2 * np.pi
         else:
             math_dir[mask] = math_dir[mask] - 2 * np.pi
         return math_dir
