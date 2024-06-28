@@ -56,7 +56,8 @@ class PointSkeleton(Skeleton):
 
         return new_skeleton
 
-    def is_gridded(self) -> bool:
+    @staticmethod
+    def is_gridded() -> bool:
         return False
 
     @staticmethod
