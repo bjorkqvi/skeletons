@@ -707,7 +707,7 @@ class Skeleton:
         if data is None:
             return None
 
-        set_dir_type = self._dir_type_manager.get_dir_type(name)
+        set_dir_type = self.core.get_dir_type(name)
         dir_type = dir_type or set_dir_type
         data = self._dir_type_manager.convert(
             data, in_type=set_dir_type, out_type=dir_type

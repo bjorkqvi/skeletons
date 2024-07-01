@@ -34,15 +34,6 @@ class DirTypeManager:
         data = self.convert_from_math_dir(data, dir_type=out_type)
         return data
 
-    def get_dir_type(self, name: str) -> str:
-        """Get the dir_type of a variable if possible"""
-        obj = self.coord_manager.get(name)
-        if obj is None:
-            return None
-        if not hasattr(obj, "dir_type"):
-            return None
-        return obj.dir_type
-
     @staticmethod
     def convert_to_math_dir(data, dir_type: str):
         """Converts data to mathematical convetion (radians, east=0, north = pi/2)"""
@@ -50,16 +41,17 @@ class DirTypeManager:
             return data
         math_dir = (90 - data + OFFSET[dir_type]) * np.pi / 180
         math_dir = dask_computations.mod(math_dir, 2 * np.pi)
-        mask = dask_computations.undask_me(math_dir > np.pi)
+        mask = dask_computations.undask_me(math_dir <= np.pi)
         if isinstance(mask, xr.DataArray):
             mask = mask.data
-        if dask_computations.data_is_dask(mask.data):
-            mask = mask.squeeze()
+        correction = np.full(mask.shape, 2 * np.pi)
+        correction[mask] = 0
+
         if isinstance(math_dir, xr.DataArray):
             # squeeze is needed for it to work with dask arrays
-            math_dir.data[mask.squeeze()] = math_dir.data[mask.squeeze()] - 2 * np.pi
+            math_dir.data = math_dir.data - correction
         else:
-            math_dir[mask] = math_dir[mask] - 2 * np.pi
+            math_dir = math_dir - correction
         return math_dir
 
     @staticmethod
@@ -86,7 +78,7 @@ class DirTypeManager:
         x: Union[np.ndarray, da.array, xr.DataArray],
         y: Union[np.ndarray, da.array, xr.DataArray],
     ) -> Union[np.ndarray, da.array, xr.DataArray]:
-        """Computes direcetion of two variables.
+        """Computes direcetion of two component variables.
 
         Result given in mathemetical convention (radians, east=0, north = pi/2)"""
         if x is None or y is None:
