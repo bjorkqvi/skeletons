@@ -371,6 +371,15 @@ class CoordinateManager:
             return None
         return param.default_value
 
+    def get_dir_type(self, name: str) -> str:
+        """Get the dir_type of a variable if possible"""
+        obj = self.get(name)
+        if obj is None:
+            return None
+        if not hasattr(obj, "dir_type"):
+            return None
+        return obj.dir_type
+
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:
