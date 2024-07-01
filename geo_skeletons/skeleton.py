@@ -3,7 +3,6 @@ import xarray as xr
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
-from .managers.dir_type_manager import DirTypeManager
 
 # from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
 from . import data_sanitizer as sanitize
@@ -17,7 +16,7 @@ from copy import deepcopy
 from .decorators import add_datavar, add_magnitude
 from .iter import SkeletonIterator
 
-from geo_skeletons import dask_computations
+from geo_skeletons import dask_computations, dir_conversions
 import itertools
 
 
@@ -85,8 +84,6 @@ class Skeleton:
 
     def _init_managers(self, utm: tuple[str, int], chunks: tuple[int]) -> None:
         """Initialized a DirTypeManager, UTMManager and DaskManager, and sets a UTM-zone"""
-        self._dir_type_manager = DirTypeManager(coord_manager=self.core)
-
         if chunks is None:
             if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
                 chunks = self._chunks
@@ -481,7 +478,7 @@ class Skeleton:
 
         dir_type = dir_type or obj.dir_type
 
-        data = self._dir_type_manager.convert_to_math_dir(data, dir_type)
+        data = dir_conversions.convert_to_math_dir(data, dir_type)
 
         s = dask_computations.sin(data)
         c = dask_computations.cos(data)
@@ -649,8 +646,8 @@ class Skeleton:
             x_data = self.dask.undask_me(x_data)
 
         dir_type = dir_type or self.core.get(name).dir_type
-        data = self._dir_type_manager.compute_math_direction(x_data, y_data)
-        data = self._dir_type_manager.convert_from_math_dir(data, dir_type=dir_type)
+        data = dir_conversions.compute_math_direction(x_data, y_data)
+        data = dir_conversions.convert_from_math_dir(data, dir_type=dir_type)
 
         return data
 
@@ -686,7 +683,7 @@ class Skeleton:
         ):
             x_data = self.dask.undask_me(x_data)
 
-        data = self._dir_type_manager.compute_magnitude(x_data, y_data)
+        data = dir_conversions.compute_magnitude(x_data, y_data)
 
         return data
 
@@ -709,9 +706,7 @@ class Skeleton:
 
         set_dir_type = self.core.get_dir_type(name)
         dir_type = dir_type or set_dir_type
-        data = self._dir_type_manager.convert(
-            data, in_type=set_dir_type, out_type=dir_type
-        )
+        data = dir_conversions.convert(data, in_type=set_dir_type, out_type=dir_type)
         return data
 
     def _smart_squeeze(self, name: str, data: xr.DataArray) -> xr.DataArray:
