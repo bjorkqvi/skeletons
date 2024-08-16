@@ -19,6 +19,8 @@ from .iter import SkeletonIterator
 from geo_skeletons import dask_computations, dir_conversions
 import itertools
 
+import geo_parameters as gp
+
 
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
@@ -133,10 +135,14 @@ class Skeleton:
         cls,
         ds: xr.Dataset,
         chunks: Optional[Union[tuple[int], str]] = None,
+        data_vars: Optional[list[str]] = None,
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton form an xarray Dataset.
         All coordinates must be present, but only matching data variables included.
+
+        If data_vars is given, then those will be tried to match and added to the class.
+        Otherwise potential variables are read from the class.
 
         Missing coordinates can be provided as kwargs. If e.g. the z-variable doesn't exist in the DataSet:
 
@@ -180,12 +186,25 @@ class Skeleton:
         # Initialize Skeleton
         points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, **additional_coords)
         # Set data variables and masks that exist
-        for data_var in points.core.non_coord_objects():
+        data_vars = data_vars or points.core.non_coord_objects()
+        for data_var in data_vars:
             val = ds.get(data_var)
 
             if val is not None:
+                if data_var not in points.core.all_objects():
+                    # Try to find geo-parameter to get metadata etc.
+                    if hasattr(ds[data_var], "standard_name"):
+                        geo_param = gp.get(ds[data_var].standard_name)
+
+                    else:
+                        geo_param = None
+
+                    if geo_param is not None:
+                        points.add_datavar(geo_param(data_var))
+                    else:
+                        points.add_datavar(data_var)
                 points.set(data_var, val)
-                points.meta.set(ds.get(data_var).attrs, name=data_var)
+                points.meta.append(ds.get(data_var).attrs, name=data_var)
         points.meta.set(ds.attrs)
 
         return points
@@ -209,14 +228,18 @@ class Skeleton:
         e.g. new_skeleton = skeleton.sel(lon=slice(10,20))
 
         Calls the Xarray .sel method on the underlying DataSet"""
-        return self.from_ds(self.ds().sel(**kwargs))
+        return self.from_ds(
+            self.ds().sel(**kwargs), data_vars=self.core.non_coord_objects()
+        )
 
     def isel(self, **kwargs) -> "Skeleton":
         """Creates a new instance by selecting only some of the wanted variables.
         e.g. new_skeleton = skeleton.isel(lon=[0,1,2])
 
         Calls the Xarray .isel method on the underlying DataSet"""
-        return self.from_ds(self.ds().isel(**kwargs))
+        return self.from_ds(
+            self.ds().isel(**kwargs), data_vars=self.core.non_coord_objects()
+        )
 
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
         """Inserts a slice of data into the Skeleton.
