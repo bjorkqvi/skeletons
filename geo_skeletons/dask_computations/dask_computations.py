@@ -75,8 +75,11 @@ def atleast_1d(
         if not isinstance(data, xr.DataArray):
             return np.atleast_1d(data)
         else:
-            data.data = np.atleast_1d(data)
-            return data
+            try:
+                data.data = np.atleast_1d(data)
+                return data
+            except ValueError:
+                return np.atleast_1d(data)
 
 
 def data_is_dask(data: Union[np.ndarray, da.array, xr.DataArray]) -> bool:
