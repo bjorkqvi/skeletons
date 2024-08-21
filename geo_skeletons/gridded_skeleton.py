@@ -488,7 +488,7 @@ class GriddedSkeleton(Skeleton):
                 )
                 if floating_edge:
                     if self.core.is_cartesian():
-                        raise Exception(
+                        raise ValueError(
                             "Grid is cartesian, so cant set exact dlon/dlat using floating_edge!"
                         )
                     x_end = self.edges(lon_type)[0] + (nx - 1) * dlon
@@ -501,7 +501,7 @@ class GriddedSkeleton(Skeleton):
                 nx = np.round((self.edges(x_type)[1] - self.edges(x_type)[0]) / dx) + 1
                 if floating_edge:
                     if not self.core.is_cartesian():
-                        raise Exception(
+                        raise ValueError(
                             "Grid is spherical, so cant set exact dx/dy using floating_edge!"
                         )
                     x_end = self.edges(x_type)[0] + (nx - 1) * dx

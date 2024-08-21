@@ -1,6 +1,7 @@
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
 from geo_skeletons.distance_funcs import lon_in_km, lat_in_km
 import numpy as np
+import pytest
 
 
 def test_nx_ny_cartesian():
@@ -94,6 +95,13 @@ def test_dlon_dlat_spherical_floating():
     np.testing.assert_array_almost_equal(grid.lat(), np.array([0, 1.5, 3]))
 
 
+def test_dlon_dlat_cartesian_floating():
+    grid = GriddedSkeleton(x=(-1, 0.999), y=(-3, 2.999))
+    grid.utm.set((33, "W"))
+    with pytest.raises(ValueError):
+        grid.set_spacing(dlon=0.5, dlat=1.5, floating_edge=True)
+
+
 def test_dx_dy_cartesian_floating():
     grid = GriddedSkeleton(x=(-1, 0.999), y=(-3, 2.999))
     grid.set_spacing(dx=0.5, dy=3, floating_edge=True)
@@ -102,6 +110,12 @@ def test_dx_dy_cartesian_floating():
     assert grid.size() == (3, 5)
     np.testing.assert_array_almost_equal(grid.x(), np.array([-1, -0.5, 0, 0.5, 1]))
     np.testing.assert_array_almost_equal(grid.y(), np.array([-3, 0, 3]))
+
+
+def test_dx_dy_spherical_floating():
+    grid = GriddedSkeleton(lon=(2, 7), lat=(60, 61))
+    with pytest.raises(ValueError):
+        grid.set_spacing(dx=0.5, dy=3, floating_edge=True)
 
 
 def test_dnmi_spherical():
