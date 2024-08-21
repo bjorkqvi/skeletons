@@ -69,17 +69,18 @@ def atleast_1d(
         if not isinstance(data, xr.DataArray):
             return da.atleast_1d(data)
         else:
-            data.data = da.atleast_1d(data)
-            return data
+            if data.shape == ():
+                return data.expand_dims((0,))
+            else:
+                return data
     else:
         if not isinstance(data, xr.DataArray):
             return np.atleast_1d(data)
         else:
-            try:
-                data.data = np.atleast_1d(data)
+            if data.shape == ():
+                return data.expand_dims((0,))
+            else:
                 return data
-            except ValueError:
-                return np.atleast_1d(data)
 
 
 def data_is_dask(data: Union[np.ndarray, da.array, xr.DataArray]) -> bool:
