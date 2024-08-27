@@ -941,13 +941,14 @@ class Skeleton:
     ) -> dict[str, np.ndarray]:
         """Finds points nearest to the x-y, lon-lat points provided and returns dict of corresponding indeces.
 
-        All Skeletons: key 'dx' (distance to nearest point in km)
+        All Skeletons: key 'dx' (distance to nearest point in meters)
 
         PointSkelton: keys 'inds'
         GriddedSkeleton: keys 'inds_x' and 'inds_y'
 
         Set unique=True to remove any repeated points.
-        Set fast=True to use UTM cartesian search for low latitudes."""
+        Set fast=True to use UTM cartesian search for low latitudes.
+        npoints can be used to find N nearest points."""
 
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
