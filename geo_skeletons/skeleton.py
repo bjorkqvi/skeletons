@@ -938,6 +938,7 @@ class Skeleton:
         unique: bool = False,
         fast: bool = False,
         npoints: int = 1,
+        gridded_shape: Optional[tuple[int]] = None,
     ) -> dict[str, np.ndarray]:
         """Finds points nearest to the x-y, lon-lat points provided and returns dict of corresponding indeces.
 
@@ -982,7 +983,19 @@ class Skeleton:
                 "dx": np.array(dx),
             }
         else:
-            return {"inds": np.array(inds), "dx": np.array(dx)}
+            if gridded_shape is None:
+                return {"inds": np.array(inds), "dx": np.array(dx)}
+            if self.nx() != np.prod(gridded_shape):
+                raise ValueError(
+                    f"Number of elements in 'gridded_shape' ({gridded_shape}) does not match elements in skeleton ({self.nx()}!"
+                )
+            yi, xi = np.unravel_index(np.array(inds), gridded_shape)
+            return {
+                "inds": np.array(inds),
+                "dx": np.array(dx),
+                "inds_x": np.atleast_1d(xi),
+                "inds_y": np.atleast_1d(yi),
+            }
 
     def _yank_using_xy(
         self, x: np.ndarray, y: np.ndarray, fast: bool, npoints: int
