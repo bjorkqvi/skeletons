@@ -83,6 +83,7 @@ def test_undask_me():
     assert not data_is_dask(dc.undask_me(data))
     data = da.from_array(data)
     assert not data_is_dask(dc.undask_me(data))
+    assert dc.undask_me(None) is None
 
 
 def test_atleast_1d_np():
