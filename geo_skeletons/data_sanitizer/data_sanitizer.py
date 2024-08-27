@@ -6,6 +6,7 @@ from geo_skeletons.errors import (
     DataWrongDimensionError,
     UnknownCoordinateError,
     CoordinateWrongLengthError,
+    CoordinateWrongDimensionError,
     GridError,
 )
 
@@ -25,6 +26,9 @@ def sanitize_input(
     for key, value in spatial.items():
         spatial[key] = sanitize_singe_variable(key, value)
 
+    if np.all([a is None for a in spatial.values()]):
+        raise GridError
+
     other = {}
     for key, value in kwargs.items():
         if key == "time":
@@ -41,9 +45,6 @@ def sanitize_input(
 
         for x, y in [("x", "y"), ("lon", "lat")]:
             check_that_variables_equal_length(spatial[x], spatial[y])
-
-    if np.all([a is None for a in spatial.values()]):
-        raise GridError
 
     if spatial["lon"] is not None:
         spatial["lon"] = clean_lons(spatial["lon"])
@@ -106,13 +107,6 @@ def will_grid_be_spherical_or_cartesian(
     if xy and lonlat:
         raise ValueError("Can't set both lon/lat and x/y!")
 
-    # Empty grid will be cartesian
-    if not xy and not lonlat:
-        native_x = "x"
-        native_y = "y"
-        xvec = np.array([])
-        yvec = np.array([])
-
     return native_x, native_y, xvec, yvec
 
 
@@ -131,13 +125,7 @@ def sanitize_singe_variable(name: str, x: Optional[np.ndarray]) -> np.ndarray:
         x = None
 
     if x is not None and len(x.shape) > 1:
-        raise Exception(
-            f"Vector {name} should have one dimension, but it has dimensions {x.shape}!"
-        )
-
-    # Set np.array([]) to None
-    if x is not None and x.shape == (0,):
-        x = None
+        raise CoordinateWrongDimensionError(name, x.shape)
 
     return x
 
@@ -156,7 +144,7 @@ def sanitize_point_structure(spatial: dict[str, np.ndarray]) -> dict[str, np.nda
             elif len(y) == 1:
                 spatial["y"] = np.repeat(y[0], len(x))
             else:
-                raise Exception(
+                raise ValueError(
                     f"x-vector is {len(x)} long but y-vecor is {len(y)} long!"
                 )
     if lon is not None and lat is not None:
@@ -166,23 +154,14 @@ def sanitize_point_structure(spatial: dict[str, np.ndarray]) -> dict[str, np.nda
             elif len(lat) == 1:
                 spatial["lat"] = np.repeat(lat[0], len(lon))
             else:
-                raise Exception(
+                raise ValueError(
                     f"x-vector is {len(lon)} long but y-vecor is {len(lat)} long!"
                 )
 
     return spatial
 
 
-def get_edges_of_arrays(spatial: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
-    """Takes only edges of arrays, so [1,2,3] -> [1,3]"""
-    for key, value in spatial.items():
-        if value is not None:
-            spatial[key] = coord_len_to_max_two(value)
-
-    return spatial
-
-
-def check_that_variables_equal_length(x: np.ndarray, y: np.ndarray):
+def check_that_variables_equal_length(x: np.ndarray, y: np.ndarray) -> bool:
     """Checks that two variables are of equal lengt and raises error if not. 'None' and 'None' are equal length."""
     if x is None and y is None:
         return True
@@ -192,7 +171,7 @@ def check_that_variables_equal_length(x: np.ndarray, y: np.ndarray):
         raise ValueError(f"y/lat variable None even though x/lon variable is not!")
     if len(x) != len(y):
         raise CoordinateWrongLengthError("x", len(x), "y", len(y))
-    return
+    return True
 
 
 def sanitize_time_input(

@@ -30,6 +30,13 @@ class DataWrongDimensionError(Exception):
             )
 
 
+class CoordinateWrongDimensionError(Exception):
+    def __init__(self, coord_name: str, coord_shape: tuple[int]):
+        super().__init__(
+            f"Coordinate {coord_name} has shape {coord_shape}, but it should have only one dimension!!!"
+        )
+
+
 class GridError(Exception):
     def __init__(self):
         super().__init__(
