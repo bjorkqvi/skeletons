@@ -421,7 +421,7 @@ class CoordinateManager:
         string += "\n" + "Masks:"
         if self.masks():
             max_len = len(max(self.masks(), key=len))
-            for mask in self.masks:
+            for mask in self.masks():
                 string += f"\n    {mask:{max_len+2}}"
                 string += string_of_coords(self.coords(self.coord_group(mask)))
                 string += f":  {bool(self.default_value(mask))}"
