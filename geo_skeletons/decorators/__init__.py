@@ -3,3 +3,4 @@ from .datavar_factory import add_datavar
 from .mask_factory import add_mask
 from .magnitude_factory import add_magnitude
 from .dask import activate_dask
+from .dynamic import dynamic

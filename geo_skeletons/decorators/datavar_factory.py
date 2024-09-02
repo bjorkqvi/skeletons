@@ -16,13 +16,12 @@ def add_datavar(
     dir_type: Optional[bool] = None,
     append: bool = False,
 ):
-    """stash_get = True means that the coordinate data can be accessed
-    by method ._{name}() instead of .{name}()
+    """name: name of variable
+    coord_group: 'all', 'spatial', 'grid' or 'gridpoint'
+    default_value: float
+    dir_type (for directional parameters): 'from', 'to' or 'math' (Autimatically parsed if name is a MetaParameter)
 
-    for directional parameters provide a MetaParameter or set:
-    dir_type: 'from', 'to' or 'math'
-
-    This allows for alternative definitions of the get-method elsewere."""
+    """
 
     def datavar_decorator(c):
         def get_var(
@@ -89,7 +88,16 @@ def add_datavar(
             c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
             c.meta = deepcopy(c.meta)
             c.meta._coord_manager = c.core
+
+        # Temporarily cahnge core to dynamic if being set by decorator
+        core_was_static = c.core.static
+        if core_was_static and not append:
+            c.core.static = False
+
         c.core.add_var(data_var)
+
+        if core_was_static and not append:
+            c.core.static = True
 
         if append:
             exec(f"c.{name_str} = partial(get_var, c)")

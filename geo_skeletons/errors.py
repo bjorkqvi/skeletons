@@ -1,6 +1,13 @@
 from typing import Union
 
 
+class StaticSkeletonError(Exception):
+    def __init(self):
+        super().__init__(
+            "Cannot add variable to a static Skeleton! Use @dynamic to change class or set instance core to obj.core.static = False"
+        )
+
+
 class UnknownCoordinateError(Exception):
     pass
 

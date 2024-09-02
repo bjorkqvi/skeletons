@@ -1,6 +1,7 @@
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
-from geo_skeletons.decorators import add_coord, add_time, add_datavar, add_mask
-
+from geo_skeletons.decorators import add_coord, add_time, add_datavar, add_mask, dynamic
+from geo_skeletons.errors import StaticSkeletonError
+import pytest
 import numpy as np
 import pandas as pd
 
@@ -34,6 +35,56 @@ def test_add_mask():
         pass
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40))
+    data.set_spacing(nx=10, ny=10)
+
+    np.testing.assert_array_equal(data.sea_mask(empty=True), np.full(data.size(), True))
+
+    np.testing.assert_array_equal(
+        data.land_mask(empty=True), np.full(data.size(), False)
+    )
+    data.set_sea_mask(data.hs(empty=True) > 0)
+    np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
+    np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
+    assert data.core.masks()[0] == "sea_mask"
+
+
+def test_add_mask_instance():
+    @add_datavar(name="hs", default_value=0)
+    class WaveHeight(GriddedSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10, 20), lat=(30, 40))
+    with pytest.raises(StaticSkeletonError):
+        data.add_mask(name="sea", default_value=1.0, opposite_name="land")
+
+    data.core.static = False
+    assert WaveHeight.core.static
+    data.add_mask(name="sea", default_value=1.0, opposite_name="land")
+
+    data.set_spacing(nx=10, ny=10)
+
+    np.testing.assert_array_equal(data.sea_mask(empty=True), np.full(data.size(), True))
+
+    np.testing.assert_array_equal(
+        data.land_mask(empty=True), np.full(data.size(), False)
+    )
+    data.set_sea_mask(data.hs(empty=True) > 0)
+    np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), False))
+    np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), True))
+    assert data.core.masks()[0] == "sea_mask"
+
+
+def test_add_mask_instance_dynamic():
+    @dynamic
+    @add_datavar(name="hs", default_value=0)
+    class WaveHeight(GriddedSkeleton):
+        pass
+
+    data = WaveHeight(lon=(10, 20), lat=(30, 40))
+    assert not WaveHeight.core.static
+    assert not data.core.static
+    data.add_mask(name="sea", default_value=1.0, opposite_name="land")
+
     data.set_spacing(nx=10, ny=10)
 
     np.testing.assert_array_equal(data.sea_mask(empty=True), np.full(data.size(), True))
