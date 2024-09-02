@@ -109,7 +109,7 @@ def test_freq_dir_time():
     assert points.meta.get("dirs") == {
         "short_name": "dirs",
         "long_name": "wave_direction",
-        "standard_name": "sea_surface_wave_from_direction",
+        "standard_name": "wave_from_direction",
         "unit": "deg",
     }
     assert points.meta.get("time") == {}
@@ -128,7 +128,7 @@ def test_dirto():
     assert points.meta.get("dirs") == {
         "short_name": "dirs",
         "long_name": "wave_direction",
-        "standard_name": "sea_surface_wave_to_direction",
+        "standard_name": "wave_to_direction",
         "unit": "deg",
     }
 
