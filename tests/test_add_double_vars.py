@@ -1,5 +1,5 @@
 from geo_skeletons.point_skeleton import PointSkeleton
-from geo_skeletons.decorators import add_coord, add_datavar, add_mask
+from geo_skeletons.decorators import add_coord, add_datavar, add_mask, dynamic
 
 from geo_skeletons.errors import VariableExistsError
 import pytest
@@ -13,6 +13,7 @@ def test_two_vars():
         class Wrong(PointSkeleton):
             pass
 
+    @dynamic
     @add_datavar("u")
     class Wrong(PointSkeleton):
         pass
@@ -33,6 +34,7 @@ def test_two_coords():
 
 
 def test_mix():
+    @dynamic
     @add_mask("sea")
     @add_datavar("v")
     @add_datavar("u")

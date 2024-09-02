@@ -4,6 +4,7 @@ from geo_skeletons.errors import VariableExistsError
 
 from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coordinate
 from typing import Union
+from geo_skeletons.errors import StaticSkeletonError
 
 SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
 
@@ -28,6 +29,8 @@ class CoordinateManager:
 
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
+
+        self.static = True
 
     def _is_initialized(self) -> bool:
         """Check if the Dataset had been initialized"""
@@ -58,12 +61,16 @@ class CoordinateManager:
 
     def add_var(self, data_var: DataVar) -> None:
         """Adds a data variable to the structure"""
+        if self.static:
+            raise StaticSkeletonError
         if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
 
     def add_mask(self, grid_mask: GridMask) -> None:
         """Adds a mask to the structure"""
+        if self.static:
+            raise StaticSkeletonError
         if self.get(grid_mask.name) is not None:
             raise VariableExistsError(grid_mask.name)
         if grid_mask.triggered_by:
@@ -91,12 +98,17 @@ class CoordinateManager:
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
         """Adds a magnitude to the structure"""
+        if self.static:
+            raise StaticSkeletonError
+
         if self.get(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
         self._added_magnitudes[magnitude.name] = magnitude
 
     def add_direction(self, direction: Direction) -> None:
         """Adds a direction to the structure"""
+        if self.static:
+            raise StaticSkeletonError
         if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self._added_directions[direction.name] = direction
@@ -379,6 +391,19 @@ class CoordinateManager:
         if not hasattr(obj, "dir_type"):
             return None
         return obj.dir_type
+
+    @property
+    def static(self) -> bool:
+        if not hasattr(self, "_static"):
+            raise KeyError("The core has not set static property!")
+        return self._static
+
+    @static.setter
+    def static(self, static: bool) -> None:
+        if isinstance(static, bool):
+            self._static = static
+        else:
+            raise ValueError("static needs to be a boolean!")
 
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:

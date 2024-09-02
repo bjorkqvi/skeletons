@@ -12,6 +12,7 @@ from ..managers.dask_manager import DaskManager
 
 import geo_parameters as gp
 from geo_skeletons.variables import GridMask
+from functools import partial
 
 
 def add_mask(
@@ -22,8 +23,15 @@ def add_mask(
     triggered_by: Optional[str] = None,
     valid_range: tuple[float] = (0.0, None),
     range_inclusive: bool = True,
+    append: bool = False,
 ):
-    """coord_type = 'all', 'spatial', 'grid' or 'gridpoint'"""
+    """default_value = 0 or 1 (False or True)
+    coord_group = 'all', 'spatial', 'grid' or 'gridpoint'
+    opposite_name: E.g. 'land' is name = 'sea'
+    triggered_by: E.g. land_mask might be triggered by setting variable 'hs'
+    valid_range: Range that mask is set by the triggered variable. None is infiniate.
+    range_inclusive (default_true): E.g. valid_range (0.0, None) includes all non-negative values.
+    """
 
     def mask_decorator(c):
         def get_mask(self, empty: bool = False, **kwargs) -> np.ndarray:
@@ -159,17 +167,35 @@ def add_mask(
             range_inclusive=range_inclusive,
         )
 
+        core_was_static = c.core.static
+        if core_was_static and not append:
+            c.core.static = False
+
         c.core.add_mask(grid_mask)
         if opposite_grid_mask is not None:
             c.core.add_mask(opposite_grid_mask)
 
-        exec(f"c.{name_str}_mask = get_mask")
-        exec(f"c.{name_str}_points = get_masked_points")
-        exec(f"c.set_{name_str}_mask = set_mask")
+        if core_was_static and not append:
+            c.core.static = True
+
+        if append:
+            exec(f"c.{name_str}_mask = partial(get_mask, c)")
+            exec(f"c.{name_str}_points = partial(get_masked_points, c)")
+            exec(f"c.set_{name_str}_mask = partial(set_mask, c)")
+        else:
+            exec(f"c.{name_str}_mask = get_mask")
+            exec(f"c.{name_str}_points = get_masked_points")
+            exec(f"c.set_{name_str}_mask = set_mask")
+
         if opposite_name_str is not None:
-            exec(f"c.{opposite_name_str}_mask = get_not_mask")
-            exec(f"c.{opposite_name_str}_points = get_not_points")
-            exec(f"c.set_{opposite_name_str}_mask = set_opposite_mask")
+            if append:
+                exec(f"c.{opposite_name_str}_mask = partial(get_not_mask, c)")
+                exec(f"c.{opposite_name_str}_points = partial(get_not_points,c )")
+                exec(f"c.set_{opposite_name_str}_mask = partial(set_opposite_mask, c)")
+            else:
+                exec(f"c.{opposite_name_str}_mask = get_not_mask")
+                exec(f"c.{opposite_name_str}_points = get_not_points")
+                exec(f"c.set_{opposite_name_str}_mask = set_opposite_mask")
 
         return c
 

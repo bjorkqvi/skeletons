@@ -17,12 +17,12 @@ def add_magnitude(
     dir_type: Optional[str] = None,
     append: bool = False,
 ):
-    """stash_get = True means that the coordinate data can be accessed
-    by method ._{name}() instead of .{name}()
-
+    """name: name of variable
+    x [str]: name of already set variable that will be used as x-component
+    y [str]: name of already set variable that will be used as y-component
+    direction: name of the direction of the magnitude being set
     dir_type: 'from', 'to' or 'math'
-
-    This allows for alternative definitions of the get-method elsewere."""
+    """
 
     def magnitude_decorator(c):
         def get_direction(
@@ -146,7 +146,17 @@ def add_magnitude(
                 magnitude=mag_obj,
             )
             mag_obj.direction = dir_obj
+
+            # Temporarily cahnge core to dynamic if being set by decorator
+            core_was_static = c.core.static
+            if core_was_static and not append:
+                c.core.static = False
+
             c.core.add_direction(dir_obj)
+
+            if core_was_static and not append:
+                c.core.static = True
+
             if append:
                 exec(f"c.{dir_str} = partial(get_direction, c)")
                 exec(f"c.set_{dir_str} = partial(set_direction, c)")
@@ -163,7 +173,15 @@ def add_magnitude(
             exec(f"c.{name_str} = get_magnitude")
             exec(f"c.set_{name_str} = set_magnitude")
 
+        # Temporarily cahnge core to dynamic if being set by decorator
+        core_was_static = c.core.static
+        if core_was_static and not append:
+            c.core.static = False
+
         c.core.add_magnitude(mag_obj)
+
+        if core_was_static and not append:
+            c.core.static = True
 
         return c
 

@@ -1,10 +1,11 @@
 from geo_skeletons import PointSkeleton
-from geo_skeletons.decorators import add_datavar, add_coord
+from geo_skeletons.decorators import add_datavar, add_coord, dynamic
 import numpy as np
 
 
 def test_add_datavar():
     points = PointSkeleton(x=0, y=4)
+    points.core.static = False
     points.add_datavar("hs")
     assert "hs" in points.core.data_vars()
     assert "hs" not in list(points.ds().keys())
@@ -13,6 +14,7 @@ def test_add_datavar():
 
 
 def test_add_datavar_on_top():
+    @dynamic
     @add_datavar(name="hs")
     @add_coord(name="z")
     class Expanded(PointSkeleton):

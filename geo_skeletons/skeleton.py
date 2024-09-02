@@ -13,13 +13,14 @@ from .errors import DataWrongDimensionError
 
 from typing import Iterable
 from copy import deepcopy
-from .decorators import add_datavar, add_magnitude
+from .decorators import add_datavar, add_magnitude, add_mask
 from .iter import SkeletonIterator
 
 from geo_skeletons import dask_computations, dir_conversions
 import itertools
 
 import geo_parameters as gp
+from geo_parameters.metaparameter import MetaParameter
 
 
 class Skeleton:
@@ -109,9 +110,15 @@ class Skeleton:
     def add_datavar(
         self, name: str, coord_group: str = "all", default_value: float = 0.0
     ) -> None:
-        """Adds a data variable to an instance of a Skeleton.
+        """Adds a data variable to an instance of a (non-static) Skeleton.
 
-        Similar to using @add_datavar on a class, but only affects an instance."""
+        Similar to using @add_datavar on a class, but only affects an instance.
+
+        name: name of variable
+        coord_group: 'all', 'spatial', 'grid' or 'gridpoint'
+        default_value: float
+        dir_type (for directional parameters): 'from', 'to' or 'math' (Autimatically parsed if name is a MetaParameter)
+        """
         self = add_datavar(
             name=name, coord_group=coord_group, default_value=default_value, append=True
         )(self)
@@ -119,13 +126,60 @@ class Skeleton:
         self.meta._ds_manager = self._ds_manager
 
     def add_magnitude(
-        self, name: str, x: str, y: str, direction: str = None, dir_type: str = None
+        self,
+        name: Union[str, MetaParameter],
+        x: str,
+        y: str,
+        direction: str = None,
+        dir_type: str = None,
     ) -> None:
-        """Adds a magnitude to an instance of a Skeleton.
+        """Adds a magnitude to an instance of a (non-static) Skeleton.
 
-        Similar to using @add_magnitude on a class, but only affects an instance."""
+        Similar to using @add_magnitude on a class, but only affects an instance.
+
+        name: name of variable
+        x [str]: name of already set variable that will be used as x-component
+        y [str]: name of already set variable that will be used as y-component
+        direction: name of the direction of the magnitude being set
+        dir_type: 'from', 'to' or 'math'"""
+
         self = add_magnitude(
             name=name, x=x, y=y, direction=direction, dir_type=dir_type, append=True
+        )(self)
+        self._ds_manager.coord_manager = self.core
+        self.meta._ds_manager = self._ds_manager
+
+    def add_mask(
+        self,
+        name: Union[str, MetaParameter],
+        default_value: int = 0,
+        coord_group: str = "grid",
+        opposite_name: Optional[Union[str, MetaParameter]] = None,
+        triggered_by: Optional[str] = None,
+        valid_range: tuple[float] = (0.0, None),
+        range_inclusive: bool = True,
+    ):
+        """Adds a mask t an instans of a (non-static) Skeleton.
+
+        Similar to using @add_mask on a class, but only affects an instance.
+
+        default_value = 0 or 1 (False or True)
+        coord_group = 'all', 'spatial', 'grid' or 'gridpoint'
+        opposite_name: E.g. 'land' is name = 'sea'
+        triggered_by: E.g. land_mask might be triggered by setting variable 'hs'
+        valid_range: Range that mask is set by the triggered variable. None is infiniate.
+        range_inclusive (default_true): E.g. valid_range (0.0, None) includes all non-negative values.
+        """
+
+        self = add_mask(
+            name=name,
+            default_value=default_value,
+            coord_group=coord_group,
+            opposite_name=opposite_name,
+            triggered_by=triggered_by,
+            valid_range=valid_range,
+            range_inclusive=range_inclusive,
+            append=True,
         )(self)
         self._ds_manager.coord_manager = self.core
         self.meta._ds_manager = self._ds_manager
@@ -185,6 +239,8 @@ class Skeleton:
 
         # Initialize Skeleton
         points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, **additional_coords)
+        if cls.core.static:
+            points.core.static = False
         # Set data variables and masks that exist
         data_vars = data_vars or points.core.non_coord_objects()
         for data_var in data_vars:
@@ -206,6 +262,9 @@ class Skeleton:
                 points.set(data_var, val)
                 points.meta.append(ds.get(data_var).attrs, name=data_var)
         points.meta.set(ds.attrs)
+
+        if cls.core.static:
+            points.core.static = True
 
         return points
 
