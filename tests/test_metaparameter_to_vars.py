@@ -141,21 +141,24 @@ def test_add_datavar():
     class Magnitude(PointSkeleton):
         pass
 
-    points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
+    points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8), name='test_name')
 
-    assert points.meta.get() == {}
+    assert points.meta.get() == {'name': 'test_name'}
+    assert points.meta.get('x').get('standard_name') == 'distance_in_x_direction'
+    assert points.meta.get('y').get('standard_name') == 'distance_in_y_direction'
     points.utm.set((33, "W"))
-    assert points.meta.get() == {"utm_zone": "33W"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W"}
     points.meta.append({"general_info": "who knew!?"})
-    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W", "general_info": "who knew!?"}
     points.set_u(0)
-    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W", "general_info": "who knew!?"}
     assert points.meta.get("u") == gp.wind.XWind.meta_dict()
     assert points.meta.get("u") == points.ds().u.attrs
 
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
     assert points.meta.get() == {
+        'name': 'test_name',
         "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
@@ -178,20 +181,21 @@ def test_add_magnitude():
     class Magnitude(PointSkeleton):
         pass
 
-    points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
+    points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8), name='test_name')
 
-    assert points.meta.get() == {}
+    assert points.meta.get() == {'name': 'test_name'}
     points.utm.set((33, "W"))
-    assert points.meta.get() == {"utm_zone": "33W"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W"}
     points.meta.append({"general_info": "who knew!?"})
-    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W", "general_info": "who knew!?"}
     points.set_u(0)
     points.set_v(1)
-    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W", "general_info": "who knew!?"}
     assert points.meta.get("u") == gp.wind.XWind.meta_dict()
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
     assert points.meta.get() == {
+        'name': 'test_name',
         "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
@@ -212,19 +216,20 @@ def test_add_mask():
     class Magnitude(PointSkeleton):
         pass
 
-    points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8))
+    points = Magnitude(x=(0, 1, 2, 4), y=(5, 6, 7, 8), name='test_name')
     points.set_land_mask(0)
-    assert points.meta.get() == {}
+    assert points.meta.get() == {'name': 'test_name'}
     points.utm.set((33, "W"))
-    assert points.meta.get() == {"utm_zone": "33W"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W"}
     points.meta.append({"general_info": "who knew!?"})
-    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W", "general_info": "who knew!?"}
     points.set_u(0)
-    assert points.meta.get() == {"utm_zone": "33W", "general_info": "who knew!?"}
+    assert points.meta.get() == {'name': 'test_name',"utm_zone": "33W", "general_info": "who knew!?"}
     assert points.meta.get("u") == gp.wind.XWind.meta_dict()
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
     assert points.meta.get() == {
+        'name': 'test_name',
         "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
