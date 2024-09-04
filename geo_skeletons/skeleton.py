@@ -106,6 +106,8 @@ class Skeleton:
             metavar = self.core.get(name).meta
             if metavar is not None:
                 self.meta.append(metavar.meta_dict(), name)
+        
+        self.meta.append({'name': self.name})
 
     def add_datavar(
         self, name: str, coord_group: str = "all", default_value: float = 0.0
@@ -238,7 +240,9 @@ class Skeleton:
             additional_coords[coord] = val
 
         # Initialize Skeleton
-        points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, **additional_coords)
+        name = ds.attrs.get('name') or 'LonelySkeleton'
+        points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, name=name,**additional_coords)
+        
         if cls.core.static:
             points.core.static = False
         # Set data variables and masks that exist

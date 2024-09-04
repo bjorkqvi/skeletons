@@ -7,7 +7,6 @@ from .coordinate_manager import (
 )
 
 from ..errors import (
-    DataWrongDimensionError,
     UnknownCoordinateError,
     CoordinateWrongLengthError,
     GridError,
@@ -236,10 +235,11 @@ class DatasetManager:
 
         If data_array_name is not given, sets global attributes
         """
+        
         if data_array_name is None:
-            self.data.attrs = attributes
+            self.data = self.data.assign_attrs(**attributes)
         else:
-            self.data.get(data_array_name).attrs = attributes
+            self.data[data_array_name] = self.data.get(data_array_name).assign_attrs(**attributes)
 
     def _slice_data(self, data: xr.DataArray, **kwargs) -> xr.DataArray:
         coordinates = {}

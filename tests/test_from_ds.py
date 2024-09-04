@@ -1,6 +1,6 @@
 from geo_skeletons.point_skeleton import PointSkeleton
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
-from geo_skeletons.decorators import add_coord, add_datavar
+from geo_skeletons.decorators import add_coord, add_datavar, dynamic
 import numpy as np
 
 
@@ -71,3 +71,30 @@ def test_gridded_spherical():
     np.testing.assert_array_almost_equal(grid2.lat(), np.arange(5))
     np.testing.assert_array_almost_equal(grid2.test(), np.array([0, 0.5, 1]))
     assert set(grid2.ds().coords) == set(["lon", "lat", "test"])
+
+def test_name_preserved():
+    @add_datavar(name="test")
+    class AddedVar(GriddedSkeleton):
+        pass
+
+    grid = AddedVar(lon=(1, 4), lat=(0, 4), name='test_name')
+    
+    grid.set_spacing(nx=4, ny=5)
+    grid.set_test(2)
+    
+    grid2 = grid.from_ds(grid.ds())
+    assert grid2.name == grid.name
+
+def test_add_dynamic_var():
+    @dynamic
+    class AddedVar(GriddedSkeleton):
+        pass
+
+    grid = AddedVar(lon=(1, 4), lat=(0, 4), name='test_name')
+    grid.add_datavar('test')
+    grid.set_spacing(nx=4, ny=5)
+    grid.set_test(2)
+    
+    grid2 = grid.from_ds(grid.ds())
+    assert grid2.name == grid.name
+    breakpoint()
