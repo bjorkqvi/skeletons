@@ -246,7 +246,11 @@ class Skeleton:
         if cls.core.static:
             points.core.static = False
         # Set data variables and masks that exist
+
         data_vars = data_vars or points.core.non_coord_objects()
+        if not data_vars:
+            data_vars = data_vars + list(ds.data_vars)
+            data_vars = list(set(data_vars) - {'inds'})
         for data_var in data_vars:
             val = ds.get(data_var)
 
