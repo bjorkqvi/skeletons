@@ -96,5 +96,30 @@ def test_add_dynamic_var():
     grid.set_test(2)
     
     grid2 = grid.from_ds(grid.ds())
-    assert grid2.name == grid.name
-    breakpoint()
+    assert grid.core.all_objects() == grid2.core.all_objects()
+
+def test_not_add_extra_var_to_static():
+    """If we have a static core, then do not add extra variables from a Dataset"""
+    @add_datavar('test3')
+    @add_datavar('test2')
+    @add_datavar('test')
+    class DsCreator(GriddedSkeleton):
+        pass
+    
+    @add_datavar('test')
+    class AddedVar(GriddedSkeleton):
+        pass
+
+    grid = AddedVar(lon=(1, 4), lat=(0, 4), name='test_name')
+    grid.set_spacing(nx=4, ny=5)
+    grid.set_test(2)
+    
+    grid2 = DsCreator(lon=grid.lon(), lat=grid.lat())
+    grid2.set_test(6)
+    grid2.set_test2(3)
+    grid2.set_test3(5)
+    grid3 = grid.from_ds(grid2.ds())
+    
+    assert 'test' in grid3.core.data_vars()
+    assert 'test2' not in grid3.core.data_vars()
+    assert 'test3' not in grid3.core.data_vars()
