@@ -41,7 +41,7 @@ jobs:
 
       - name: Upload wheels
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4.1.7
         with:
           name: wheels
           path: dist
