@@ -6,7 +6,7 @@ Geo-skeletons is an easy extendable way to build python classes to represent gri
 
 # Quick Installation
 
-To get started with metocean-stats, you can install it with pip or conda:
+To get started with geo-skeletons, you can install it with pip or conda:
 
 ```shell
 $ pip install geo-skeletons 
