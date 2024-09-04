@@ -528,7 +528,9 @@ class GriddedSkeleton(Skeleton):
             x = None
             y = None
 
-        self._init_structure(x, y, lon, lat, utm=self.utm.zone())
+        old_metadata = self.meta._metadata
+        self._init_structure(x, y, lon, lat)
+        self.meta.set_by_dict(old_metadata)
 
     def _check_mask_right_shape(
         self, mask: np.ndarray, coord: str, **kwargs

@@ -30,6 +30,14 @@ class MetaDataManager:
             return False
         return True
 
+    def set_by_dict(self, meta_dict: dict) -> None:
+        """Sets the metadata by a dict where the key names are variable names"""
+        for key, value in meta_dict.items():
+            if key != '_global_':
+                self.set(value, key)
+            else:
+                self.set(value)
+
     def set(
         self,
         metadata: dict[str, Any],
@@ -46,7 +54,7 @@ class MetaDataManager:
         if name is not None:
             self._metadata[name] = metadata
         else:
-            self._metadata["__general__"] = metadata
+            self._metadata["_global_"] = metadata
 
         self.metadata_to_ds(name)
 
@@ -66,6 +74,7 @@ class MetaDataManager:
         If 'name' is not given, the metadata is saved as general metadata not connected to any variable.
         """
         old_metadata = self.get(name)
+
         old_metadata.update(metadata)
         self.set(old_metadata, name)
 
@@ -75,7 +84,7 @@ class MetaDataManager:
         If 'name' is not given, it return the metadata not connected to any variable.
         """
         if name is None:
-            return self._metadata.get("__general__", {})
+            return self._metadata.get("_global_", {})
 
         metadata = self._metadata.get(name, {})
 
