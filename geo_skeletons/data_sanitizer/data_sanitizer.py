@@ -178,6 +178,12 @@ def sanitize_time_input(
     time: Union[str, list[str], np.ndarray, pd.DatetimeIndex]
 ) -> pd.DatetimeIndex:
     """Sanitized time input to pandas DatetimeIndex"""
+    if isinstance(time, tuple):
+        if len(time) == 2:
+            dt = "1h"
+        else:
+            dt = time[2]
+        return pd.date_range(time[0], time[1], freq=dt)
     if isinstance(time, str):
         return pd.DatetimeIndex([time])
     if isinstance(time, np.ndarray):

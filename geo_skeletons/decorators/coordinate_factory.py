@@ -113,6 +113,16 @@ def add_time(grid_coord: bool = False):
             else:
                 return list(unique_times(times, fmt))
 
+        def dt(self):
+            """Returns the time step in hours"""
+            if self.ds() is None:
+                return None
+            times = self._ds_manager.get("time").values.copy()
+            return (
+                pd.to_datetime(times).to_series().diff().dt.total_seconds().values[-1]
+                / 3600
+            )
+
         def get_time(
             self,
             data_array=False,
@@ -153,6 +163,7 @@ def add_time(grid_coord: bool = False):
         c.days = days
         c.months = months
         c.years = years
+        c.dt = dt
         return c
 
     return wrapper
