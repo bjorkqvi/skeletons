@@ -1,18 +1,22 @@
 from typing import Union
 
 
-class StaticSkeletonError(Exception):
+class SkeletonError(Exception):
+    pass
+
+
+class StaticSkeletonError(SkeletonError):
     def __init(self):
         super().__init__(
             "Cannot add variable to a static Skeleton! Use @dynamic to change class or set instance core to obj.core.static = False"
         )
 
 
-class UnknownCoordinateError(Exception):
+class UnknownCoordinateError(SkeletonError):
     pass
 
 
-class CoordinateWrongLengthError(Exception):
+class CoordinateWrongLengthError(SkeletonError):
     def __init__(
         self,
         variable: str,
@@ -25,7 +29,7 @@ class CoordinateWrongLengthError(Exception):
         )
 
 
-class DataWrongDimensionError(Exception):
+class DataWrongDimensionError(SkeletonError):
     def __init__(self, data_shape: tuple[int], coord_shape: Union[tuple[int], int]):
         if isinstance(coord_shape, int):  # Only amount of coords given
             super().__init__(
@@ -37,26 +41,26 @@ class DataWrongDimensionError(Exception):
             )
 
 
-class CoordinateWrongDimensionError(Exception):
+class CoordinateWrongDimensionError(SkeletonError):
     def __init__(self, coord_name: str, coord_shape: tuple[int]):
         super().__init__(
             f"Coordinate {coord_name} has shape {coord_shape}, but it should have only one dimension!!!"
         )
 
 
-class GridError(Exception):
+class GridError(SkeletonError):
     def __init__(self):
         super().__init__(
             "A proper spatial grid is not set: Requires 'x' and 'y', 'lon' and 'lat' or 'inds'!"
         )
 
 
-class VariableExistsError(Exception):
+class VariableExistsError(SkeletonError):
     def __init__(self, var_name):
         super().__init__(f"'{var_name}' has already been added to the class!!!")
 
 
-class DirTypeError(Exception):
+class DirTypeError(SkeletonError):
     def __init__(self):
         super().__init__(
             f"Cannot use 'dir_type' with a non-directional variable or a magnitude!!!"
