@@ -61,8 +61,8 @@ def test_dx_dy_spherical():
     grid.set_spacing(dx=1110, dy=1110)
     dx = lon_in_km(60.5)
     dy = lat_in_km(60.5)
-    np.testing.assert_array_almost_equal(grid.dlat(), 0.009, decimal=3)
-    np.testing.assert_array_almost_equal(grid.dlon(), 0.017, decimal=3)
+    np.testing.assert_array_almost_equal(grid.dlat(), 0.01, decimal=3)
+    np.testing.assert_array_almost_equal(grid.dlon(), 0.02, decimal=3)
     np.testing.assert_array_almost_equal(grid.dy() / 1000, grid.dlat() * dy, decimal=1)
     np.testing.assert_array_almost_equal(grid.dx() / 1000, grid.dlon() * dx, decimal=1)
     assert grid.nx() == 1 / grid.dlon() + 1
@@ -146,3 +146,20 @@ def test_dnmi_cartesian():
     dy = lat_in_km(np.median(grid.lat()))
     np.testing.assert_array_almost_equal(grid.dlat(), 1 / 120, decimal=3)
     np.testing.assert_array_almost_equal(grid.dlon(), grid.dlat() * dy / dx, decimal=3)
+
+
+def test_high_latitudes_lonlat():
+    grid = GriddedSkeleton(lon=(0, 10), lat=(60, 85))
+    grid.set_spacing(dlon=1, dlat=1)
+    assert len(grid.lon()) == 11
+    assert len(grid.lat()) == 26
+
+
+def test_high_latitudes_xy():
+    grid = GriddedSkeleton(lon=(0, 10), lat=(60, 85))
+    grid.set_spacing(dx=1000, dy=1000)
+    assert len(grid.lon()) == 336
+    assert len(grid.lat()) == 2790
+    grid.set_spacing(dm=1000)
+    assert len(grid.lon()) == 336
+    assert len(grid.lat()) == 2790
