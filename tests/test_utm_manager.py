@@ -40,6 +40,14 @@ def test_basic_spherical_to_utm_point():
     np.testing.assert_array_almost_equal(xx, x)
     np.testing.assert_array_almost_equal(yy, y)
 
+    points.utm.set((32, "W"))
+    xedge = points.edges("x", utm=(33, "W"))
+    yedge = points.edges("y", utm=(33, "W"))
+    np.testing.assert_almost_equal(np.min(x), xedge[0])
+    np.testing.assert_almost_equal(np.max(x), xedge[1])
+    np.testing.assert_almost_equal(np.min(y), yedge[0])
+    np.testing.assert_almost_equal(np.max(y), yedge[1])
+
 
 def test_basic_spherical_to_utm_gridded():
     points = GriddedSkeleton(lon=range(1, 6), lat=range(10, 60, 10))
