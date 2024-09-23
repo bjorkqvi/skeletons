@@ -3,6 +3,7 @@ from geo_skeletons.decorators import add_datavar, add_magnitude
 import numpy as np
 import pytest
 import geo_parameters as gp
+from geo_skeletons.errors import DirTypeError
 
 
 def test_angular_str():
@@ -47,7 +48,7 @@ def test_angular_str():
         np.median(points.stokes_dir(empty=True, dir_type="math", dask=False)),
         -np.pi / 2,
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(DirTypeError):
         points.stokes(dir_type="math")
 
 
@@ -96,7 +97,7 @@ def test_angular_gp():
         np.median(points.us_dir(dir_type="math")), -np.pi / 2
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(DirTypeError):
         points.us(dir_type="math")
 
 
@@ -141,5 +142,5 @@ def test_angular_gp_flip_dir():
     np.testing.assert_almost_equal(
         np.median(points.us_dir(empty=True, dir_type="math", dask=False)), -np.pi / 2
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(DirTypeError):
         points.us(dir_type="from")
