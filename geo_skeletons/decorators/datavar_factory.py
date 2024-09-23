@@ -56,6 +56,7 @@ def add_datavar(
         def set_var(
             self,
             data: Optional[Union[np.ndarray, int, float]] = None,
+            dir_type: Optional[str] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
@@ -67,6 +68,7 @@ def add_datavar(
             self.set(
                 name_str,
                 data,
+                dir_type=dir_type,
                 allow_reshape=allow_reshape,
                 allow_transpose=allow_transpose,
                 coords=coords,
