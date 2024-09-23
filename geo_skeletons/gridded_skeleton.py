@@ -458,7 +458,8 @@ class GriddedSkeleton(Skeleton):
 
         """
 
-        def determine_nx(x_type: str, nx, dx, dm, dlon, dnmi):
+        def determine_nx(x_type: str, nx, dx, dm, dlon, dnmi) -> tuple[int, float]:
+            """Determines how many points is needed to get the desired resolution in one dimension"""
             if x_type == "x":
                 lon_type = "lon"
             else:
@@ -498,7 +499,7 @@ class GriddedSkeleton(Skeleton):
                 dx = dm
 
             if dx:
-                nx = np.round((self.edges(x_type)[1] - self.edges(x_type)[0]) / dx) + 1
+                nx = np.round((self.extent(x_type) / dx)) + 1
                 if floating_edge:
                     if not self.core.is_cartesian():
                         raise ValueError(
