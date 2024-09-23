@@ -9,7 +9,7 @@ from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
 from . import distance_funcs
-from .errors import DataWrongDimensionError
+from .errors import DataWrongDimensionError, DirTypeError
 
 from typing import Iterable
 from copy import deepcopy
@@ -106,8 +106,8 @@ class Skeleton:
             metavar = self.core.get(name).meta
             if metavar is not None:
                 self.meta.append(metavar.meta_dict(), name)
-        
-        self.meta.append({'name': self.name})
+
+        self.meta.append({"name": self.name})
 
     def add_datavar(
         self, name: str, coord_group: str = "all", default_value: float = 0.0
@@ -240,9 +240,11 @@ class Skeleton:
             additional_coords[coord] = val
 
         # Initialize Skeleton
-        name = ds.attrs.get('name') or 'LonelySkeleton'
-        points = cls(x=x, y=y, lon=lon, lat=lat, chunks=chunks, name=name,**additional_coords)
-        
+        name = ds.attrs.get("name") or "LonelySkeleton"
+        points = cls(
+            x=x, y=y, lon=lon, lat=lat, chunks=chunks, name=name, **additional_coords
+        )
+
         if cls.core.static:
             points.core.static = False
         # Set data variables and masks that exist
@@ -250,7 +252,7 @@ class Skeleton:
         data_vars = data_vars or points.core.non_coord_objects()
         if not data_vars:
             data_vars = data_vars + list(ds.data_vars)
-            data_vars = list(set(data_vars) - {'inds'})
+            data_vars = list(set(data_vars) - {"inds"})
         for data_var in data_vars:
             val = ds.get(data_var)
 
@@ -427,11 +429,18 @@ class Skeleton:
             allow_transpose,
         )
 
+        if dir_type not in ["to", "from", "math", None]:
+            raise ValueError(
+                f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
+            )
+
         # Masks are stored as integers
         if name in self.core.masks("all"):
             data = data.astype(int)
 
         if name in self.core.magnitudes("all"):
+            if dir_type:
+                raise DirTypeError
             self._set_magnitude(
                 name=name,
                 data=data,
@@ -446,6 +455,7 @@ class Skeleton:
             self._set_data(
                 name=name,
                 data=data,
+                dir_type=dir_type,
             )
 
         return
@@ -588,12 +598,23 @@ class Skeleton:
         self,
         name: str,
         data: np.ndarray,
+        dir_type: str = None,
     ) -> None:
         """Sets a data variable to the underlying dataset.
 
         Data needs to be exactly right shape.
 
         Triggers setting metadata of the variable and possible connected masks."""
+        if dir_type not in ["to", "from", "math", None]:
+            raise ValueError(
+                f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
+            )
+        set_dir_type = self.core.get_dir_type(name)
+        if dir_type is not None and set_dir_type is None:
+            raise DirTypeError
+
+        dir_type = dir_type or set_dir_type
+        data = dir_conversions.convert(data, in_type=dir_type, out_type=set_dir_type)
         self._ds_manager.set(data=data, name=name)
         self.meta.metadata_to_ds(name)
         self._trigger_masks(name, data)
@@ -645,6 +666,8 @@ class Skeleton:
             )
 
         if name in self.core.magnitudes():
+            if dir_type:
+                raise DirTypeError
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
@@ -795,6 +818,8 @@ class Skeleton:
             return None
 
         set_dir_type = self.core.get_dir_type(name)
+        if dir_type is not None and set_dir_type is None:
+            raise DirTypeError
         dir_type = dir_type or set_dir_type
         data = dir_conversions.convert(data, in_type=set_dir_type, out_type=dir_type)
         return data

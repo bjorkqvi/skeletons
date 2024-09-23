@@ -54,3 +54,10 @@ class GridError(Exception):
 class VariableExistsError(Exception):
     def __init__(self, var_name):
         super().__init__(f"'{var_name}' has already been added to the class!!!")
+
+
+class DirTypeError(Exception):
+    def __init__(self):
+        super().__init__(
+            f"Cannot use 'dir_type' with a non-directional variable or a magnitude!!!"
+        )
