@@ -945,7 +945,11 @@ class Skeleton:
         return self.get("inds", **kwargs)
 
     def edges(
-        self, coord: str, native: bool = False, strict: bool = False
+        self,
+        coord: str,
+        native: bool = False,
+        strict: bool = False,
+        utm: tuple[int, str] = None,
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
         if coord not in ["x", "y", "lon", "lat"]:
@@ -953,9 +957,9 @@ class Skeleton:
             return
 
         if coord in ["x", "y"]:
-            x, y = self.xy(native=native, strict=strict)
+            x, y = self.xy(native=native, strict=strict, utm=utm)
         else:
-            x, y = self.lonlat(native=native, strict=strict)
+            x, y = self.lonlat(native=native, strict=strict, utm=utm)
 
         if coord in ["x", "lon"]:
             val = x
