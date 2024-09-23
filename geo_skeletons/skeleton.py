@@ -22,6 +22,8 @@ import itertools
 import geo_parameters as gp
 from geo_parameters.metaparameter import MetaParameter
 
+from .distance_funcs import distance_2points
+
 
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
@@ -943,7 +945,7 @@ class Skeleton:
         return self.get("inds", **kwargs)
 
     def edges(
-        self, coord: str, native: bool = False, strict=False
+        self, coord: str, native: bool = False, strict: bool = False
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
         if coord not in ["x", "y", "lon", "lat"]:
@@ -964,6 +966,31 @@ class Skeleton:
             return (None, None)
 
         return np.min(val), np.max(val)
+
+    def extent(self, coord: str, strict: bool = False) -> float:
+        """Gives the extent in metres in x- or y-direction.
+
+        For spherical grids this might differ from difference of
+        edges in case of gridded data or high latitudes that
+        cause nan in edges."""
+        if coord not in ["x", "y"]:
+            print("coord need to be 'x' or 'y'.")
+            return
+
+        if not self.core.is_cartesian() and strict:
+            return None
+
+        if self.core.is_cartesian():
+            return np.diff(self.edges(coord))[0]
+
+        if coord == "x":
+            lon1, lon2 = self.edges("lon")
+            lat = np.median(self.lat())
+            return distance_2points(lat1=lat, lon1=lon1, lat2=lat, lon2=lon2)
+        else:
+            lat1, lat2 = self.edges("lat")
+            lon = np.median(self.lon())
+            return distance_2points(lat1=lat1, lon1=lon, lat2=lat2, lon2=lon)
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
