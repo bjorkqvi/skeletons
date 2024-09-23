@@ -73,7 +73,6 @@ def add_magnitude(
                 name_str,
                 empty=empty,
                 strict=strict,
-                dir_type=dir_type,
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
