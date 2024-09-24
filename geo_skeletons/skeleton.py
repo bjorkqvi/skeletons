@@ -685,9 +685,24 @@ class Skeleton:
                 **kwargs,
             )
         elif name in self.core.mask_points():
-            lon, lat = eval(f"self.{name}()")
+            lon, lat = eval(f"self.{name}(strict=strict, **kwargs)")
             return lon, lat
 
+        elif name in self.core.masks():
+            mask_is_secondary = not self.core._mask_is_primary(name)
+            if mask_is_secondary:
+                primary_name = self.core._find_primary_mask(name)
+            else:
+                primary_name = name
+            data = self._get_data(
+                name=primary_name,
+                strict=strict,
+                dir_type=dir_type,
+                empty=empty,
+                **kwargs,
+            )
+            if mask_is_secondary:
+                data = np.logical_not(data).astype(int)
         else:
             data = self._get_data(
                 name=name,
@@ -815,6 +830,7 @@ class Skeleton:
         **kwargs,
     ) -> xr.DataArray:
         data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
+
         if not self.dask.is_active() and (
             empty or self._ds_manager.get(name, strict=True) is None
         ):

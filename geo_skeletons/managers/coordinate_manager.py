@@ -252,6 +252,22 @@ class CoordinateManager:
 
         return [mask.point_name for mask in masks]
 
+    def _mask_is_primary(self, name: str) -> bool:
+        """Checks if a mask is a primary mask or an mask defined as an opposite to a primary mask"""
+        mask = self._added_masks.get(f"{name}")
+        if mask is None:
+            raise ValueError(f"No mask: '{name}'!")
+        return mask.primary_mask
+
+    def _find_primary_mask(self, name: str) -> bool:
+        """Finds the name of the primary mask to a given opposite_mask"""
+        masks = self.masks()
+        for mask in masks:
+            if self._added_masks.get(mask).opposite_mask is not None:
+                if self._added_masks.get(mask).opposite_mask.name == name:
+                    return mask
+        return None
+
     def data_vars(self, coord_group: str = "nonspatial") -> list[str]:
         """Returns list of variables that have been added to a specific coord group.
 
