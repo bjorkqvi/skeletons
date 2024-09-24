@@ -23,6 +23,7 @@ class CoordinateManager:
         self._added_magnitudes = {}
         self._added_directions = {}
         self._added_masks = {}
+        self._added_mask_points = {}
 
         self._set_initial_coords = [c.name for c in initial_coords]
         self._set_initial_vars = [v.name for v in initial_vars]
@@ -43,7 +44,8 @@ class CoordinateManager:
         p3 = self._added_magnitudes == {}
         p4 = self._added_directions == {}
         p5 = self._added_masks == {}
-        return not (p1 and p2 and p3 and p4 and p5)
+        p6 = self._added_mask_points == {}
+        return not (p1 and p2 and p3 and p4 and p5 and p6)
 
     def is_cartesian(self) -> bool:
         """Checks if the grid is cartesian"""
@@ -83,6 +85,7 @@ class CoordinateManager:
                 grid_mask.range_inclusive,
             )
         self._added_masks[grid_mask.name] = grid_mask
+        self._added_mask_points[grid_mask.point_name] = grid_mask
 
     def triggers(self, name: str) -> list[str]:
         """Returns the masks that are triggered by a specific variable"""
@@ -210,6 +213,44 @@ class CoordinateManager:
             ]
 
         return [mask.name for mask in masks]
+
+    def mask_points(self, coord_group: str = "all") -> list[str]:
+        """Returns list of mask_points that have been added to a specific coord group.
+
+        'all': All added coordinates
+        'spatial': spatial coords (e.g. inds, or lat/lon)
+        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
+        'grid': coordinates for the grid (e.g. z, time)
+        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        """
+        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
+            print(
+                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
+            )
+            return None
+
+        if coord_group == "all":
+            masks = self._added_mask_points.values()
+        elif coord_group == "nonspatial":
+            masks = [
+                mask
+                for mask in self._added_mask_points.values()
+                if mask.coord_group != "spatial"
+            ]
+        elif coord_group == "grid":
+            masks = [
+                mask
+                for mask in self._added_mask_points.values()
+                if mask.coord_group in [coord_group, "spatial"]
+            ]
+        else:
+            masks = [
+                mask
+                for mask in self._added_mask_points.values()
+                if mask.coord_group == coord_group
+            ]
+
+        return [mask.point_name for mask in masks]
 
     def data_vars(self, coord_group: str = "nonspatial") -> list[str]:
         """Returns list of variables that have been added to a specific coord group.
