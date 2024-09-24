@@ -147,6 +147,7 @@ def add_mask(
             opposite_name_str, opposite_meta = gp.decode(opposite_name)
             opposite_grid_mask = GridMask(
                 name=f"{opposite_name_str}_mask",
+                point_name=f"{opposite_name_str}_points",
                 meta=opposite_meta,
                 coord_group=coord_group,
                 primary_mask=False,
@@ -157,6 +158,7 @@ def add_mask(
 
         grid_mask = GridMask(
             name=f"{name_str}_mask",
+            point_name=f"{name_str}_points",
             meta=meta,
             coord_group=coord_group,
             default_value=default_value,

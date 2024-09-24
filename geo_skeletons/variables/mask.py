@@ -5,6 +5,7 @@ from geo_parameters.metaparameter import MetaParameter
 @dataclass
 class GridMask:
     name: str
+    point_name: str
     meta: MetaParameter
     coord_group: str
     default_value: int = None

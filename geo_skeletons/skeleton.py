@@ -684,6 +684,10 @@ class Skeleton:
                 empty=empty,
                 **kwargs,
             )
+        elif name in self.core.mask_points():
+            lon, lat = eval(f"self.{name}()")
+            return lon, lat
+
         else:
             data = self._get_data(
                 name=name,
