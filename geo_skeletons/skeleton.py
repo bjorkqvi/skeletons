@@ -23,6 +23,7 @@ import geo_parameters as gp
 from geo_parameters.metaparameter import MetaParameter
 
 from .distance_funcs import distance_2points
+import pandas as pd
 
 
 class Skeleton:
@@ -742,6 +743,9 @@ class Skeleton:
 
         if not data_array:
             data = data.data
+            if name == "time":
+                data = pd.to_datetime(data)
+
 
         return data
 
@@ -1071,6 +1075,15 @@ class Skeleton:
             return None
 
         return (max(lat) - min(lat)) / (self.ny() - 1)
+
+    def coord_dict(self, coord_group: str = "all") -> dict[str, np.ndarray]:
+        """Returns a coord dictionary containing all coordinates of the given coordinate group.
+
+        for 'all' the dict can be used to recreate the Skeleton."""
+        coords = list(set(self.core.coords(coord_group)) - set(["inds"]))
+        if coord_group in ["all", "spatial", "grid"]:
+            coords = coords + self.core.data_vars("spatial")
+        return {c: self.get(c) for c in coords}
 
     def yank_point(
         self,
