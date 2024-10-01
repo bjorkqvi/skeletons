@@ -113,12 +113,12 @@ def add_time(grid_coord: bool = False):
             else:
                 return list(unique_times(times, fmt))
 
-        def dt(self):
+        def dt(self) -> float | None:
             """Returns the time step in hours"""
             if self.ds() is None:
                 return None
             times = self._ds_manager.get("time").values.copy()
-            return (
+            return float(
                 pd.to_datetime(times).to_series().diff().dt.total_seconds().values[-1]
                 / 3600
             )
