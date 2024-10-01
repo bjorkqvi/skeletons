@@ -161,7 +161,7 @@ def test_point_gp_dirtype_to():
         data3.dirp(inds=0), np.array([180.0, 0.0, 45.0, 0.0, 90.0, 22.5, 90.0])
     )
 
-def test_temp():
+def test_2h():
     @add_datavar(gp.wave.Tp)
     @add_datavar(gp.wave.Dirp)
     @add_datavar(gp.wave.Hs)
@@ -175,4 +175,5 @@ def test_temp():
     data.set_dirp(90)
     data.set_tp(10)
     data2 = data.resample.time(dt="2h")
-    breakpoint()
+    assert len(data2.time()) == 4
+
