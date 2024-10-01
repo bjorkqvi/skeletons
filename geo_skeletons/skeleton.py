@@ -3,6 +3,7 @@ import xarray as xr
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
+from .managers.resample_manager import ResampleManager
 
 # from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
 from . import data_sanitizer as sanitize
@@ -102,6 +103,7 @@ class Skeleton:
             metadata_manager=self.meta,
         )
         self.utm.set(utm, silent=True)
+        self.resample = ResampleManager(self)
 
     def _init_metadata(self) -> None:
         """Initialized the metadata by using availabe metadata in the GeoParameters"""
@@ -188,6 +190,11 @@ class Skeleton:
         )(self)
         self._ds_manager.coord_manager = self.core
         self.meta._ds_manager = self._ds_manager
+
+    @classmethod
+    def from_coord_dict(cls, coord_dict):
+        """Creates an empty version of the class from a dictionary containing the coordinates"""
+        return cls(**coord_dict)
 
     @classmethod
     def from_ds(
@@ -745,7 +752,6 @@ class Skeleton:
             data = data.data
             if name == "time":
                 data = pd.to_datetime(data)
-
 
         return data
 
