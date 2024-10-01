@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=>3.9
   - numpy
+  - scipy
   - pandas
   - xarray
   - utm
@@ -11,4 +12,4 @@ dependencies:
   - geopy
   - pylint
   - dask
-  - geo-parameters=>0.4.5
+  - geo-parameters=>0.4.11
