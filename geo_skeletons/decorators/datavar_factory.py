@@ -119,18 +119,6 @@ def add_datavar(
         )
 
     if dir_type is None and gp.is_gp(name):
-        standard_to = (
-            "to_direction" in name.standard_name()
-            or "to_direction" in name.standard_name(alias=True)
-        )
-
-        standard_from = (
-            "from_direction" in name.standard_name()
-            or "from_direction" in name.standard_name(alias=True)
-        )
-        if standard_to:
-            dir_type = "to"
-        elif standard_from:
-            dir_type = "from"
+        dir_type = name.dir_type()
 
     return datavar_decorator
