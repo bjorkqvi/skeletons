@@ -26,6 +26,12 @@ def period_mean(x, *args, **kwargs):
 
 def set_up_mean_func(skeleton, var: str, new_dt: float) -> tuple:
     """Picks the right function to do the average and sets up a string to be set in the attributes"""
+    if new_dt > 1:
+        new_dt_str = f"{new_dt:.1f} h"
+    else:
+        new_dt_str = f"{new_dt*60:.0f} min"
+    
+    
     if skeleton.meta.get(var).get("standard_name") == gp.wave.Hs.standard_name():
         mean_func = squared_mean
         attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt*60:.0f} min values using np.sqrt(np.mean(x**2))"
@@ -34,12 +40,12 @@ def set_up_mean_func(skeleton, var: str, new_dt: float) -> tuple:
         or "wave_mean_period" in skeleton.meta.get(var).get("standard_name")
     ):
         mean_func = period_mean
-        attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt*60:.0f} min values using np.mean(x**-1.0)**-1.0"
+        attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt_str} values using np.mean(x**-1.0)**-1.0"
     elif skeleton.core.get_dir_type(var) in ["from", "to"]:
         mean_func = angular_mean_deg
-        attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt*60:.0f} min values using np.rad2deg(scipy.stats.circmean(np.deg2rad(x)))"
+        attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt_str} values using np.rad2deg(scipy.stats.circmean(np.deg2rad(x)))"
     elif skeleton.core.get_dir_type(var) == "math":
-        attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt*60:.0f} min values using scipy.stats.circmean(x)"
+        attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt_str} min values using scipy.stats.circmean(x)"
         mean_func = angular_mean
     else:
         mean_func = np.mean
@@ -61,7 +67,7 @@ class ResampleManager:
 
         dt = pd.Timedelta(dt)
         coord_dict["time"] = (
-            self.skeleton.time(data_array=True).resample(time="1h").mean().time
+            self.skeleton.time(data_array=True).resample(time=dt).mean().time
         )
 
         # Create new skeleton with hourly values
@@ -73,7 +79,7 @@ class ResampleManager:
                 self.skeleton, var, new_skeleton.dt()
             )
             new_skeleton.meta.set(
-                {"mean_method": attr_str},
+                {"resample_method": attr_str},
                 var,
             )
             # Make sure the angular values are given as math-directions for averaging

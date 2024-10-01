@@ -160,3 +160,19 @@ def test_point_gp_dirtype_to():
     np.testing.assert_array_almost_equal(
         data3.dirp(inds=0), np.array([180.0, 0.0, 45.0, 0.0, 90.0, 22.5, 90.0])
     )
+
+def test_temp():
+    @add_datavar(gp.wave.Tp)
+    @add_datavar(gp.wave.Dirp)
+    @add_datavar(gp.wave.Hs)
+    @add_time()
+    class Wave(PointSkeleton):
+        pass
+
+    time = pd.date_range("2020-01-01 00:00", "2020-01-01 06:00", freq="10min")
+    data = Wave(lon=0, lat=0, time=time)
+    data.set_hs(5)
+    data.set_dirp(90)
+    data.set_tp(10)
+    data2 = data.resample.time(dt="2h")
+    breakpoint()
