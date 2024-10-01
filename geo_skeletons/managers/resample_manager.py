@@ -1,7 +1,6 @@
 import pandas as pd
 import geo_parameters as gp
 import numpy as np
-from geo_skeletons.dir_conversions import convert_to_math_dir
 from scipy.stats import circmean
 
 
@@ -30,9 +29,10 @@ def set_up_mean_func(skeleton, var: str, new_dt: float) -> tuple:
     if skeleton.meta.get(var).get("standard_name") == gp.wave.Hs.standard_name():
         mean_func = squared_mean
         attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt*60:.0f} min values using np.sqrt(np.mean(x**2))"
-    elif "wave_period" in skeleton.meta.get(var).get(
-        "standard_name"
-    ) or "wave_mean_period" in skeleton.meta.get(var).get("standard_name"):
+    elif skeleton.meta.get(var).get("standard_name") is not None and (
+        "wave_period" in skeleton.meta.get(var).get("standard_name")
+        or "wave_mean_period" in skeleton.meta.get(var).get("standard_name")
+    ):
         mean_func = period_mean
         attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt*60:.0f} min values using np.mean(x**-1.0)**-1.0"
     elif skeleton.core.get_dir_type(var) in ["from", "to"]:
