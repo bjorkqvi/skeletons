@@ -192,25 +192,11 @@ def add_magnitude(
     # Always respect explicitly set directional convention
     # Otherwise parse from MetaParameter is possible
     if dir_type is None and gp.is_gp(direction):
-        standard_to = (
-            "to_direction" in direction.standard_name()
-            or "to_direction" in direction.standard_name(alias=True)
-        )
-
-        standard_from = (
-            "from_direction" in direction.standard_name()
-            or "from_direction" in direction.standard_name(alias=True)
-        )
-        if standard_to:
-            dir_type = "to"
-        elif standard_from:
-            dir_type = "from"
+        dir_type = direction.dir_type()
 
     if dir_type is None and direction is not None:
         raise ValueError(
             f"Could not parse dir_type, please set it explicitly to 'from', 'to' or 'math'!"
         )
-
-    offset = {"from": 180, "to": 0}
 
     return magnitude_decorator
