@@ -59,7 +59,7 @@ class ResampleManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
 
-    def time(self, dt: str | pd.Timedelta, dropna: bool = True):
+    def time(self, dt: str | pd.Timedelta, dropna: bool = True, **kwargs):
         """Resamples all data in time"""
         coord_dict = self.skeleton.coord_dict()
         if "time" not in coord_dict.keys():
@@ -67,7 +67,7 @@ class ResampleManager:
 
         dt = pd.Timedelta(dt)
         coord_dict["time"] = (
-            self.skeleton.time(data_array=True).resample(time=dt).mean().time
+            self.skeleton.time(data_array=True).resample(time=dt, **kwargs).mean().time
         )
 
         # Create new skeleton with hourly values
@@ -83,7 +83,7 @@ class ResampleManager:
                 var,
             )
             # Make sure the angular values are given as math-directions for averaging
-            new_data[var] = self.skeleton.ds()[var].resample(time=dt).reduce(mean_func)
+            new_data[var] = self.skeleton.ds()[var].resample(time=dt,**kwargs).reduce(mean_func)
 
         for key, value in new_data.items():
             new_skeleton.set(key, value)
@@ -91,6 +91,6 @@ class ResampleManager:
         new_skeleton = new_skeleton.from_ds(new_skeleton.ds().dropna(dim="time"))
         if not dropna:
             new_skeleton = new_skeleton.from_ds(
-                new_skeleton.ds().resample(time=dt).nearest(tolerance=dt / 2)
+                new_skeleton.ds().resample(time=dt, **kwargs).nearest(tolerance=dt / 2)
             )
         return new_skeleton
