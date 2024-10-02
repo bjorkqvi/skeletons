@@ -8,10 +8,9 @@ if TYPE_CHECKING:
 
 class MetaDataManager:
     def __init__(
-        self, ds_manager: Union[DatasetManager, None], coord_manager: CoordinateManager
+        self, ds_manager: Union[DatasetManager, None]
     ):
         self._ds_manager = ds_manager
-        self._coord_manager = coord_manager
         self._metadata: dict = {}
         # This will be used to make a deepcopy of the manager for different classes
         self._initial_state = True
@@ -91,7 +90,7 @@ class MetaDataManager:
         if metadata:
             return metadata
 
-        meta_parameter = self._coord_manager.meta_parameter(name)
-        if meta_parameter is not None:
-            return meta_parameter.meta_dict()
+        # meta_parameter = self._coord_manager.meta_parameter(name)
+        # if meta_parameter is not None:
+        #     return meta_parameter.meta_dict()
         return {}

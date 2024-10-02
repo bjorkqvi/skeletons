@@ -14,7 +14,7 @@ class CoordinateManager:
     by the decorators."""
 
     def __init__(
-        self, initial_coords: list[Coordinate], initial_vars: list[DataVar]
+        self, initial_coords: list[Coordinate], initial_vars: list[DataVar], metadata_manager = None
     ) -> None:
         self.x_str = None
         self.y_str = None
@@ -32,6 +32,7 @@ class CoordinateManager:
         self.set_initial_vars(initial_vars)
 
         self.static = True
+        self.meta = metadata_manager
 
     def _is_initialized(self) -> bool:
         """Check if the Dataset had been initialized"""
@@ -68,6 +69,10 @@ class CoordinateManager:
         if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
+        
+        # Set metadata from MetaParameter if it is provided
+        if data_var.meta is not None:
+            self.meta.append(data_var.meta.meta_dict(), data_var.name)
 
     def add_mask(self, grid_mask: GridMask) -> None:
         """Adds a mask to the structure"""
@@ -87,6 +92,10 @@ class CoordinateManager:
         self._added_masks[grid_mask.name] = grid_mask
         self._added_mask_points[grid_mask.point_name] = grid_mask
 
+        # Set metadata from MetaParameter if it is provided
+        if grid_mask.meta is not None:
+            self.meta.append(grid_mask.meta.meta_dict(), grid_mask.name)
+
     def triggers(self, name: str) -> list[str]:
         """Returns the masks that are triggered by a specific variable"""
         return [
@@ -98,6 +107,10 @@ class CoordinateManager:
         if self.get(coord.name) is not None:
             raise VariableExistsError(coord.name)
         self._added_coords[coord.name] = coord
+        
+        # Set metadata from MetaParameter if it is provided
+        if coord.meta is not None:
+            self.meta.append(coord.meta.meta_dict(), coord.name)
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
         """Adds a magnitude to the structure"""
@@ -108,6 +121,10 @@ class CoordinateManager:
             raise VariableExistsError(magnitude.name)
         self._added_magnitudes[magnitude.name] = magnitude
 
+        # Set metadata from MetaParameter if it is provided
+        if magnitude.meta is not None:
+            self.meta.append(magnitude.meta.meta_dict(), magnitude.name)
+
     def add_direction(self, direction: Direction) -> None:
         """Adds a direction to the structure"""
         if self.static:
@@ -115,6 +132,10 @@ class CoordinateManager:
         if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self._added_directions[direction.name] = direction
+
+        # Set metadata from MetaParameter if it is provided
+        if direction.meta is not None:
+            self.meta.append(direction.meta.meta_dict(), direction.name)
 
     def set_initial_vars(self, initial_vars: list) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
