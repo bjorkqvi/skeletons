@@ -207,3 +207,39 @@ def test_no_std_name_gridded_aliases(wave2_no_std):
 
     assert coords.get('y') == gp.grid.Y
     assert coords.get('x') == gp.grid.X
+
+def test_std_name_gridded_aliases_keep_ds_names(wave2_std):
+    """Uses trivial mapping"""
+    data_vars, coords = map_ds_to_gp(wave2_std.ds(), aliases={'hs2':gp.wave.Hs('hsig')}, keep_ds_names=True)
+
+    assert set(data_vars.keys()) == {'hs2','tp2','dirp2'}
+    assert gp.is_gp_instance(data_vars.get('hs2'))
+    assert gp.is_gp_instance(data_vars.get('tp2'))
+    assert gp.is_gp_instance(data_vars.get('dirp2'))
+    assert data_vars.get('hs2').name == 'hsig'
+    assert data_vars.get('tp2').name == 'tp2'
+    assert data_vars.get('dirp2').name == 'dirp2'
+
+    assert gp.is_gp_instance(coords.get('lon'))
+    assert gp.is_gp_instance(coords.get('lat'))
+    assert coords.get('lat').name == 'lat'
+    assert coords.get('lon').name == 'lon'
+
+
+def test_std_name_long_coord_name_alias_gridded_keep_ds_names(wave2_std):
+    """Uses trivial mapping"""
+    ds = wave2_std.ds().rename_vars({'lon': 'longitude_degrees', 'lat':'latitude'})
+    
+    data_vars, coords = map_ds_to_gp(ds, aliases={'longitude_degrees': gp.grid.Lon}, keep_ds_names=True)
+
+    assert set(data_vars.keys()) == {'hs2','tp2','dirp2'}
+    assert gp.is_gp_instance(data_vars.get('hs2'))
+    assert gp.is_gp_instance(data_vars.get('tp2'))
+    assert gp.is_gp_instance(data_vars.get('dirp2')) 
+    assert data_vars.get('hs2').name == 'hs2'
+    assert data_vars.get('tp2').name == 'tp2'
+    assert data_vars.get('dirp2').name == 'dirp2'
+    assert gp.is_gp_instance(coords.get('longitude_degrees'))
+    assert gp.is_gp_instance(coords.get('latitude'))
+    assert coords.get('latitude').name == 'latitude'
+    assert coords.get('longitude_degrees').name == 'longitude_degrees'
