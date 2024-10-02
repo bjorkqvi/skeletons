@@ -56,40 +56,73 @@ def identify_core_in_ds(skeleton, ds: xr.Dataset, core_to_ds: dict[Union[str, Me
 
 DICT_OF_COORDS = {'lon': gp.grid.Lon, 'longitude': gp.grid.Lon, 'lat': gp.grid.Lat, 'latitude': gp.grid.Lat, 'x': gp.grid.X, 'y': gp.grid.Y}
 
-def map_ds_to_gp(ds: xr.Dataset, decode_cf: bool = True) -> tuple[dict[str, Union[str, MetaParameter]]]:
+def map_ds_to_gp(ds: xr.Dataset, decode_cf: bool = True, aliases: dict=None) -> tuple[dict[str, Union[str, MetaParameter]]]:
     """Maps data variables in the dataset to geoparameters
     
-    1) Checks if a 'standard_name' is present and matches a geo-parameter (disable with decode_cf = False)
+    1) Use any alias explicitly given in dict 'aliases', e.g. aliases={'hs', gp.wave.Hs} maps ds-variable 'hs' to gp.wave.Hs
     
-    2) Uses the variable name as is
+    2) Checks if a 'standard_name' is present and matches a geo-parameter (disable with decode_cf = False)
+    
+    3) Uses the variable name as is
     
     Returns data variable and coordinates separately"""
+    if aliases is None:
+        aliases = {}
 
     data_vars = {}
     coords = {}
     for var in ds.data_vars:
-        if var in DICT_OF_COORDS.keys(): # Coordinates can be listed as data variables in unstructured datasets
-            if hasattr(ds[var], 'standard_name') and decode_cf:
-                param = gp.get(ds[var].standard_name)
-            else:
-                param = None
-            
-            if param is not None:
-                coords[var] = param
-            elif decode_cf:
-                coords[var] = DICT_OF_COORDS[var]
-            else:
-                coords[var] = var
-                
+        # Coordinates can be listed as data variables in unstructured datasets
+        # Check if we are dealing with a coordinate
+        if _var_is_coordinate(var, aliases): 
+            coords[var] = _map_coord(var, ds, aliases, decode_cf)
         else: # Data variable
-            if hasattr(ds[var], 'standard_name') and decode_cf:
-                param = gp.get(ds[var].standard_name)
-            else:
-                param = None
-            
-            if param is not None:
-                data_vars[var] = param
-            else:
-                data_vars[var] = var
+            data_vars[var] = _map_data_var(var, ds, aliases, decode_cf)
+    
+    for coord in ds.coords:
+        coords[coord] = _map_coord(coord, ds, aliases, decode_cf)
 
     return data_vars, coords
+
+
+def _map_coord(var, ds, aliases, decode_cf):
+    # 1) Use given alias
+    if aliases.get(var) is not None:
+        return aliases.get(var)
+        
+    # 2) Check for standard name
+    if hasattr(ds[var], 'standard_name') and decode_cf:
+        param = gp.get(ds[var].standard_name)
+        if param is not None:
+            return param
+    
+    # 3) Use known coordinate geo-parameters or only a string
+    if DICT_OF_COORDS.get(var) is not None:
+        return DICT_OF_COORDS[var]
+    else:
+        return var
+
+
+def _map_data_var(var, ds, aliases, decode_cf):
+    # 1) Use given alias
+    if aliases.get(var) is not None:
+        return aliases.get(var)
+   
+    # 2) Check for standard name
+    if hasattr(ds[var], 'standard_name') and decode_cf:
+        param = gp.get(ds[var].standard_name)
+        if param is not None:
+            return param
+
+    # 3) Use string value
+    return var
+
+def _var_is_coordinate(var, aliases) -> bool:
+    if var in DICT_OF_COORDS.keys():
+        return True
+    if aliases.get(var) is not None:
+        if aliases.get(var) in DICT_OF_COORDS.keys():
+            return True
+        if aliases.get(var) in DICT_OF_COORDS.values():
+            return True
+    return False
