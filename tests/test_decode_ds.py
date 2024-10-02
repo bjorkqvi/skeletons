@@ -1,5 +1,5 @@
 from geo_skeletons import PointSkeleton, GriddedSkeleton
-from geo_skeletons.decorators import add_datavar
+from geo_skeletons.decorators import add_datavar, add_frequency, add_direction, add_coord
 
 import geo_parameters as gp
 
@@ -68,6 +68,32 @@ def wave2_std():
 
     return data
 
+
+@pytest.fixture
+def freq_dirs_no_std():
+    @add_coord('directions')
+    @add_coord('frequency')
+    @add_datavar('hs')
+    class WaveData(PointSkeleton):
+        pass
+
+    data = WaveData(x=range(10), y=range(10), frequency=[1,2,3], directions=[6,7,8])
+    data.set_hs(1)
+    
+    return data
+
+
+@pytest.fixture
+def freq_dirs_std():
+    @add_direction()
+    @add_frequency()
+    @add_datavar(gp.wave.Hs('hs'))
+    class WaveData(PointSkeleton):
+        pass
+
+    data = WaveData(lon=range(10), lat=range(10), freq=[1,2,3], dirs=[6,7,8])
+    data.set_hs(1)
+    return data
 
 def test_no_std_name(wave_no_std):
     """Uses trivial mapping"""
@@ -243,3 +269,23 @@ def test_std_name_long_coord_name_alias_gridded_keep_ds_names(wave2_std):
     assert gp.is_gp_instance(coords.get('latitude'))
     assert coords.get('latitude').name == 'latitude'
     assert coords.get('longitude_degrees').name == 'longitude_degrees'
+
+
+def test_freq_dirs_no_std_name(freq_dirs_no_std):
+    data_vars, coords = map_ds_to_gp(freq_dirs_no_std.ds())
+
+    assert set(data_vars.keys()) == {'hs'}
+    assert set(data_vars.values()) == {'hs'}
+    assert coords.get('y') == gp.grid.Y
+    assert coords.get('x') == gp.grid.X
+    assert coords.get('frequency') == gp.wave.Freq
+    assert coords.get('directions') == 'directions'
+
+def test_freq_dirs_std_name(freq_dirs_std):
+    data_vars, coords = map_ds_to_gp(freq_dirs_std.ds())
+    assert set(data_vars.keys()) == {'hs'}
+    assert data_vars.get('hs') == gp.wave.Hs
+    assert coords.get('lon') == gp.grid.Lon
+    assert coords.get('lat') == gp.grid.Lat
+    assert coords.get('freq') == gp.wave.Freq
+    assert coords.get('dirs') == gp.wave.DirsFrom

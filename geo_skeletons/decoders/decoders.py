@@ -54,7 +54,8 @@ def identify_core_in_ds(skeleton, ds: xr.Dataset, aliases: dict[Union[str, MetaP
 
     return core_vars
 
-DICT_OF_COORDS = {'lon': gp.grid.Lon, 'longitude': gp.grid.Lon, 'lat': gp.grid.Lat, 'latitude': gp.grid.Lat, 'x': gp.grid.X, 'y': gp.grid.Y}
+# Dirs can be direction from or to, so won't give a geoparameters just based on the name!
+DICT_OF_COORDS = {'lon': gp.grid.Lon, 'longitude': gp.grid.Lon, 'lat': gp.grid.Lat, 'latitude': gp.grid.Lat, 'x': gp.grid.X, 'y': gp.grid.Y, 'freq': gp.wave.Freq, 'frequency': gp.wave.Freq}
 
 def map_ds_to_gp(ds: xr.Dataset, decode_cf: bool = True, aliases: dict=None, keep_ds_names: bool=False) -> tuple[dict[str, Union[str, MetaParameter]]]:
     """Maps data variables in the dataset to geoparameters

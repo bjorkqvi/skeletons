@@ -69,6 +69,7 @@ def wave2_std():
     return data
 
 
+
 def test_empty_core(wave_no_std, wave_std):
     data = PointSkeleton(lon=0, lat=0)
     core_vars = identify_core_in_ds(data, ds=wave_no_std.ds())

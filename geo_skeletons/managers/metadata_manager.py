@@ -83,6 +83,10 @@ class MetaDataManager:
         If 'name' is not given, it return the metadata not connected to any variable.
         """
         if name is None:
-            return self._metadata.get("_global_", {})
+            return self.meta_dict().get("_global_", {})
 
-        return self._metadata.get(name, {})
+        return self.meta_dict().get(name, {})
+
+    def meta_dict(self) -> dict:
+        """Returns a dictonary of all the metadata"""
+        return self._metadata
