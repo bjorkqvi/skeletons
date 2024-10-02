@@ -1,1 +1,1 @@
-from .decoders import identify_core_in_ds
+from .decoders import identify_core_in_ds, map_ds_to_gp
