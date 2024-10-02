@@ -9,7 +9,7 @@ def identify_core_in_ds(skeleton, ds: xr.Dataset, aliases: dict[Union[str, MetaP
 
     1) If 'aliases' (core-name: ds-name) mapping is given, that is used first. Key can be either a str or a MetaParameter
     
-    2) Tries to use the standard_name set bu the geo-parameters
+    2) Tries to use the standard_name set in the geo-parameters
     
     3) Use trivial matching (same name in skeleton and Dataset)"""
    
