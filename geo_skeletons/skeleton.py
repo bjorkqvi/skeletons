@@ -64,7 +64,6 @@ class Skeleton:
         if not self.core._is_initialized():
             self.core = deepcopy(self.core)  # Makes a copy of the class coord_manager
             self.meta = deepcopy(self.meta)
-            self.meta._coord_manager = self.core
 
         # # The manager will contain the Xarray Dataset
         if self.ds() is None:
