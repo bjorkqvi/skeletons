@@ -4,36 +4,36 @@ from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union
 
-def identify_core_in_ds(skeleton, ds: xr.Dataset, core_to_ds: dict[Union[str, MetaParameter], str] = None) -> dict[str, str]:
+def identify_core_in_ds(skeleton, ds: xr.Dataset, aliases: dict[Union[str, MetaParameter], str] = None) -> dict[str, str]:
     """Identify the variables in the Dataset that matches the variables in the Skeleton core
 
-    1) If 'core_to_ds' mapping is given, that is used first. Key can be either a str or a MetaParameter
+    1) If 'aliases' (core-name: ds-name) mapping is given, that is used first. Key can be either a str or a MetaParameter
     
     2) Tries to use the standard_name set bu the geo-parameters
     
     3) Use trivial matching (same name in skeleton and Dataset)"""
    
     # Start by remapping any possible MetaParameters to a string name
-    core_to_ds_str = {}
-    if core_to_ds is not None:
-        for core_var, ds_var in core_to_ds.items():
+    aliases_str = {}
+    if aliases is not None:
+        for core_var, ds_var in aliases.items():
             name, param = gp.decode(core_var)
             if param is not None:
                 name = skeleton.find_cf(param.standard_name())
                 if name is not None and len(name) == 1: # Found exactly one matching name
                     if ds_var in ds.data_vars: # Only add it if it actually exists
-                        core_to_ds_str[name[0]] = ds_var
+                        aliases_str[name[0]] = ds_var
             else:
                 if ds_var in ds.data_vars: # Only add it if it actually exists
-                    core_to_ds_str[name] = ds_var
+                    aliases_str[name] = ds_var
 
     
    
     core_vars = {}
     for var in skeleton.core.data_vars():
-        # 1) Use core_to_ds mapping if exists
-        if core_to_ds_str.get(var) is not None:
-            core_vars[var] = core_to_ds_str.get(var)
+        # 1) Use aliases mapping if exists
+        if aliases_str.get(var) is not None:
+            core_vars[var] = aliases_str.get(var)
             continue
 
 
