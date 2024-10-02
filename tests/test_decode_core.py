@@ -102,7 +102,7 @@ def test_core_without_gp2(wave_no_std, wave_std, wave2_no_std):
     assert core_vars == {}
 
 def test_core_with_gp2_explicit_dict_str(wave_no_std, wave_std, wave2_std):
-    core_vars = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), core_to_ds={'hs2':'hs'})
+    core_vars = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), aliases={'hs2':'hs'})
     assert set(core_vars.keys()) == {'hs2'}
     assert set(core_vars.values()) == {'hs'}
 
@@ -111,7 +111,7 @@ def test_core_with_gp2_explicit_dict_str(wave_no_std, wave_std, wave2_std):
     assert set(core_vars.values()) == {'hs','tp','dirp'}
 
 def test_core_with_gp2_explicit_dict_gp(wave_no_std, wave_std, wave2_std):
-    core_vars = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), core_to_ds={gp.wave.Hs:'hs'})
+    core_vars = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), aliases={gp.wave.Hs:'hs'})
     assert set(core_vars.keys()) == {'hs2'}
     assert set(core_vars.values()) == {'hs'}
 
@@ -120,7 +120,7 @@ def test_core_with_gp2_explicit_dict_gp(wave_no_std, wave_std, wave2_std):
     assert set(core_vars.values()) == {'hs','tp','dirp'}
 
 def test_core_with_gp2_explicit_dict_gp_wrong_ds_name(wave_no_std, wave_std, wave2_std):
-    core_vars = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), core_to_ds={gp.wave.Hs:'hss'})
+    core_vars = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), aliases={gp.wave.Hs:'hss'})
     assert set(core_vars.keys()) == set({})
     assert set(core_vars.values()) == set({})
 
