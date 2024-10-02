@@ -85,12 +85,4 @@ class MetaDataManager:
         if name is None:
             return self._metadata.get("_global_", {})
 
-        metadata = self._metadata.get(name, {})
-
-        if metadata:
-            return metadata
-
-        # meta_parameter = self._coord_manager.meta_parameter(name)
-        # if meta_parameter is not None:
-        #     return meta_parameter.meta_dict()
-        return {}
+        return self._metadata.get(name, {})
