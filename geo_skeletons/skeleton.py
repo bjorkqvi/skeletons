@@ -5,7 +5,7 @@ from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager
 from .decoders import identify_core_in_ds, map_ds_to_gp
-# from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
+
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
@@ -280,10 +280,6 @@ class Skeleton:
         name = ds.attrs.get("name") or "LonelySkeleton"
         points = cls(**coords,chunks=chunks, name=name)
 
-        # if cls.core.static:
-        #     points.core.static = False
-        # Set data variables and masks that exist
-
         if core_vars: # Only set the ones already existing in the core
             for var, ds_var in core_vars.items():
                 if not data_vars or ds_var in data_vars: # If list is specified, only add those variables 
@@ -306,32 +302,7 @@ class Skeleton:
             if cls.core.static:
                 points.core.static = True
 
-        # data_vars = data_vars or points.core.non_coord_objects()
-        # if not data_vars:
-        #     data_vars = data_vars + list(ds.data_vars)
-        #     data_vars = list(set(data_vars) - {"inds"})
-        # for data_var in data_vars:
-        #     val = ds.get(data_var)
-
-        #     if val is not None:
-        #         if data_var not in points.core.all_objects():
-        #             # Try to find geo-parameter to get metadata etc.
-        #             if hasattr(ds[data_var], "standard_name"):
-        #                 geo_param = gp.get(ds[data_var].standard_name)
-
-        #             else:
-        #                 geo_param = None
-
-        #             if geo_param is not None:
-        #                 points.add_datavar(geo_param(data_var))
-        #             else:
-        #                 points.add_datavar(data_var)
-        #         points.set(data_var, val)
-        #         points.meta.append(ds.get(data_var).attrs, name=data_var)
         points.meta.set(ds.attrs)
-
-        # if cls.core.static:
-        #     points.core.static = True
 
         return points
 
