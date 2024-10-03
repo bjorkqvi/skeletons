@@ -31,17 +31,17 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
    
     core_vars = {}
     core_coords = {}
-    coords = core.data_vars('spatial') or core.coords()
+    coords = core.coords('init')
+
     for coord in coords:
         ds_coord = _get_var_from_ds(coord, aliases_str, core, ds)
         if ds_coord is not None:
             core_coords[coord] = ds_coord
 
-    for var in core.data_vars():
+    for var in core.non_coord_objects():
         ds_var =  _get_var_from_ds(var, aliases_str, core, ds)
         if ds_var is not None:
             core_vars[var] = ds_var
-
     return core_vars, core_coords
 
 
@@ -65,6 +65,15 @@ def _get_var_from_ds(var, aliases_str, core, ds):
     # 3) Try to see it the name is the same in the skeleton and the dataset
     if var in ds.data_vars:
         return var
+
+    if var in ds.coords:
+        return var
+
+    if var == 'lon' and ('longitude' in ds.coords or 'longitude' in ds.data_vars):
+        return 'longitude'
+
+    if var == 'lat' and ('latitude' in ds.coords or 'latitude' in ds.data_vars):
+        return 'latitude'
 
     return None
 

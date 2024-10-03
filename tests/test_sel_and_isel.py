@@ -105,14 +105,20 @@ def test_point_dynamic_datavars_from_ds():
     assert points.core.data_vars() == ["hsig"]
 
     ds = points.ds()
-
-    points2 = PointSkeleton.from_ds(ds, data_vars=ds.data_vars)
+    points2 = PointSkeleton.from_ds(ds, dynamic=True, keep_ds_names=True)
     assert PointSkeleton.core.static
     assert points2.core.static
 
     assert points2.core.data_vars() == ["hsig"]
     assert points2.meta.get("hsig") == points.meta.get("hsig")
 
+
+    points3 = PointSkeleton.from_ds(ds, dynamic=True)
+    assert PointSkeleton.core.static
+    assert points3.core.static
+
+    assert points3.core.data_vars() == ["hs"]
+    assert points3.meta.get("hs") == points.meta.get("hsig")
 
 def test_gridded():
     points = GriddedSkeleton(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))

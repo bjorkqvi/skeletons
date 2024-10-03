@@ -165,14 +165,13 @@ class CoordinateManager:
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
         'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
+        'init': coordinates needed to initialize Skeleton: All coords (including lat/lon in PointSkeleton) but without 'inds'
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
-            print(
-                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
-            )
-            return None
+        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint", "init"]:
+            raise ValueError("Coord group needs to be 'all', 'spatial', 'nonspatial', 'grid', 'gridpoint' or 'init'.")
+
 
         if coord_group == "all":
             coords = self._added_coords.values()
@@ -188,6 +187,10 @@ class CoordinateManager:
                 for coord in self._added_coords.values()
                 if coord.coord_group in [coord_group, "spatial"]
             ]
+        elif coord_group == 'init':
+            coords = list(set(self.coords()) - set(['inds'])) + self.data_vars('spatial')
+            if not self._is_initialized(): # Can use either x/y or lon/lat if it has not yet been determined
+                coords = coords + ['lon','lat'] 
         else:
             coords = [
                 coord
@@ -195,7 +198,11 @@ class CoordinateManager:
                 if coord.coord_group == coord_group
             ]
 
-        return move_time_and_spatial_to_front([coord.name for coord in coords])
+        if coord_group != 'init':    
+            coords = [coord.name for coord in coords]
+        
+        
+        return move_time_and_spatial_to_front(coords)
 
     def masks(self, coord_group: str = "all") -> list[str]:
         """Returns list of masks that have been added to a specific coord group.

@@ -1,5 +1,5 @@
 from geo_skeletons import PointSkeleton, GriddedSkeleton
-from geo_skeletons.decorators import add_datavar
+from geo_skeletons.decorators import add_datavar, add_magnitude
 
 import geo_parameters as gp
 
@@ -10,6 +10,7 @@ import pytest
 
 @pytest.fixture
 def wave_no_std():
+    @add_magnitude('dummy', x='hs', y='tp', direction='dummydir', dir_type='from')
     @add_datavar('dirp')
     @add_datavar("tp")
     @add_datavar("hs")
@@ -143,3 +144,4 @@ def test_core_with_gp2_explicit_dict_gp_wrong_ds_name(wave_no_std, wave_std, wav
     assert set(core_vars.keys()) == {'hs2','tp2','dirp2'}
     assert set(core_vars.values()) == {'hs','tp','dirp'}
     assert set(core_coords.keys()) == {'lon','lat'}
+
