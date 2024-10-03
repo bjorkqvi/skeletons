@@ -30,29 +30,41 @@ def identify_core_in_ds(skeleton, ds: xr.Dataset, aliases: dict[Union[str, MetaP
     
    
     core_vars = {}
+    core_coords = {}
+    coords = skeleton.core.data_vars('spatial') or skeleton.core.coords()
+    for coord in coords:
+        ds_coord = _get_var_from_ds(coord, aliases_str, skeleton.core, ds)
+        if ds_coord is not None:
+            core_coords[coord] = ds_coord
+
     for var in skeleton.core.data_vars():
-        # 1) Use aliases mapping if exists
-        if aliases_str.get(var) is not None:
-            core_vars[var] = aliases_str.get(var)
-            continue
-
-
-        # 2) Try to decode using cf standard name
-        param = skeleton.core.meta_parameter(var)
-        if param is not None:
-            ds_var = param.find_me_in_ds(ds)
-        else:
-            ds_var = None
-
+        ds_var =  _get_var_from_ds(var, aliases_str, skeleton.core, ds)
         if ds_var is not None:
             core_vars[var] = ds_var
-            continue
 
-        # 3) Try to see it the name is the same in the skeleton and the dataset
-        if var in ds.data_vars:
-            core_vars[var] = var
+    return core_vars, core_coords
 
-    return core_vars
+
+def _get_var_from_ds(var, aliases_str, core, ds):
+    # 1) Use aliases mapping if exists
+    if aliases_str.get(var) is not None:
+        return aliases_str.get(var)
+        
+    # 2) Try to decode using cf standard name
+    param = core.meta_parameter(var)
+    if param is not None:
+        ds_var = param.find_me_in_ds(ds)
+    else:
+        ds_var = None
+
+    if ds_var is not None:
+        return ds_var
+
+    # 3) Try to see it the name is the same in the skeleton and the dataset
+    if var in ds.data_vars:
+        return var
+
+    return None
 
 # Dirs can be direction from or to, so won't give a geoparameters just based on the name!
 DICT_OF_COORDS = {'lon': gp.grid.Lon, 'longitude': gp.grid.Lon, 'lat': gp.grid.Lat, 'latitude': gp.grid.Lat, 'x': gp.grid.X, 'y': gp.grid.Y, 'freq': gp.wave.Freq, 'frequency': gp.wave.Freq}
