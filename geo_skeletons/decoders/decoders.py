@@ -54,11 +54,13 @@ def _get_var_from_ds(var, aliases_str, core, ds):
     param = core.meta_parameter(var)
     if param is not None:
         ds_var = param.find_me_in_ds(ds)
+        if len(ds_var) > 1:
+            raise ValueError(f"The variable '{var}' matches {ds_var} in the Dataset. Specify which one to read by e.g. aliases = {{'{var}': '{ds_var[0]}'}}")
     else:
-        ds_var = None
+        ds_var = []
 
-    if ds_var is not None:
-        return ds_var
+    if ds_var:
+        return ds_var[0]
 
     # 3) Try to see it the name is the same in the skeleton and the dataset
     if var in ds.data_vars:
