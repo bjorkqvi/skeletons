@@ -4,7 +4,7 @@ from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union
 
-def identify_core_in_ds(skeleton, ds: xr.Dataset, aliases: dict[Union[str, MetaParameter], str] = None) -> dict[str, str]:
+def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[Union[str, MetaParameter], str] = None) -> dict[str, str]:
     """Identify the variables in the Dataset that matches the variables in the Skeleton core
 
     1) If 'aliases' (core-name: ds-name) mapping is given, that is used first. Key can be either a str or a MetaParameter
@@ -13,13 +13,13 @@ def identify_core_in_ds(skeleton, ds: xr.Dataset, aliases: dict[Union[str, MetaP
     
     3) Use trivial matching (same name in skeleton and Dataset)"""
    
-    # Start by remapping any possible MetaParameters to a string name
+    # Start by remapping any possible MetaParameters to a string s
     aliases_str = {}
     if aliases is not None:
         for core_var, ds_var in aliases.items():
             name, param = gp.decode(core_var)
             if param is not None:
-                name = skeleton.find_cf(param.standard_name())
+                name = core.find_cf(param.standard_name())
                 if name is not None and len(name) == 1: # Found exactly one matching name
                     if ds_var in ds.data_vars: # Only add it if it actually exists
                         aliases_str[name[0]] = ds_var
@@ -31,14 +31,14 @@ def identify_core_in_ds(skeleton, ds: xr.Dataset, aliases: dict[Union[str, MetaP
    
     core_vars = {}
     core_coords = {}
-    coords = skeleton.core.data_vars('spatial') or skeleton.core.coords()
+    coords = core.data_vars('spatial') or core.coords()
     for coord in coords:
-        ds_coord = _get_var_from_ds(coord, aliases_str, skeleton.core, ds)
+        ds_coord = _get_var_from_ds(coord, aliases_str, core, ds)
         if ds_coord is not None:
             core_coords[coord] = ds_coord
 
-    for var in skeleton.core.data_vars():
-        ds_var =  _get_var_from_ds(var, aliases_str, skeleton.core, ds)
+    for var in core.data_vars():
+        ds_var =  _get_var_from_ds(var, aliases_str, core, ds)
         if ds_var is not None:
             core_vars[var] = ds_var
 

@@ -14,7 +14,7 @@ class CoordinateManager:
     by the decorators."""
 
     def __init__(
-        self, initial_coords: list[Coordinate], initial_vars: list[DataVar], metadata_manager = None
+        self, initial_coords: list[Coordinate], initial_vars: list[DataVar], metadata_manager
     ) -> None:
         self.x_str = None
         self.y_str = None
@@ -469,6 +469,23 @@ class CoordinateManager:
         if not hasattr(obj, "dir_type"):
             return None
         return obj.dir_type
+
+    def find_cf(self, standard_name: str) -> list[str]:
+        """Finds the variable names that have the given standard name"""
+        names = []
+
+        for name in self.all_objects():
+            obj = self.get(name)
+            if obj.meta is None:
+                continue
+            if (
+                obj.meta.standard_name() == standard_name
+                or obj.meta.standard_name(alias=True) == standard_name
+            ):
+                names.append(obj.name)
+
+        return names
+
 
     @property
     def static(self) -> bool:
