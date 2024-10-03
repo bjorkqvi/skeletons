@@ -926,22 +926,6 @@ class Skeleton:
             return None
         return self._ds_manager.ds()
 
-    def find_cf(self, standard_name: str) -> list[str]:
-        """Finds the variable names that have the given standard name"""
-        names = []
-
-        for name in self.core.all_objects():
-            obj = self.core.get(name)
-            if obj.meta is None:
-                continue
-            if (
-                obj.meta.standard_name() == standard_name
-                or obj.meta.standard_name(alias=True) == standard_name
-            ):
-                names.append(obj.name)
-
-        return names
-
     def size(
         self, coord_group: str = "all", squeeze: bool = False, **kwargs
     ) -> tuple[int]:

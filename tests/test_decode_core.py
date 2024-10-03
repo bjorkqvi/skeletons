@@ -72,74 +72,74 @@ def wave2_std():
 
 def test_empty_core(wave_no_std, wave_std):
     data = PointSkeleton(lon=0, lat=0)
-    core_vars, core_coords = identify_core_in_ds(data, ds=wave_no_std.ds())
+    core_vars, core_coords = identify_core_in_ds(data.core, ds=wave_no_std.ds())
     assert core_vars == {}
     assert set(core_coords.keys()) == set({})
 
-    core_vars, core_coords = identify_core_in_ds(data, ds=wave_std.ds())
+    core_vars, core_coords = identify_core_in_ds(data.core, ds=wave_std.ds())
     assert set(core_coords.keys()) == {'lon','lat'}
 
 def test_core_with_gp(wave_no_std, wave_std):
-    core_vars, core_coords = identify_core_in_ds(wave_std, ds=wave_no_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave_std.core, ds=wave_no_std.ds())
     assert set(core_vars.keys()) == {'hs','tp','dirp'}
     assert set(core_vars.values()) == {'hs','tp','dirp'}
     assert set(core_coords.keys()) == set({})
 
-    core_vars, core_coords = identify_core_in_ds(wave_std, ds=wave_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave_std.core, ds=wave_std.ds())
     assert set(core_vars.keys()) == {'hs','tp','dirp'}
     assert set(core_vars.values()) == {'hs','tp','dirp'}
     assert set(core_coords.keys()) == {'lon','lat'}
 
 def test_core_with_gp2(wave_no_std, wave_std, wave2_std):
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_no_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_no_std.ds())
     assert core_vars == {}
     assert set(core_coords.keys()) == set({})
 
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_std.ds())
     assert set(core_vars.keys()) == {'hs2','tp2','dirp2'}
     assert set(core_vars.values()) == {'hs','tp','dirp'}
     assert set(core_coords.keys()) == {'lon','lat'}
 
 def test_core_without_gp2(wave_no_std, wave_std, wave2_no_std):
-    core_vars, core_coords = identify_core_in_ds(wave2_no_std, ds=wave_no_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave2_no_std.core, ds=wave_no_std.ds())
     assert core_vars == {}
     assert set(core_coords.keys()) == {'x','y'}
     
     
-    core_vars, core_coords = identify_core_in_ds(wave2_no_std, ds=wave_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave2_no_std.core, ds=wave_std.ds())
     assert core_vars == {}
     assert set(core_coords.keys()) == set({})
     assert core_coords == {}
 
 def test_core_with_gp2_explicit_dict_str(wave_no_std, wave_std, wave2_std):
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), aliases={'hs2':'hs'})
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_no_std.ds(), aliases={'hs2':'hs'})
     assert set(core_vars.keys()) == {'hs2'}
     assert set(core_vars.values()) == {'hs'}
     assert core_coords == {}
 
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_std.ds())
     assert set(core_vars.keys()) == {'hs2','tp2','dirp2'}
     assert set(core_vars.values()) == {'hs','tp','dirp'}
     assert set(core_coords.keys()) == {'lon','lat'}
 
 def test_core_with_gp2_explicit_dict_gp(wave_no_std, wave_std, wave2_std):
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), aliases={gp.wave.Hs:'hs'})
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_no_std.ds(), aliases={gp.wave.Hs:'hs'})
     assert set(core_vars.keys()) == {'hs2'}
     assert set(core_vars.values()) == {'hs'}
     assert core_coords == {}
 
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_std.ds())
     assert set(core_vars.keys()) == {'hs2','tp2','dirp2'}
     assert set(core_vars.values()) == {'hs','tp','dirp'}
     assert set(core_coords.keys()) == {'lon','lat'}
 
 def test_core_with_gp2_explicit_dict_gp_wrong_ds_name(wave_no_std, wave_std, wave2_std):
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_no_std.ds(), aliases={gp.wave.Hs:'hss'})
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_no_std.ds(), aliases={gp.wave.Hs:'hss'})
     assert set(core_vars.keys()) == set({})
     assert set(core_vars.values()) == set({})
     assert core_coords == {}
 
-    core_vars, core_coords = identify_core_in_ds(wave2_std, ds=wave_std.ds())
+    core_vars, core_coords = identify_core_in_ds(wave2_std.core, ds=wave_std.ds())
     assert set(core_vars.keys()) == {'hs2','tp2','dirp2'}
     assert set(core_vars.values()) == {'hs','tp','dirp'}
     assert set(core_coords.keys()) == {'lon','lat'}
