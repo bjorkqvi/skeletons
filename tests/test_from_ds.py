@@ -2,7 +2,7 @@ from geo_skeletons.point_skeleton import PointSkeleton
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
 from geo_skeletons.decorators import add_coord, add_datavar, dynamic
 import numpy as np
-
+import geo_parameters as gp
 
 def test_point_cartesian():
     @add_coord(name="test")
@@ -12,7 +12,6 @@ def test_point_cartesian():
     @add_coord(name="test2")
     class AnotherAddedCoordinate(PointSkeleton):
         pass
-
     grid = PointSkeleton(x=(1, 2), y=(0, 3))
     grid2 = AddedCoordinate.from_ds(grid.ds(), test=np.arange(2))
     np.testing.assert_array_almost_equal(grid2.x(), np.array([1, 2]))
@@ -98,6 +97,23 @@ def test_add_dynamic_var():
     grid2 = grid.from_ds(grid.ds())
     assert grid.core.all_objects() == grid2.core.all_objects()
 
+def test_add_dynamic_var_gp():
+    @dynamic
+    class AddedVar(GriddedSkeleton):
+        pass
+
+    grid = AddedVar(lon=(1, 4), lat=(0, 4), name='test_name')
+
+    grid.add_datavar('test')
+    grid.set_spacing(nx=4, ny=5)
+    grid.set_test(2)
+    grid.meta.set({'standard_name': "sea_surface_wave_significant_height"},'test')
+    grid2 = grid.from_ds(grid.ds())
+    set(grid2.core.all_objects()) == ['lon','lat','hs']
+    grid2 = grid.from_ds(grid.ds(), keep_ds_names=True)
+    set(grid2.core.all_objects()) == ['lon','lat','test']
+    assert grid2.ds().test.unit == 'm'
+
 def test_not_add_extra_var_to_static():
     """If we have a static core, then do not add extra variables from a Dataset"""
     @add_datavar('test3')
@@ -123,3 +139,97 @@ def test_not_add_extra_var_to_static():
     assert 'test' in grid3.core.data_vars()
     assert 'test2' not in grid3.core.data_vars()
     assert 'test3' not in grid3.core.data_vars()
+
+
+def test_core_aliases_doc_example1():
+    @add_datavar('Hm0')
+    class Hm0(GriddedSkeleton):
+        pass
+
+    @add_datavar('hs')
+    class Hs(GriddedSkeleton):
+        pass
+
+    hm0 = Hm0(x=0, y=0)
+    hm0.set_Hm0(10)
+
+    hs = Hs.from_ds(hm0.ds(), core_aliases = {'hs': 'Hm0'})
+    np.testing.assert_almost_equal(hs.hs(), 10)
+
+def test_core_aliases_doc_example2():
+    @add_datavar('Hm0')
+    class Hm0(GriddedSkeleton):
+        pass
+
+    @add_datavar(gp.wave.Hs('hsig'))
+    class Hs(GriddedSkeleton):
+        pass
+
+    hm0 = Hm0(x=0, y=0)
+    hm0.set_Hm0(10)
+
+    hs = Hs.from_ds(hm0.ds(), core_aliases = {gp.wave.Hs: 'Hm0'})
+    np.testing.assert_almost_equal(hs.hsig(), 10)
+
+def test_ds_aliases_doc_example1():
+    @add_datavar('Hm0')
+    class Hm0(GriddedSkeleton):
+        pass
+
+    @dynamic
+    class Hs(GriddedSkeleton):
+        pass
+
+    hm0 = Hm0(x=0, y=0)
+    hm0.set_Hm0(10)
+
+    hs = Hs.from_ds(hm0.ds(), ds_aliases = {'Hm0': 'hs'})
+    np.testing.assert_almost_equal(hs.hs(), 10)
+
+def test_ds_aliases_doc_example2():
+    @add_datavar('Hm0')
+    class Hm0(GriddedSkeleton):
+        pass
+
+    @dynamic
+    class Hs(GriddedSkeleton):
+        pass
+
+    hm0 = Hm0(x=0, y=0)
+    hm0.set_Hm0(10)
+
+    hs = Hs.from_ds(hm0.ds(), ds_aliases = {'Hm0': gp.wave.Hs})
+    np.testing.assert_almost_equal(hs.hs(), 10)
+    assert hs.meta.get('hs').get('standard_name') == gp.wave.Hs.standard_name()
+
+def test_ds_aliases_doc_example3():
+    @add_datavar('Hm0')
+    class Hm0(GriddedSkeleton):
+        pass
+
+    @dynamic
+    class Hs(GriddedSkeleton):
+        pass
+
+    hm0 = Hm0(x=0, y=0)
+    hm0.set_Hm0(10)
+
+    hs = Hs.from_ds(hm0.ds(), ds_aliases = {'Hm0': gp.wave.Hs('hsig')})
+    np.testing.assert_almost_equal(hs.hsig(), 10)
+    assert hs.meta.get('hsig').get('standard_name') == gp.wave.Hs.standard_name()
+
+def test_ds_aliases_doc_example4():
+    @add_datavar('Hm0')
+    class Hm0(GriddedSkeleton):
+        pass
+
+    @dynamic
+    class Hs(GriddedSkeleton):
+        pass
+
+    hm0 = Hm0(x=0, y=0)
+    hm0.set_Hm0(10)
+
+    hs = Hs.from_ds(hm0.ds(), ds_aliases = {'Hm0': gp.wave.Hs}, keep_ds_names=True)
+    np.testing.assert_almost_equal(hs.Hm0(), 10)
+    assert hs.meta.get('Hm0').get('standard_name') == gp.wave.Hs.standard_name()
