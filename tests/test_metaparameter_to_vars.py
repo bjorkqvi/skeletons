@@ -109,7 +109,7 @@ def test_freq_dir_time():
     assert points.meta.get("dirs") == {
         "short_name": "dirs",
         "long_name": "wave_direction",
-        "standard_name": "wave_from_direction",
+        "standard_name": "wave_direction",
         "unit": "deg",
     }
     assert points.meta.get("time") == {}
@@ -119,7 +119,7 @@ def test_freq_dir_time():
 
 def test_dirto():
 
-    @add_direction(direction_from=False)
+    @add_direction(dir_type = 'to')
     class Expanded(PointSkeleton):
         pass
 

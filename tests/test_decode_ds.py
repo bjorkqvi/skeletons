@@ -288,4 +288,4 @@ def test_freq_dirs_std_name(freq_dirs_std):
     assert coords.get('lon') == gp.grid.Lon
     assert coords.get('lat') == gp.grid.Lat
     assert coords.get('freq') == gp.wave.Freq
-    assert coords.get('dirs') == gp.wave.DirsFrom
+    assert coords.get('dirs') == gp.wave.Dirs

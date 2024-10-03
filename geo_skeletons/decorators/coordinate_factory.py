@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from copy import deepcopy
 from geo_parameters.metaparameter import MetaParameter
-from geo_parameters.wave import Freq, DirsTo, DirsFrom
+from geo_parameters.wave import Freq, DirsTo, DirsFrom, Dirs
 from typing import Union, Optional
 
 import geo_parameters as gp
@@ -209,7 +209,7 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
 def add_direction(
     name: Optional[Union[str, MetaParameter]] = None,
     grid_coord: bool = False,
-    direction_from: bool = True,
+    dir_type: Optional[bool] = None,
 ):
     def wrapper(c):
         def get_dirs(self, angular=False):
@@ -244,5 +244,11 @@ def add_direction(
         return c
 
     if name is None:
-        name = DirsFrom if direction_from else DirsTo
+        if dir_type == 'from':
+            name = DirsFrom
+        elif dir_type == 'to':
+            name = DirsTo
+        else:
+            name = Dirs
+
     return wrapper
