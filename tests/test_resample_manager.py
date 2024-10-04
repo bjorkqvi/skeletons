@@ -1,5 +1,5 @@
 from geo_skeletons import PointSkeleton, GriddedSkeleton
-from geo_skeletons.decorators import add_time, add_datavar
+from geo_skeletons.decorators import add_time, add_datavar, add_magnitude
 import geo_parameters as gp
 import numpy as np
 import pandas as pd
@@ -177,3 +177,42 @@ def test_2h():
     data2 = data.resample.time(dt="2h")
     assert len(data2.time()) == 4
 
+
+
+def test_magnitude():
+    @add_magnitude(gp.wind.Wind('mag'), x='u', y='v', direction=gp.wind.WindDir('dir'))
+    @add_datavar(gp.wind.YWind('v'))
+    @add_datavar(gp.wind.XWind('u'))
+    @add_datavar(gp.wind.YGust('vg'))
+    @add_datavar(gp.wind.XGust('ug'))
+    @add_time()
+    class Wind(PointSkeleton):
+        pass
+
+    lon, lat = np.array([1, 3, 4]), np.array([5, 6, 7])
+    time = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="10min")
+    time1h = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="1h")
+    data = Wind(lon=lon, lat=lat, time=time)
+    data.set_u(5)
+    data.set_v(0)
+    data.ind_insert('u',np.array([5,5,5,5,-5,-5,-5]),inds=0)
+    
+    data.set_ug(5)
+    data.set_vg(0)
+    data.ind_insert('ug',np.array([5,5,5,5,-5,-5,-5]),inds=0)
+    data2 = data.resample.time(dt="1h")
+    data3 = data.resample.time(dt="1h", dropna=False)
+    assert [t.strftime("%Y%m%d%H%M") for t in data2.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time1h
+    ]
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time1h
+    ]
+    
+    assert np.all(np.isclose(data2.mag(),5))
+    # gusts averaged using components and will be wrong
+    assert not np.all(np.isclose((data2.ug()**2+data2.vg()**2)**0.5, 5))
+
+    assert 'through magnitude and direction' in data2.meta.get('u').get('resample_method')
+    assert 'through magnitude and direction' in data2.meta.get('v').get('resample_method')
+    breakpoint()
