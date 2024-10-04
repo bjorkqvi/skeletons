@@ -12,4 +12,4 @@ dependencies:
   - geopy
   - pylint
   - dask
-  - geo-parameters=>0.4.11
+  - geo-parameters=>0.5.1

@@ -4,6 +4,7 @@ version = "0.19.1"
 description = "Easily extended way to build classes for structured and unstructured geophysical data."
 authors = [ { name = "Jan-Victor Björkqvist", email = "janvb@met.no" } ]
 dependencies = [ "numpy", "scipy", "xarray", "pandas", "utm", "geopy", "dask","geo-parameters" ]
+readme = "README.md"
 
 #[project.optional-dependencies]
 #tests = [ "numpy", "xarray", "pandas", "utm", "geopy"]

@@ -88,13 +88,13 @@ def add_datavar(
 
         if not c.core._is_altered():
             c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+            c.meta = c.core.meta
 
         # Temporarily cahnge core to dynamic if being set by decorator
         core_was_static = c.core.static
         if core_was_static and not append:
             c.core.static = False
+
 
         c.core.add_var(data_var)
 
