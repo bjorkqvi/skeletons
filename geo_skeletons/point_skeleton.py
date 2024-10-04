@@ -32,9 +32,9 @@ class PointSkeleton(Skeleton):
     4) Methods xy() / lonlat() are identical to e.g. (x(), y()).
     """
 
-    core = CoordinateManager(INITIAL_COORDS, INITIAL_CARTESIAN_VARS)
-    meta = MetaDataManager(ds_manager=None, coord_manager=core)
-
+    meta = MetaDataManager(ds_manager=None)
+    core = CoordinateManager(INITIAL_COORDS, INITIAL_CARTESIAN_VARS, metadata_manager=meta)
+    
     @classmethod
     def from_skeleton(
         cls,

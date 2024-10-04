@@ -154,8 +154,8 @@ class DatasetManager:
     def set(self, data: np.ndarray, name: str) -> None:
         """Adds in new data to the Dataset."""
         all_metadata = self.get_attrs()
-        # self._merge_in_ds(self.compile_to_ds(data, name))
         self.data[name] = self.compile_data_array(data, name)
+
         for var, metadata in all_metadata.items():
             if var == "_global_":
                 self.set_attrs(metadata)
@@ -225,6 +225,9 @@ class DatasetManager:
 
         for var in self.data.data_vars:
             meta_dict[var] = self.data.get(var).attrs
+
+        for coord in self.data.coords:
+            meta_dict[coord] = self.data.get(coord).attrs
 
         return meta_dict
 

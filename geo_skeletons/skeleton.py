@@ -4,8 +4,8 @@ from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager
+from .decoders import identify_core_in_ds, map_ds_to_gp
 
-# from .managers.data_sanitizer import DataSanitizer, will_grid_be_spherical_or_cartesian
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
@@ -63,8 +63,7 @@ class Skeleton:
         # Don't want to alter the CoordManager of the class
         if not self.core._is_initialized():
             self.core = deepcopy(self.core)  # Makes a copy of the class coord_manager
-            self.meta = deepcopy(self.meta)
-            self.meta._coord_manager = self.core
+            self.meta = self.core.meta
 
         # # The manager will contain the Xarray Dataset
         if self.ds() is None:
@@ -202,89 +201,108 @@ class Skeleton:
         ds: xr.Dataset,
         chunks: Optional[Union[tuple[int], str]] = None,
         data_vars: Optional[list[str]] = None,
+        keep_ds_names: bool = False,
+        core_aliases: dict[Union[MetaParameter, str], str] = None,
+        ds_aliases: dict[str, Union[MetaParameter, str]] = None,
+        dynamic: bool = False,
         **kwargs,
     ) -> "Skeleton":
-        """Generats an instance of a Skeleton form an xarray Dataset.
-        All coordinates must be present, but only matching data variables included.
+        """Generats an instance of a Skeleton from an xarray Dataset.
+        
+        data_vars: list of ds-variable names that will be read. Default read all.
+        
+        keep_ds_names [default False]: Uses the Dataset variable names instead of the 
+        default names of the geo-parameter if the gp is decoded using the standard name
+        
+        
+        core_aliases: dict mapping the existing variables in the Skeleton to a variable name in the Dataset
+        ------------------------------------------------------------------------
+        Ex1: core_aliases = {'hs': 'Hm0'}
+            Reads the Dataset variable 'Hm0' and sets the Skeleton variable 'hs'
+        Ex2: core_aliases = {gp.wave.Hs: 'Hm0'}
+            Reads the Dataset variable 'Hm0' and set the Skeleton variable that matches the gp.wave.Hs geo-parameter (if unambiguous)
+       
+        ds_aliases: dict mapping variable names in the Dataset to a parameter that will be dynamically created in the Skeleton
+        ------------------------------------------------------------------------
+        Ex1: ds_aliases = {'Hm0', 'hs'}
+            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable 'hs'
+        Ex2: core_aliases = {'Hm0': gp.wave.Hs}
+            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable with the default name 'hs' using metadata from gp.wave.Hs
+        Ex3: core_aliases = {'Hm0': gp.wave.Hs('hsig')}
+            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable 'hsig' using metadata from gp.wave.Hs
+        Ex4: core_aliases = {'Hm0': gp.wave.Hs}, keep_ds_names = True
+            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable with the name 'Hm0' using metadata from gp.wave.Hs
 
-        If data_vars is given, then those will be tried to match and added to the class.
-        Otherwise potential variables are read from the class.
+        **kwargs: Can be used to provide missing coordinates 
+        
+        Ex: The z-variable doesn't exist in the DataSet:
+            new_instance = SkeletonClass.from_ds(ds, z=[1,2,3])
 
-        Missing coordinates can be provided as kwargs. If e.g. the z-variable doesn't exist in the DataSet:
+        dynamic [default: False] Allows creation of new data variables even for a static Skeleton"""
 
-        new_instance = SkeletonClass.from_ds(ds, z=[1,2,3])"""
-        # Getting mandatory spatial variables
-        lon, lat = ds.get("lon"), ds.get("lat")
-        x, y = ds.get("x"), ds.get("y")
+        
+        # These are the mappings identified in the ds. Might miss some that are provided as keywords
+        core_vars, core_coords = identify_core_in_ds(cls.core, ds, aliases=core_aliases)
+        
+        # All coordinates needed to initialize the skeleton (contains both x/y and lon/lat)
+        coords_needed = cls.core.coords('init')
 
-        if lon is not None:
-            lon = lon.values
-        if lat is not None:
-            lat = lat.values
-        if x is not None:
-            x = x.values
-        if y is not None:
-            y = y.values
+        lonlat_set = core_coords.get('lon') is not None and core_coords.get('lat') is not None
+        xy_set = core_coords.get('x') is not None and core_coords.get('y') is not None
 
-        if x is None and y is None and lon is None and lat is None:
+        # Remove the unused pari x/y or lon/lat
+        if lonlat_set:
+            coords_needed = list(set(coords_needed) - set(['x','y']))
+        if xy_set:
+            coords_needed = list(set(coords_needed) - set(['lon','lat']))
+
+        if not lonlat_set and not xy_set:
             raise ValueError("Can't find x/y lon/lat pair in Dataset!")
+        
+        missing_coords = set(coords_needed) - set(core_coords.keys()).union(set(kwargs.keys()))
+        if missing_coords:
+            raise ValueError(f"Coordinates {missing_coords} not found in dataset or provided as keywords!")
 
         # Gather other coordinates
-        coords = cls.core.coords("all")  # list(ds.coords) + list(kwargs.keys())
-        additional_coords = {}
-        for coord in [
-            coord for coord in coords if coord not in ["inds", "lon", "lat", "x", "y"]
-        ]:
-            ds_val = ds.get(coord)
-
-            provided_val = kwargs.get(coord)
-            val = provided_val if provided_val is not None else ds_val
-
-            if val is None:
-                raise KeyError(
-                    f"Can't find required coordinate {coord} in Dataset or in kwargs!"
-                )
+        coords = {}
+        for coord in coords_needed:
+            if core_coords.get(coord) is not None: # Found in ds
+                val = ds.get(core_coords.get(coord))
             else:
-                if isinstance(val, xr.DataArray):
-                    val = val.data
-            additional_coords[coord] = val
+                val = kwargs.get(coord)
+            
+            if isinstance(val, xr.DataArray):
+                val = val.data
+            
+            coords[coord] = val
 
         # Initialize Skeleton
         name = ds.attrs.get("name") or "LonelySkeleton"
-        points = cls(
-            x=x, y=y, lon=lon, lat=lat, chunks=chunks, name=name, **additional_coords
-        )
+        points = cls(**coords,chunks=chunks, name=name)
 
-        if cls.core.static:
-            points.core.static = False
-        # Set data variables and masks that exist
+        if core_vars: # Only set the ones already existing in the core
+            for var, ds_var in core_vars.items():
+                if not data_vars or ds_var in data_vars: # If list is specified, only add those variables 
+                    points.set(var, ds.get(ds_var))
+                    points.meta.append(ds.get(ds_var).attrs, name=var)
+        
+        if not cls.core.static or dynamic: # Try to decode variables from the dataset if we have a dynamic core
+            if cls.core.static:
+                points.core.static = False
+            
+            ds_aliases = ds_aliases or {}
+            mapped_vars, __ = map_ds_to_gp(ds, keep_ds_names=keep_ds_names, aliases=ds_aliases)
+            for ds_var, var in mapped_vars.items():
+                if not data_vars or ds_var in data_vars: # If list is specified, only add those variables
+                    points.add_datavar(var)
+                    var, __ = gp.decode(var)
+                    points.set(var, ds.get(ds_var))
+                    points.meta.append(ds.get(ds_var).attrs, name=var)
+            
+            if cls.core.static:
+                points.core.static = True
 
-        data_vars = data_vars or points.core.non_coord_objects()
-        if not data_vars:
-            data_vars = data_vars + list(ds.data_vars)
-            data_vars = list(set(data_vars) - {"inds"})
-        for data_var in data_vars:
-            val = ds.get(data_var)
-
-            if val is not None:
-                if data_var not in points.core.all_objects():
-                    # Try to find geo-parameter to get metadata etc.
-                    if hasattr(ds[data_var], "standard_name"):
-                        geo_param = gp.get(ds[data_var].standard_name)
-
-                    else:
-                        geo_param = None
-
-                    if geo_param is not None:
-                        points.add_datavar(geo_param(data_var))
-                    else:
-                        points.add_datavar(data_var)
-                points.set(data_var, val)
-                points.meta.append(ds.get(data_var).attrs, name=data_var)
         points.meta.set(ds.attrs)
-
-        if cls.core.static:
-            points.core.static = True
 
         return points
 
@@ -308,7 +326,7 @@ class Skeleton:
 
         Calls the Xarray .sel method on the underlying DataSet"""
         return self.from_ds(
-            self.ds().sel(**kwargs), data_vars=self.core.non_coord_objects()
+            self.ds().sel(**kwargs), data_vars=self.core.non_coord_objects(), keep_ds_names=True
         )
 
     def isel(self, **kwargs) -> "Skeleton":
@@ -317,7 +335,7 @@ class Skeleton:
 
         Calls the Xarray .isel method on the underlying DataSet"""
         return self.from_ds(
-            self.ds().isel(**kwargs), data_vars=self.core.non_coord_objects()
+            self.ds().isel(**kwargs), data_vars=self.core.non_coord_objects(), keep_ds_names=True
         )
 
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
@@ -411,6 +429,8 @@ class Skeleton:
                 f"'name' must be of type 'str', not '{type(name).__name__}'!"
             )
 
+        first_set = name in self._ds_manager.empty_vars() or name in self._ds_manager.empty_masks()
+
         if data is None:
             data = self.get(name, empty=True, squeeze=False, dir_type=dir_type)
 
@@ -467,6 +487,9 @@ class Skeleton:
                 data=data,
                 dir_type=dir_type,
             )
+
+        if first_set:
+            self.meta.metadata_to_ds(name)
 
         return
 
@@ -926,22 +949,6 @@ class Skeleton:
         if not hasattr(self, "_ds_manager"):
             return None
         return self._ds_manager.ds()
-
-    def find_cf(self, standard_name: str) -> list[str]:
-        """Finds the variable names that have the given standard name"""
-        names = []
-
-        for name in self.core.all_objects():
-            obj = self.core.get(name)
-            if obj.meta is None:
-                continue
-            if (
-                obj.meta.standard_name() == standard_name
-                or obj.meta.standard_name(alias=True) == standard_name
-            ):
-                names.append(obj.name)
-
-        return names
 
     def size(
         self, coord_group: str = "all", squeeze: bool = False, **kwargs

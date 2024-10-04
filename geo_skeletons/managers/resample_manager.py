@@ -2,7 +2,7 @@ import pandas as pd
 import geo_parameters as gp
 import numpy as np
 from scipy.stats import circmean
-
+from typing import Union, Optional
 
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
@@ -59,20 +59,19 @@ class ResampleManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
 
-    def time(self, dt: str | pd.Timedelta, dropna: bool = True):
+    def time(self, dt: Union[str, pd.Timedelta], dropna: bool = True, **kwargs):
         """Resamples all data in time"""
         coord_dict = self.skeleton.coord_dict()
         if "time" not in coord_dict.keys():
             raise ValueError("Skeleton does not have a time variable!")
 
-        dt = pd.Timedelta(dt)
+        dt = pd.Timedelta(dt)/ pd.Timedelta('1 hour') # float in hours
         coord_dict["time"] = (
-            self.skeleton.time(data_array=True).resample(time=dt).mean().time
+            self.skeleton.time(data_array=True).resample(time=f"{dt}h", **kwargs).mean().time
         )
 
         # Create new skeleton with hourly values
         new_skeleton = self.skeleton.from_coord_dict(coord_dict)
-
         new_data = {}
         for var in self.skeleton.core.data_vars():
             mean_func, attr_str = set_up_mean_func(
@@ -82,8 +81,8 @@ class ResampleManager:
                 {"resample_method": attr_str},
                 var,
             )
-            # Make sure the angular values are given as math-directions for averaging
-            new_data[var] = self.skeleton.ds()[var].resample(time=dt).reduce(mean_func)
+            # Some version of python/xarray didn't like pd.Timedeltas in the resample method, so forcing to string
+            new_data[var] = self.skeleton.ds()[var].resample(time=f"{dt}h",**kwargs).reduce(mean_func)
 
         for key, value in new_data.items():
             new_skeleton.set(key, value)
@@ -91,6 +90,6 @@ class ResampleManager:
         new_skeleton = new_skeleton.from_ds(new_skeleton.ds().dropna(dim="time"))
         if not dropna:
             new_skeleton = new_skeleton.from_ds(
-                new_skeleton.ds().resample(time=dt).nearest(tolerance=dt / 2)
+                new_skeleton.ds().resample(time=f"{dt}h", **kwargs).nearest(tolerance=f"{dt / 2}h")
             )
         return new_skeleton

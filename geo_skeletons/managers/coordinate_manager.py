@@ -14,7 +14,7 @@ class CoordinateManager:
     by the decorators."""
 
     def __init__(
-        self, initial_coords: list[Coordinate], initial_vars: list[DataVar]
+        self, initial_coords: list[Coordinate], initial_vars: list[DataVar], metadata_manager
     ) -> None:
         self.x_str = None
         self.y_str = None
@@ -32,6 +32,7 @@ class CoordinateManager:
         self.set_initial_vars(initial_vars)
 
         self.static = True
+        self.meta = metadata_manager
 
     def _is_initialized(self) -> bool:
         """Check if the Dataset had been initialized"""
@@ -68,6 +69,10 @@ class CoordinateManager:
         if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
+        
+        # Set metadata from MetaParameter if it is provided
+        if data_var.meta is not None:
+            self.meta.append(data_var.meta.meta_dict(), data_var.name)
 
     def add_mask(self, grid_mask: GridMask) -> None:
         """Adds a mask to the structure"""
@@ -87,6 +92,10 @@ class CoordinateManager:
         self._added_masks[grid_mask.name] = grid_mask
         self._added_mask_points[grid_mask.point_name] = grid_mask
 
+        # Set metadata from MetaParameter if it is provided
+        if grid_mask.meta is not None:
+            self.meta.append(grid_mask.meta.meta_dict(), grid_mask.name)
+
     def triggers(self, name: str) -> list[str]:
         """Returns the masks that are triggered by a specific variable"""
         return [
@@ -98,6 +107,10 @@ class CoordinateManager:
         if self.get(coord.name) is not None:
             raise VariableExistsError(coord.name)
         self._added_coords[coord.name] = coord
+        
+        # Set metadata from MetaParameter if it is provided
+        if coord.meta is not None:
+            self.meta.append(coord.meta.meta_dict(), coord.name)
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
         """Adds a magnitude to the structure"""
@@ -108,6 +121,10 @@ class CoordinateManager:
             raise VariableExistsError(magnitude.name)
         self._added_magnitudes[magnitude.name] = magnitude
 
+        # Set metadata from MetaParameter if it is provided
+        if magnitude.meta is not None:
+            self.meta.append(magnitude.meta.meta_dict(), magnitude.name)
+
     def add_direction(self, direction: Direction) -> None:
         """Adds a direction to the structure"""
         if self.static:
@@ -115,6 +132,10 @@ class CoordinateManager:
         if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self._added_directions[direction.name] = direction
+
+        # Set metadata from MetaParameter if it is provided
+        if direction.meta is not None:
+            self.meta.append(direction.meta.meta_dict(), direction.name)
 
     def set_initial_vars(self, initial_vars: list) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
@@ -144,14 +165,13 @@ class CoordinateManager:
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
         'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
+        'init': coordinates needed to initialize Skeleton: All coords (including lat/lon in PointSkeleton) but without 'inds'
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
-            print(
-                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
-            )
-            return None
+        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint", "init"]:
+            raise ValueError("Coord group needs to be 'all', 'spatial', 'nonspatial', 'grid', 'gridpoint' or 'init'.")
+
 
         if coord_group == "all":
             coords = self._added_coords.values()
@@ -167,6 +187,10 @@ class CoordinateManager:
                 for coord in self._added_coords.values()
                 if coord.coord_group in [coord_group, "spatial"]
             ]
+        elif coord_group == 'init':
+            coords = list(set(self.coords()) - set(['inds'])) + self.data_vars('spatial')
+            if not self._is_initialized(): # Can use either x/y or lon/lat if it has not yet been determined
+                coords = coords + ['lon','lat'] 
         else:
             coords = [
                 coord
@@ -174,7 +198,11 @@ class CoordinateManager:
                 if coord.coord_group == coord_group
             ]
 
-        return move_time_and_spatial_to_front([coord.name for coord in coords])
+        if coord_group != 'init':    
+            coords = [coord.name for coord in coords]
+        
+        
+        return move_time_and_spatial_to_front(coords)
 
     def masks(self, coord_group: str = "all") -> list[str]:
         """Returns list of masks that have been added to a specific coord group.
@@ -448,6 +476,23 @@ class CoordinateManager:
         if not hasattr(obj, "dir_type"):
             return None
         return obj.dir_type
+
+    def find_cf(self, standard_name: str) -> list[str]:
+        """Finds the variable names that have the given standard name"""
+        names = []
+
+        for name in self.all_objects():
+            obj = self.get(name)
+            if obj.meta is None:
+                continue
+            if (
+                obj.meta.standard_name() == standard_name
+                or obj.meta.standard_name(alias=True) == standard_name
+            ):
+                names.append(obj.name)
+
+        return names
+
 
     @property
     def static(self) -> bool:
