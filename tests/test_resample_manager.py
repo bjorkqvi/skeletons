@@ -3,7 +3,7 @@ from geo_skeletons.decorators import add_time, add_datavar, add_magnitude
 import geo_parameters as gp
 import numpy as np
 import pandas as pd
-
+import pytest
 
 def test_point():
     @add_datavar("hs")
@@ -215,4 +215,133 @@ def test_magnitude():
 
     assert 'through magnitude and direction' in data2.meta.get('u').get('resample_method')
     assert 'through magnitude and direction' in data2.meta.get('v').get('resample_method')
-    breakpoint()
+
+def test_start_end():
+    @add_datavar("hs")
+    @add_time()
+    class Wave(PointSkeleton):
+        pass
+
+    time = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="10min")
+    time30min = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="30min")
+    data = Wave(lon=0, lat=0, time=time)
+    data.set_hs(np.arange(len(time)))
+    data2 = data.resample.time(dt="30min")
+    assert [t.strftime("%Y%m%d%H%M") for t in data2.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+    np.testing.assert_array_almost_equal(data2.hs(), np.array([1,4,6]))
+    
+    data3 = data.resample.time(dt="30min", mode='right')
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+
+    np.testing.assert_array_almost_equal(data3.hs(), np.array([0,2,5]))
+    #aa = data.get('hs', data_array=True).resample(time=f"30min",closed='right', label='right', offset=pd.Timedelta(minutes=0)).reduce(np.mean)
+    data4 = data.resample.time(dt="30min", mode='centered')
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+    np.testing.assert_array_almost_equal(data4.hs(), np.array([0.5,3,5.5]))
+    assert 'centered mean' in data4.meta.get('hs').get('resample_method')
+
+def test_start_end_20min():
+    @add_datavar("hs")
+    @add_time()
+    class Wave(PointSkeleton):
+        pass
+
+    time = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="10min")
+    time20min = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="20min")
+    data = Wave(lon=0, lat=0, time=time)
+    data.set_hs(np.arange(len(time)))
+    data2 = data.resample.time(dt="20min")
+    assert [t.strftime("%Y%m%d%H%M") for t in data2.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time20min
+    ]
+    np.testing.assert_array_almost_equal(data2.hs(), np.array([0.5,2.5,4.5,6]))
+    
+    assert 'left mean' in data2.meta.get('hs').get('resample_method')
+
+    data3 = data.resample.time(dt="20min", mode='right')
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time20min
+    ]
+
+    np.testing.assert_array_almost_equal(data3.hs(), np.array([0,1.5,3.5,5.5]))
+    assert 'right mean' in data3.meta.get('hs').get('resample_method')
+    with pytest.raises(ValueError):
+        data4 = data.resample.time(dt="20min", mode='centered')
+    
+
+def test_start_end_hmax():
+    @add_datavar(gp.wave.Hmax)
+    @add_time()
+    class Wave(PointSkeleton):
+        pass
+
+    time = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="10min")
+    time30min = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="30min")
+    data = Wave(lon=0, lat=0, time=time)
+    data.set_hmax(np.arange(len(time)))
+    data2 = data.resample.time(dt="30min")
+    assert [t.strftime("%Y%m%d%H%M") for t in data2.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+    np.testing.assert_array_almost_equal(data2.hmax(), np.array([2,5,6]))
+    
+    data3 = data.resample.time(dt="30min", mode='right')
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+
+    np.testing.assert_array_almost_equal(data3.hmax(), np.array([0,3,6]))
+    #aa = data.get('hs', data_array=True).resample(time=f"30min",closed='right', label='right', offset=pd.Timedelta(minutes=0)).reduce(np.mean)
+    data4 = data.resample.time(dt="30min", mode='centered')
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+    np.testing.assert_array_almost_equal(data4.hmax(), np.array([1,4,6]))
+    assert 'centered mean' in data4.meta.get('hmax').get('resample_method')
+    assert 'np.max' in data4.meta.get('hmax').get('resample_method')
+
+def test_start_end_hs():
+    @add_datavar(gp.wave.Hs)
+    @add_time()
+    class Wave(PointSkeleton):
+        pass
+
+    time = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="10min")
+    time30min = pd.date_range("2020-01-01 00:00", "2020-01-01 01:00", freq="30min")
+    data = Wave(lon=0, lat=0, time=time)
+    data.set_hs(np.arange(len(time)))
+    data2 = data.resample.time(dt="30min")
+    assert [t.strftime("%Y%m%d%H%M") for t in data2.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+
+    x1 = (np.mean(np.array([0**2,1**2,2**2])))**0.5
+    x2 = (np.mean(np.array([3**2,4**2,5**2])))**0.5
+    x3 = (np.mean(np.array([6**2])))**0.5
+    np.testing.assert_array_almost_equal(data2.hs(), np.array([x1,x2,x3]))
+    
+    data3 = data.resample.time(dt="30min", mode='right')
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+    x1 = (np.mean(np.array([0**2])))**0.5
+    x2 = (np.mean(np.array([1**2,2**2,3**2])))**0.5
+    x3 = (np.mean(np.array([4**2,5**2,6**2])))**0.5
+    np.testing.assert_array_almost_equal(data3.hs(),np.array([x1,x2,x3]))
+    #aa = data.get('hs', data_array=True).resample(time=f"30min",closed='right', label='right', offset=pd.Timedelta(minutes=0)).reduce(np.mean)
+    data4 = data.resample.time(dt="30min", mode='centered')
+    assert [t.strftime("%Y%m%d%H%M") for t in data3.time()] == [
+        t.strftime("%Y%m%d%H%M") for t in time30min
+    ]
+    x1 = (np.mean(np.array([0**2,1**2])))**0.5
+    x2 = (np.mean(np.array([2**2,3**2,4**2])))**0.5
+    x3 = (np.mean(np.array([5**2,6**2])))**0.5
+    np.testing.assert_array_almost_equal(data4.hs(), np.array([x1,x2,x3]))
+    assert 'centered mean' in data4.meta.get('hs').get('resample_method')
+    assert 'np.sqrt(np.mean(x**2))' in data4.meta.get('hs').get('resample_method')

@@ -24,7 +24,7 @@ def period_mean(x, *args, **kwargs):
     return np.mean(x**-1.0, *args, **kwargs) ** -1.0
 
 
-def set_up_mean_func(skeleton, var: str, new_dt: float, using_mag: bool=False) -> tuple:
+def set_up_mean_func(skeleton, var: str, new_dt: float, mode: str, using_mag: bool=False) -> tuple:
     """Picks the right function to do the average and sets up a string to be set in the attributes"""
     if new_dt > 1:
         new_dt_str = f"{new_dt:.1f} h"
@@ -43,6 +43,12 @@ def set_up_mean_func(skeleton, var: str, new_dt: float, using_mag: bool=False) -
     ):
         mean_func = period_mean
         attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt_str} values using np.mean(x**-1.0)**-1.0"
+    elif skeleton.meta.get(var).get("standard_name") is not None and (
+        "maximum" in skeleton.meta.get(var).get("standard_name")
+        and "height" in skeleton.meta.get(var).get("standard_name")
+    ):
+        mean_func = np.max
+        attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt_str} values using np.max(x)"
     elif skeleton.core.get_dir_type(var) in ["from", "to"]:
         mean_func = angular_mean_deg
         attr_str = f"{skeleton.dt()*60:.0f} min to {new_dt_str} values using np.rad2deg(scipy.stats.circmean(np.deg2rad(x)))"
@@ -54,6 +60,8 @@ def set_up_mean_func(skeleton, var: str, new_dt: float, using_mag: bool=False) -
         attr_str = (
             f"{skeleton.dt()*60:.0f} min to {new_dt*60:.0f} min values using np.mean"
         )
+
+    attr_str = f"{mode} mean {attr_str}"
     return mean_func, attr_str
 
 
@@ -61,20 +69,65 @@ class ResampleManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
 
-    def time(self, dt: Union[str, pd.Timedelta], dropna: bool = True, **kwargs):
-        """Resamples all data in time"""
+    def time(self, dt: Union[str, pd.Timedelta], dropna: bool = True, mode: str = 'left', skipna: bool=False):
+        """Resamples the data of the Skeleton in time.
+        
+        dt is new time step: '30min', '3h', pd.Timedelta(hours=6)
+        dropna [default True]: If false, time vector will be defined for all values but have NaN's
+        mode ('start' [default], 'end', or 'centered'): Type of average being calculated
+        skipna [default False]: skips NaN values in the original data when calculating the mean values
+
+        - Significant wave height (geo_parameters.wave.Hs) will be averaged using np.sqrt(np.mean(hs**2))
+        - Circular variables (those having a dir_type) will be averaged using scipy.stats.circmean
+        - Wave periods will be averaged through the frequency: np.mean(Tp**-1.0)**-1.0
+        - For Skeleton Magnitude and direction, the resampled components will be determined using the resampled of magnitude and direction
+        - Max-paramters (e.g. geo_parameters.wave.Hmax and EtaMax) will be resampled as np.max
+
+        Example: 10min values 2020-01-01 00:00 to 2020-01-01 01:00, val = [0,1,2,3,4,5,6]
+
+        Ex1: resample.time(dt="30min")
+            times: ['2020-01-01 00:00', '2020-01-01 00:30', '2020-01-01 01:00']
+            values: [1,4,6]
+
+        Ex2: resample.time(dt="30min", mode='right')
+            times: ['2020-01-01 00:00', '2020-01-01 00:30', '2020-01-01 01:00']
+            values: [0,2,5]
+        
+        Ex2: resample.time(dt="30min", mode='centered')
+            times: ['2020-01-01 00:00', '2020-01-01 00:30', '2020-01-01 01:00']
+            values: [0.5,3,5.5]
+        """
         coord_dict = self.skeleton.coord_dict()
         if "time" not in coord_dict.keys():
             raise ValueError("Skeleton does not have a time variable!")
 
         dt = pd.Timedelta(dt)/ pd.Timedelta('1 hour') # float in hours
+        
+
+
         coord_dict["time"] = (
-            self.skeleton.time(data_array=True).resample(time=f"{dt}h", **kwargs).mean().time
+            self.skeleton.time(data_array=True).resample(time=f"{dt}h", skipna=skipna).mean().time
         )
 
         # Create new skeleton with hourly values
         new_skeleton = self.skeleton.from_coord_dict(coord_dict)
         new_data = {}
+
+
+        if mode == 'left':
+            closed = 'left'
+            offset = pd.Timedelta(hours=0)
+        elif mode == 'right':
+            closed = 'right'
+            offset = pd.Timedelta(hours=0)
+        elif mode == 'centered':
+            if np.isclose(new_skeleton.dt() / self.skeleton.dt() % 2, 0):
+                raise ValueError(f'When using centered mean, the new time step {new_skeleton.dt()} must be and odd multiple of the old timestep {self.skeleton.dt()}!')
+            closed = 'right'
+            offset = pd.Timedelta(hours=new_skeleton.dt()/2)
+        else:
+            raise ValueError(f"'mode' must be 'left', 'right' or 'centered'!")
+
 
         data_vars_not_to_resample = []
         data_vars_to_resample = self.skeleton.core.data_vars()
@@ -91,7 +144,7 @@ class ResampleManager:
  
         for var in data_vars_to_resample:
             mean_func, attr_str = set_up_mean_func(
-                self.skeleton, var, new_skeleton.dt()
+                self.skeleton, var, new_skeleton.dt(), mode
             )
 
             new_skeleton.meta.append(
@@ -104,14 +157,14 @@ class ResampleManager:
                 var_y = self.skeleton.core._added_magnitudes.get(var).y
                 
                 __, attr_str = set_up_mean_func(
-                    self.skeleton, var_x, new_skeleton.dt(), using_mag=True
+                    self.skeleton, var_x, new_skeleton.dt(), mode, using_mag=True
                 )
                 new_skeleton.meta.append(
                     {"resample_method": attr_str},
                     var_x,
                 )
                 __, attr_str = set_up_mean_func(
-                    self.skeleton, var_y, new_skeleton.dt(), using_mag=True
+                    self.skeleton, var_y, new_skeleton.dt(), mode, using_mag=True
                 )
                 new_skeleton.meta.append(
                     {"resample_method": attr_str},
@@ -120,7 +173,8 @@ class ResampleManager:
             
             
             # Some version of python/xarray didn't like pd.Timedeltas in the resample method, so forcing to string
-            new_data[var] = self.skeleton.get(var, data_array=True).resample(time=f"{dt}h",**kwargs).reduce(mean_func)
+            new_data[var] = self.skeleton.get(var, data_array=True).resample(time=f"{dt}h",closed=closed,  offset=offset, skipna=skipna
+            ).reduce(mean_func)
 
         for key, value in new_data.items():
             new_skeleton.set(key, value)
@@ -128,6 +182,6 @@ class ResampleManager:
         new_skeleton = new_skeleton.from_ds(new_skeleton.ds().dropna(dim="time"), meta_dict=new_skeleton.meta.meta_dict())
         if not dropna:
             new_skeleton = new_skeleton.from_ds(
-                new_skeleton.ds().resample(time=f"{dt}h",**kwargs).nearest(tolerance=f"{dt / 2}h"),  meta_dict=new_skeleton.meta.meta_dict()
+                new_skeleton.ds().resample(time=f"{dt}h").nearest(tolerance=f"{dt / 2}h"),  meta_dict=new_skeleton.meta.meta_dict()
             )
         return new_skeleton
