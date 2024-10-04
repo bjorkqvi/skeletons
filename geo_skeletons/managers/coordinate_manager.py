@@ -159,13 +159,14 @@ class CoordinateManager:
         for coord in initial_coords:
             self._added_coords[coord.name] = coord
 
-    def coords(self, coord_group: str = "all") -> list[str]:
+    def coords(self, coord_group: str = "all", cartesian: bool = None) -> list[str]:
         """Returns list of coordinats that have been added to a specific coord group.
 
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
         'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'init': coordinates needed to initialize Skeleton: All coords (including lat/lon in PointSkeleton) but without 'inds'
+        'init': coordinates needed to initialize Skeleton: All coords (including lat/lon, x/y in PointSkeleton) but without 'inds'
+            Provide cartesian = True/False to only get x/y or lon/lat
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
@@ -191,6 +192,11 @@ class CoordinateManager:
             coords = list(set(self.coords()) - set(['inds'])) + self.data_vars('spatial')
             if not self._is_initialized(): # Can use either x/y or lon/lat if it has not yet been determined
                 coords = coords + ['lon','lat'] 
+            if cartesian is not None:
+                if cartesian:
+                    coords = list(set(coords) - {'lon','lat'})
+                else:
+                    coords = list(set(coords) - {'x','y'})
         else:
             coords = [
                 coord
