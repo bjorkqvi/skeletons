@@ -254,9 +254,9 @@ class Skeleton:
 
         # Remove the unused pari x/y or lon/lat
         if lonlat_set:
-            coords_needed = list(set(coords_needed) - set(['x','y']))
+            coords_needed = cls.core.coords('init', cartesian=False)
         if xy_set:
-            coords_needed = list(set(coords_needed) - set(['lon','lat']))
+            coords_needed = cls.core.coords('init', cartesian=True)
 
         if not lonlat_set and not xy_set:
             raise ValueError("Can't find x/y lon/lat pair in Dataset!")
