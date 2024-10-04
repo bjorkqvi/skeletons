@@ -65,14 +65,13 @@ class ResampleManager:
         if "time" not in coord_dict.keys():
             raise ValueError("Skeleton does not have a time variable!")
 
-        dt = pd.Timedelta(dt)
+        dt = pd.Timedelta(dt)/ pd.Timedelta('1 hour') # float in hours
         coord_dict["time"] = (
-            self.skeleton.time(data_array=True).resample(time=dt, **kwargs).mean().time
+            self.skeleton.time(data_array=True).resample(time=f"{dt}h", **kwargs).mean().time
         )
 
         # Create new skeleton with hourly values
         new_skeleton = self.skeleton.from_coord_dict(coord_dict)
-        dt = new_skeleton.dt() # float of hours
         new_data = {}
         for var in self.skeleton.core.data_vars():
             mean_func, attr_str = set_up_mean_func(
