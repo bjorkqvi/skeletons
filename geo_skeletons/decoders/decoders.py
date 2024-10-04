@@ -69,14 +69,18 @@ def _get_var_from_ds(var, aliases_str, core, ds):
     if var in ds.coords:
         return var
 
-    if var == 'lon' and ('longitude' in ds.coords or 'longitude' in ds.data_vars):
-        return 'longitude'
-
-    if var == 'lat' and ('latitude' in ds.coords or 'latitude' in ds.data_vars):
-        return 'latitude'
+    for alias_list in [LON_ALIASES, LAT_ALIASES, FREQ_ALIASES, DIRS_ALIASES]:
+        if var in alias_list:
+            for alias_var in alias_list:
+                if alias_var in ds.coords or alias_var in ds.data_vars:
+                    return alias_var
 
     return None
 
+LON_ALIASES = ['lon', 'longitude']
+LAT_ALIASES = ['lat', 'latitude']
+FREQ_ALIASES = ['freq', 'frequency']
+DIRS_ALIASES = ['dirs','directions', 'direction', 'theta']
 # Dirs can be direction from or to, so won't give a geoparameters just based on the name!
 DICT_OF_COORDS = {'lon': gp.grid.Lon, 'longitude': gp.grid.Lon, 'lat': gp.grid.Lat, 'latitude': gp.grid.Lat, 'x': gp.grid.X, 'y': gp.grid.Y, 'freq': gp.wave.Freq, 'frequency': gp.wave.Freq}
 
