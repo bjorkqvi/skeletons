@@ -249,14 +249,14 @@ class Skeleton:
         # All coordinates needed to initialize the skeleton (contains both x/y and lon/lat)
         coords_needed = cls.core.coords('init')
 
-        lonlat_set = core_coords.get('lon') is not None and core_coords.get('lat') is not None
         xy_set = core_coords.get('x') is not None and core_coords.get('y') is not None
-
+        lonlat_set = core_coords.get('lon') is not None and core_coords.get('lat') is not None
+        
         # Remove the unused pari x/y or lon/lat
-        if lonlat_set:
-            coords_needed = cls.core.coords('init', cartesian=False)
         if xy_set:
             coords_needed = cls.core.coords('init', cartesian=True)
+        if lonlat_set:
+            coords_needed = cls.core.coords('init', cartesian=False)
 
         if not lonlat_set and not xy_set:
             raise ValueError("Can't find x/y lon/lat pair in Dataset!")
@@ -285,7 +285,9 @@ class Skeleton:
         if core_vars: # Only set the ones already existing in the core
             for var, ds_var in core_vars.items():
                 if not data_vars or ds_var in data_vars: # If list is specified, only add those variables 
-                    points.set(var, ds.get(ds_var))
+                    coords = _remap_coords(ds_var, core_coords, coords_needed, ds)
+                    
+                    points.set(var, ds.get(ds_var), coords=coords)
                     metadata = meta_dict.get(var) or ds.get(ds_var).attrs
                     points.meta.append(metadata, name=var)
         
@@ -304,12 +306,26 @@ class Skeleton:
             ds_aliases = ds_aliases or {}
             mapped_vars, __ = map_ds_to_gp(ds, keep_ds_names=keep_ds_names, aliases=ds_aliases)
             for ds_var, var in mapped_vars.items():
-                if not data_vars or ds_var in data_vars: # If list is specified, only add those variables
-                    points.add_datavar(var)
-                    var, __ = gp.decode(var)
-                    points.set(var, ds.get(ds_var))
-                    metadata = meta_dict.get(var) or ds.get(ds_var).attrs
-                    points.meta.append(metadata, name=var)
+                var_str, __ = gp.decode(var)
+                if __ is not None:
+                    var_exists = points.core.find_cf(var.standard_name()) != [] or var_str in points.core.data_vars()
+                else:
+                    var_exists = var_str in points.core.data_vars()
+
+                var_exists = var_exists or var in core_aliases.values()
+                if (not data_vars or ds_var in data_vars) and not var_exists: # If list is specified, only add those variables
+                    coords = _remap_coords(ds_var, core_coords, coords_needed, ds)
+                    # Determine coord_group
+                    coord_group = None
+                    for cg in ['all', 'grid', 'gridpoint', 'spatial']:
+                        if coords == points.core.coords(cg):
+                            coord_group = cg
+                    if coord_group is not None:
+                        points.add_datavar(var, coord_group=coord_group)
+                        var, __ = gp.decode(var)
+                        points.set(var, ds.get(ds_var), coords=coords)
+                        metadata = meta_dict.get(var) or ds.get(ds_var).attrs
+                        points.meta.append(metadata, name=var)
             
             if cls.core.static:
                 points.core.static = True
@@ -543,6 +559,7 @@ class Skeleton:
             squeezed_coords = [
                 c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
             ]
+
             data = reshape_manager.explicit_reshape(
                 data.squeeze(),
                 data_coords=squeezed_coords,
@@ -1420,3 +1437,31 @@ class Skeleton:
         string += "\n" + "-" * 80
 
         return string
+
+
+def _remap_coords(ds_var: str,core_coords: dict, coords_needed: list[str], ds: xr.Dataset):
+    if set(ds.get(ds_var).dims).issubset(coords_needed):
+        return ds.get(ds_var).dims
+
+    # Need to rename the coordinates so they can be used in the reshape
+    reversed_dict = {}
+    for key, value in core_coords.items():
+        reversed_dict[value] = key
+
+    coords = []
+    missed_coords = []
+    for n, ds_c in enumerate(ds.get(ds_var).dims):
+        core_c = reversed_dict.get(ds_c)
+        if core_c in coords_needed:
+            coords.append(core_c)
+        else:
+            coords.append(None)
+            missed_coords.append((n, ds_c))
+
+    # Data can be given as x-y with trivial y for example
+    if 'inds' not in coords:
+        for (n, ds_c) in missed_coords:
+            if len(ds.get(ds_c))> 1:
+                coords[n] = 'inds'
+    coords = [c for c in coords if c is not None]
+    return coords
