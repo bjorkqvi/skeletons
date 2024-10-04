@@ -113,7 +113,7 @@ def add_time(grid_coord: bool = False):
             else:
                 return list(unique_times(times, fmt))
 
-        def dt(self) -> float | None:
+        def dt(self) -> Union[float ,None]:
             """Returns the time step in hours"""
             if self.ds() is None:
                 return None
