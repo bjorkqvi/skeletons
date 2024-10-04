@@ -205,6 +205,7 @@ class Skeleton:
         core_aliases: dict[Union[MetaParameter, str], str] = None,
         ds_aliases: dict[str, Union[MetaParameter, str]] = None,
         dynamic: bool = False,
+        meta_dict: dict = None, 
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton from an xarray Dataset.
@@ -240,6 +241,7 @@ class Skeleton:
 
         dynamic [default: False] Allows creation of new data variables even for a static Skeleton"""
 
+        meta_dict = meta_dict or {}
         
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         core_vars, core_coords = identify_core_in_ds(cls.core, ds, aliases=core_aliases)
@@ -284,8 +286,17 @@ class Skeleton:
             for var, ds_var in core_vars.items():
                 if not data_vars or ds_var in data_vars: # If list is specified, only add those variables 
                     points.set(var, ds.get(ds_var))
-                    points.meta.append(ds.get(ds_var).attrs, name=var)
+                    metadata = meta_dict.get(var) or ds.get(ds_var).attrs
+                    points.meta.append(metadata, name=var)
         
+            for var in points.core.magnitudes():
+                metadata = meta_dict.get(var)
+                points.meta.append(metadata, var)
+
+            for var in points.core.directions():
+                metadata = meta_dict.get(var)
+                points.meta.append(metadata, var)
+
         if not cls.core.static or dynamic: # Try to decode variables from the dataset if we have a dynamic core
             if cls.core.static:
                 points.core.static = False
@@ -297,12 +308,13 @@ class Skeleton:
                     points.add_datavar(var)
                     var, __ = gp.decode(var)
                     points.set(var, ds.get(ds_var))
-                    points.meta.append(ds.get(ds_var).attrs, name=var)
+                    metadata = meta_dict.get(var) or ds.get(ds_var).attrs
+                    points.meta.append(metadata, name=var)
             
             if cls.core.static:
                 points.core.static = True
-
-        points.meta.set(ds.attrs)
+        metadata = meta_dict.get('_global_') or ds.attrs
+        points.meta.set(metadata)
 
         return points
 
@@ -946,11 +958,20 @@ class Skeleton:
         if "x" in present_spatial_coords:
             return ["x"]
 
-    def ds(self) -> Union[xr.Dataset, None]:
-        """Returns the underlying Xarray Dataset. None if dosen't exist."""
+    def ds(self, compile: bool=False) -> Union[xr.Dataset, None]:
+        """Returns the underlying Xarray Dataset. None if dosen't exist.
+        
+        compile [default False]: Add magnitudes and directions to the Dataset (performs deepcopy!)"""
         if not hasattr(self, "_ds_manager"):
             return None
-        return self._ds_manager.ds()
+        ds = self._ds_manager.ds()
+        if compile:
+            ds = deepcopy(ds)
+            for mag in self.core.magnitudes():
+                ds[mag] = self.get(mag, data_array=True)
+            for dirs in self.core.directions():
+                ds[dirs] = self.get(dirs, data_array=True)
+        return ds
 
     def size(
         self, coord_group: str = "all", squeeze: bool = False, **kwargs

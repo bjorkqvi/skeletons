@@ -125,9 +125,9 @@ class ResampleManager:
         for key, value in new_data.items():
             new_skeleton.set(key, value)
 
-        new_skeleton = new_skeleton.from_ds(new_skeleton.ds().dropna(dim="time"))
+        new_skeleton = new_skeleton.from_ds(new_skeleton.ds().dropna(dim="time"), meta_dict=new_skeleton.meta.meta_dict())
         if not dropna:
             new_skeleton = new_skeleton.from_ds(
-                new_skeleton.ds().resample(time=f"{dt}h", **kwargs).nearest(tolerance=f"{dt / 2}h")
+                new_skeleton.ds().resample(time=f"{dt}h",**kwargs).nearest(tolerance=f"{dt / 2}h"),  meta_dict=new_skeleton.meta.meta_dict()
             )
         return new_skeleton
