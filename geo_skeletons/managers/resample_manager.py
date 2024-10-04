@@ -2,7 +2,7 @@ import pandas as pd
 import geo_parameters as gp
 import numpy as np
 from scipy.stats import circmean
-
+from typing import Union, Optional
 
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
@@ -59,7 +59,7 @@ class ResampleManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
 
-    def time(self, dt: str | pd.Timedelta, dropna: bool = True, **kwargs):
+    def time(self, dt: Union[str, pd.Timedelta], dropna: bool = True, **kwargs):
         """Resamples all data in time"""
         coord_dict = self.skeleton.coord_dict()
         if "time" not in coord_dict.keys():
