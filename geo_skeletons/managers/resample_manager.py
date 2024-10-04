@@ -72,7 +72,7 @@ class ResampleManager:
 
         # Create new skeleton with hourly values
         new_skeleton = self.skeleton.from_coord_dict(coord_dict)
-
+        dt = new_skeleton.dt() # float of hours
         new_data = {}
         for var in self.skeleton.core.data_vars():
             mean_func, attr_str = set_up_mean_func(
@@ -82,8 +82,8 @@ class ResampleManager:
                 {"resample_method": attr_str},
                 var,
             )
-            # Make sure the angular values are given as math-directions for averaging
-            new_data[var] = self.skeleton.ds()[var].resample(time=dt,**kwargs).reduce(mean_func)
+            # Some version of python/xarray didn't like pd.Timedeltas in the resample method, so forcing to string
+            new_data[var] = self.skeleton.ds()[var].resample(time=f"{dt}h",**kwargs).reduce(mean_func)
 
         for key, value in new_data.items():
             new_skeleton.set(key, value)
@@ -91,6 +91,6 @@ class ResampleManager:
         new_skeleton = new_skeleton.from_ds(new_skeleton.ds().dropna(dim="time"))
         if not dropna:
             new_skeleton = new_skeleton.from_ds(
-                new_skeleton.ds().resample(time=dt, **kwargs).nearest(tolerance=dt / 2)
+                new_skeleton.ds().resample(time=f"{dt}h", **kwargs).nearest(tolerance=f"{dt / 2}h")
             )
         return new_skeleton
