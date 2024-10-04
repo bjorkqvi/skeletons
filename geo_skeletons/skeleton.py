@@ -815,6 +815,7 @@ class Skeleton:
         dir_type = dir_type or self.core.get(name).dir_type
         data = dir_conversions.compute_math_direction(x_data, y_data)
         data = dir_conversions.convert_from_math_dir(data, dir_type=dir_type)
+        data = data.assign_attrs(self.meta.get(name))
 
         return data
 
@@ -851,6 +852,7 @@ class Skeleton:
             x_data = self.dask.undask_me(x_data)
 
         data = dir_conversions.compute_magnitude(x_data, y_data)
+        data = data.assign_attrs(self.meta.get(name))
 
         return data
 
