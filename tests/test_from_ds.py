@@ -93,7 +93,6 @@ def test_add_dynamic_var():
     grid.add_datavar('test')
     grid.set_spacing(nx=4, ny=5)
     grid.set_test(2)
-    
     grid2 = grid.from_ds(grid.ds())
     assert grid.core.all_objects() == grid2.core.all_objects()
 
