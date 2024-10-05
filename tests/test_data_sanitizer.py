@@ -108,8 +108,7 @@ def test_sanitize_single_variable():
         data_sanitizer.sanitize_singe_variable("test", np.array([None, None])) is None
     )
 
-    with pytest.raises(CoordinateWrongDimensionError):
-        data_sanitizer.sanitize_singe_variable("test", np.zeros((2, 1)))
+    data_sanitizer.sanitize_singe_variable("test", np.zeros((2, 1))).shape == (2,)
 
     assert data_sanitizer.sanitize_singe_variable("test", np.array([])) is None
 

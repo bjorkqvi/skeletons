@@ -242,6 +242,8 @@ class Skeleton:
         dynamic [default: False] Allows creation of new data variables even for a static Skeleton"""
 
         meta_dict = meta_dict or {}
+        core_aliases = core_aliases or {}
+        ds_aliases = ds_aliases or {}
         
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         core_vars, core_coords = identify_core_in_ds(cls.core, ds, aliases=core_aliases)
@@ -317,16 +319,17 @@ class Skeleton:
                     coords = _remap_coords(ds_var, core_coords, coords_needed, ds)
                     # Determine coord_group
                     coord_group = None
-                    for cg in ['all', 'grid', 'gridpoint', 'spatial']:
+                    for cg in ['spatial','all', 'grid', 'gridpoint']:
                         if coords == points.core.coords(cg):
                             coord_group = cg
+
                     if coord_group is not None:
                         points.add_datavar(var, coord_group=coord_group)
                         var, __ = gp.decode(var)
                         points.set(var, ds.get(ds_var), coords=coords)
                         metadata = meta_dict.get(var) or ds.get(ds_var).attrs
                         points.meta.append(metadata, name=var)
-            
+                    
             if cls.core.static:
                 points.core.static = True
         metadata = meta_dict.get('_global_') or ds.attrs
@@ -1441,7 +1444,7 @@ class Skeleton:
 
 def _remap_coords(ds_var: str,core_coords: dict, coords_needed: list[str], ds: xr.Dataset):
     if set(ds.get(ds_var).dims).issubset(coords_needed):
-        return ds.get(ds_var).dims
+        return list(ds.get(ds_var).dims)
 
     # Need to rename the coordinates so they can be used in the reshape
     reversed_dict = {}
