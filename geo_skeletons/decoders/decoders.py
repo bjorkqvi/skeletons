@@ -16,10 +16,10 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
     
     Returns:
     
-    core_vars (dict): maps the core variable [str] to a Dataset variable [str]
     core_coords (dict): maps the core coordinate [str] to a Dataset coordinate [str]
-    coords_needed (list [str]): list of all coordinate names that are needed to succsessfully initialize the core
+    core_vars (dict): maps the core variable [str] to a Dataset variable [str]
     coord_map (dict[str, list[str]]): Gives the list of core coordinate for every core variable so that the order matches the Dataset
+    coords_needed (list [str]): list of all coordinate names that are needed to succsessfully initialize the core
     
     Ex. 
     Skeleton has:
@@ -102,7 +102,7 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
     for var, ds_var in core_vars.items():
         coord_map[var] = _remap_coords(ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton )
 
-    return core_vars, core_coords, coords_needed, coord_map
+    return core_coords, core_vars, coord_map, coords_needed
 
 def _get_var_from_ds(var, aliases_str, core, ds):
     # 1) Use aliases mapping if exists
@@ -267,3 +267,22 @@ def _var_is_coordinate(var, aliases) -> bool:
         if aliases.get(var) in DICT_OF_COORDS.values():
             return True
     return False
+
+
+def core_dicts_from_ds(ds, core_coords, core_vars, data_array: bool = False):
+    """Feed the dicts from 'identify_core_in_ds' to get the actual data values as a dict
+    
+    Set data_array = True to get Dataarrays"""
+    coord_dict = {}
+    data_dict = {}
+    for var, ds_var in core_coords.items():
+        coord_dict[var] = ds.get(ds_var)
+        if not data_array:
+            coord_dict[var] = coord_dict[var].data
+
+    for var, ds_var in core_vars.items():
+        data_dict[var] = ds.get(ds_var)
+        if not data_array:
+            data_dict[var] = data_dict[var].data
+
+    return coord_dict, data_dict
