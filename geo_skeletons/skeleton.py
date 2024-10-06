@@ -195,6 +195,10 @@ class Skeleton:
         return cls(**coord_dict)
 
     @classmethod
+    def from_netcdf(cls, filename: str, **kwargs) -> "Skeleton":
+        return cls.from_ds(xr.open_dataset(filename), name = f'Created from {filename}', **kwargs)
+
+    @classmethod
     def from_ds(
         cls,
         ds: xr.Dataset,
@@ -205,6 +209,7 @@ class Skeleton:
         ds_aliases: dict[str, Union[MetaParameter, str]] = None,
         dynamic: bool = False,
         meta_dict: dict = None, 
+        name: str = 'LonelySkeleton',
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton from an xarray Dataset.
@@ -259,7 +264,7 @@ class Skeleton:
             coords[coord] = val
 
         # Initialize Skeleton
-        name = ds.attrs.get("name") or "LonelySkeleton"
+        name = ds.attrs.get("name") or name
         points = cls(**coords, chunks=chunks, name=name)
 
         if core_vars: # Only set the ones already existing in the core
@@ -270,7 +275,7 @@ class Skeleton:
                 points.core.static = False
             
             points, core_vars, coord_map = add_dynamic_vars_from_ds(points, ds, core_coords=core_coords,core_aliases=core_aliases, keep_ds_names=keep_ds_names,aliases=ds_aliases)
-            
+
             if cls.core.static:
                 points.core.static = True
             
