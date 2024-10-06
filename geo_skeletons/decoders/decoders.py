@@ -65,7 +65,12 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
     if not missing_coords.issubset(set(allowed_misses)) and strict:
         raise GridError(f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!")
 
-    return core_vars, core_coords, coords_needed, list(missing_coords)
+    coord_map = {}
+    for var, ds_var in core_vars.items():
+        coord_map[var] = _remap_coords(ds_var, core_coords, coords_needed, ds)
+
+
+    return core_vars, core_coords, coords_needed, list(missing_coords), coord_map
 
 
 def _get_var_from_ds(var, aliases_str, core, ds):
@@ -99,6 +104,40 @@ def _get_var_from_ds(var, aliases_str, core, ds):
                     return alias_var
 
     return None
+
+
+def _remap_coords(ds_var: str,core_coords: dict, coords_needed: list[str], ds: xr.Dataset):
+    """Maps the coordinates of a single Dataarray to the coordinates of the core variavle"""
+    
+    if set(ds.get(ds_var).dims).issubset(coords_needed):
+        return list(ds.get(ds_var).dims)
+
+    # Need to rename the coordinates so they can be used in the reshape
+    reversed_dict = {}
+    for key, value in core_coords.items():
+        reversed_dict[value] = key
+
+    coords = []
+    missed_coords = []
+    for n, ds_c in enumerate(ds.get(ds_var).dims):
+        core_c = reversed_dict.get(ds_c)
+        if core_c in coords_needed:
+            coords.append(core_c)
+        else:
+            coords.append(None)
+            missed_coords.append((n, ds_c))
+
+    # Data can be given as x-y with trivial y for example
+    if 'inds' not in coords:
+        for (n, ds_c) in missed_coords:
+            if len(ds.get(ds_c))> 1:
+                coords[n] = 'inds'
+    coords = [c for c in coords if c is not None]
+    return coords
+
+
+
+
 
 LON_ALIASES = ['lon', 'longitude']
 LAT_ALIASES = ['lat', 'latitude']
