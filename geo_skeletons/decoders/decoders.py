@@ -5,7 +5,7 @@ import geo_parameters as gp
 from typing import Union
 from geo_skeletons.errors import GridError
 
-def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[Union[str, MetaParameter], str] = None, strict:bool=True) -> tuple[dict[str, str],dict[str, str],list[str]]:
+def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[Union[str, MetaParameter], str] = None, allowed_misses: list[str] = None,strict:bool=True) -> tuple[dict[str, str],dict[str, str],list[str], list[str]]:
     """Identify the variables in the Dataset that matches the variables in the Skeleton core
 
     1) If 'aliases' (core-name: ds-name) mapping is given, that is used first. Key can be either a str or a MetaParameter
@@ -15,6 +15,8 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
     3) Use trivial matching (same name in skeleton and Dataset)"""
    
     # Start by remapping any possible MetaParameters to a string s
+    allowed_misses = allowed_misses or []
+
     aliases_str = {}
     if aliases is not None:
         for core_var, ds_var in aliases.items():
@@ -48,8 +50,10 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
     lonlat_set = core_coords.get('lon') is not None and core_coords.get('lat') is not None
     
 
+    grid_miss_allowed = ('x' in allowed_misses and 'y' in allowed_misses) or ('lon' in allowed_misses and 'lat' in allowed_misses)
+
     if not lonlat_set and not xy_set:
-        if strict:
+        if strict and not grid_miss_allowed:
             raise GridError("Can't find x/y lon/lat pair in Dataset!")
         # Remove the unused pari x/y or lon/lat
         # Both lon/lat and x/y can be present. Then use lon/lat, since x/y can just be a bad version of x=inds and y=trivial
@@ -57,8 +61,11 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
     else:
         coords_needed = core.coords('init', cartesian=(not lonlat_set))
 
+    missing_coords = set(coords_needed) - set(core_coords.keys())
+    if not missing_coords.issubset(set(allowed_misses)) and strict:
+        raise GridError(f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!")
 
-    return core_vars, core_coords, coords_needed
+    return core_vars, core_coords, coords_needed, list(missing_coords)
 
 
 def _get_var_from_ds(var, aliases_str, core, ds):

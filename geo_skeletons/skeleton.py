@@ -246,13 +246,9 @@ class Skeleton:
         ds_aliases = ds_aliases or {}
         
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
-        core_vars, core_coords, coords_needed = identify_core_in_ds(cls.core, ds, aliases=core_aliases)
+        core_vars, core_coords, coords_needed, __ = identify_core_in_ds(cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys()))
         
        
-        missing_coords = set(coords_needed) - set(core_coords.keys()).union(set(kwargs.keys()))
-        if missing_coords:
-            raise ValueError(f"Coordinates {missing_coords} not found in dataset or provided as keywords!")
-
         # Gather other coordinates
         coords = {}
         for coord in coords_needed:
