@@ -4,7 +4,7 @@ from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager
-from .decoders import identify_core_in_ds, set_core_vars_to_skeleton_from_ds, set_dynamic_variables_to_skeleton_from_ds
+from .decoders import identify_core_in_ds, set_core_vars_to_skeleton_from_ds, set_dynamic_variables_to_skeleton_from_ds, find_settable_dynamic_vars
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
@@ -245,7 +245,7 @@ class Skeleton:
         ds_aliases = ds_aliases or {}
         
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
-        core_vars, core_coords, coords_needed, _missing_coords, coord_map = identify_core_in_ds(cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys()))
+        core_vars, core_coords, coords_needed, coord_map = identify_core_in_ds(cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys()))
         
        
         # Gather coordinates
@@ -264,15 +264,21 @@ class Skeleton:
 
         if core_vars: # Only set the ones already existing in the core
             points = set_core_vars_to_skeleton_from_ds(points, ds, core_vars, coord_map, meta_dict, data_vars)
+        
         if not cls.core.static or dynamic: # Try to decode variables from the dataset if we have a dynamic core
             if cls.core.static:
                 points.core.static = False
             
-            points = set_dynamic_variables_to_skeleton_from_ds(points, ds, core_aliases=core_aliases, core_coords=core_coords, coords_needed=coords_needed,meta_dict=meta_dict,keep_ds_names=keep_ds_names,aliases=ds_aliases,data_vars=data_vars)
-            
+            settable_vars = find_settable_dynamic_vars(points, ds, core_aliases=core_aliases, core_coords=core_coords, coords_needed=coords_needed,keep_ds_names=keep_ds_names,aliases=ds_aliases)
+
+            for ds_var, value in settable_vars.items():
+                points.add_datavar(value['var'],coord_group=value['coord_group'])
+           
+            points = set_dynamic_variables_to_skeleton_from_ds(points, ds, settable_vars=settable_vars,meta_dict =meta_dict,data_vars=data_vars)
                     
             if cls.core.static:
                 points.core.static = True
+
         metadata = meta_dict.get('_global_') or ds.attrs
         points.meta.set(metadata)
 
