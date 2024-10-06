@@ -4,8 +4,7 @@ from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager
-from .decoders import identify_core_in_ds, map_ds_to_gp
-
+from .decoders import identify_core_in_ds, map_ds_to_gp,set_core_vars_to_skeleton_from_ds
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
@@ -246,17 +245,14 @@ class Skeleton:
         ds_aliases = ds_aliases or {}
         
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
-        core_vars, core_coords, coords_needed, __ = identify_core_in_ds(cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys()))
+        core_vars, core_coords, coords_needed, _missing_coords, coord_map = identify_core_in_ds(cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys()))
         
        
-        # Gather other coordinates
+        # Gather coordinates
         coords = {}
         for coord in coords_needed:
-            if core_coords.get(coord) is not None: # Found in ds
-                val = ds.get(core_coords.get(coord))
-            else:
-                val = kwargs.get(coord)
-            
+            val = ds.get(core_coords.get(coord)) if core_coords.get(coord) is not None else kwargs.get(coord)
+                  
             if isinstance(val, xr.DataArray):
                 val = val.data
             
@@ -264,25 +260,10 @@ class Skeleton:
 
         # Initialize Skeleton
         name = ds.attrs.get("name") or "LonelySkeleton"
-        points = cls(**coords,chunks=chunks, name=name)
+        points = cls(**coords, chunks=chunks, name=name)
 
         if core_vars: # Only set the ones already existing in the core
-            for var, ds_var in core_vars.items():
-                if not data_vars or ds_var in data_vars: # If list is specified, only add those variables 
-                    coords = _remap_coords(ds_var, core_coords, coords_needed, ds)
-                    
-                    points.set(var, ds.get(ds_var), coords=coords)
-                    metadata = meta_dict.get(var) or ds.get(ds_var).attrs
-                    points.meta.append(metadata, name=var)
-        
-            for var in points.core.magnitudes():
-                metadata = meta_dict.get(var)
-                points.meta.append(metadata, var)
-
-            for var in points.core.directions():
-                metadata = meta_dict.get(var)
-                points.meta.append(metadata, var)
-
+            points = set_core_vars_to_skeleton_from_ds(points, ds, core_vars, coord_map, meta_dict, data_vars)
         if not cls.core.static or dynamic: # Try to decode variables from the dataset if we have a dynamic core
             if cls.core.static:
                 points.core.static = False
