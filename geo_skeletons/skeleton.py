@@ -196,6 +196,9 @@ class Skeleton:
 
     @classmethod
     def from_netcdf(cls, filename: str, **kwargs) -> "Skeleton":
+        """Generates a instance of the Skeleton class from a netcdf. 
+        
+        For information about the keywords, see the from_ds-method"""
         return cls.from_ds(xr.open_dataset(filename), name = f'Created from {filename}', **kwargs)
 
     @classmethod
