@@ -52,9 +52,10 @@ def add_dynamic_vars_from_ds(skeleton, ds:xr.Dataset, core_coords:dict, core_ali
             var_exists = var_str in skeleton.core.data_vars()
 
         var_exists = var_exists or var in core_aliases.values()
-        if not data_vars or ds_var in data_vars and not var_exists:
+
+        if (not data_vars or ds_var in data_vars) and not var_exists:
             # 2) Find suitable coordinate group
-            coords = _remap_coords(ds_var, core_coords, list(core_coords.keys()), ds, is_pointskeleton=not skeleton.is_gridded())
+            coords = _remap_coords(ds_var, core_coords, skeleton.core.coords('init'), ds, is_pointskeleton=not skeleton.is_gridded())
             # Determine coord_group
             coord_group = None
             for cg in ['spatial','all', 'grid', 'gridpoint']:
@@ -64,6 +65,7 @@ def add_dynamic_vars_from_ds(skeleton, ds:xr.Dataset, core_coords:dict, core_ali
             if coord_group is not None:
                 settable_vars[ds_var] = (var, coord_group, coords)
     
+
     for ds_var, (var, coord_group, coords) in settable_vars.items():
         var_str, __ = gp.decode(var)
         core_vars[var_str] = ds_var
