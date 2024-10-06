@@ -4,7 +4,7 @@ from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager
-from .decoders import identify_core_in_ds, map_ds_to_gp,set_core_vars_to_skeleton_from_ds
+from .decoders import identify_core_in_ds, set_core_vars_to_skeleton_from_ds, set_dynamic_variables_to_skeleton_from_ds
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
@@ -268,30 +268,8 @@ class Skeleton:
             if cls.core.static:
                 points.core.static = False
             
-            ds_aliases = ds_aliases or {}
-            mapped_vars, __ = map_ds_to_gp(ds, keep_ds_names=keep_ds_names, aliases=ds_aliases)
-            for ds_var, var in mapped_vars.items():
-                var_str, __ = gp.decode(var)
-                if __ is not None:
-                    var_exists = points.core.find_cf(var.standard_name()) != [] or var_str in points.core.data_vars()
-                else:
-                    var_exists = var_str in points.core.data_vars()
-
-                var_exists = var_exists or var in core_aliases.values()
-                if (not data_vars or ds_var in data_vars) and not var_exists: # If list is specified, only add those variables
-                    coords = _remap_coords(ds_var, core_coords, coords_needed, ds)
-                    # Determine coord_group
-                    coord_group = None
-                    for cg in ['spatial','all', 'grid', 'gridpoint']:
-                        if coords == points.core.coords(cg):
-                            coord_group = cg
-
-                    if coord_group is not None:
-                        points.add_datavar(var, coord_group=coord_group)
-                        var, __ = gp.decode(var)
-                        points.set(var, ds.get(ds_var), coords=coords)
-                        metadata = meta_dict.get(var) or ds.get(ds_var).attrs
-                        points.meta.append(metadata, name=var)
+            points = set_dynamic_variables_to_skeleton_from_ds(points, ds, core_aliases=core_aliases, core_coords=core_coords, coords_needed=coords_needed,meta_dict=meta_dict,keep_ds_names=keep_ds_names,aliases=ds_aliases,data_vars=data_vars)
+            
                     
             if cls.core.static:
                 points.core.static = True

@@ -1,2 +1,2 @@
 from .decoders import identify_core_in_ds, map_ds_to_gp
-from .setters import set_core_vars_to_skeleton_from_ds
+from .setters import set_core_vars_to_skeleton_from_ds, set_dynamic_variables_to_skeleton_from_ds
