@@ -12,7 +12,39 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
     
     2) Tries to use the standard_name set in the geo-parameters
     
-    3) Use trivial matching (same name in skeleton and Dataset)"""
+    3) Use trivial matching (same name in skeleton and Dataset)
+    
+    Returns:
+    
+    core_vars (dict): maps the core variable [str] to a Dataset variable [str]
+    core_coords (dict): maps the core coordinate [str] to a Dataset coordinate [str]
+    coords_needed (list [str]): list of all coordinate names that are needed to succsessfully initialize the core
+    coord_map (dict[str, list[str]]): Gives the list of core coordinate for every core variable so that the order matches the Dataset
+    
+    Ex. 
+    Skeleton has:
+     - one variables gp.wave.Hs('hs') 
+     - defined over 'time', 'inds', 'freq'
+     - 'lon' and 'lat' specifying the 'inds'
+
+     Dataset has:
+      - one variable 'swh' with standard_name 'sea_surface_wave_significant_height'
+      - defined over 'x', 'y', 'time', 'frequency'
+      - 'x' defines number of points and 'y' is trivial
+      - 'longitude', 'latitude' defined over 'x' and 'y'
+
+    # Based on matching standard_name to geo-parameter
+    core_vars = {'hs': 'swh'}
+    # Short-long name equivalence of 'lon', 'freq' etc. hardcoded
+    core_coords = {'time': 'time', 'lon': 'longitude', 'lat': 'latitude', 'freq': 'frequency'}
+    coords_needed = {'lon','lat','time','freq'}
+    # 'inds' not matched vs. 'x' and 'y' => 'x' non-trivial so mapped to 'inds'
+    coord_map = {'hs': ['inds','time','freq']}
+
+    Now skeleton can be initialized and data 'hs' set:
+    skeleton = SkeletonClass(**core_cords)
+    for var, ds_var in core_vars.items():
+        skeleton.set(var, ds.get(ds_var), coords=coord_map[var])"""
    
     # Start by remapping any possible MetaParameters to a string s
     allowed_misses = allowed_misses or []
@@ -66,12 +98,11 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
         raise GridError(f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!")
 
     coord_map = {}
+    is_pointskeleton='inds' in core.coords('all')
     for var, ds_var in core_vars.items():
-        coord_map[var] = _remap_coords(ds_var, core_coords, coords_needed, ds)
+        coord_map[var] = _remap_coords(ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton )
 
-
-    return core_vars, core_coords, coords_needed, list(missing_coords), coord_map
-
+    return core_vars, core_coords, coords_needed, coord_map
 
 def _get_var_from_ds(var, aliases_str, core, ds):
     # 1) Use aliases mapping if exists
@@ -106,7 +137,7 @@ def _get_var_from_ds(var, aliases_str, core, ds):
     return None
 
 
-def _remap_coords(ds_var: str,core_coords: dict, coords_needed: list[str], ds: xr.Dataset):
+def _remap_coords(ds_var: str,core_coords: dict, coords_needed: list[str], ds: xr.Dataset, is_pointskeleton: bool):
     """Maps the coordinates of a single Dataarray to the coordinates of the core variavle"""
     
     if set(ds.get(ds_var).dims).issubset(coords_needed):
@@ -119,6 +150,7 @@ def _remap_coords(ds_var: str,core_coords: dict, coords_needed: list[str], ds: x
 
     coords = []
     missed_coords = []
+    max_len_of_missed_coords = 0
     for n, ds_c in enumerate(ds.get(ds_var).dims):
         core_c = reversed_dict.get(ds_c)
         if core_c in coords_needed:
@@ -126,11 +158,12 @@ def _remap_coords(ds_var: str,core_coords: dict, coords_needed: list[str], ds: x
         else:
             coords.append(None)
             missed_coords.append((n, ds_c))
+            max_len_of_missed_coords = max(max_len_of_missed_coords,len(ds.get(ds_c)))
 
     # Data can be given as x-y with trivial y for example
-    if 'inds' not in coords:
+    if 'inds' not in coords and is_pointskeleton:
         for (n, ds_c) in missed_coords:
-            if len(ds.get(ds_c))> 1:
+            if len(ds.get(ds_c))> 1 or max_len_of_missed_coords == 1:
                 coords[n] = 'inds'
     coords = [c for c in coords if c is not None]
     return coords
