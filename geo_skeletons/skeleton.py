@@ -246,23 +246,9 @@ class Skeleton:
         ds_aliases = ds_aliases or {}
         
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
-        core_vars, core_coords = identify_core_in_ds(cls.core, ds, aliases=core_aliases)
+        core_vars, core_coords, coords_needed = identify_core_in_ds(cls.core, ds, aliases=core_aliases)
         
-        # All coordinates needed to initialize the skeleton (contains both x/y and lon/lat)
-        coords_needed = cls.core.coords('init')
-
-        xy_set = core_coords.get('x') is not None and core_coords.get('y') is not None
-        lonlat_set = core_coords.get('lon') is not None and core_coords.get('lat') is not None
-        
-        # Remove the unused pari x/y or lon/lat
-        if xy_set:
-            coords_needed = cls.core.coords('init', cartesian=True)
-        if lonlat_set:
-            coords_needed = cls.core.coords('init', cartesian=False)
-
-        if not lonlat_set and not xy_set:
-            raise ValueError("Can't find x/y lon/lat pair in Dataset!")
-        
+       
         missing_coords = set(coords_needed) - set(core_coords.keys()).union(set(kwargs.keys()))
         if missing_coords:
             raise ValueError(f"Coordinates {missing_coords} not found in dataset or provided as keywords!")

@@ -3,8 +3,9 @@ import xarray as xr
 from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union
+from geo_skeletons.errors import GridError
 
-def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[Union[str, MetaParameter], str] = None) -> dict[str, str]:
+def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[Union[str, MetaParameter], str] = None, strict:bool=True) -> tuple[dict[str, str],dict[str, str],list[str]]:
     """Identify the variables in the Dataset that matches the variables in the Skeleton core
 
     1) If 'aliases' (core-name: ds-name) mapping is given, that is used first. Key can be either a str or a MetaParameter
@@ -42,7 +43,22 @@ def identify_core_in_ds(core: CoordinateManager, ds: xr.Dataset, aliases: dict[U
         ds_var =  _get_var_from_ds(var, aliases_str, core, ds)
         if ds_var is not None:
             core_vars[var] = ds_var
-    return core_vars, core_coords
+    
+    xy_set = core_coords.get('x') is not None and core_coords.get('y') is not None
+    lonlat_set = core_coords.get('lon') is not None and core_coords.get('lat') is not None
+    
+
+    if not lonlat_set and not xy_set:
+        if strict:
+            raise GridError("Can't find x/y lon/lat pair in Dataset!")
+        # Remove the unused pari x/y or lon/lat
+        # Both lon/lat and x/y can be present. Then use lon/lat, since x/y can just be a bad version of x=inds and y=trivial
+        coords_needed = core.coords('init')
+    else:
+        coords_needed = core.coords('init', cartesian=(not lonlat_set))
+
+
+    return core_vars, core_coords, coords_needed
 
 
 def _get_var_from_ds(var, aliases_str, core, ds):
