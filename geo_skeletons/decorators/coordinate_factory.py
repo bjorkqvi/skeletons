@@ -42,8 +42,7 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
 
     if not c.core._is_altered():
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-        c.meta = deepcopy(c.meta)
-        c.meta._coord_manager = c.core
+        c.meta = c.core.meta
     name_str, meta = gp.decode(name)
 
     coord_group = "grid" if grid_coord else "gridpoint"
@@ -113,7 +112,7 @@ def add_time(grid_coord: bool = False):
             else:
                 return list(unique_times(times, fmt))
 
-        def dt(self) -> Union[float ,None]:
+        def dt(self) -> Union[float, None]:
             """Returns the time step in hours"""
             if self.ds() is None:
                 return None
@@ -148,17 +147,17 @@ def add_time(grid_coord: bool = False):
 
         if not c.core._is_altered():
             c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+            c.meta = c.core.meta
         coord_group = "grid" if grid_coord else "gridpoint"
         coord_var = Coordinate(
             name="time",
             meta=None,
             coord_group=coord_group,
         )
-        c.core.add_coord(coord_var)
-        c.time = get_time
 
+        c.core.add_coord(coord_var)
+
+        c.time = get_time
         c.hours = hours
         c.days = days
         c.months = months
@@ -187,8 +186,7 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
 
         if not c.core._is_altered():
             c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+            c.meta = c.core.meta
         name_str, meta = gp.decode(name)
 
         coord_group = "grid" if grid_coord else "gridpoint"
@@ -229,8 +227,7 @@ def add_direction(
 
         if not c.core._is_altered():
             c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+            c.meta = c.core.meta
         name_str, meta = gp.decode(name)
         coord_group = "grid" if grid_coord else "gridpoint"
         coord_var = Coordinate(
@@ -244,9 +241,9 @@ def add_direction(
         return c
 
     if name is None:
-        if dir_type == 'from':
+        if dir_type == "from":
             name = DirsFrom
-        elif dir_type == 'to':
+        elif dir_type == "to":
             name = DirsTo
         else:
             name = Dirs
