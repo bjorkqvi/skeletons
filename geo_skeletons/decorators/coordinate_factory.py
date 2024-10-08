@@ -67,7 +67,7 @@ def add_coord(name: Union[str, MetaParameter] = "dummy", grid_coord: bool = Fals
     return partial(coord_decorator, name, grid_coord)
 
 
-def add_time(grid_coord: bool = False):
+def add_time(grid_coord: bool = True):
     def wrapper(c):
         def unique_times(times, strf: str):
             return np.unique(np.array(pd.to_datetime(times).strftime(strf).to_list()))
