@@ -5,11 +5,10 @@ import geo_parameters as gp
 from typing import Union
 from geo_skeletons.errors import GridError
 from geo_skeletons.coordinate_archive import (
-    TIME_ALIASES,
-    X_ALIASES,
-    Y_ALIASES,
     LON_ALIASES,
     LAT_ALIASES,
+    X_ALIASES,
+    Y_ALIASES,
     TIME_ALIASES,
     FREQ_ALIASES,
     DIRS_ALIASES,
@@ -66,32 +65,19 @@ def identify_core_in_ds(
     # Start by remapping any possible MetaParameters to a string
     allowed_misses = allowed_misses or []
 
-    aliases_str = {}
-    if aliases is not None:
-        for core_var, ds_var in aliases.items():
-            name, param = gp.decode(core_var)
-            if param is not None:
-                name = core.find_cf(param.standard_name())
-                if (
-                    name is not None and len(name) == 1
-                ):  # Found exactly one matching name
-                    if ds_var in ds.data_vars:  # Only add it if it actually exists
-                        aliases_str[name[0]] = ds_var
-            else:
-                if ds_var in ds.data_vars:  # Only add it if it actually exists
-                    aliases_str[name] = ds_var
+    aliases = _remap_core_aliase_keys_to_strings(aliases, core, ds)
 
     core_vars = {}
     core_coords = {}
     coords = core.coords("init")
 
     for coord in coords:
-        ds_coord = _get_var_from_ds(coord, aliases_str, core, ds)
+        ds_coord = _get_var_from_ds(coord, aliases, core, ds)
         if ds_coord is not None:
             core_coords[coord] = ds_coord
 
     for var in core.non_coord_objects():
-        ds_var = _get_var_from_ds(var, aliases_str, core, ds)
+        ds_var = _get_var_from_ds(var, aliases, core, ds)
         if ds_var is not None:
             core_vars[var] = ds_var
 
@@ -129,11 +115,45 @@ def identify_core_in_ds(
     return core_coords, core_vars, coord_map, coords_needed
 
 
-def _get_var_from_ds(var, aliases_str, core, ds):
-    """Gets a given coordinate (possibly given as a geo-parameter) from a Dataset"""
+def core_dicts_from_ds(ds, core_coords, core_vars, data_array: bool = False):
+    """Feed the dicts from 'identify_core_in_ds' to get the actual data values as a dict
+
+    Set data_array = True to get Dataarrays"""
+    coord_dict = {}
+    data_dict = {}
+    for var, ds_var in core_coords.items():
+        coord_dict[var] = ds.get(ds_var)
+        if not data_array:
+            coord_dict[var] = coord_dict[var].data
+
+    for var, ds_var in core_vars.items():
+        data_dict[var] = ds.get(ds_var)
+        if not data_array:
+            data_dict[var] = data_dict[var].data
+
+    return coord_dict, data_dict
+
+
+def _get_var_from_ds(
+    var: str, aliases: dict[str, str], core: CoordinateManager, ds: xr.Dataset
+) -> Union[str, None]:
+    """Gets a given coordinate from a Dataset:
+
+    1) If a explicit alias mapping is given, return that.
+    2) Try using standard_name matching from possible geo-parameter in the core
+    3) Try to match 'var' exactly to something in the Dataset
+    4) Try to match known aliases of 'var' to something in the Dataset
+    5) Return None if not found
+
+    E.g. var = 'lon'
+    1) See if e.g. aliases['lon'] = 'some_other_name_in_ds' is defined
+    2) Get the geo-parameter gp.grid.Lon from the core and match the standard name 'longitude' to standard names in the Dataset
+    3) Try to find 'lon' directly in eiher ds.data_vars or ds.coords
+    4) Go through known aliases of 'lon' (e.g. 'longitude') and try to find the alias 'longitude' in eiher ds.data_vars or ds.coords
+    """
     # 1) Use aliases mapping if exists
-    if aliases_str.get(var) is not None:
-        return aliases_str.get(var)
+    if aliases.get(var) is not None:
+        return aliases.get(var)
 
     # 2) Try to decode using cf standard name
     param = core.meta_parameter(var)
@@ -156,7 +176,7 @@ def _get_var_from_ds(var, aliases_str, core, ds):
     if var in ds.coords:
         return var
 
-    # Reads a coordinate from a known list of aliases
+    # 4) Reads a coordinate from a known list of aliases
     for alias_list in [
         LON_ALIASES,
         LAT_ALIASES,
@@ -166,8 +186,9 @@ def _get_var_from_ds(var, aliases_str, core, ds):
         Y_ALIASES,
         TIME_ALIASES,
     ]:
-        if var in alias_list:
-            for alias_var in alias_list:
+        if var in alias_list:  # E.g. 'lon' in LON_ALIASES
+            for alias_var in alias_list:  # E.g. LON_ALIASES = ['lon','lognitude']
+                # E.g. 'longitude' in ds.data_vars
                 if alias_var in ds.coords or alias_var in ds.data_vars:
                     return alias_var
 
@@ -212,20 +233,26 @@ def _remap_coords(
     return coords
 
 
-def core_dicts_from_ds(ds, core_coords, core_vars, data_array: bool = False):
-    """Feed the dicts from 'identify_core_in_ds' to get the actual data values as a dict
-
-    Set data_array = True to get Dataarrays"""
-    coord_dict = {}
-    data_dict = {}
-    for var, ds_var in core_coords.items():
-        coord_dict[var] = ds.get(ds_var)
-        if not data_array:
-            coord_dict[var] = coord_dict[var].data
-
-    for var, ds_var in core_vars.items():
-        data_dict[var] = ds.get(ds_var)
-        if not data_array:
-            data_dict[var] = data_dict[var].data
-
-    return coord_dict, data_dict
+def _remap_core_aliase_keys_to_strings(
+    aliases: dict[Union[str, MetaParameter], str],
+    core: CoordinateManager,
+    ds: xr.Dataset,
+) -> dict[str, str]:
+    """core_aliases migh be given as e.g. {gp.wave.Hs: 'hsig'}
+    If the name in the core for gp.wave.Hs is 'hs', then we remap to {'hs': 'hsig'}
+    """
+    aliases_str = {}
+    if aliases is not None:
+        for core_var, ds_var in aliases.items():
+            name, param = gp.decode(core_var)
+            if param is not None:
+                name = core.find_cf(param.standard_name())
+                if (
+                    name is not None and len(name) == 1
+                ):  # Found exactly one matching name
+                    if ds_var in ds.data_vars:  # Only add it if it actually exists
+                        aliases_str[name[0]] = ds_var
+            else:
+                if ds_var in ds.data_vars:  # Only add it if it actually exists
+                    aliases_str[name] = ds_var
+    return aliases_str
