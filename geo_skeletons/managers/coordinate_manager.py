@@ -559,7 +559,7 @@ class CoordinateManager:
                 string += f":  {self.default_value(var)}"
                 meta_parameter = self.meta_parameter(var)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
         else:
             string += "\n    *empty*"
@@ -584,7 +584,7 @@ class CoordinateManager:
 
                 meta_parameter = self.meta_parameter(key)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
         else:
             string += "\n    *empty*"
@@ -597,7 +597,7 @@ class CoordinateManager:
                 string += f"\n  {key}: direction of ({value.x},{value.y})"
                 meta_parameter = self.meta_parameter(key)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
         else:
             string += "\n    *empty*"
