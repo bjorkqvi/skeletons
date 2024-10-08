@@ -30,16 +30,20 @@ def set_core_vars_to_skeleton_from_ds(
         ):  # If list is specified, only add those variables
 
             skeleton.set(var, ds.get(ds_var), coords=coord_map[var])
-            metadata = meta_dict.get(var) or ds.get(ds_var).attrs
-            skeleton.meta.append(metadata, name=var)
+            old_metadata = skeleton.meta.get(var)
+            skeleton.meta.append(ds.get(ds_var).attrs, name=var)
+            skeleton.meta.append(old_metadata, name=var)
+            skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
     for var in skeleton.core.magnitudes():
-        metadata = meta_dict.get(var) or {}
-        skeleton.meta.append(metadata, var)
+        old_metadata = skeleton.meta.get(var)
+        skeleton.meta.append(old_metadata, name=var)
+        skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
     for var in skeleton.core.directions():
-        metadata = meta_dict.get(var) or {}
-        skeleton.meta.append(metadata, var)
+        old_metadata = skeleton.meta.get(var)
+        skeleton.meta.append(old_metadata, name=var)
+        skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
     return skeleton
 
@@ -85,6 +89,7 @@ def add_dynamic_vars_from_ds(
                 ds,
                 is_pointskeleton=not skeleton.is_gridded(),
             )
+
             # Determine coord_group
             coord_group = None
             for cg in ["spatial", "all", "grid", "gridpoint"]:
