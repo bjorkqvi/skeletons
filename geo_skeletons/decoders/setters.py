@@ -1,5 +1,6 @@
 import xarray as xr
-from .decoders import map_ds_to_gp, _remap_coords
+from .ds_decoders import map_ds_to_gp
+from .core_decoders import _remap_coords
 import geo_parameters as gp
 
 
