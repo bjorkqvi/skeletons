@@ -114,11 +114,15 @@ def _map_ds_variable_to_geo_parameter(
 
     # 3) Use known coordinate geo-parameters or only a string_of_coords
     for alias_dict in [coord_alias_map_to_gp(), var_alias_map_to_gp()]:
-        if alias_dict.get(var.lower()) is not None:
-            if keep_ds_names:
-                return alias_dict[var.lower()](var)
+        param = alias_dict.get(var.lower())
+        if param is not None:
+            if gp.is_gp(param):
+                if keep_ds_names:
+                    return param(var)
+                else:
+                    return param()
             else:
-                return alias_dict[var.lower()]()
+                return param
 
     # Return string as is
     return var
