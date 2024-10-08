@@ -28,6 +28,7 @@ from geo_parameters.metaparameter import MetaParameter
 
 from .distance_funcs import distance_2points
 import pandas as pd
+from copy import deepcopy
 
 
 class Skeleton:
@@ -1386,7 +1387,7 @@ class Skeleton:
                     string += f":  {self.core.default_value(var)}"
                     meta_parameter = self.core.meta_parameter(var)
                     if meta_parameter is not None:
-                        string += f" [{meta_parameter.unit()}]"
+                        string += f" [{meta_parameter.units()}]"
                         string += f" {meta_parameter.standard_name()}"
 
             if empty_masks:
@@ -1409,7 +1410,7 @@ class Skeleton:
 
                 meta_parameter = self.core.meta_parameter(key)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
 
         directions = self.core.directions()
@@ -1419,7 +1420,7 @@ class Skeleton:
                 string += f"\n  {key}: direction of ({value.x},{value.y})"
                 meta_parameter = self.core.meta_parameter(key)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
 
         string += "\n" + "-" * 80
