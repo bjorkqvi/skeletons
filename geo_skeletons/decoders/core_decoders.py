@@ -4,7 +4,7 @@ from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union
 from geo_skeletons.errors import GridError
-from geo_skeletons.coordinate_archive import (
+from geo_skeletons.variable_archive import (
     LON_ALIASES,
     LAT_ALIASES,
     X_ALIASES,
@@ -201,8 +201,16 @@ def _remap_coords(
     coords_needed: list[str],
     ds: xr.Dataset,
     is_pointskeleton: bool,
-):
-    """Maps the coordinates of a single Dataarray to the coordinates of the core variable"""
+) -> list[str]:
+    """Maps the coordinates of a single Dataarray to the coordinates of the core variable. Needed be
+
+    E.g.
+    - core variable 'hs' defined over 'time', 'inds', 'freq'
+    - Matching ds variable defined over 'station', 'time', 'frequency'
+
+    function returns ['inds', 'time', 'freq']
+    Ther can be used to set data to the Skeleton without explicitly reshaping, since the dims in the Dataset have worng names
+    """
 
     if set(ds.get(ds_var).dims).issubset(coords_needed):
         return list(ds.get(ds_var).dims)

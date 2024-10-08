@@ -6,7 +6,7 @@ from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coo
 from typing import Union
 from geo_skeletons.errors import StaticSkeletonError
 
-from geo_skeletons.coordinate_archive import SPATIAL_COORDS
+from geo_skeletons.variable_archive import SPATIAL_COORDS
 
 
 class CoordinateManager:
