@@ -20,10 +20,13 @@ DIRS_ALIASES = ["dirs", "directions", "direction", "theta"]
 # List assumed data variable aliases here
 HS_ALIASES = ["hs", "hsig", "swh", "hm0", "vhm0"]
 TP_ALIASES = ["tp"]
-DIRP_ALIASES = ["dirp", "pdir"]
-DIRM_ALIASES = ["dirm", "mdir"]
 WIND_ALIASES = ["ff", "wind", "wind_speed", "windspeed"]
 WINDDIR_ALIASES = ["dd", "windir", "wind_dir", "winddir", "wind_direction"]
+XWIND_ALIASES = ["x_wind", "xwnd"]
+YWIND_ALIASES = ["y_wind", "ywnd"]
+XCURRENT_ALIASES = ["x_current", "xcur"]
+YCURRENT_ALIASES = ["y_current", "ycur"]
+DEPTH_ALIASES = ["depth", "water_depth"]
 
 
 def coord_alias_map_to_gp() -> dict[str, Union[MetaParameter, str]]:
@@ -54,13 +57,18 @@ def var_alias_map_to_gp() -> dict[str, Union[MetaParameter, str]]:
         var_dict[var] = gp.wave.Hs
     for var in TP_ALIASES:
         var_dict[var] = gp.wave.Tp
-    for var in DIRP_ALIASES:
-        var_dict[var] = gp.wave.Dirp
-    for var in DIRM_ALIASES:
-        var_dict[var] = gp.wave.Dirm
     for var in WIND_ALIASES:
         var_dict[var] = gp.wind.Wind
     for var in WINDDIR_ALIASES:
         var_dict[var] = gp.wind.WindDir
-
+    for var in XWIND_ALIASES:
+        var_dict[var] = gp.wind.XWind
+    for var in YWIND_ALIASES:
+        var_dict[var] = gp.wind.YWind
+    for var in XCURRENT_ALIASES:
+        var_dict[var] = gp.ocean.XCurrent
+    for var in YCURRENT_ALIASES:
+        var_dict[var] = gp.ocean.YCurrent
+    for var in DEPTH_ALIASES:
+        var_dict[var] = gp.ocean.WaterDepth
     return var_dict
