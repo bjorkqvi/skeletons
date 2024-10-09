@@ -329,7 +329,7 @@ class Skeleton:
         Ex: The z-variable doesn't exist in the DataSet:
             new_instance = SkeletonClass.from_ds(ds, z=[1,2,3])
 
-        dynamic [default: False] Allows creation of new data variables even for a static Skeleton
+        dynamic [default: False] Allows creation of new data variables. Otherwise limited to existing variables.
         """
 
         meta_dict = meta_dict or {}
@@ -354,10 +354,6 @@ class Skeleton:
                 val = val.data
 
             coords[coord] = val
-
-
-
-
 
         if dynamic:  # Try to decode variables from the dataset
             cls, core_vars, coord_map = add_dynamic_vars_from_ds(
