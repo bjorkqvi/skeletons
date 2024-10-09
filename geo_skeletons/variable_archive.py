@@ -21,7 +21,6 @@ DIRS_ALIASES = ["dirs", "directions", "direction", "theta"]
 HS_ALIASES = ["hs", "hsig", "swh", "hm0", "vhm0"]
 TP_ALIASES = ["tp"]
 WIND_ALIASES = ["ff", "wind", "wind_speed", "windspeed"]
-WINDDIR_ALIASES = ["dd", "windir", "wind_dir", "winddir", "wind_direction"]
 XWIND_ALIASES = ["x_wind", "xwnd"]
 YWIND_ALIASES = ["y_wind", "ywnd"]
 XCURRENT_ALIASES = ["x_current", "xcur"]
@@ -59,8 +58,6 @@ def var_alias_map_to_gp() -> dict[str, Union[MetaParameter, str]]:
         var_dict[var] = gp.wave.Tp
     for var in WIND_ALIASES:
         var_dict[var] = gp.wind.Wind
-    for var in WINDDIR_ALIASES:
-        var_dict[var] = gp.wind.WindDir
     for var in XWIND_ALIASES:
         var_dict[var] = gp.wind.XWind
     for var in YWIND_ALIASES:
