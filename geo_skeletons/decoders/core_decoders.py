@@ -20,6 +20,7 @@ def identify_core_in_ds(
     ds: xr.Dataset,
     aliases: dict[Union[str, MetaParameter], str] = None,
     allowed_misses: list[str] = None,
+    decode_cf: bool = True,
     strict: bool = True,
 ) -> tuple[dict[str, str], dict[str, str], dict[str, list[str]], list[str]]:
     """Identify the variables in the Dataset that matches the variables in the Skeleton core
@@ -72,12 +73,12 @@ def identify_core_in_ds(
     coords = core.coords("init")
 
     for coord in coords:
-        ds_coord = _get_var_from_ds(coord, aliases, core, ds)
+        ds_coord = _get_var_from_ds(coord, aliases, core, ds, decode_cf)
         if ds_coord is not None:
             core_coords[coord] = ds_coord
 
     for var in core.non_coord_objects():
-        ds_var = _get_var_from_ds(var, aliases, core, ds)
+        ds_var = _get_var_from_ds(var, aliases, core, ds, decode_cf)
         if ds_var is not None:
             core_vars[var] = ds_var
 
@@ -135,12 +136,16 @@ def core_dicts_from_ds(ds, core_coords, core_vars, data_array: bool = False):
 
 
 def _get_var_from_ds(
-    var: str, aliases: dict[str, str], core: CoordinateManager, ds: xr.Dataset
+    var: str,
+    aliases: dict[str, str],
+    core: CoordinateManager,
+    ds: xr.Dataset,
+    decode_cf: bool,
 ) -> Union[str, None]:
     """Gets a given coordinate from a Dataset:
 
     1) If a explicit alias mapping is given, return that.
-    2) Try using standard_name matching from possible geo-parameter in the core
+    2) Try using standard_name matching from possible geo-parameter in the core (if decode_cf = True [Default])
     3) Try to match 'var' exactly to something in the Dataset
     4) Try to match known aliases of 'var' to something in the Dataset
     5) Return None if not found
@@ -157,7 +162,7 @@ def _get_var_from_ds(
 
     # 2) Try to decode using cf standard name
     param = core.meta_parameter(var)
-    if param is not None:
+    if param is not None and decode_cf:
         ds_var = param.find_me_in_ds(ds)
         if len(ds_var) > 1:  # See if we have a perfect name match
             ds_var = [dv for dv in ds_var if param.name == ds_var]

@@ -41,7 +41,11 @@ def map_ds_to_gp(
             )
         else:  # Data variable
             data_vars[var] = _map_ds_variable_to_geo_parameter(
-                var, ds, aliases, decode_cf, keep_ds_names=keep_ds_names
+                var,
+                ds,
+                aliases,
+                decode_cf,
+                keep_ds_names=keep_ds_names,
             )
 
     for coord in ds.coords:

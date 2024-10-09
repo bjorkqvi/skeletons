@@ -293,6 +293,7 @@ class Skeleton:
         data_vars: Optional[list[str]] = None,
         ignore_vars: Optional[list[str]] = None,
         keep_ds_names: bool = False,
+        decode_cf: bool = True,
         core_aliases: dict[Union[MetaParameter, str], str] = None,
         ds_aliases: dict[str, Union[MetaParameter, str]] = None,
         dynamic: bool = False,
@@ -361,7 +362,7 @@ class Skeleton:
 
         if dynamic:  # Try to decode variables from the dataset
             mapped_vars, __ = map_ds_to_gp(
-                ds, keep_ds_names=keep_ds_names, aliases=ds_aliases
+                ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
             )
             settable_vars, settable_magnitudes = find_settable_vars_and_magnitudes(
                 skeleton_class=cls,
