@@ -88,4 +88,7 @@ def add_dynamic_vars_from_ds(
         x = new_class.core.find_cf(mag.my_family().get("x").standard_name())[0]
         y = new_class.core.find_cf(mag.my_family().get("y").standard_name())[0]
         new_class = new_class.add_magnitude(mag, x=x, y=y, direction=dirs)
+
+    if new_class is None:
+        new_class = skeleton_class
     return new_class, core_vars, coord_map

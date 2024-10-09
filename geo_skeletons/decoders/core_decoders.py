@@ -159,6 +159,8 @@ def _get_var_from_ds(
     param = core.meta_parameter(var)
     if param is not None:
         ds_var = param.find_me_in_ds(ds)
+        if len(ds_var) > 1:  # See if we have a perfect name match
+            ds_var = [dv for dv in ds_var if param.name == ds_var]
         if len(ds_var) > 1:
             raise ValueError(
                 f"The variable '{var}' matches {ds_var} in the Dataset. Specify which one to read by e.g. aliases = {{'{var}': '{ds_var[0]}'}}"
