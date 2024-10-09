@@ -198,6 +198,7 @@ class ResampleManager:
             new_skeleton.ds().dropna(dim="time"),
             meta_dict=new_skeleton.meta.meta_dict(),
             keep_ds_names=True,
+            decode_cf=False,
         )
         if not dropna:
             new_skeleton = new_skeleton.from_ds(
@@ -206,5 +207,6 @@ class ResampleManager:
                 .nearest(tolerance=f"{dt / 2}h"),
                 meta_dict=new_skeleton.meta.meta_dict(),
                 keep_ds_names=True,
+                decode_cf=False,
             )
         return new_skeleton
