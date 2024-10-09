@@ -30,7 +30,6 @@ def set_core_vars_to_skeleton_from_ds(
         if (
             not data_vars or ds_var in data_vars
         ) and not ds_var in ignore_vars:  # If list is specified, only add those variables
-
             skeleton.set(var, ds.get(ds_var), coords=coord_map[var])
             old_metadata = {
                 "standard_name": skeleton.meta.get(var).get("standard_name"),
