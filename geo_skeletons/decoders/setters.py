@@ -11,6 +11,7 @@ def set_core_vars_to_skeleton_from_ds(
     coord_map: dict,
     meta_dict: dict = None,
     data_vars: list[str] = None,
+    ignore_vars: list[str] = None,
 ):
     """Set core (static) variables to a skeleton from an xarray Dataset.
 
@@ -23,25 +24,35 @@ def set_core_vars_to_skeleton_from_ds(
     meta_dict: dict of core-var specific meta-data"""
 
     data_vars = data_vars or []
+    ignore_vars = ignore_vars or []
     meta_dict = meta_dict or {}
     for var, ds_var in core_vars.items():
         if (
             not data_vars or ds_var in data_vars
-        ):  # If list is specified, only add those variables
+        ) and not ds_var in ignore_vars:  # If list is specified, only add those variables
 
             skeleton.set(var, ds.get(ds_var), coords=coord_map[var])
-            old_metadata = skeleton.meta.get(var)
+            old_metadata = {
+                "standard_name": skeleton.meta.get(var).get("standard_name"),
+                "units": skeleton.meta.get(var).get("units"),
+            }
             skeleton.meta.append(ds.get(ds_var).attrs, name=var)
             skeleton.meta.append(old_metadata, name=var)
             skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
     for var in skeleton.core.magnitudes():
-        old_metadata = skeleton.meta.get(var)
+        old_metadata = {
+            "standard_name": skeleton.meta.get(var).get("standard_name"),
+            "units": skeleton.meta.get(var).get("units"),
+        }
         skeleton.meta.append(old_metadata, name=var)
         skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
     for var in skeleton.core.directions():
-        old_metadata = skeleton.meta.get(var)
+        old_metadata = {
+            "standard_name": skeleton.meta.get(var).get("standard_name"),
+            "units": skeleton.meta.get(var).get("units"),
+        }
         skeleton.meta.append(old_metadata, name=var)
         skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
@@ -56,6 +67,7 @@ def add_dynamic_vars_from_ds(
     keep_ds_names: bool,
     aliases: dict,
     data_vars: list[str] = None,
+    ignore_vars: list[str] = None,
 ):
     """Find all the variables in the Dataset that can e added to the Skeleton.
 
@@ -66,6 +78,7 @@ def add_dynamic_vars_from_ds(
     core_vars = {}
     coord_map = {}
     data_vars = data_vars or []
+    ignore_vars = ignore_vars or []
     mapped_vars, __ = map_ds_to_gp(ds, keep_ds_names=keep_ds_names, aliases=aliases)
     for ds_var, var in mapped_vars.items():
         # 1) Check if variable exists
@@ -80,7 +93,11 @@ def add_dynamic_vars_from_ds(
 
         var_exists = var_exists or var in core_aliases.values()
 
-        if (not data_vars or ds_var in data_vars) and not var_exists:
+        if (
+            (not data_vars or ds_var in data_vars)
+            and (not var_exists)
+            and (ds_var not in ignore_vars)
+        ):
             # 2) Find suitable coordinate group
             coords = _remap_coords(
                 ds_var,
