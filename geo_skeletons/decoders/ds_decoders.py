@@ -5,6 +5,7 @@ import geo_parameters as gp
 from typing import Union
 from geo_skeletons.errors import GridError
 from geo_skeletons.variable_archive import coord_alias_map_to_gp, var_alias_map_to_gp
+from .core_decoders import _remap_coords
 
 
 def map_ds_to_gp(
@@ -140,3 +141,122 @@ def _var_is_coordinate(var, aliases) -> bool:
         if aliases.get(var) in coord_dict.values():
             return True
     return False
+
+
+def find_settable_vars_and_magnitudes(
+    skeleton_class,
+    ds: xr.Dataset,
+    mapped_vars: dict[str, str],
+    core_coords: dict[str, str],
+    core_vars: dict[str, str],
+    data_vars: list[str] = None,
+    ignore_vars: list[str] = None,
+):
+
+    settable_vars = _find_settable_vars(
+        ds,
+        mapped_vars,
+        skeleton_class,
+        core_coords,
+        core_vars,
+        data_vars,
+        ignore_vars,
+    )
+
+    x_variables = _find_x_variables(settable_vars)
+
+    settable_magnitudes = _find_settable_magnitudes(x_variables)
+
+    return settable_vars, settable_magnitudes
+
+
+def _find_settable_vars(
+    ds: xr.Dataset,
+    mapped_vars: dict[str, Union[str, MetaParameter]],
+    skeleton_class,
+    core_coords: dict,
+    core_vars: dict[str, str],
+    data_vars: list[str],
+    ignore_vars: list[str],
+) -> dict[Union[str, MetaParameter], str, list[str]]:
+    """Find all the variables in the Dataset that can e added to the skeleton_class.
+
+    Reasons not to add:
+    1) It already exists (based on name or standard_name of geo-parameter)
+    2) We can't find a coordinate groupt that fits the dimensions"""
+    settable_vars = {}
+    for ds_var, var in mapped_vars.items():
+        # 1) Check if variable exists
+        var_str, __ = gp.decode(var)
+        if __ is not None:
+            var_exists = (
+                skeleton_class.core.find_cf(var.standard_name()) != []
+                or var_str in skeleton_class.core.data_vars()
+            )
+        else:
+            var_exists = var_str in core_vars.keys() or var_str in core_vars.values()
+
+        # var_exists = var_exists or var in core_aliases.values()
+
+        if (
+            (not data_vars or ds_var in data_vars)
+            and (not var_exists)
+            and (ds_var not in ignore_vars)
+        ):
+            # 2) Find suitable coordinate group
+            coords = _remap_coords(
+                ds_var,
+                core_coords,
+                skeleton_class.core.coords("init"),
+                ds,
+                is_pointskeleton=not skeleton_class.is_gridded(),
+            )
+
+            # Determine coord_group
+            coord_group = None
+            for cg in ["spatial", "all", "grid", "gridpoint"]:
+                ok_coords = [skeleton_class.core.coords(cg)]
+                if ok_coords[0] == ["lat", "lon"]:
+                    ok_coords.append(["y", "x"])
+                if ok_coords[0] == ["y", "x"]:
+                    ok_coords.append(["lat", "lon"])
+                if coords in ok_coords:
+                    coord_group = cg
+
+            if coord_group is not None:
+                settable_vars[ds_var] = (var, coord_group, coords)
+    return settable_vars
+
+
+def _find_x_variables(
+    settable_vars: list[tuple[Union[str, MetaParameter], str, list[str]]]
+):
+    x_variables = []
+    gps_to_set = []
+    for _, (var, __, ___) in settable_vars.items():
+        gps_to_set.append(var)
+
+    for ds_var, (var, coord_group, coords) in settable_vars.items():
+        var_str, var = gp.decode(var)
+        if var is not None:
+            if var.i_am() == "x":
+                # Check for matching y-variable
+                y_ok = False
+                for v in gps_to_set:
+                    if var.my_family().get("y").is_same(v):
+                        y_ok = True
+                if y_ok:
+                    x_variables.append(var)
+    return x_variables
+
+
+def _find_settable_magnitudes(
+    x_variables: list[MetaParameter],
+) -> list[tuple[MetaParameter, MetaParameter]]:
+    # Search for possibilities to set magnitude and direction
+    settable_magnitudes = []
+    for var in x_variables:
+        settable_magnitudes.append(
+            (var.my_family().get("mag"), var.my_family().get("dir"))
+        )
+    return settable_magnitudes

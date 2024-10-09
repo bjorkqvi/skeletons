@@ -1,6 +1,6 @@
 import xarray as xr
-from .ds_decoders import map_ds_to_gp
-from .core_decoders import _remap_coords
+from .ds_decoders import find_settable_vars_and_magnitudes
+
 import geo_parameters as gp
 
 
@@ -62,90 +62,17 @@ def set_core_vars_to_skeleton_from_ds(
 def add_dynamic_vars_from_ds(
     skeleton_class,
     ds: xr.Dataset,
-    core_coords: dict,
-    core_aliases: dict,
-    keep_ds_names: bool,
-    aliases: dict,
-    data_vars: list[str] = None,
-    ignore_vars: list[str] = None,
+    settable_vars,
+    settable_magnitudes,
 ):
     """Find all the variables in the Dataset that can e added to the skeleton_class.
 
     Reasons not to add:
     1) It already exists (based on name or standard_name of geo-parameter)
     2) We can't find a coordinate groupt that fits the dimensions"""
-    settable_vars = {}
+
     core_vars = {}
     coord_map = {}
-    data_vars = data_vars or []
-    ignore_vars = ignore_vars or []
-    mapped_vars, __ = map_ds_to_gp(ds, keep_ds_names=keep_ds_names, aliases=aliases)
-    for ds_var, var in mapped_vars.items():
-        # 1) Check if variable exists
-        var_str, __ = gp.decode(var)
-        if __ is not None:
-            var_exists = (
-                skeleton_class.core.find_cf(var.standard_name()) != []
-                or var_str in skeleton_class.core.data_vars()
-            )
-        else:
-            var_exists = var_str in skeleton_class.core.data_vars()
-
-        var_exists = var_exists or var in core_aliases.values()
-
-        if (
-            (not data_vars or ds_var in data_vars)
-            and (not var_exists)
-            and (ds_var not in ignore_vars)
-        ):
-            # 2) Find suitable coordinate group
-            coords = _remap_coords(
-                ds_var,
-                core_coords,
-                skeleton_class.core.coords("init"),
-                ds,
-                is_pointskeleton=not skeleton_class.is_gridded(),
-            )
-
-            # Determine coord_group
-            coord_group = None
-            for cg in ["spatial", "all", "grid", "gridpoint"]:
-                ok_coords = [skeleton_class.core.coords(cg)]
-                if ok_coords[0] == ["lat", "lon"]:
-                    ok_coords.append(["y", "x"])
-                if ok_coords[0] == ["y", "x"]:
-                    ok_coords.append(["lat", "lon"])
-                if coords in ok_coords:
-                    coord_group = cg
-
-            if coord_group is not None:
-                settable_vars[ds_var] = (var, coord_group, coords)
-
-    # Find x-variables
-    x_variables = []
-    gps_to_set = []
-    for _, (var, __, ___) in settable_vars.items():
-        gps_to_set.append(var)
-
-    for ds_var, (var, coord_group, coords) in settable_vars.items():
-        var_str, var = gp.decode(var)
-        if var is not None:
-            if var.i_am() == "x":
-                # Check for matching y-variable
-                y_ok = False
-                for v in gps_to_set:
-                    if var.my_family().get("y").is_same(v):
-                        y_ok = True
-                if y_ok:
-                    x_variables.append(var)
-
-    # Search for possibilities to set magnitude and direction
-    settable_magnitudes = []
-    for var in x_variables:
-        settable_magnitudes.append(
-            (var.my_family().get("mag"), var.my_family().get("dir"))
-        )
-
     new_class = None
     for ds_var, (var, coord_group, coords) in settable_vars.items():
         var_str, __ = gp.decode(var)
