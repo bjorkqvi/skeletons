@@ -503,19 +503,6 @@ class CoordinateManager:
 
         return names
 
-    @property
-    def static(self) -> bool:
-        if not hasattr(self, "_static"):
-            raise KeyError("The core has not set static property!")
-        return self._static
-
-    @static.setter
-    def static(self, static: bool) -> None:
-        if isinstance(static, bool):
-            self._static = static
-        else:
-            raise ValueError("static needs to be a boolean!")
-
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:
