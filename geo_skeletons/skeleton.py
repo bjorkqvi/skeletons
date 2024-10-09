@@ -8,6 +8,8 @@ from .decoders import (
     identify_core_in_ds,
     set_core_vars_to_skeleton_from_ds,
     add_dynamic_vars_from_ds,
+    find_settable_vars_and_magnitudes,
+    map_ds_to_gp,
 )
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
@@ -335,6 +337,8 @@ class Skeleton:
         meta_dict = meta_dict or {}
         core_aliases = core_aliases or {}
         ds_aliases = ds_aliases or {}
+        data_vars = data_vars or []
+        ignore_vars = ignore_vars or []
 
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         core_coords, core_vars, coord_map, coords_needed = identify_core_in_ds(
@@ -356,15 +360,21 @@ class Skeleton:
             coords[coord] = val
 
         if dynamic:  # Try to decode variables from the dataset
-            cls, core_vars, coord_map = add_dynamic_vars_from_ds(
-                cls,
-                ds,
+            mapped_vars, __ = map_ds_to_gp(
+                ds, keep_ds_names=keep_ds_names, aliases=ds_aliases
+            )
+            settable_vars, settable_magnitudes = find_settable_vars_and_magnitudes(
+                skeleton_class=cls,
+                ds=ds,
+                mapped_vars=mapped_vars,
                 core_coords=core_coords,
-                core_aliases=core_aliases,
-                keep_ds_names=keep_ds_names,
-                aliases=ds_aliases,
+                core_vars=core_vars,
                 data_vars=data_vars,
                 ignore_vars=ignore_vars,
+            )
+
+            cls, core_vars, coord_map = add_dynamic_vars_from_ds(
+                cls, ds, settable_vars, settable_magnitudes
             )
 
         # Initialize Skeleton
@@ -1491,33 +1501,3 @@ class Skeleton:
         string += "\n" + "-" * 80
 
         return string
-
-
-def _remap_coords(
-    ds_var: str, core_coords: dict, coords_needed: list[str], ds: xr.Dataset
-):
-    if set(ds.get(ds_var).dims).issubset(coords_needed):
-        return list(ds.get(ds_var).dims)
-
-    # Need to rename the coordinates so they can be used in the reshape
-    reversed_dict = {}
-    for key, value in core_coords.items():
-        reversed_dict[value] = key
-
-    coords = []
-    missed_coords = []
-    for n, ds_c in enumerate(ds.get(ds_var).dims):
-        core_c = reversed_dict.get(ds_c)
-        if core_c in coords_needed:
-            coords.append(core_c)
-        else:
-            coords.append(None)
-            missed_coords.append((n, ds_c))
-
-    # Data can be given as x-y with trivial y for example
-    if "inds" not in coords:
-        for n, ds_c in missed_coords:
-            if len(ds.get(ds_c)) > 1:
-                coords[n] = "inds"
-    coords = [c for c in coords if c is not None]
-    return coords

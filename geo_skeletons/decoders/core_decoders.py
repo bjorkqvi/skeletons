@@ -21,7 +21,7 @@ def identify_core_in_ds(
     aliases: dict[Union[str, MetaParameter], str] = None,
     allowed_misses: list[str] = None,
     strict: bool = True,
-) -> tuple[dict[str, str], dict[str, str], list[str], list[str]]:
+) -> tuple[dict[str, str], dict[str, str], dict[str, list[str]], list[str]]:
     """Identify the variables in the Dataset that matches the variables in the Skeleton core
 
     1) If 'aliases' (core-name: ds-name) mapping is given, that is used first. Key can be either a str or a MetaParameter
