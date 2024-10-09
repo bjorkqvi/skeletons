@@ -28,7 +28,7 @@ def test_point():
     @add_datavar(name="sptl", coord_group="spatial")
     @add_datavar(name="grp", coord_group="gridpoint")
     @add_datavar(name="gr", coord_group="grid")
-    @add_time()
+    @add_time(grid_coord=False)
     @add_coord(name="gp", grid_coord=False)
     @add_coord(name="g", grid_coord=True)
     class Expanded(PointSkeleton):

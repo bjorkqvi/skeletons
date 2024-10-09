@@ -192,7 +192,6 @@ class ResampleManager:
             )
 
         for key, value in new_data.items():
-            breakpoint()
             new_skeleton.set(key, value)
 
         new_skeleton = new_skeleton.from_ds(

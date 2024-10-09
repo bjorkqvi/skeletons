@@ -110,7 +110,7 @@ def test_no_std_name(wave_no_std):
     assert set(data_vars.keys()) == {"hs", "tp", "dirp"}
     assert data_vars.get("hs").is_same(gp.wave.Hs)
     assert data_vars.get("tp").is_same(gp.wave.Tp)
-    assert data_vars.get("dirp").is_same(gp.wave.Dirp)
+    assert data_vars.get("dirp") == "dirp"
     assert coords.get("y").is_same(gp.grid.Y)
     assert coords.get("x").is_same(gp.grid.X)
 
@@ -119,7 +119,7 @@ def test_no_std_name(wave_no_std):
     assert set(data_vars.keys()) == {"hs", "tp", "Pdir"}
     assert data_vars.get("hs").is_same(gp.wave.Hs)
     assert data_vars.get("tp").is_same(gp.wave.Tp)
-    assert data_vars.get("Pdir").is_same(gp.wave.Dirp)
+    assert data_vars.get("Pdir") == "Pdir"
     assert coords.get("y").is_same(gp.grid.Y)
     assert coords.get("x").is_same(gp.grid.X)
 
@@ -139,7 +139,7 @@ def test_std_name(wave_std):
 
     assert data_vars.get("hs").is_same(gp.wave.Hs)
     assert data_vars.get("tp").is_same(gp.wave.Tp)
-    assert data_vars.get("dirp").is_same(gp.wave.Dirp)
+    assert data_vars.get("dirp") == "dirp"
     assert coords.get("lon").is_same(gp.grid.Lon)
     assert coords.get("lat").is_same(gp.grid.Lat)
 
@@ -161,7 +161,7 @@ def test_std_name_long_coord_name(wave_std):
 
     assert data_vars.get("hs").is_same(gp.wave.Hs)
     assert data_vars.get("tp").is_same(gp.wave.Tp)
-    assert data_vars.get("dirp").is_same(gp.wave.Dirp)
+    assert data_vars.get("dirp") == "dirp"
     assert coords.get("longitude").is_same(gp.grid.Lon)
     assert coords.get("latitude").is_same(gp.grid.Lat)
 

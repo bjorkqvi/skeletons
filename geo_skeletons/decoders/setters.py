@@ -60,7 +60,7 @@ def set_core_vars_to_skeleton_from_ds(
 
 
 def add_dynamic_vars_from_ds(
-    skeleton,
+    skeleton_class,
     ds: xr.Dataset,
     core_coords: dict,
     core_aliases: dict,
@@ -69,7 +69,7 @@ def add_dynamic_vars_from_ds(
     data_vars: list[str] = None,
     ignore_vars: list[str] = None,
 ):
-    """Find all the variables in the Dataset that can e added to the Skeleton.
+    """Find all the variables in the Dataset that can e added to the skeleton_class.
 
     Reasons not to add:
     1) It already exists (based on name or standard_name of geo-parameter)
@@ -85,11 +85,11 @@ def add_dynamic_vars_from_ds(
         var_str, __ = gp.decode(var)
         if __ is not None:
             var_exists = (
-                skeleton.core.find_cf(var.standard_name()) != []
-                or var_str in skeleton.core.data_vars()
+                skeleton_class.core.find_cf(var.standard_name()) != []
+                or var_str in skeleton_class.core.data_vars()
             )
         else:
-            var_exists = var_str in skeleton.core.data_vars()
+            var_exists = var_str in skeleton_class.core.data_vars()
 
         var_exists = var_exists or var in core_aliases.values()
 
@@ -102,15 +102,20 @@ def add_dynamic_vars_from_ds(
             coords = _remap_coords(
                 ds_var,
                 core_coords,
-                skeleton.core.coords("init"),
+                skeleton_class.core.coords("init"),
                 ds,
-                is_pointskeleton=not skeleton.is_gridded(),
+                is_pointskeleton=not skeleton_class.is_gridded(),
             )
 
             # Determine coord_group
             coord_group = None
             for cg in ["spatial", "all", "grid", "gridpoint"]:
-                if coords == skeleton.core.coords(cg):
+                ok_coords = [skeleton_class.core.coords(cg)]
+                if ok_coords[0] == ["lat", "lon"]:
+                    ok_coords.append(["y", "x"])
+                if ok_coords[0] == ["y", "x"]:
+                    ok_coords.append(["lat", "lon"])
+                if coords in ok_coords:
                     coord_group = cg
 
             if coord_group is not None:
@@ -141,15 +146,19 @@ def add_dynamic_vars_from_ds(
             (var.my_family().get("mag"), var.my_family().get("dir"))
         )
 
+    new_class = None
     for ds_var, (var, coord_group, coords) in settable_vars.items():
         var_str, __ = gp.decode(var)
         core_vars[var_str] = ds_var
         coord_map[var_str] = coords
 
-        skeleton.add_datavar(var, coord_group=coord_group)
+        if new_class is None:
+            new_class = skeleton_class.add_datavar(var, coord_group=coord_group)
+        else:
+            new_class = new_class.add_datavar(var, coord_group=coord_group)
 
     for mag, dirs in settable_magnitudes:
-        x = skeleton.core.find_cf(mag.my_family().get("x").standard_name())[0]
-        y = skeleton.core.find_cf(mag.my_family().get("y").standard_name())[0]
-        skeleton.add_magnitude(mag, x=x, y=y, direction=dirs)
-    return skeleton, core_vars, coord_map
+        x = new_class.core.find_cf(mag.my_family().get("x").standard_name())[0]
+        y = new_class.core.find_cf(mag.my_family().get("y").standard_name())[0]
+        new_class = new_class.add_magnitude(mag, x=x, y=y, direction=dirs)
+    return new_class, core_vars, coord_map

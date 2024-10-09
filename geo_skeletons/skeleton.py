@@ -355,23 +355,13 @@ class Skeleton:
 
             coords[coord] = val
 
-        # Initialize Skeleton
-        name = ds.attrs.get("name") or name
-        points = cls(**coords, chunks=chunks, name=name)
 
-        if core_vars:  # Only set the ones already existing in the core
-            points = set_core_vars_to_skeleton_from_ds(
-                points, ds, core_vars, coord_map, meta_dict, data_vars, ignore_vars
-            )
 
-        if (
-            not cls.core.static or dynamic
-        ):  # Try to decode variables from the dataset if we have a dynamic core
-            if cls.core.static:
-                points.core.static = False
 
-            points, core_vars, coord_map = add_dynamic_vars_from_ds(
-                points,
+
+        if dynamic:  # Try to decode variables from the dataset
+            cls, core_vars, coord_map = add_dynamic_vars_from_ds(
+                cls,
                 ds,
                 core_coords=core_coords,
                 core_aliases=core_aliases,
@@ -381,12 +371,13 @@ class Skeleton:
                 ignore_vars=ignore_vars,
             )
 
-            if cls.core.static:
-                points.core.static = True
+        # Initialize Skeleton
+        name = ds.attrs.get("name") or name
+        points = cls(**coords, chunks=chunks, name=name)
 
-            points = set_core_vars_to_skeleton_from_ds(
-                points, ds, core_vars, coord_map, meta_dict, data_vars, ignore_vars
-            )
+        points = set_core_vars_to_skeleton_from_ds(
+            points, ds, core_vars, coord_map, meta_dict, data_vars, ignore_vars
+        )
 
         metadata = meta_dict.get("_global_") or ds.attrs
         points.meta.set(metadata)
