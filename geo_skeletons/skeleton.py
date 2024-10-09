@@ -214,6 +214,7 @@ class Skeleton:
         ds: xr.Dataset,
         chunks: Optional[Union[tuple[int], str]] = None,
         data_vars: Optional[list[str]] = None,
+        ignore_vars: Optional[list[str]] = None,
         keep_ds_names: bool = False,
         core_aliases: dict[Union[MetaParameter, str], str] = None,
         ds_aliases: dict[str, Union[MetaParameter, str]] = None,
@@ -285,7 +286,7 @@ class Skeleton:
 
         if core_vars:  # Only set the ones already existing in the core
             points = set_core_vars_to_skeleton_from_ds(
-                points, ds, core_vars, coord_map, meta_dict, data_vars
+                points, ds, core_vars, coord_map, meta_dict, data_vars, ignore_vars
             )
 
         if (
@@ -301,13 +302,15 @@ class Skeleton:
                 core_aliases=core_aliases,
                 keep_ds_names=keep_ds_names,
                 aliases=ds_aliases,
+                data_vars=data_vars,
+                ignore_vars=ignore_vars,
             )
 
             if cls.core.static:
                 points.core.static = True
 
             points = set_core_vars_to_skeleton_from_ds(
-                points, ds, core_vars, coord_map, meta_dict, data_vars
+                points, ds, core_vars, coord_map, meta_dict, data_vars, ignore_vars
             )
 
         metadata = meta_dict.get("_global_") or ds.attrs
