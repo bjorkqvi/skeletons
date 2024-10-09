@@ -6,6 +6,7 @@ from typing import Union
 from geo_skeletons.errors import GridError
 from geo_skeletons.variable_archive import coord_alias_map_to_gp, var_alias_map_to_gp
 from .core_decoders import _remap_coords
+from copy import deepcopy
 
 
 def map_ds_to_gp(
@@ -155,6 +156,7 @@ def find_settable_vars_and_magnitudes(
     core_vars: dict[str, str],
     data_vars: list[str] = None,
     ignore_vars: list[str] = None,
+    lon_had_time_dim: bool = False,
 ):
 
     settable_vars = _find_settable_vars(
@@ -165,6 +167,7 @@ def find_settable_vars_and_magnitudes(
         core_vars,
         data_vars,
         ignore_vars,
+        lon_had_time_dim,
     )
 
     x_variables = _find_x_variables(settable_vars)
@@ -182,6 +185,7 @@ def _find_settable_vars(
     core_vars: dict[str, str],
     data_vars: list[str],
     ignore_vars: list[str],
+    lon_had_time_dim: bool,
 ) -> dict[Union[str, MetaParameter], str, list[str]]:
     """Find all the variables in the Dataset that can e added to the skeleton_class.
 
@@ -189,6 +193,8 @@ def _find_settable_vars(
     1) It already exists (based on name or standard_name of geo-parameter)
     2) We can't find a coordinate groupt that fits the dimensions"""
     settable_vars = {}
+    cartesian = core_coords.get("x") is not None
+
     for ds_var, var in mapped_vars.items():
         # 1) Check if variable exists
         var_str, __ = gp.decode(var)
@@ -219,12 +225,33 @@ def _find_settable_vars(
             # Determine coord_group
             coord_group = None
             for cg in ["spatial", "all", "grid", "gridpoint"]:
-                ok_coords = [skeleton_class.core.coords(cg)]
-                if ok_coords[0] == ["lat", "lon"]:
-                    ok_coords.append(["y", "x"])
-                if ok_coords[0] == ["y", "x"]:
-                    ok_coords.append(["lat", "lon"])
-                if coords in ok_coords:
+                compare_coords = deepcopy(coords)
+                skeleton_coord_group = skeleton_class.core.coords(cg)
+                if lon_had_time_dim and "time" in skeleton_coord_group:
+                    if skeleton_class.is_gridded():
+                        if cartesian:
+                            compare_coords.append("y")
+                            compare_coords.append("x")
+                        else:
+                            compare_coords.append("lat")
+                            compare_coords.append("lon")
+                    else:
+                        compare_coords.append("inds")
+                if cartesian:
+                    skeleton_coord_group = list(
+                        map(lambda x: x.replace("lat", "y"), skeleton_coord_group)
+                    )
+                    skeleton_coord_group = list(
+                        map(lambda x: x.replace("lon", "x"), skeleton_coord_group)
+                    )
+                else:
+                    skeleton_coord_group = list(
+                        map(lambda x: x.replace("y", "lat"), skeleton_coord_group)
+                    )
+                    skeleton_coord_group = list(
+                        map(lambda x: x.replace("x", "lon"), skeleton_coord_group)
+                    )
+                if compare_coords == skeleton_coord_group:
                     coord_group = cg
 
             if coord_group is not None:

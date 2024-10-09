@@ -136,7 +136,7 @@ class Skeleton:
         @add_time()
         class NewClass(OldClass):
             pass"""
-        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_time(grid_coord=grid_coord)(new_cls)
 
     @classmethod
@@ -150,7 +150,7 @@ class Skeleton:
         @add_frequency()
         class NewClass(OldClass):
             pass"""
-        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_frequency(name=name, grid_coord=grid_coord)(new_cls)
 
     @classmethod
@@ -167,7 +167,7 @@ class Skeleton:
         @add_direction()
         class NewClass(OldClass):
             pass"""
-        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_direction(name=name, grid_coord=grid_coord, dir_type=dir_type)(
             new_cls
         )
@@ -185,7 +185,7 @@ class Skeleton:
         @add_coord('new_coord')
         class NewClass(OldClass):
             pass"""
-        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_coord(name=name, grid_coord=grid_coord)(new_cls)
 
     @classmethod
@@ -209,7 +209,7 @@ class Skeleton:
         @add_datavar('new_var')
         class NewClass(OldClass):
             pass"""
-        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_datavar(
             name=name, coord_group=coord_group, default_value=default_value
         )(new_cls)
@@ -232,7 +232,7 @@ class Skeleton:
         y [str]: name of already set variable that will be used as y-component
         direction: name of the direction of the magnitude being set
         dir_type: 'from', 'to' or 'math'"""
-        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_magnitude(
             name=name, x=x, y=y, direction=direction, dir_type=dir_type
         )(new_cls)
@@ -260,7 +260,7 @@ class Skeleton:
         range_inclusive (default_true): E.g. valid_range (0.0, None) includes all non-negative values.
         """
 
-        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_mask(
             name=name,
             default_value=default_value,
@@ -342,12 +342,19 @@ class Skeleton:
         ignore_vars = ignore_vars or []
 
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
-        core_coords, core_vars, coord_map, coords_needed = identify_core_in_ds(
+        (
+            core_coords,
+            core_vars,
+            coord_map_for_coords,
+            coord_map_for_vars,
+            coords_needed,
+        ) = identify_core_in_ds(
             cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys())
         )
 
         # Gather coordinates
         coords = {}
+        lon_had_time_dim = False
         for coord in coords_needed:
             val = (
                 ds.get(core_coords.get(coord))
@@ -356,6 +363,17 @@ class Skeleton:
             )
 
             if isinstance(val, xr.DataArray):
+                if coord in ["x", "y", "lon", "lat"] and "time" in val.dims:
+                    val = val.median(dim="time", skipna=True)
+                    lon_had_time_dim = True
+                    coord_map_for_coords[coord] = list(
+                        set(coord_map_for_coords[coord]) - {"time"}
+                    )
+                    if not cls.is_gridded():
+                        coord_map_for_coords[coord] = coord_map_for_coords[coord] + [
+                            "inds"
+                        ]
+
                 val = val.data
 
             coords[coord] = val
@@ -372,18 +390,29 @@ class Skeleton:
                 core_vars=core_vars,
                 data_vars=data_vars,
                 ignore_vars=ignore_vars,
+                lon_had_time_dim=lon_had_time_dim,
             )
 
-            cls, core_vars, coord_map = add_dynamic_vars_from_ds(
+            cls, added_core_vars, coord_map_for_dynamic_vars = add_dynamic_vars_from_ds(
                 cls, ds, settable_vars, settable_magnitudes
             )
-
+            coord_map_for_vars.update(coord_map_for_dynamic_vars)
+            core_vars.update(added_core_vars)
         # Initialize Skeleton
+
         name = ds.attrs.get("name") or name
         points = cls(**coords, chunks=chunks, name=name)
 
+        if lon_had_time_dim:
+            for key, val in coord_map_for_vars.items():
+                if cls.is_gridded():
+                    coord_map_for_vars[key].append(points.core.y_str)
+                    coord_map_for_vars[key].append(points.core.x_str)
+                else:
+                    coord_map_for_vars[key].append("inds")
+
         points = set_core_vars_to_skeleton_from_ds(
-            points, ds, core_vars, coord_map, meta_dict, data_vars, ignore_vars
+            points, ds, core_vars, coord_map_for_vars, meta_dict, data_vars, ignore_vars
         )
 
         metadata = meta_dict.get("_global_") or ds.attrs
@@ -1502,3 +1531,9 @@ class Skeleton:
         string += "\n" + "-" * 80
 
         return string
+
+
+def _modified_name(old_name: str) -> str:
+    if "Modified" in old_name:
+        return old_name
+    return f"Modified{old_name}"

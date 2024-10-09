@@ -106,14 +106,26 @@ def identify_core_in_ds(
             f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!"
         )
 
-    coord_map = {}
     is_pointskeleton = "inds" in core.coords("all")
+    coord_map_for_vars = {}
     for var, ds_var in core_vars.items():
-        coord_map[var] = _remap_coords(
+        coord_map_for_vars[var] = _remap_coords(
             ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
         )
 
-    return core_coords, core_vars, coord_map, coords_needed
+    coord_map_for_coords = {}
+    for var, ds_var in core_coords.items():
+        coord_map_for_coords[var] = _remap_coords(
+            ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
+        )
+
+    return (
+        core_coords,
+        core_vars,
+        coord_map_for_coords,
+        coord_map_for_vars,
+        coords_needed,
+    )
 
 
 def core_dicts_from_ds(ds, core_coords, core_vars, data_array: bool = False):
