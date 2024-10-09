@@ -1,5 +1,5 @@
 from geo_skeletons.point_skeleton import PointSkeleton
-from geo_skeletons.decorators import add_coord, add_datavar, add_mask, dynamic
+from geo_skeletons.decorators import add_coord, add_datavar, add_mask
 
 from geo_skeletons.errors import VariableExistsError
 import pytest
@@ -13,15 +13,13 @@ def test_two_vars():
         class Wrong(PointSkeleton):
             pass
 
-    @dynamic
     @add_datavar("u")
     class Wrong(PointSkeleton):
         pass
 
-    points = Wrong(x=0, y=0)
-    points.add_datavar("v")
+    Wrong = Wrong.add_datavar("v")
     with pytest.raises(VariableExistsError):
-        points.add_datavar("u")
+        Wrong.add_datavar("u")
 
 
 def test_two_coords():
@@ -34,7 +32,6 @@ def test_two_coords():
 
 
 def test_mix():
-    @dynamic
     @add_mask("sea")
     @add_datavar("v")
     @add_datavar("u")
@@ -42,15 +39,11 @@ def test_mix():
     class Wrong(PointSkeleton):
         pass
 
-    points = Wrong(x=0, y=0, z=0)
     with pytest.raises(VariableExistsError):
-        points.add_magnitude(name="u", x="u", y="v", dir_type="from")
+        Wrong.add_magnitude(name="u", x="u", y="v", dir_type="from")
 
     with pytest.raises(VariableExistsError):
-        points.add_magnitude(name="umag", x="u", y="v", direction="v", dir_type="from")
-
-    with pytest.raises(VariableExistsError):
-        points.add_magnitude(name="umag", x="u", y="v", direction="v", dir_type="from")
+        Wrong.add_magnitude(name="umag", x="u", y="v", direction="v", dir_type="from")
 
     with pytest.raises(VariableExistsError):
 
@@ -58,4 +51,4 @@ def test_mix():
         class Wrong2(Wrong):
             pass
 
-    points.add_datavar("sea")
+    Wrong.add_datavar("sea")

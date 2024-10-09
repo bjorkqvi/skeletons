@@ -121,7 +121,7 @@ class ResampleManager:
 
         # Create new skeleton with hourly values
         new_skeleton = self.skeleton.from_coord_dict(coord_dict)
-        breakpoint()
+
         new_data = {}
 
         if mode == "left":

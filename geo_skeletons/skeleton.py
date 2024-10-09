@@ -17,7 +17,15 @@ from .errors import DataWrongDimensionError, DirTypeError
 
 from typing import Iterable
 from copy import deepcopy
-from .decorators import add_datavar, add_magnitude, add_mask
+from .decorators import (
+    add_datavar,
+    add_magnitude,
+    add_mask,
+    add_time,
+    add_frequency,
+    add_direction,
+    add_coord,
+)
 from .iter import SkeletonIterator
 
 from geo_skeletons import dask_computations, dir_conversions
@@ -117,31 +125,103 @@ class Skeleton:
 
         self.meta.append({"name": self.name})
 
-    def add_datavar(
-        self, name: str, coord_group: str = "all", default_value: float = 0.0
-    ) -> None:
-        """Adds a data variable to an instance of a (non-static) Skeleton.
+    @classmethod
+    def add_time(cls, grid_coord: bool = True):
+        """Creates a new class with a time variable added. Equivalent to using:
 
-        Similar to using @add_datavar on a class, but only affects an instance.
+        from geo_skeletons.decorators import add_time
+
+        @add_time()
+        class NewClass(OldClass):
+            pass"""
+        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        return add_time(grid_coord=grid_coord)(new_cls)
+
+    @classmethod
+    def add_frequency(
+        cls, name: Union[str, MetaParameter] = gp.wave.Freq, grid_coord: bool = False
+    ):
+        """Creates a new class with a frequency variable added. Equivalent to using:
+
+        from geo_skeletons.decorators import add_frequency
+
+        @add_frequency()
+        class NewClass(OldClass):
+            pass"""
+        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        return add_frequency(name=name, grid_coord=grid_coord)(new_cls)
+
+    @classmethod
+    def add_direction(
+        cls,
+        name: Union[str, MetaParameter] = gp.wave.Dirs,
+        grid_coord: bool = False,
+        dir_type: Optional[bool] = None,
+    ):
+        """Creates a new class with a direction variable added. Equivalent to using:
+
+        from geo_skeletons.decorators import add_direction
+
+        @add_direction()
+        class NewClass(OldClass):
+            pass"""
+        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        return add_direction(name=name, grid_coord=grid_coord, dir_type=dir_type)(
+            new_cls
+        )
+
+    @classmethod
+    def add_coord(
+        cls,
+        name: Union[str, MetaParameter] = "dummy",
+        grid_coord: bool = False,
+    ):
+        """Creates a new class with a coordinate added. Equivalent to using:
+
+        from geo_skeletons.decorators import add_coord
+
+        @add_coord('new_coord')
+        class NewClass(OldClass):
+            pass"""
+        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        return add_coord(name=name, grid_coord=grid_coord)(new_cls)
+
+    @classmethod
+    def add_datavar(
+        cls,
+        name: Union[str, MetaParameter],
+        coord_group: str = "all",
+        default_value: float = 0.0,
+    ) -> None:
+        """Creates a new class with a data variable added.
 
         name: name of variable
         coord_group: 'all', 'spatial', 'grid' or 'gridpoint'
         default_value: float
         dir_type (for directional parameters): 'from', 'to' or 'math' (Autimatically parsed if name is a MetaParameter)
-        """
-        self = add_datavar(
-            name=name, coord_group=coord_group, default_value=default_value, append=True
-        )(self)
-        self._ds_manager.coord_manager = self.core
-        self.meta._ds_manager = self._ds_manager
 
+        Equivalent to using:
+
+        from geo_skeletons.decorators import add_coord
+
+        @add_datavar('new_var')
+        class NewClass(OldClass):
+            pass"""
+        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        return add_datavar(
+            name=name, coord_group=coord_group, default_value=default_value
+        )(new_cls)
+        # self._ds_manager.coord_manager = self.core
+        # self.meta._ds_manager = self._ds_manager
+
+    @classmethod
     def add_magnitude(
-        self,
+        cls,
         name: Union[str, MetaParameter],
         x: str,
         y: str,
-        direction: str = None,
-        dir_type: str = None,
+        direction: Optional[Union[str, MetaParameter]] = None,
+        dir_type: Optional[str] = None,
     ) -> None:
         """Adds a magnitude to an instance of a (non-static) Skeleton.
 
@@ -152,15 +232,14 @@ class Skeleton:
         y [str]: name of already set variable that will be used as y-component
         direction: name of the direction of the magnitude being set
         dir_type: 'from', 'to' or 'math'"""
+        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        return add_magnitude(name=name, x=x, y=y, direction=direction, dir_type=dir_type)(
+            new_cls
+        )
 
-        self = add_magnitude(
-            name=name, x=x, y=y, direction=direction, dir_type=dir_type, append=True
-        )(self)
-        self._ds_manager.coord_manager = self.core
-        self.meta._ds_manager = self._ds_manager
-
+    @classmethod
     def add_mask(
-        self,
+        cls,
         name: Union[str, MetaParameter],
         default_value: int = 0,
         coord_group: str = "grid",
@@ -181,7 +260,8 @@ class Skeleton:
         range_inclusive (default_true): E.g. valid_range (0.0, None) includes all non-negative values.
         """
 
-        self = add_mask(
+        new_cls = type(f"Modified{cls.__name__}", (cls,), {})
+        return add_mask(
             name=name,
             default_value=default_value,
             coord_group=coord_group,
@@ -189,10 +269,7 @@ class Skeleton:
             triggered_by=triggered_by,
             valid_range=valid_range,
             range_inclusive=range_inclusive,
-            append=True,
-        )(self)
-        self._ds_manager.coord_manager = self.core
-        self.meta._ds_manager = self._ds_manager
+        )(new_cls)
 
     @classmethod
     def from_coord_dict(cls, coord_dict):
