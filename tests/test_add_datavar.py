@@ -1,5 +1,5 @@
 from geo_skeletons import PointSkeleton
-from geo_skeletons.decorators import add_datavar, add_coord, dynamic
+from geo_skeletons.decorators import add_datavar, add_coord
 import numpy as np
 
 

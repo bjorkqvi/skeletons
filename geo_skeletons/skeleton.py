@@ -211,8 +211,6 @@ class Skeleton:
         return add_datavar(
             name=name, coord_group=coord_group, default_value=default_value
         )(new_cls)
-        # self._ds_manager.coord_manager = self.core
-        # self.meta._ds_manager = self._ds_manager
 
     @classmethod
     def add_magnitude(
@@ -233,9 +231,9 @@ class Skeleton:
         direction: name of the direction of the magnitude being set
         dir_type: 'from', 'to' or 'math'"""
         new_cls = type(f"Modified{cls.__name__}", (cls,), {})
-        return add_magnitude(name=name, x=x, y=y, direction=direction, dir_type=dir_type)(
-            new_cls
-        )
+        return add_magnitude(
+            name=name, x=x, y=y, direction=direction, dir_type=dir_type
+        )(new_cls)
 
     @classmethod
     def add_mask(
