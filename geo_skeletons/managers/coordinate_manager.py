@@ -34,7 +34,6 @@ class CoordinateManager:
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
-        self.static = True
         self.meta = metadata_manager
 
     def _is_initialized(self) -> bool:
@@ -67,8 +66,6 @@ class CoordinateManager:
 
     def add_var(self, data_var: DataVar) -> None:
         """Adds a data variable to the structure"""
-        if self.static:
-            raise StaticSkeletonError
         if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
@@ -79,8 +76,6 @@ class CoordinateManager:
 
     def add_mask(self, grid_mask: GridMask) -> None:
         """Adds a mask to the structure"""
-        if self.static:
-            raise StaticSkeletonError
         if self.get(grid_mask.name) is not None:
             raise VariableExistsError(grid_mask.name)
         if grid_mask.triggered_by:
@@ -117,9 +112,6 @@ class CoordinateManager:
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
         """Adds a magnitude to the structure"""
-        if self.static:
-            raise StaticSkeletonError
-
         if self.get(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
         self._added_magnitudes[magnitude.name] = magnitude
@@ -130,8 +122,6 @@ class CoordinateManager:
 
     def add_direction(self, direction: Direction) -> None:
         """Adds a direction to the structure"""
-        if self.static:
-            raise StaticSkeletonError
         if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self._added_directions[direction.name] = direction

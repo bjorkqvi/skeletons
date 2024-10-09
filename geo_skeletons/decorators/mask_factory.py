@@ -23,7 +23,6 @@ def add_mask(
     triggered_by: Optional[str] = None,
     valid_range: tuple[float] = (0.0, None),
     range_inclusive: bool = True,
-    append: bool = False,
 ):
     """default_value = 0 or 1 (False or True)
     coord_group = 'all', 'spatial', 'grid' or 'gridpoint'
@@ -153,10 +152,8 @@ def add_mask(
                 silent=silent,
             )
 
-        if not c.core._is_altered():
-            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+        c.meta = c.core.meta
 
         name_str, meta = gp.decode(name)
         if opposite_name is not None:
@@ -185,35 +182,18 @@ def add_mask(
             range_inclusive=range_inclusive,
         )
 
-        core_was_static = c.core.static
-        if core_was_static and not append:
-            c.core.static = False
-
         c.core.add_mask(grid_mask)
         if opposite_grid_mask is not None:
             c.core.add_mask(opposite_grid_mask)
 
-        if core_was_static and not append:
-            c.core.static = True
-
-        if append:
-            exec(f"c.{name_str}_mask = partial(get_mask, c)")
-            exec(f"c.{name_str}_points = partial(get_masked_points, c)")
-            exec(f"c.set_{name_str}_mask = partial(set_mask, c)")
-        else:
-            exec(f"c.{name_str}_mask = get_mask")
-            exec(f"c.{name_str}_points = get_masked_points")
-            exec(f"c.set_{name_str}_mask = set_mask")
+        exec(f"c.{name_str}_mask = get_mask")
+        exec(f"c.{name_str}_points = get_masked_points")
+        exec(f"c.set_{name_str}_mask = set_mask")
 
         if opposite_name_str is not None:
-            if append:
-                exec(f"c.{opposite_name_str}_mask = partial(get_not_mask, c)")
-                exec(f"c.{opposite_name_str}_points = partial(get_not_points,c )")
-                exec(f"c.set_{opposite_name_str}_mask = partial(set_opposite_mask, c)")
-            else:
-                exec(f"c.{opposite_name_str}_mask = get_not_mask")
-                exec(f"c.{opposite_name_str}_points = get_not_points")
-                exec(f"c.set_{opposite_name_str}_mask = set_opposite_mask")
+            exec(f"c.{opposite_name_str}_mask = get_not_mask")
+            exec(f"c.{opposite_name_str}_points = get_not_points")
+            exec(f"c.set_{opposite_name_str}_mask = set_opposite_mask")
 
         return c
 
