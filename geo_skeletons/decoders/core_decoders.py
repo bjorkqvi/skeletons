@@ -106,24 +106,22 @@ def identify_core_in_ds(
             f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!"
         )
 
-    is_pointskeleton = "inds" in core.coords("all")
-    coord_map_for_vars = {}
-    for var, ds_var in core_vars.items():
-        coord_map_for_vars[var] = _remap_coords(
-            ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
-        )
+    # is_pointskeleton = "inds" in core.coords("all")
+    # coord_map_for_vars = {}
+    # for var, ds_var in core_vars.items():
+    #     coord_map_for_vars[var] = _remap_coords(
+    #         ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
+    #     )
 
-    coord_map_for_coords = {}
-    for var, ds_var in core_coords.items():
-        coord_map_for_coords[var] = _remap_coords(
-            ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
-        )
+    # coord_map_for_coords = {}
+    # for var, ds_var in core_coords.items():
+    #     coord_map_for_coords[var] = _remap_coords(
+    #         ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
+    #     )
 
     return (
         core_coords,
         core_vars,
-        coord_map_for_coords,
-        coord_map_for_vars,
         coords_needed,
     )
 
@@ -212,52 +210,6 @@ def _get_var_from_ds(
                     return alias_var
 
     return None
-
-
-def _remap_coords(
-    ds_var: str,
-    core_coords: dict,
-    coords_needed: list[str],
-    ds: xr.Dataset,
-    is_pointskeleton: bool,
-) -> list[str]:
-    """Maps the coordinates of a single Dataarray to the coordinates of the core variable. Needed be
-
-    E.g.
-    - core variable 'hs' defined over 'time', 'inds', 'freq'
-    - Matching ds variable defined over 'station', 'time', 'frequency'
-
-    function returns ['inds', 'time', 'freq']
-    Ther can be used to set data to the Skeleton without explicitly reshaping, since the dims in the Dataset have worng names
-    """
-
-    if set(ds.get(ds_var).dims).issubset(coords_needed):
-        return list(ds.get(ds_var).dims)
-
-    # Need to rename the coordinates so they can be used in the reshape
-    reversed_dict = {}
-    for key, value in core_coords.items():
-        reversed_dict[value] = key
-
-    coords = []
-    missed_coords = []
-    max_len_of_missed_coords = 0
-    for n, ds_c in enumerate(ds.get(ds_var).dims):
-        core_c = reversed_dict.get(ds_c)
-        if core_c in coords_needed:
-            coords.append(core_c)
-        else:
-            coords.append(None)
-            missed_coords.append((n, ds_c))
-            max_len_of_missed_coords = max(max_len_of_missed_coords, len(ds.get(ds_c)))
-
-    # Data can be given as x-y with trivial y for example
-    if "inds" not in coords and is_pointskeleton:
-        for n, ds_c in missed_coords:
-            if len(ds.get(ds_c)) > 1 or max_len_of_missed_coords == 1:
-                coords[n] = "inds"
-    coords = [c for c in coords if c is not None]
-    return coords
 
 
 def _remap_core_aliase_keys_to_strings(

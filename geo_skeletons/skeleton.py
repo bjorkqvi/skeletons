@@ -10,6 +10,7 @@ from .decoders import (
     add_dynamic_vars_from_ds,
     find_settable_vars_and_magnitudes,
     map_ds_to_gp,
+    remap_coords_of_ds_vars_to_skeleton_names,
 )
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
@@ -299,6 +300,7 @@ class Skeleton:
         dynamic: bool = False,
         meta_dict: dict = None,
         name: str = "LonelySkeleton",
+        verbose: bool = False,
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton from an xarray Dataset.
@@ -345,8 +347,6 @@ class Skeleton:
         (
             core_coords,
             core_vars,
-            coord_map_for_coords,
-            coord_map_for_vars,
             coords_needed,
         ) = identify_core_in_ds(
             cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys())
@@ -354,7 +354,7 @@ class Skeleton:
 
         # Gather coordinates
         coords = {}
-        lon_had_time_dim = False
+
         for coord in coords_needed:
             val = (
                 ds.get(core_coords.get(coord))
@@ -365,18 +365,26 @@ class Skeleton:
             if isinstance(val, xr.DataArray):
                 if coord in ["x", "y", "lon", "lat"] and "time" in val.dims:
                     val = val.median(dim="time", skipna=True)
-                    lon_had_time_dim = True
-                    coord_map_for_coords[coord] = list(
-                        set(coord_map_for_coords[coord]) - {"time"}
-                    )
-                    if not cls.is_gridded():
-                        coord_map_for_coords[coord] = coord_map_for_coords[coord] + [
-                            "inds"
-                        ]
+                    # breakpoint()
+                    # ind = ds_coords.get(core_coords.get(coord)).index("time")
+                    # ds_coord[coord] = list(set(coord_map_for_coords[coord]) - {"time"})
+                    # # if not cls.is_gridded():
+                    # #     coord_map_for_coords[coord] = coord_map_for_coords[coord] + [
+                    # #         "inds"
+                    # #     ]
 
                 val = val.data
 
             coords[coord] = val
+
+        # lonlat_is_trivial = True
+        # for coord in ["x", "y", "lon", "lat"]:
+        #     if coords.get(coord) is not None and len(coords.get(coord)) > 1:
+        #         lonlat_is_trivial = False
+        name = ds.attrs.get("name") or name
+        points = cls(**coords, chunks=chunks, name=name)
+        lonlat_is_trivial = points.nx() == 1 and points.ny() == 1
+        core_lens = {c: len(points.get(c)) for c in points.core.coords("all")}
 
         if dynamic:  # Try to decode variables from the dataset
             mapped_vars, __ = map_ds_to_gp(
@@ -390,7 +398,8 @@ class Skeleton:
                 core_vars=core_vars,
                 data_vars=data_vars,
                 ignore_vars=ignore_vars,
-                lon_had_time_dim=lon_had_time_dim,
+                lonlat_is_trivial=lonlat_is_trivial,
+                verbose=verbose,
             )
 
             cls, added_core_vars, coord_map_for_dynamic_vars = add_dynamic_vars_from_ds(
@@ -398,21 +407,18 @@ class Skeleton:
             )
             coord_map_for_vars.update(coord_map_for_dynamic_vars)
             core_vars.update(added_core_vars)
+
+            # Re-initialize skeleton with new class
+            name = ds.attrs.get("name") or name
+            points = cls(**coords, chunks=chunks, name=name)
         # Initialize Skeleton
 
-        name = ds.attrs.get("name") or name
-        points = cls(**coords, chunks=chunks, name=name)
-
-        if lon_had_time_dim:
-            for key, val in coord_map_for_vars.items():
-                if cls.is_gridded():
-                    coord_map_for_vars[key].append(points.core.y_str)
-                    coord_map_for_vars[key].append(points.core.x_str)
-                else:
-                    coord_map_for_vars[key].append("inds")
+        remapped_coords, ds_coord_groups = remap_coords_of_ds_vars_to_skeleton_names(
+            ds, cls.core, core_vars, core_coords, core_lens
+        )
 
         points = set_core_vars_to_skeleton_from_ds(
-            points, ds, core_vars, coord_map_for_vars, meta_dict, data_vars, ignore_vars
+            points, ds, core_vars, remapped_coords, meta_dict, data_vars, ignore_vars
         )
 
         metadata = meta_dict.get("_global_") or ds.attrs

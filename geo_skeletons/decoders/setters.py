@@ -8,7 +8,7 @@ def set_core_vars_to_skeleton_from_ds(
     skeleton,
     ds: xr.Dataset,
     core_vars: dict,
-    coord_map: dict,
+    remapped_coords: dict[str, list[str]],
     meta_dict: dict = None,
     data_vars: list[str] = None,
     ignore_vars: list[str] = None,
@@ -27,17 +27,18 @@ def set_core_vars_to_skeleton_from_ds(
     ignore_vars = ignore_vars or []
     meta_dict = meta_dict or {}
     for var, ds_var in core_vars.items():
-        if (
-            not data_vars or ds_var in data_vars
-        ) and not ds_var in ignore_vars:  # If list is specified, only add those variables
-            skeleton.set(var, ds.get(ds_var), coords=coord_map[var])
-            old_metadata = {
-                "standard_name": skeleton.meta.get(var).get("standard_name"),
-                "units": skeleton.meta.get(var).get("units"),
-            }
-            skeleton.meta.append(ds.get(ds_var).attrs, name=var)
-            skeleton.meta.append(old_metadata, name=var)
-            skeleton.meta.append(meta_dict.get(var, {}), name=var)
+        if remapped_coords.get(var) is not None:
+            if (
+                not data_vars or ds_var in data_vars
+            ) and not ds_var in ignore_vars:  # If list is specified, only add those variables
+                skeleton.set(var, ds.get(ds_var), coords=remapped_coords[var])
+                old_metadata = {
+                    "standard_name": skeleton.meta.get(var).get("standard_name"),
+                    "units": skeleton.meta.get(var).get("units"),
+                }
+                skeleton.meta.append(ds.get(ds_var).attrs, name=var)
+                skeleton.meta.append(old_metadata, name=var)
+                skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
     for var in skeleton.core.magnitudes():
         old_metadata = {

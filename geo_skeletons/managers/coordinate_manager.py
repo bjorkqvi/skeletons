@@ -446,7 +446,7 @@ class CoordinateManager:
         dirs = [v for v in self._added_directions.values() if v.name == var]
         all_vars = coords + vars + masks + mags + dirs
         if not all_vars:
-            raise KeyError(f"Cannot find the data {var}!")
+            raise KeyError(f"Cannot get coord_group for unknown variable {var}!")
 
         return all_vars[0].coord_group
 
