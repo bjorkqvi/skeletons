@@ -5,7 +5,6 @@ import geo_parameters as gp
 from typing import Union
 from geo_skeletons.errors import GridError
 from geo_skeletons.variable_archive import coord_alias_map_to_gp, var_alias_map_to_gp
-from .core_decoders import _remap_coords
 from copy import deepcopy
 
 
@@ -156,7 +155,8 @@ def find_settable_vars_and_magnitudes(
     core_vars: dict[str, str],
     data_vars: list[str] = None,
     ignore_vars: list[str] = None,
-    lon_had_time_dim: bool = False,
+    lonlat_is_trivial: bool = False,
+    verbose: bool = False,
 ):
 
     settable_vars = _find_settable_vars(
@@ -167,7 +167,8 @@ def find_settable_vars_and_magnitudes(
         core_vars,
         data_vars,
         ignore_vars,
-        lon_had_time_dim,
+        lonlat_is_trivial,
+        verbose,
     )
 
     x_variables = _find_x_variables(settable_vars)
@@ -185,7 +186,8 @@ def _find_settable_vars(
     core_vars: dict[str, str],
     data_vars: list[str],
     ignore_vars: list[str],
-    lon_had_time_dim: bool,
+    lonlat_is_trivial: bool,
+    verbose: bool,
 ) -> dict[Union[str, MetaParameter], str, list[str]]:
     """Find all the variables in the Dataset that can e added to the skeleton_class.
 
@@ -213,30 +215,61 @@ def _find_settable_vars(
             and (not var_exists)
             and (ds_var not in ignore_vars)
         ):
+            if verbose:
+                print(f"Var: {var}")
             # 2) Find suitable coordinate group
-            coords = _remap_coords(
-                ds_var,
-                core_coords,
-                skeleton_class.core.coords("init"),
-                ds,
-                is_pointskeleton=not skeleton_class.is_gridded(),
-            )
-
+            coords = None
+            # coords = _remap_coords(
+            #     ds_var,
+            #     core_coords,
+            #     skeleton_class.core.coords("init"),
+            #     ds,
+            #     is_pointskeleton=not skeleton_class.is_gridded(),
+            # )
+            if verbose:
+                print(f"Coords mapped to core coords: {coords}")
             # Determine coord_group
+
             coord_group = None
-            for cg in ["spatial", "all", "grid", "gridpoint"]:
+            for cg in ["gridpoint", "grid", "all", "spatial"]:
+
                 compare_coords = deepcopy(coords)
                 skeleton_coord_group = skeleton_class.core.coords(cg)
-                if lon_had_time_dim and "time" in skeleton_coord_group:
+                if verbose:
+                    print("--------------------")
+                    print(f"Coord group: {cg}: {skeleton_coord_group}")
+                if lonlat_is_trivial and "time" in skeleton_coord_group:
+                    if verbose:
+                        print(
+                            f"\tTrivial lon-lat and skeleton has time defined, adding spatial variable if necessary..."
+                        )
                     if skeleton_class.is_gridded():
                         if cartesian:
-                            compare_coords.append("y")
-                            compare_coords.append("x")
+                            if "y" not in compare_coords:
+                                if verbose:
+                                    print(f"\tAdding y")
+                                compare_coords.append("y")
+                            if "x" not in compare_coords:
+                                compare_coords.append("x")
+                                if verbose:
+                                    print(f"\tAdding x")
                         else:
-                            compare_coords.append("lat")
-                            compare_coords.append("lon")
+                            if "lat" not in compare_coords:
+                                compare_coords.append("lat")
+                                if verbose:
+                                    print(f"\tAdding lat")
+                            if "lon" not in compare_coords:
+                                compare_coords.append("lon")
+                                if verbose:
+                                    print(f"\tAdding lon")
                     else:
-                        compare_coords.append("inds")
+                        if "inds" not in compare_coords:
+                            compare_coords.append("inds")
+                            if verbose:
+                                print(f"\tAdding inds")
+                if verbose:
+                    print(f"Final Coords mapped to core coords: {compare_coords}")
+
                 if cartesian:
                     skeleton_coord_group = list(
                         map(lambda x: x.replace("lat", "y"), skeleton_coord_group)
@@ -251,8 +284,16 @@ def _find_settable_vars(
                     skeleton_coord_group = list(
                         map(lambda x: x.replace("x", "lon"), skeleton_coord_group)
                     )
-                if compare_coords == skeleton_coord_group:
+
+                if verbose:
+                    print(f"Final skeleton coords: {skeleton_coord_group}")
+                if set(compare_coords) == set(skeleton_coord_group):
+                    if verbose:
+                        print(
+                            f"MATCH!: set({compare_coords}) == set({skeleton_coord_group})"
+                        )
                     coord_group = cg
+                    break
 
             if coord_group is not None:
                 settable_vars[ds_var] = (var, coord_group, coords)
