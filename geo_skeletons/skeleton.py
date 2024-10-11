@@ -7,10 +7,11 @@ from .managers.resample_manager import ResampleManager
 from .decoders import (
     identify_core_in_ds,
     set_core_vars_to_skeleton_from_ds,
-    add_dynamic_vars_from_ds,
+    create_new_class_dynamically,
     find_addable_vars_and_magnitudes,
     map_ds_to_gp,
     remap_coords_of_ds_vars_to_skeleton_names,
+    gather_coord_values
 )
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
@@ -343,6 +344,13 @@ class Skeleton:
         data_vars = data_vars or []
         ignore_vars = ignore_vars or []
 
+        if dynamic:  # Try to decode variables from the dataset
+            cls, added_core_vars_to_ds_vars = create_new_class_dynamically(cls=cls,ds=ds, data_vars=data_vars, 
+                                                ignore_vars=ignore_vars, keep_ds_names=keep_ds_names, 
+                                                decode_cf=decode_cf, core_aliases=core_aliases, 
+                                                ds_aliases=ds_aliases, extra_coords=kwargs)
+
+            core_aliases.update(added_core_vars_to_ds_vars)
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         (
             core_coords_to_ds_coords,
@@ -352,80 +360,18 @@ class Skeleton:
             cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys())
         )
 
-        # Gather coordinates
-        coords = {}
-
-        for coord in coords_needed:
-            val = (
-                ds.get(core_coords_to_ds_coords.get(coord))
-                if core_coords_to_ds_coords.get(coord) is not None
-                else kwargs.get(coord)
-            )
-
-            if isinstance(val, xr.DataArray):
-                if coord in ["x", "y", "lon", "lat"] and "time" in val.dims:
-                    val = val.median(dim="time", skipna=True)
-                    # breakpoint()
-                    # ind = ds_coords.get(core_coords_to_ds_coords.get(coord)).index("time")
-                    # ds_coord[coord] = list(set(coord_map_for_coords[coord]) - {"time"})
-                    # # if not cls.is_gridded():
-                    # #     coord_map_for_coords[coord] = coord_map_for_coords[coord] + [
-                    # #         "inds"
-                    # #     ]
-
-                val = val.data
-
-            coords[coord] = val
-
-        # lonlat_is_trivial = True
-        # for coord in ["x", "y", "lon", "lat"]:
-        #     if coords.get(coord) is not None and len(coords.get(coord)) > 1:
-        #         lonlat_is_trivial = False
+        coords = gather_coord_values(coords_needed,ds,core_coords_to_ds_coords, extra_coords=kwargs)
         name = ds.attrs.get("name") or name
         points = cls(**coords, chunks=chunks, name=name)
+        # Lengths needed for matching coordinates with wrong name
+        # We do this instead of reading the lengths of the arrays directyl
+        # Reason is that we want 'inds' for PointSkeletons etc 
         core_lens = {c: len(points.get(c)) for c in points.core.coords("all")}
 
-        ds_remapped_coords, ds_coord_groups = remap_coords_of_ds_vars_to_skeleton_names(
+        # Remap the names of the Dataset dimension so that we can traspose data when setting
+        ds_remapped_coords, __ = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
-
-        if dynamic:  # Try to decode variables from the dataset
-            ds_vars_to_gp, __ = map_ds_to_gp(
-                ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
-            )
-
-            addable_vars, addable_magnitudes, new_core_vars_to_ds_vars = (
-                find_addable_vars_and_magnitudes(
-                    core=cls.core,
-                    ds_vars_to_gp=ds_vars_to_gp,
-                    core_vars_to_ds_vars=core_vars_to_ds_vars,
-                    data_vars=data_vars,
-                    ignore_vars=ignore_vars,
-                )
-            )
-
-            # Remap to get new coord groups etc.
-            core_vars_to_ds_vars.update(new_core_vars_to_ds_vars)
-            ds_remapped_coords, ds_coord_groups = (
-                remap_coords_of_ds_vars_to_skeleton_names(
-                    ds,
-                    cls.core,
-                    core_vars_to_ds_vars,
-                    core_coords_to_ds_coords,
-                    core_lens,
-                )
-            )
-
-            cls = add_dynamic_vars_from_ds(
-                cls,
-                addable_vars,
-                addable_magnitudes,
-                ds_vars_to_gp,
-                ds_coord_groups,
-            )
-            # Re-initialize skeleton with new class
-            name = ds.attrs.get("name") or name
-            points = cls(**coords, chunks=chunks, name=name)
 
         # Set data
         points = set_core_vars_to_skeleton_from_ds(

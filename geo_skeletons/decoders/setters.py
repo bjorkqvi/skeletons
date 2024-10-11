@@ -2,7 +2,65 @@ import xarray as xr
 import geo_parameters as gp
 from typing import Union
 from geo_parameters.metaparameter import MetaParameter
+from .core_decoders import identify_core_in_ds, gather_coord_values
+from .ds_decoders import map_ds_to_gp,find_addable_vars_and_magnitudes
+from .coord_remapping import remap_coords_of_ds_vars_to_skeleton_names
 
+def create_new_class_dynamically(cls,ds, data_vars, ignore_vars, keep_ds_names, decode_cf, core_aliases, ds_aliases, extra_coords):
+    (
+        core_coords_to_ds_coords,
+        core_vars_to_ds_vars,
+        coords_needed,
+    ) = identify_core_in_ds(
+        cls.core, ds, aliases=core_aliases, allowed_misses=list(extra_coords.keys())
+    )
+
+    coords = gather_coord_values(coords_needed,ds,core_coords_to_ds_coords, extra_coords=extra_coords)
+    points = cls(**coords)
+    # Lengths needed for matching coordinates with wrong name
+    # We do this instead of reading the lengths of the arrays directyl
+    # Reason is that we want 'inds' for PointSkeletons etc 
+    core_lens = {c: len(points.get(c)) for c in points.core.coords("all")}
+
+    # Map every variable in the Dataset to a MetaParameter if possible
+    ds_vars_to_gp, __ = map_ds_to_gp(
+        ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
+    )
+
+    # Find which ones of the Dataset variables should be added
+    # Also determine if there are some Magnitude-Direction pairs that should be added
+    addable_vars, addable_magnitudes, new_core_vars_to_ds_vars = (
+        find_addable_vars_and_magnitudes(
+            core=cls.core,
+            ds_vars_to_gp=ds_vars_to_gp,
+            core_vars_to_ds_vars=core_vars_to_ds_vars,
+            data_vars=data_vars,
+            ignore_vars=ignore_vars,
+        )
+    )
+    # Add new coords in here to they represent the new class that we will create
+    core_vars_to_ds_vars.update(new_core_vars_to_ds_vars)
+    
+    # Find matching coordinate groups that we need to add the variables to the class
+    __, ds_coord_groups = (
+        remap_coords_of_ds_vars_to_skeleton_names(
+            ds,
+            cls.core,
+            core_vars_to_ds_vars,
+            core_coords_to_ds_coords,
+            core_lens,
+        )
+    )
+
+    # Create the new class
+    cls = _add_dynamic_vars_from_ds(
+        cls,
+        addable_vars,
+        addable_magnitudes,
+        ds_vars_to_gp,
+        ds_coord_groups,
+    )
+    return cls, core_vars_to_ds_vars
 
 def set_core_vars_to_skeleton_from_ds(
     skeleton,
@@ -53,7 +111,7 @@ def set_core_vars_to_skeleton_from_ds(
     return skeleton
 
 
-def add_dynamic_vars_from_ds(
+def _add_dynamic_vars_from_ds(
     skeleton_class,
     addable_vars: list[str],
     addable_magnitudes: list[str],
@@ -81,3 +139,5 @@ def add_dynamic_vars_from_ds(
     if new_class is None:
         new_class = skeleton_class
     return new_class
+
+

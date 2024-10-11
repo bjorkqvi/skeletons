@@ -10,7 +10,7 @@ def remap_coords_of_ds_vars_to_skeleton_names(
     core_coords: dict[str, str],
     core_lens: dict[str, int],
     conservative_expansion: bool = False,
-):
+) -> tuple[dict, dict]:
     """Remaps the coordinates of a Dataset variable to the Skeleton variables of a pre-defined coord_group"""
     remapped_coords = {}
     ds_coord_groups = {}
