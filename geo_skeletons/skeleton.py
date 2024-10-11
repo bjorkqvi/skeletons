@@ -345,8 +345,8 @@ class Skeleton:
 
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         (
-            core_coords,
-            core_vars,
+            core_coords_to_ds_coords,
+            core_vars_to_ds_vars,
             coords_needed,
         ) = identify_core_in_ds(
             cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys())
@@ -357,8 +357,8 @@ class Skeleton:
 
         for coord in coords_needed:
             val = (
-                ds.get(core_coords.get(coord))
-                if core_coords.get(coord) is not None
+                ds.get(core_coords_to_ds_coords.get(coord))
+                if core_coords_to_ds_coords.get(coord) is not None
                 else kwargs.get(coord)
             )
 
@@ -366,7 +366,7 @@ class Skeleton:
                 if coord in ["x", "y", "lon", "lat"] and "time" in val.dims:
                     val = val.median(dim="time", skipna=True)
                     # breakpoint()
-                    # ind = ds_coords.get(core_coords.get(coord)).index("time")
+                    # ind = ds_coords.get(core_coords_to_ds_coords.get(coord)).index("time")
                     # ds_coord[coord] = list(set(coord_map_for_coords[coord]) - {"time"})
                     # # if not cls.is_gridded():
                     # #     coord_map_for_coords[coord] = coord_map_for_coords[coord] + [
@@ -385,30 +385,34 @@ class Skeleton:
         points = cls(**coords, chunks=chunks, name=name)
         core_lens = {c: len(points.get(c)) for c in points.core.coords("all")}
 
-        remapped_coords, ds_coord_groups = remap_coords_of_ds_vars_to_skeleton_names(
-            ds, cls.core, core_vars, core_coords, core_lens
+        ds_remapped_coords, ds_coord_groups = remap_coords_of_ds_vars_to_skeleton_names(
+            ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
 
         if dynamic:  # Try to decode variables from the dataset
-            mapped_vars_ds_to_gp, __ = map_ds_to_gp(
+            ds_vars_to_gp, __ = map_ds_to_gp(
                 ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
             )
 
-            addable_vars, addable_magnitudes, new_core_vars = (
+            addable_vars, addable_magnitudes, new_core_vars_to_ds_vars = (
                 find_addable_vars_and_magnitudes(
                     core=cls.core,
-                    mapped_vars_ds_to_gp=mapped_vars_ds_to_gp,
-                    core_vars=core_vars,
+                    ds_vars_to_gp=ds_vars_to_gp,
+                    core_vars_to_ds_vars=core_vars_to_ds_vars,
                     data_vars=data_vars,
                     ignore_vars=ignore_vars,
                 )
             )
 
             # Remap to get new coord groups etc.
-            core_vars.update(new_core_vars)
-            remapped_coords, ds_coord_groups = (
+            core_vars_to_ds_vars.update(new_core_vars_to_ds_vars)
+            ds_remapped_coords, ds_coord_groups = (
                 remap_coords_of_ds_vars_to_skeleton_names(
-                    ds, cls.core, core_vars, core_coords, core_lens
+                    ds,
+                    cls.core,
+                    core_vars_to_ds_vars,
+                    core_coords_to_ds_coords,
+                    core_lens,
                 )
             )
 
@@ -416,7 +420,7 @@ class Skeleton:
                 cls,
                 addable_vars,
                 addable_magnitudes,
-                mapped_vars_ds_to_gp,
+                ds_vars_to_gp,
                 ds_coord_groups,
             )
             # Re-initialize skeleton with new class
@@ -425,7 +429,7 @@ class Skeleton:
 
         # Set data
         points = set_core_vars_to_skeleton_from_ds(
-            points, ds, core_vars, remapped_coords, meta_dict
+            points, ds, core_vars_to_ds_vars, ds_remapped_coords, meta_dict
         )
 
         metadata = meta_dict.get("_global_") or ds.attrs

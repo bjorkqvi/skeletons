@@ -149,14 +149,14 @@ def _var_is_coordinate(var, aliases) -> bool:
 
 def find_addable_vars_and_magnitudes(
     core,
-    mapped_vars_ds_to_gp: dict[str, Union[str, MetaParameter]],
-    core_vars: dict[str, str],
+    ds_vars_to_gp: dict[str, Union[str, MetaParameter]],
+    core_vars_to_ds_vars: dict[str, str],
     data_vars: list[str] = None,
     ignore_vars: list[str] = None,
 ):
-    new_core_vars = {}
+    new_core_vars_to_ds_vars = {}
 
-    addable_vars = _find_not_existing_vars(mapped_vars_ds_to_gp, core, core_vars)
+    addable_vars = _find_not_existing_vars(ds_vars_to_gp, core, core_vars_to_ds_vars)
 
     addable_vars = set(addable_vars) - set(ignore_vars)
     if data_vars:
@@ -164,24 +164,24 @@ def find_addable_vars_and_magnitudes(
     addable_vars = list(addable_vars)
 
     for ds_var in addable_vars:
-        var, _ = gp.decode(mapped_vars_ds_to_gp.get(ds_var))
-        new_core_vars[var] = ds_var
+        var, _ = gp.decode(ds_vars_to_gp.get(ds_var))
+        new_core_vars_to_ds_vars[var] = ds_var
 
-    x_variables = _find_x_variables(addable_vars, mapped_vars_ds_to_gp)
+    x_variables = _find_x_variables(addable_vars, ds_vars_to_gp)
     addable_magnitudes = _find_addable_magnitudes(x_variables)
 
-    return addable_vars, addable_magnitudes, new_core_vars
+    return addable_vars, addable_magnitudes, new_core_vars_to_ds_vars
 
 
 def _find_not_existing_vars(
-    mapped_vars_ds_to_gp: dict[str, Union[str, MetaParameter]],
+    ds_vars_to_gp: dict[str, Union[str, MetaParameter]],
     core: CoordinateManager,
-    core_vars: dict[str, str],
+    core_vars_to_ds_vars: dict[str, str],
 ) -> list[str]:
     """Find all the variables in the Dataset that don't already exist in the Skeleton"""
     new_vars = []
 
-    for ds_var, var in mapped_vars_ds_to_gp.items():
+    for ds_var, var in ds_vars_to_gp.items():
         # 1) Check if variable exists
         var_str, __ = gp.decode(var)
         if __ is not None:
@@ -189,7 +189,10 @@ def _find_not_existing_vars(
                 core.find_cf(var.standard_name()) != [] or var_str in core.data_vars()
             )
         else:
-            var_exists = var_str in core_vars.keys() or var_str in core_vars.values()
+            var_exists = (
+                var_str in core_vars_to_ds_vars.keys()
+                or var_str in core_vars_to_ds_vars.values()
+            )
 
         if not var_exists:
             new_vars.append(ds_var)
@@ -198,17 +201,17 @@ def _find_not_existing_vars(
 
 
 def _find_x_variables(
-    addable_vars: list[str], mapped_vars_ds_to_gp: dict[str, Union[MetaParameter, str]]
+    addable_vars: list[str], ds_vars_to_gp: dict[str, Union[MetaParameter, str]]
 ) -> list[MetaParameter]:
     """Finds all the x-components that also have a corresponding y-component"""
     x_variables = []
     for ds_var in addable_vars:
-        var_str, var = gp.decode(mapped_vars_ds_to_gp.get(ds_var))
+        var_str, var = gp.decode(ds_vars_to_gp.get(ds_var))
         if var is not None:
             if var.i_am() == "x":
                 # Check for matching y-variable
                 y_ok = False
-                for v in mapped_vars_ds_to_gp.values():
+                for v in ds_vars_to_gp.values():
                     __, v = gp.decode(v)
                     if v is not None:
                         if var.my_family().get("y").is_same(v):
