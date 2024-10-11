@@ -147,188 +147,84 @@ def _var_is_coordinate(var, aliases) -> bool:
     return False
 
 
-def find_settable_vars_and_magnitudes(
-    skeleton_class,
-    ds: xr.Dataset,
-    mapped_vars: dict[str, str],
-    core_coords: dict[str, str],
+def find_addable_vars_and_magnitudes(
+    core,
+    mapped_vars_ds_to_gp: dict[str, Union[str, MetaParameter]],
     core_vars: dict[str, str],
     data_vars: list[str] = None,
     ignore_vars: list[str] = None,
-    lonlat_is_trivial: bool = False,
-    verbose: bool = False,
 ):
+    new_core_vars = {}
 
-    settable_vars = _find_settable_vars(
-        ds,
-        mapped_vars,
-        skeleton_class,
-        core_coords,
-        core_vars,
-        data_vars,
-        ignore_vars,
-        lonlat_is_trivial,
-        verbose,
-    )
+    addable_vars = _find_not_existing_vars(mapped_vars_ds_to_gp, core, core_vars)
 
-    x_variables = _find_x_variables(settable_vars)
+    addable_vars = set(addable_vars) - set(ignore_vars)
+    if data_vars:
+        addable_vars = addable_vars.intersection(set(data_vars))
+    addable_vars = list(addable_vars)
 
-    settable_magnitudes = _find_settable_magnitudes(x_variables)
+    for ds_var in addable_vars:
+        var, _ = gp.decode(mapped_vars_ds_to_gp.get(ds_var))
+        new_core_vars[var] = ds_var
 
-    return settable_vars, settable_magnitudes
+    x_variables = _find_x_variables(addable_vars, mapped_vars_ds_to_gp)
+    addable_magnitudes = _find_addable_magnitudes(x_variables)
+
+    return addable_vars, addable_magnitudes, new_core_vars
 
 
-def _find_settable_vars(
-    ds: xr.Dataset,
-    mapped_vars: dict[str, Union[str, MetaParameter]],
-    skeleton_class,
-    core_coords: dict,
+def _find_not_existing_vars(
+    mapped_vars_ds_to_gp: dict[str, Union[str, MetaParameter]],
+    core: CoordinateManager,
     core_vars: dict[str, str],
-    data_vars: list[str],
-    ignore_vars: list[str],
-    lonlat_is_trivial: bool,
-    verbose: bool,
-) -> dict[Union[str, MetaParameter], str, list[str]]:
-    """Find all the variables in the Dataset that can e added to the skeleton_class.
+) -> list[str]:
+    """Find all the variables in the Dataset that don't already exist in the Skeleton"""
+    new_vars = []
 
-    Reasons not to add:
-    1) It already exists (based on name or standard_name of geo-parameter)
-    2) We can't find a coordinate groupt that fits the dimensions"""
-    settable_vars = {}
-    cartesian = core_coords.get("x") is not None
-
-    for ds_var, var in mapped_vars.items():
+    for ds_var, var in mapped_vars_ds_to_gp.items():
         # 1) Check if variable exists
         var_str, __ = gp.decode(var)
         if __ is not None:
             var_exists = (
-                skeleton_class.core.find_cf(var.standard_name()) != []
-                or var_str in skeleton_class.core.data_vars()
+                core.find_cf(var.standard_name()) != [] or var_str in core.data_vars()
             )
         else:
             var_exists = var_str in core_vars.keys() or var_str in core_vars.values()
 
-        # var_exists = var_exists or var in core_aliases.values()
+        if not var_exists:
+            new_vars.append(ds_var)
 
-        if (
-            (not data_vars or ds_var in data_vars)
-            and (not var_exists)
-            and (ds_var not in ignore_vars)
-        ):
-            if verbose:
-                print(f"Var: {var}")
-            # 2) Find suitable coordinate group
-            coords = None
-            # coords = _remap_coords(
-            #     ds_var,
-            #     core_coords,
-            #     skeleton_class.core.coords("init"),
-            #     ds,
-            #     is_pointskeleton=not skeleton_class.is_gridded(),
-            # )
-            if verbose:
-                print(f"Coords mapped to core coords: {coords}")
-            # Determine coord_group
-
-            coord_group = None
-            for cg in ["gridpoint", "grid", "all", "spatial"]:
-
-                compare_coords = deepcopy(coords)
-                skeleton_coord_group = skeleton_class.core.coords(cg)
-                if verbose:
-                    print("--------------------")
-                    print(f"Coord group: {cg}: {skeleton_coord_group}")
-                if lonlat_is_trivial and "time" in skeleton_coord_group:
-                    if verbose:
-                        print(
-                            f"\tTrivial lon-lat and skeleton has time defined, adding spatial variable if necessary..."
-                        )
-                    if skeleton_class.is_gridded():
-                        if cartesian:
-                            if "y" not in compare_coords:
-                                if verbose:
-                                    print(f"\tAdding y")
-                                compare_coords.append("y")
-                            if "x" not in compare_coords:
-                                compare_coords.append("x")
-                                if verbose:
-                                    print(f"\tAdding x")
-                        else:
-                            if "lat" not in compare_coords:
-                                compare_coords.append("lat")
-                                if verbose:
-                                    print(f"\tAdding lat")
-                            if "lon" not in compare_coords:
-                                compare_coords.append("lon")
-                                if verbose:
-                                    print(f"\tAdding lon")
-                    else:
-                        if "inds" not in compare_coords:
-                            compare_coords.append("inds")
-                            if verbose:
-                                print(f"\tAdding inds")
-                if verbose:
-                    print(f"Final Coords mapped to core coords: {compare_coords}")
-
-                if cartesian:
-                    skeleton_coord_group = list(
-                        map(lambda x: x.replace("lat", "y"), skeleton_coord_group)
-                    )
-                    skeleton_coord_group = list(
-                        map(lambda x: x.replace("lon", "x"), skeleton_coord_group)
-                    )
-                else:
-                    skeleton_coord_group = list(
-                        map(lambda x: x.replace("y", "lat"), skeleton_coord_group)
-                    )
-                    skeleton_coord_group = list(
-                        map(lambda x: x.replace("x", "lon"), skeleton_coord_group)
-                    )
-
-                if verbose:
-                    print(f"Final skeleton coords: {skeleton_coord_group}")
-                if set(compare_coords) == set(skeleton_coord_group):
-                    if verbose:
-                        print(
-                            f"MATCH!: set({compare_coords}) == set({skeleton_coord_group})"
-                        )
-                    coord_group = cg
-                    break
-
-            if coord_group is not None:
-                settable_vars[ds_var] = (var, coord_group, coords)
-    return settable_vars
+    return new_vars
 
 
 def _find_x_variables(
-    settable_vars: list[tuple[Union[str, MetaParameter], str, list[str]]]
-):
+    addable_vars: list[str], mapped_vars_ds_to_gp: dict[str, Union[MetaParameter, str]]
+) -> list[MetaParameter]:
+    """Finds all the x-components that also have a corresponding y-component"""
     x_variables = []
-    gps_to_set = []
-    for _, (var, __, ___) in settable_vars.items():
-        gps_to_set.append(var)
-
-    for ds_var, (var, coord_group, coords) in settable_vars.items():
-        var_str, var = gp.decode(var)
+    for ds_var in addable_vars:
+        var_str, var = gp.decode(mapped_vars_ds_to_gp.get(ds_var))
         if var is not None:
             if var.i_am() == "x":
                 # Check for matching y-variable
                 y_ok = False
-                for v in gps_to_set:
-                    if var.my_family().get("y").is_same(v):
-                        y_ok = True
+                for v in mapped_vars_ds_to_gp.values():
+                    __, v = gp.decode(v)
+                    if v is not None:
+                        if var.my_family().get("y").is_same(v):
+                            y_ok = True
                 if y_ok:
                     x_variables.append(var)
     return x_variables
 
 
-def _find_settable_magnitudes(
+def _find_addable_magnitudes(
     x_variables: list[MetaParameter],
 ) -> list[tuple[MetaParameter, MetaParameter]]:
     # Search for possibilities to set magnitude and direction
-    settable_magnitudes = []
+    addable_magnitudes = []
     for var in x_variables:
-        settable_magnitudes.append(
+        addable_magnitudes.append(
             (var.my_family().get("mag"), var.my_family().get("dir"))
         )
-    return settable_magnitudes
+    return addable_magnitudes

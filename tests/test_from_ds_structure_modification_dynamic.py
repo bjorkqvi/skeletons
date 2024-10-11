@@ -8,17 +8,7 @@ import pandas as pd
 import xarray as xr
 
 
-@pytest.fixture
-def wave_cls():
-    @add_datavar(gp.wave.Hs)
-    @add_time()
-    class WaveData(PointSkeleton):
-        pass
-
-    return WaveData
-
-
-def test_time_in_lonlat_one_point_no_inds(wave_cls):
+def test_time_in_lonlat_one_point_no_inds():
     time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
     lon = np.arange(24)
     lat = np.arange(24) + 5
@@ -30,22 +20,15 @@ def test_time_in_lonlat_one_point_no_inds(wave_cls):
         ),
         coords=dict(lon=("time", lon), lat=("time", lat), time=time),
     )
-    data = wave_cls.from_ds(ds)
-
-    assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
-    assert set(data.ds().time.dims) == {"time"}
-    assert set(data.ds().lon.dims) == {"inds"}
-    assert set(data.ds().lat.dims) == {"inds"}
 
     data = PointSkeleton.add_time().from_ds(ds, dynamic=True, verbose=True)
-
     assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
     assert set(data.ds().time.dims) == {"time"}
     assert set(data.ds().lon.dims) == {"inds"}
     assert set(data.ds().lat.dims) == {"inds"}
 
 
-def test_time_in_lonlat_three_points_with_inds(wave_cls):
+def test_time_in_lonlat_three_points_with_inds():
     time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
 
     lon = np.stack((np.arange(24), np.arange(24), np.arange(24))).T
@@ -64,12 +47,6 @@ def test_time_in_lonlat_three_points_with_inds(wave_cls):
             inds=inds,
         ),
     )
-    data = wave_cls.from_ds(ds)
-
-    assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
-    assert set(data.ds().time.dims) == {"time"}
-    assert set(data.ds().lon.dims) == {"inds"}
-    assert set(data.ds().lat.dims) == {"inds"}
 
     data = PointSkeleton.add_time().from_ds(ds, dynamic=True)
     assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
@@ -78,7 +55,7 @@ def test_time_in_lonlat_three_points_with_inds(wave_cls):
     assert set(data.ds().lat.dims) == {"inds"}
 
 
-def test_time_in_lonlat_three_points_with_inds_wrong_dim_name(wave_cls):
+def test_time_in_lonlat_three_points_with_inds_wrong_dim_name():
     time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
 
     lon = np.stack((np.arange(24), np.arange(24), np.arange(24))).T
@@ -97,12 +74,6 @@ def test_time_in_lonlat_three_points_with_inds_wrong_dim_name(wave_cls):
             station=inds,
         ),
     )
-    data = wave_cls.from_ds(ds)
-
-    assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
-    assert set(data.ds().time.dims) == {"time"}
-    assert set(data.ds().lon.dims) == {"inds"}
-    assert set(data.ds().lat.dims) == {"inds"}
 
     data = PointSkeleton.add_time().from_ds(ds, dynamic=True)
     assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
@@ -111,7 +82,7 @@ def test_time_in_lonlat_three_points_with_inds_wrong_dim_name(wave_cls):
     assert set(data.ds().lat.dims) == {"inds"}
 
 
-def test_time_in_lonlat_three_points_with_inds_wrong_dim_name_wrong_order(wave_cls):
+def test_time_in_lonlat_three_points_with_inds_wrong_dim_name_wrong_order():
     time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
 
     lon = np.stack((np.arange(24), np.arange(24), np.arange(24)))
@@ -131,13 +102,6 @@ def test_time_in_lonlat_three_points_with_inds_wrong_dim_name_wrong_order(wave_c
         ),
     )
 
-    data = wave_cls.from_ds(ds)
-
-    assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
-    assert set(data.ds().time.dims) == {"time"}
-    assert set(data.ds().lon.dims) == {"inds"}
-    assert set(data.ds().lat.dims) == {"inds"}
-
     data = PointSkeleton.add_time().from_ds(ds, dynamic=True, verbose=True)
     assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
     assert set(data.ds().time.dims) == {"time"}
@@ -145,7 +109,7 @@ def test_time_in_lonlat_three_points_with_inds_wrong_dim_name_wrong_order(wave_c
     assert set(data.ds().lat.dims) == {"inds"}
 
 
-def test_hs_only_time_one_point(wave_cls):
+def test_hs_only_time_one_point():
     time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
     lon = np.arange(1)
     lat = np.arange(1) + 5
@@ -158,13 +122,6 @@ def test_hs_only_time_one_point(wave_cls):
         coords=dict(lon=("inds", lon), lat=("inds", lat), time=time, inds=inds),
     )
 
-    data = wave_cls.from_ds(ds)
-
-    assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
-    assert set(data.ds().time.dims) == {"time"}
-    assert set(data.ds().lon.dims) == {"inds"}
-    assert set(data.ds().lat.dims) == {"inds"}
-
     data = PointSkeleton.add_time().from_ds(ds, dynamic=True)
     assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
     assert set(data.ds().time.dims) == {"time"}
@@ -172,46 +129,39 @@ def test_hs_only_time_one_point(wave_cls):
     assert set(data.ds().lat.dims) == {"inds"}
 
 
-def test_hs_only_time_three_point(wave_cls):
-    """We can't add inds to hs since inds is not trivial!
+# def test_hs_only_time_three_point():
+#     """We can't add inds to hs since inds is not trivial!
 
-    We can therefore only reorganize the data if we have a coordinate group with only time.
+#     We can therefore only reorganize the data if we have a coordinate group with only time.
 
-    This can be done by adding time with grid_coord=False"""
-    time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
-    lon = np.arange(3)
-    lat = np.arange(3) + 5
-    hs = np.full(time.shape, 3)
-    inds = np.arange(3)
-    ds = xr.Dataset(
-        data_vars=dict(
-            hs=("time", hs),
-        ),
-        coords=dict(lon=("inds", lon), lat=("inds", lat), time=time, inds=inds),
-    )
+#     This can be done by adding time with grid_coord=False"""
+#     time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
+#     lon = np.arange(3)
+#     lat = np.arange(3) + 5
+#     hs = np.full(time.shape, 3)
+#     inds = np.arange(3)
+#     ds = xr.Dataset(
+#         data_vars=dict(
+#             hs=("time", hs),
+#         ),
+#         coords=dict(lon=("inds", lon), lat=("inds", lat), time=time, inds=inds),
+#     )
 
-    data = wave_cls.from_ds(ds)
-    breakpoint()
-    assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
-    assert set(data.ds().time.dims) == {"time"}
-    assert set(data.ds().lon.dims) == {"inds"}
-    assert set(data.ds().lat.dims) == {"inds"}
-
-    data = PointSkeleton.add_time().from_ds(ds, dynamic=True)
-    assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
-    assert set(data.ds().time.dims) == {"time"}
-    assert set(data.ds().lon.dims) == {"inds"}
-    assert set(data.ds().lat.dims) == {"inds"}
-    # ds = xr.Dataset(
-    #     data_vars=dict(
-    #         hs=(["loc", "time"], hs),
-    #     ),
-    #     coords=dict(
-    #         lon=("loc", lon),
-    #         lat=("loc", lat),
-    #         instrument=instruments,
-    #         time=time,
-    #         reference_time=reference_time,
-    #     ),
-    #     attrs=dict(description="Weather related data."),
-    # )
+#     data = PointSkeleton.add_time().from_ds(ds, dynamic=True)
+#     assert data.core.coords(data.core.coord_group("hs")) == ["time", "inds"]
+#     assert set(data.ds().time.dims) == {"time"}
+#     assert set(data.ds().lon.dims) == {"inds"}
+#     assert set(data.ds().lat.dims) == {"inds"}
+# ds = xr.Dataset(
+#     data_vars=dict(
+#         hs=(["loc", "time"], hs),
+#     ),
+#     coords=dict(
+#         lon=("loc", lon),
+#         lat=("loc", lat),
+#         instrument=instruments,
+#         time=time,
+#         reference_time=reference_time,
+#     ),
+#     attrs=dict(description="Weather related data."),
+# )

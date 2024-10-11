@@ -14,8 +14,9 @@ def remap_coords_of_ds_vars_to_skeleton_names(
     """Remaps the coordinates of a Dataset variable to the Skeleton variables of a pre-defined coord_group"""
     remapped_coords = {}
     ds_coord_groups = {}
+    core_vars = core_vars or {}
     for var, ds_var in core_vars.items():
-        ds_coords = ds.get(ds_var).dims
+        ds_coords = list(ds.get(ds_var).dims)
         ds_lens = [len(ds.get(c)) for c in ds_coords]
 
         remapped_coord, coord_group = _remap_ds_coords(
@@ -26,8 +27,12 @@ def remap_coords_of_ds_vars_to_skeleton_names(
             core_lens=core_lens,
             conservative_expansion=conservative_expansion,
         )
+
         if remapped_coord is not None:
-            remapped_coords[var], ds_coord_groups[var] = remapped_coord, coord_group
+            remapped_coords[ds_var], ds_coord_groups[ds_var] = (
+                remapped_coord,
+                coord_group,
+            )
     return remapped_coords, ds_coord_groups
 
 
@@ -52,6 +57,7 @@ def _remap_ds_coords(
         skeleton_coords = _get_skeleton_goord_group_coords(
             core.coords(cg), cartesian=cartesian
         )
+
         coords, unused_core_coords, unused_core_coords_len = _rename_coords(
             ds_coords=ds_coords,
             core_coords=core_coords,
@@ -80,7 +86,7 @@ def _remap_ds_coords(
 
     if None in coords or cg is None:
         return None, None
-    return list(coords), cg
+    return coords, cg
 
 
 def _get_skeleton_goord_group_coords(skeleton_coords: list[str], cartesian: bool):
@@ -108,6 +114,7 @@ def _patch_unknown_coords(
             inds_of_matching_core_lens = [
                 i for i, j in enumerate(unused_core_coords_len) if j == ds_lens[n]
             ]
+
             if ds_lens[n] > 1:  # Non-trivial coordinate
                 # We can only match if we have exactcly one coordinate of matching length
                 if len(inds_of_matching_core_lens) == 1:
@@ -116,7 +123,11 @@ def _patch_unknown_coords(
                     coords[n] = None
             elif ds_lens[n] == 1:  # Trivial coordinate
                 # Trivial coordinates are not needed for setting
-                coords[n] = "REMOVETHISCOORD"
+                # But try to get e.g. 'inds' right so we can find a coord_group
+                if len(inds_of_matching_core_lens) == 1:
+                    coords[n] = unused_core_coords[inds_of_matching_core_lens[0]]
+                else:
+                    coords[n] = "REMOVETHISCOORD"
             else:
                 raise ValueError(
                     f"Length of Dataset coordinate needs to be positive, not{ds_lens[n]}!"
@@ -142,10 +153,9 @@ def _rename_coords(
     function returns ['inds', 'time', 'freq']
     Ther can be used to set data to the Skeleton without explicitly reshaping, since the dims in the Dataset have worng names
     """
+
     unused_core_coords = []
     unused_core_coords_len = []
-    if set(ds_coords).issubset(coords_needed):
-        return ds_coords, unused_core_coords, unused_core_coords_len
 
     # Need to rename the coordinates so they can be used in the reshape
     reversed_dict = {}

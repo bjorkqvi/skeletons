@@ -8,7 +8,7 @@ from .decoders import (
     identify_core_in_ds,
     set_core_vars_to_skeleton_from_ds,
     add_dynamic_vars_from_ds,
-    find_settable_vars_and_magnitudes,
+    find_addable_vars_and_magnitudes,
     map_ds_to_gp,
     remap_coords_of_ds_vars_to_skeleton_names,
 )
@@ -383,42 +383,49 @@ class Skeleton:
         #         lonlat_is_trivial = False
         name = ds.attrs.get("name") or name
         points = cls(**coords, chunks=chunks, name=name)
-        lonlat_is_trivial = points.nx() == 1 and points.ny() == 1
         core_lens = {c: len(points.get(c)) for c in points.core.coords("all")}
-
-        if dynamic:  # Try to decode variables from the dataset
-            mapped_vars, __ = map_ds_to_gp(
-                ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
-            )
-            settable_vars, settable_magnitudes = find_settable_vars_and_magnitudes(
-                skeleton_class=cls,
-                ds=ds,
-                mapped_vars=mapped_vars,
-                core_coords=core_coords,
-                core_vars=core_vars,
-                data_vars=data_vars,
-                ignore_vars=ignore_vars,
-                lonlat_is_trivial=lonlat_is_trivial,
-                verbose=verbose,
-            )
-
-            cls, added_core_vars, coord_map_for_dynamic_vars = add_dynamic_vars_from_ds(
-                cls, ds, settable_vars, settable_magnitudes
-            )
-            coord_map_for_vars.update(coord_map_for_dynamic_vars)
-            core_vars.update(added_core_vars)
-
-            # Re-initialize skeleton with new class
-            name = ds.attrs.get("name") or name
-            points = cls(**coords, chunks=chunks, name=name)
-        # Initialize Skeleton
 
         remapped_coords, ds_coord_groups = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars, core_coords, core_lens
         )
 
+        if dynamic:  # Try to decode variables from the dataset
+            mapped_vars_ds_to_gp, __ = map_ds_to_gp(
+                ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
+            )
+
+            addable_vars, addable_magnitudes, new_core_vars = (
+                find_addable_vars_and_magnitudes(
+                    core=cls.core,
+                    mapped_vars_ds_to_gp=mapped_vars_ds_to_gp,
+                    core_vars=core_vars,
+                    data_vars=data_vars,
+                    ignore_vars=ignore_vars,
+                )
+            )
+
+            # Remap to get new coord groups etc.
+            core_vars.update(new_core_vars)
+            remapped_coords, ds_coord_groups = (
+                remap_coords_of_ds_vars_to_skeleton_names(
+                    ds, cls.core, core_vars, core_coords, core_lens
+                )
+            )
+
+            cls = add_dynamic_vars_from_ds(
+                cls,
+                addable_vars,
+                addable_magnitudes,
+                mapped_vars_ds_to_gp,
+                ds_coord_groups,
+            )
+            # Re-initialize skeleton with new class
+            name = ds.attrs.get("name") or name
+            points = cls(**coords, chunks=chunks, name=name)
+
+        # Set data
         points = set_core_vars_to_skeleton_from_ds(
-            points, ds, core_vars, remapped_coords, meta_dict, data_vars, ignore_vars
+            points, ds, core_vars, remapped_coords, meta_dict
         )
 
         metadata = meta_dict.get("_global_") or ds.attrs
