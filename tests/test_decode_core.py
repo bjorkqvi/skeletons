@@ -75,11 +75,11 @@ def wave2_std():
 def test_empty_core(wave_no_std, wave_std):
     data = PointSkeleton(lon=0, lat=0)
     with pytest.raises(GridError):
-        core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+        core_coords, core_vars, coords_needed = identify_core_in_ds(
             data.core, ds=wave_no_std.ds()
         )
 
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         data.core, ds=wave_std.ds()
     )
     assert set(core_coords.keys()) == {"lon", "lat"}
@@ -88,20 +88,20 @@ def test_empty_core(wave_no_std, wave_std):
 
 def test_empty_core_not_strict(wave_no_std, wave_std):
     data = PointSkeleton(lon=0, lat=0)
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         data.core, ds=wave_no_std.ds(), strict=False
     )
 
 
 def test_empty_core_specify_missing(wave_no_std, wave_std):
     data = PointSkeleton(lon=0, lat=0)
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         data.core, ds=wave_no_std.ds(), allowed_misses=["lon", "lat"]
     )
 
 
 def test_core_with_gp(wave_no_std, wave_std):
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave_std.core, ds=wave_no_std.ds(), strict=False
     )
     assert set(core_vars.keys()) == {"hs", "tp", "dirp"}
@@ -109,7 +109,7 @@ def test_core_with_gp(wave_no_std, wave_std):
     assert set(core_coords.keys()) == set({})
     assert set(coords_needed) == {"lon", "lat"}
 
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave_std.core, ds=wave_std.ds()
     )
     assert set(core_vars.keys()) == {"hs", "tp", "dirp"}
@@ -120,11 +120,11 @@ def test_core_with_gp(wave_no_std, wave_std):
 
 def test_core_with_gp2(wave_no_std, wave_std, wave2_std):
     with pytest.raises(GridError):
-        core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+        core_coords, core_vars, coords_needed = identify_core_in_ds(
             wave2_std.core, ds=wave_no_std.ds()
         )
 
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_std.ds()
     )
     assert set(core_vars.keys()) == {"hs2", "tp2", "dirp2"}
@@ -134,7 +134,7 @@ def test_core_with_gp2(wave_no_std, wave_std, wave2_std):
 
 
 def test_core_without_gp2(wave_no_std, wave_std, wave2_no_std):
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_no_std.core, ds=wave_no_std.ds()
     )
     assert core_vars == {}
@@ -142,13 +142,13 @@ def test_core_without_gp2(wave_no_std, wave_std, wave2_no_std):
     assert set(coords_needed) == {"x", "y"}
 
     with pytest.raises(GridError):
-        core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+        core_coords, core_vars, coords_needed = identify_core_in_ds(
             wave2_no_std.core, ds=wave_std.ds()
         )
 
 
 def test_core_with_gp2_explicit_dict_str(wave_no_std, wave_std, wave2_std):
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_no_std.ds(), aliases={"hs2": "hs"}, strict=False
     )
     assert set(core_vars.keys()) == {"hs2"}
@@ -156,7 +156,7 @@ def test_core_with_gp2_explicit_dict_str(wave_no_std, wave_std, wave2_std):
     assert core_coords == {}
     assert set(coords_needed) == {"lon", "lat"}
 
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_std.ds()
     )
     assert set(core_vars.keys()) == {"hs2", "tp2", "dirp2"}
@@ -166,7 +166,7 @@ def test_core_with_gp2_explicit_dict_str(wave_no_std, wave_std, wave2_std):
 
 
 def test_core_with_gp2_explicit_dict_gp(wave_no_std, wave_std, wave2_std):
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_no_std.ds(), aliases={gp.wave.Hs: "hs"}, strict=False
     )
     assert set(core_vars.keys()) == {"hs2"}
@@ -174,7 +174,7 @@ def test_core_with_gp2_explicit_dict_gp(wave_no_std, wave_std, wave2_std):
     assert core_coords == {}
     assert set(coords_needed) == {"lon", "lat"}
 
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_std.ds()
     )
     assert set(core_vars.keys()) == {"hs2", "tp2", "dirp2"}
@@ -185,11 +185,11 @@ def test_core_with_gp2_explicit_dict_gp(wave_no_std, wave_std, wave2_std):
 
 def test_core_with_gp2_explicit_dict_gp_wrong_ds_name(wave_no_std, wave_std, wave2_std):
     with pytest.raises(GridError):
-        core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+        core_coords, core_vars, coords_needed = identify_core_in_ds(
             wave2_std.core, ds=wave_no_std.ds(), aliases={gp.wave.Hs: "hss"}
         )
 
-    core_coords, core_vars, __, coord_map, coords_needed = identify_core_in_ds(
+    core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_std.ds()
     )
     assert set(core_vars.keys()) == {"hs2", "tp2", "dirp2"}

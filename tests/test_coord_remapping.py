@@ -54,7 +54,7 @@ def test_remap_wrong_name_for_trivial_dim(wave_cls):
         conservative_expansion=False,
     )
     assert cg == "grid"
-    assert coords == ["time"]
+    assert coords == ["time", "inds"]
 
 
 def test_remap_not_trivial_inds_dim(wave_cls, wave_cls_gridpoint):

@@ -57,7 +57,7 @@ def test_remap_wrong_name_for_one_nontrivial_dim(wave_cls):
         conservative_expansion=False,
     )
     assert cg == "grid"
-    assert coords == ["time", "lon"]
+    assert coords == ["time", "lon", "lat"]
 
 
 def test_remap_not_trivial_inds_dim(wave_cls):

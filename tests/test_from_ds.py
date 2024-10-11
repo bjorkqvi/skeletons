@@ -261,5 +261,6 @@ def test_ds_aliases_doc_example4():
 
 def test_wind(wind):
     points = PointSkeleton.from_ds(wind.ds(), dynamic=True)
+
     assert "ff" in points.core.magnitudes()
     assert "dd" in points.core.directions()

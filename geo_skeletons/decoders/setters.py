@@ -1,7 +1,7 @@
 import xarray as xr
-from .ds_decoders import find_settable_vars_and_magnitudes
-
 import geo_parameters as gp
+from typing import Union
+from geo_parameters.metaparameter import MetaParameter
 
 
 def set_core_vars_to_skeleton_from_ds(
@@ -10,8 +10,6 @@ def set_core_vars_to_skeleton_from_ds(
     core_vars: dict,
     remapped_coords: dict[str, list[str]],
     meta_dict: dict = None,
-    data_vars: list[str] = None,
-    ignore_vars: list[str] = None,
 ):
     """Set core (static) variables to a skeleton from an xarray Dataset.
 
@@ -23,22 +21,18 @@ def set_core_vars_to_skeleton_from_ds(
     data_vars [default None]: list of ds_variables that will be set. All set if None.
     meta_dict: dict of core-var specific meta-data"""
 
-    data_vars = data_vars or []
-    ignore_vars = ignore_vars or []
+    core_vars = core_vars or {}
     meta_dict = meta_dict or {}
     for var, ds_var in core_vars.items():
-        if remapped_coords.get(var) is not None:
-            if (
-                not data_vars or ds_var in data_vars
-            ) and not ds_var in ignore_vars:  # If list is specified, only add those variables
-                skeleton.set(var, ds.get(ds_var), coords=remapped_coords[var])
-                old_metadata = {
-                    "standard_name": skeleton.meta.get(var).get("standard_name"),
-                    "units": skeleton.meta.get(var).get("units"),
-                }
-                skeleton.meta.append(ds.get(ds_var).attrs, name=var)
-                skeleton.meta.append(old_metadata, name=var)
-                skeleton.meta.append(meta_dict.get(var, {}), name=var)
+        if remapped_coords.get(ds_var):
+            skeleton.set(var, ds.get(ds_var), coords=remapped_coords[ds_var])
+            old_metadata = {
+                "standard_name": skeleton.meta.get(var).get("standard_name"),
+                "units": skeleton.meta.get(var).get("units"),
+            }
+            skeleton.meta.append(ds.get(ds_var).attrs, name=var)
+            skeleton.meta.append(old_metadata, name=var)
+            skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
     for var in skeleton.core.magnitudes():
         old_metadata = {
@@ -61,34 +55,29 @@ def set_core_vars_to_skeleton_from_ds(
 
 def add_dynamic_vars_from_ds(
     skeleton_class,
-    ds: xr.Dataset,
-    settable_vars,
-    settable_magnitudes,
+    addable_vars: list[str],
+    addable_magnitudes: list[str],
+    mapped_vars_ds_to_gp: dict[str, Union[MetaParameter, str]],
+    ds_coord_groups: dict[str, str],
 ):
-    """Find all the variables in the Dataset that can e added to the skeleton_class.
-
-    Reasons not to add:
-    1) It already exists (based on name or standard_name of geo-parameter)
-    2) We can't find a coordinate groupt that fits the dimensions"""
-
-    core_vars = {}
-    coord_map = {}
+    """Add data variables, magnitudes and direction."""
     new_class = None
-    for ds_var, (var, coord_group, coords) in settable_vars.items():
-        var_str, __ = gp.decode(var)
-        core_vars[var_str] = ds_var
-        coord_map[var_str] = coords
+    for ds_var in addable_vars:
+        if ds_coord_groups.get(ds_var):
+            if new_class is None:
+                new_class = skeleton_class.add_datavar(
+                    mapped_vars_ds_to_gp[ds_var], coord_group=ds_coord_groups[ds_var]
+                )
+            else:
+                new_class = new_class.add_datavar(
+                    mapped_vars_ds_to_gp[ds_var], coord_group=ds_coord_groups[ds_var]
+                )
 
-        if new_class is None:
-            new_class = skeleton_class.add_datavar(var, coord_group=coord_group)
-        else:
-            new_class = new_class.add_datavar(var, coord_group=coord_group)
-
-    for mag, dirs in settable_magnitudes:
+    for mag, dirs in addable_magnitudes:
         x = new_class.core.find_cf(mag.my_family().get("x").standard_name())[0]
         y = new_class.core.find_cf(mag.my_family().get("y").standard_name())[0]
         new_class = new_class.add_magnitude(mag, x=x, y=y, direction=dirs)
 
     if new_class is None:
         new_class = skeleton_class
-    return new_class, core_vars, coord_map
+    return new_class
