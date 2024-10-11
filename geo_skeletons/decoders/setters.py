@@ -7,25 +7,25 @@ from geo_parameters.metaparameter import MetaParameter
 def set_core_vars_to_skeleton_from_ds(
     skeleton,
     ds: xr.Dataset,
-    core_vars: dict,
-    remapped_coords: dict[str, list[str]],
+    core_vars_to_ds_vars: dict,
+    ds_remapped_coords: dict[str, list[str]],
     meta_dict: dict = None,
 ):
     """Set core (static) variables to a skeleton from an xarray Dataset.
 
     Using the function 'geo_skeleton.decorders.identify_core_in_ds' we have gotten
-    core_vars: dict mapping core variable to ds variable name
+    core_vars_to_ds_vars: dict mapping core variable to ds variable name
     coord_map: dict mapping variables of a core var ['time','inds','freq'] to variables of a ds var ['time','x','frequency']
 
     Optional:
     data_vars [default None]: list of ds_variables that will be set. All set if None.
     meta_dict: dict of core-var specific meta-data"""
 
-    core_vars = core_vars or {}
+    core_vars_to_ds_vars = core_vars_to_ds_vars or {}
     meta_dict = meta_dict or {}
-    for var, ds_var in core_vars.items():
-        if remapped_coords.get(ds_var):
-            skeleton.set(var, ds.get(ds_var), coords=remapped_coords[ds_var])
+    for var, ds_var in core_vars_to_ds_vars.items():
+        if ds_remapped_coords.get(ds_var):
+            skeleton.set(var, ds.get(ds_var), coords=ds_remapped_coords[ds_var])
             old_metadata = {
                 "standard_name": skeleton.meta.get(var).get("standard_name"),
                 "units": skeleton.meta.get(var).get("units"),

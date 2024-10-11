@@ -33,9 +33,8 @@ def identify_core_in_ds(
 
     Returns:
 
-    core_coords (dict): maps the core coordinate [str] to a Dataset coordinate [str]
-    core_vars (dict): maps the core variable [str] to a Dataset variable [str]
-    coord_map (dict[str, list[str]]): Gives the list of core coordinate for every core variable so that the order matches the Dataset
+    core_coords_to_ds_coords (dict): maps the core coordinate [str] to a Dataset coordinate [str]
+    core_vars_to_ds_vars (dict): maps the core variable [str] to a Dataset variable [str]
     coords_needed (list [str]): list of all coordinate names that are needed to succsessfully initialize the core
 
     Ex.
@@ -51,16 +50,14 @@ def identify_core_in_ds(
       - 'longitude', 'latitude' defined over 'x' and 'y'
 
     # Based on matching standard_name to geo-parameter
-    core_vars = {'hs': 'swh'}
+    core_vars_to_ds_vars = {'hs': 'swh'}
     # Short-long name equivalence of 'lon', 'freq' etc. hardcoded
-    core_coords = {'time': 'time', 'lon': 'longitude', 'lat': 'latitude', 'freq': 'frequency'}
+    core_coords_to_ds_coords = {'time': 'time', 'lon': 'longitude', 'lat': 'latitude', 'freq': 'frequency'}
     coords_needed = {'lon','lat','time','freq'}
-    # 'inds' not matched vs. 'x' and 'y' => 'x' non-trivial so mapped to 'inds'
-    coord_map = {'hs': ['inds','time','freq']}
 
     Now skeleton can be initialized and data 'hs' set:
     skeleton = SkeletonClass(**core_cords)
-    for var, ds_var in core_vars.items():
+    for var, ds_var in core_vars_to_ds_vars.items():
         skeleton.set(var, ds.get(ds_var), coords=coord_map[var])"""
 
     # Start by remapping any possible MetaParameters to a string
@@ -68,23 +65,27 @@ def identify_core_in_ds(
 
     aliases = _remap_core_aliase_keys_to_strings(aliases, core, ds)
 
-    core_vars = {}
-    core_coords = {}
+    core_vars_to_ds_vars = {}
+    core_coords_to_ds_coords = {}
     coords = core.coords("init")
 
     for coord in coords:
         ds_coord = _get_var_from_ds(coord, aliases, core, ds, decode_cf)
         if ds_coord is not None:
-            core_coords[coord] = ds_coord
+            core_coords_to_ds_coords[coord] = ds_coord
 
     for var in core.non_coord_objects():
         ds_var = _get_var_from_ds(var, aliases, core, ds, decode_cf)
         if ds_var is not None:
-            core_vars[var] = ds_var
+            core_vars_to_ds_vars[var] = ds_var
 
-    xy_set = core_coords.get("x") is not None and core_coords.get("y") is not None
+    xy_set = (
+        core_coords_to_ds_coords.get("x") is not None
+        and core_coords_to_ds_coords.get("y") is not None
+    )
     lonlat_set = (
-        core_coords.get("lon") is not None and core_coords.get("lat") is not None
+        core_coords_to_ds_coords.get("lon") is not None
+        and core_coords_to_ds_coords.get("lat") is not None
     )
 
     grid_miss_allowed = ("x" in allowed_misses and "y" in allowed_misses) or (
@@ -100,7 +101,7 @@ def identify_core_in_ds(
     else:
         coords_needed = core.coords("init", cartesian=(not lonlat_set))
 
-    missing_coords = set(coords_needed) - set(core_coords.keys())
+    missing_coords = set(coords_needed) - set(core_coords_to_ds_coords.keys())
     if not missing_coords.issubset(set(allowed_misses)) and strict:
         raise GridError(
             f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!"
@@ -108,31 +109,33 @@ def identify_core_in_ds(
 
     # is_pointskeleton = "inds" in core.coords("all")
     # coord_map_for_vars = {}
-    # for var, ds_var in core_vars.items():
+    # for var, ds_var in core_vars_to_ds_vars.items():
     #     coord_map_for_vars[var] = _remap_coords(
-    #         ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
+    #         ds_var, core_coords_to_ds_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
     #     )
 
     # coord_map_for_coords = {}
-    # for var, ds_var in core_coords.items():
+    # for var, ds_var in core_coords_to_ds_coords.items():
     #     coord_map_for_coords[var] = _remap_coords(
-    #         ds_var, core_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
+    #         ds_var, core_coords_to_ds_coords, coords_needed, ds, is_pointskeleton=is_pointskeleton
     #     )
 
     return (
-        core_coords,
-        core_vars,
+        core_coords_to_ds_coords,
+        core_vars_to_ds_vars,
         coords_needed,
     )
 
 
-def core_dicts_from_ds(ds, core_coords, core_vars, data_array: bool = False):
+def core_dicts_from_ds(
+    ds, core_coords_to_ds_coords, core_vars_to_ds_vars, data_array: bool = False
+):
     """Feed the dicts from 'identify_core_in_ds' to get the actual data values as a dict
 
     Set data_array = True to get Dataarrays"""
     coord_dict = {}
     data_dict = {}
-    for var, ds_var in core_coords.items():
+    for var, ds_var in core_coords_to_ds_coords.items():
         coord_dict[var] = ds.get(ds_var)
         if not data_array:
             coord_dict[var] = coord_dict[var].data
