@@ -388,7 +388,7 @@ class Skeleton:
         ds_remapped_coords, ds_coord_groups = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
-
+        ds_dir_types = {}
         if dynamic:  # Try to decode variables from the dataset
             ds_vars_to_gp, __ = map_ds_to_gp(
                 ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
@@ -427,7 +427,12 @@ class Skeleton:
 
         # Set data
         points = set_core_vars_to_skeleton_from_ds(
-            points, ds, core_vars_to_ds_vars, ds_remapped_coords, ds_dir_types, meta_dict
+            points,
+            ds,
+            core_vars_to_ds_vars,
+            ds_remapped_coords,
+            ds_dir_types,
+            meta_dict,
         )
 
         metadata = meta_dict.get("_global_") or ds.attrs
