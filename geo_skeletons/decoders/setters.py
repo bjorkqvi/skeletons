@@ -68,7 +68,6 @@ def create_new_class_dynamically(
         cls,
         addable_vars,
         addable_magnitudes,
-        ds_vars_to_gp,
         ds_coord_groups,
     )
     return cls, core_vars_to_ds_vars, ds_dir_types
