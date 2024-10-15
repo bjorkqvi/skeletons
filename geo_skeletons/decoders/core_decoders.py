@@ -1,5 +1,6 @@
 from geo_skeletons.managers.coordinate_manager import CoordinateManager
 import xarray as xr
+import numpy as np
 from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union
@@ -126,26 +127,46 @@ def identify_core_in_ds(
         coords_needed,
     )
 
+def gather_coord_values(coords_needed: list[str], ds: xr.Dataset, core_coords_to_ds_coords: dict[str,str], extra_coords: dict[str, Union[np.ndarray, xr.DataArray]]) -> dict[str,np.ndarray]:
+    """Gathers the coordinate values from the xarray Dataset and appends in any missing values that are provided in the extra_coords dict
+    
+    If lon/lat or x/y has a time dimension, that is removed with nanmedian"""
+    coords = {}
 
-def core_dicts_from_ds(
-    ds, core_coords_to_ds_coords, core_vars_to_ds_vars, data_array: bool = False
-):
-    """Feed the dicts from 'identify_core_in_ds' to get the actual data values as a dict
+    for coord in coords_needed:
+        val = (
+            ds.get(core_coords_to_ds_coords.get(coord))
+            if core_coords_to_ds_coords.get(coord) is not None
+            else extra_coords.get(coord)
+        )
 
-    Set data_array = True to get Dataarrays"""
-    coord_dict = {}
-    data_dict = {}
-    for var, ds_var in core_coords_to_ds_coords.items():
-        coord_dict[var] = ds.get(ds_var)
-        if not data_array:
-            coord_dict[var] = coord_dict[var].data
+        if isinstance(val, xr.DataArray):
+            if coord in ["x", "y", "lon", "lat"] and "time" in val.dims:
+                val = val.median(dim="time", skipna=True)
+            val = val.data
 
-    for var, ds_var in core_vars.items():
-        data_dict[var] = ds.get(ds_var)
-        if not data_array:
-            data_dict[var] = data_dict[var].data
+        coords[coord] = val
 
-    return coord_dict, data_dict
+    return coords
+# def core_dicts_from_ds(
+#     ds, core_coords_to_ds_coords, core_vars_to_ds_vars, data_array: bool = False
+# ) -> tuple[dict, dict]:
+#     """Feed the dicts from 'identify_core_in_ds' to get the actual data values as a dict
+
+#     Set data_array = True to get Dataarrays"""
+#     coord_dict = {}
+#     data_dict = {}
+#     for var, ds_var in core_coords_to_ds_coords.items():
+#         coord_dict[var] = ds.get(ds_var)
+#         if not data_array:
+#             coord_dict[var] = coord_dict[var].data
+
+#     for var, ds_var in core_vars_to_ds_vars.items():
+#         data_dict[var] = ds.get(ds_var)
+#         if not data_array:
+#             data_dict[var] = data_dict[var].data
+
+#     return coord_dict, data_dict
 
 
 def _get_var_from_ds(
