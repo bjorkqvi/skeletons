@@ -393,8 +393,7 @@ class Skeleton:
             ds_vars_to_gp, __ = map_ds_to_gp(
                 ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
             )
-
-            addable_vars, addable_magnitudes, new_core_vars_to_ds_vars = (
+            addable_vars, addable_magnitudes, ds_dir_types, new_core_vars_to_ds_vars = (
                 find_addable_vars_and_magnitudes(
                     core=cls.core,
                     ds_vars_to_gp=ds_vars_to_gp,
@@ -420,7 +419,6 @@ class Skeleton:
                 cls,
                 addable_vars,
                 addable_magnitudes,
-                ds_vars_to_gp,
                 ds_coord_groups,
             )
             # Re-initialize skeleton with new class
@@ -429,7 +427,7 @@ class Skeleton:
 
         # Set data
         points = set_core_vars_to_skeleton_from_ds(
-            points, ds, core_vars_to_ds_vars, ds_remapped_coords, meta_dict
+            points, ds, core_vars_to_ds_vars, ds_remapped_coords, ds_dir_types, meta_dict
         )
 
         metadata = meta_dict.get("_global_") or ds.attrs

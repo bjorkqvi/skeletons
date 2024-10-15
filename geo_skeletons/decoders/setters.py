@@ -7,8 +7,9 @@ from geo_parameters.metaparameter import MetaParameter
 def set_core_vars_to_skeleton_from_ds(
     skeleton,
     ds: xr.Dataset,
-    core_vars_to_ds_vars: dict,
+    core_vars_to_ds_vars: dict[str, str],
     ds_remapped_coords: dict[str, list[str]],
+    ds_dir_types: dict[str, str],
     meta_dict: dict = None,
 ):
     """Set core (static) variables to a skeleton from an xarray Dataset.
@@ -24,8 +25,13 @@ def set_core_vars_to_skeleton_from_ds(
     core_vars_to_ds_vars = core_vars_to_ds_vars or {}
     meta_dict = meta_dict or {}
     for var, ds_var in core_vars_to_ds_vars.items():
-        if ds_remapped_coords.get(ds_var):
-            skeleton.set(var, ds.get(ds_var), coords=ds_remapped_coords[ds_var])
+        if ds_remapped_coords.get(var):
+            skeleton.set(
+                var,
+                ds.get(ds_var),
+                coords=ds_remapped_coords[var],
+                dir_type=ds_dir_types.get(ds_var),
+            )
             old_metadata = {
                 "standard_name": skeleton.meta.get(var).get("standard_name"),
                 "units": skeleton.meta.get(var).get("units"),
@@ -55,28 +61,28 @@ def set_core_vars_to_skeleton_from_ds(
 
 def add_dynamic_vars_from_ds(
     skeleton_class,
-    addable_vars: list[str],
-    addable_magnitudes: list[str],
-    mapped_vars_ds_to_gp: dict[str, Union[MetaParameter, str]],
+    addable_vars: list[Union[MetaParameter, str]],
+    addable_magnitudes: list[dict[str, MetaParameter]],
     ds_coord_groups: dict[str, str],
 ):
     """Add data variables, magnitudes and direction."""
     new_class = None
-    for ds_var in addable_vars:
-        if ds_coord_groups.get(ds_var):
+    for var in addable_vars:
+        var_str, var = gp.decode(var)
+        if ds_coord_groups.get(var_str):
             if new_class is None:
                 new_class = skeleton_class.add_datavar(
-                    mapped_vars_ds_to_gp[ds_var], coord_group=ds_coord_groups[ds_var]
+                    var or var_str, coord_group=ds_coord_groups[var_str]
                 )
             else:
                 new_class = new_class.add_datavar(
-                    mapped_vars_ds_to_gp[ds_var], coord_group=ds_coord_groups[ds_var]
+                    var or var_str, coord_group=ds_coord_groups[var_str]
                 )
 
-    for mag, dirs in addable_magnitudes:
-        x = new_class.core.find_cf(mag.my_family().get("x").standard_name())[0]
-        y = new_class.core.find_cf(mag.my_family().get("y").standard_name())[0]
-        new_class = new_class.add_magnitude(mag, x=x, y=y, direction=dirs)
+    for mag_dict in addable_magnitudes:
+        # x = new_class.core.find_cf(mag.my_family().get("x").standard_name())[0]
+        # y = new_class.core.find_cf(mag.my_family().get("y").standard_name())[0]
+        new_class = new_class.add_magnitude(**mag_dict)
 
     if new_class is None:
         new_class = skeleton_class

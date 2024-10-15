@@ -6,7 +6,7 @@ from copy import deepcopy
 def remap_coords_of_ds_vars_to_skeleton_names(
     ds: xr.Dataset,
     core: CoordinateManager,
-    core_vars: dict[str, str],
+    core_vars_to_ds_vars: dict[str, str],
     core_coords: dict[str, str],
     core_lens: dict[str, int],
     conservative_expansion: bool = False,
@@ -14,8 +14,8 @@ def remap_coords_of_ds_vars_to_skeleton_names(
     """Remaps the coordinates of a Dataset variable to the Skeleton variables of a pre-defined coord_group"""
     remapped_coords = {}
     ds_coord_groups = {}
-    core_vars = core_vars or {}
-    for var, ds_var in core_vars.items():
+    core_vars_to_ds_vars = core_vars_to_ds_vars or {}
+    for var, ds_var in core_vars_to_ds_vars.items():
         ds_coords = list(ds.get(ds_var).dims)
         ds_lens = [len(ds.get(c)) for c in ds_coords]
 
@@ -29,7 +29,7 @@ def remap_coords_of_ds_vars_to_skeleton_names(
         )
 
         if remapped_coord is not None:
-            remapped_coords[ds_var], ds_coord_groups[ds_var] = (
+            remapped_coords[var], ds_coord_groups[var] = (
                 remapped_coord,
                 coord_group,
             )
