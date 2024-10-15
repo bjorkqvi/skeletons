@@ -2,9 +2,8 @@ from geo_skeletons import PointSkeleton, GriddedSkeleton
 from geo_skeletons.decorators import add_datavar, add_magnitude
 from geo_skeletons.errors import GridError
 import geo_parameters as gp
-
-from geo_skeletons.decoders import identify_core_in_ds, core_dicts_from_ds
 import pytest
+from geo_skeletons.decoders import identify_core_in_ds
 
 
 @pytest.fixture
