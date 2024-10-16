@@ -359,7 +359,7 @@ class Skeleton:
                 )
             )
 
-            core_aliases.update(added_core_vars_to_ds_vars)
+            #core_aliases.update(added_core_vars_to_ds_vars)
         else:
             ds_dir_types = {}
 

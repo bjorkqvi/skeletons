@@ -84,27 +84,34 @@ def identify_core_in_ds(
         if ds_coord is not None:
             core_coords_to_ds_coords[coord] = ds_coord
 
-    for var in core.non_coord_objects():
+    for var in core.data_vars():
         search_param = core.meta_parameter(var) or var
-
-        ds_var_x, ds_var_y = None, None
-        transform_function = None
-        dir_type = None
-
+        # Find the parameter straight up
         ds_var_x = _map_geo_parameter_to_ds_variable(search_param, ds, aliases)
-        if ds_var_x is None and decode_cf:
-            ds_var_x, transform_function, dir_type = _get_inverse_parameter_from_ds(
-                search_param, ds
+        if ds_var_x is not None:
+            core_vars_to_ds_vars[var] = ds_var_x
+            continue
+
+        if not decode_cf:
+            continue
+
+        # Find e.g. fp when we want Tp, or WindDirTo when we want WindDir
+        ds_var_x, transform_function, dir_type = _get_inverse_parameter_from_ds(
+            search_param, ds
+        )
+        if ds_var_x is not None:
+            core_vars_to_ds_vars[var] = (
+                ds_var_x,
+                None,
+                transform_function,
+                dir_type,
             )
+            continue
 
-        if ds_var_x is None and decode_cf:
-            ds_var_x, ds_var_y, transform_function, dir_type = _get_components_from_ds(
-                search_param, ds
-            )
-
-        if transform_function is None:
-            transform_function = lambda x, y: x
-
+        # Find e.g. x_wind and y_wind when we want Wind or WindDir
+        ds_var_x, ds_var_y, transform_function, dir_type = _get_components_from_ds(
+            search_param, ds
+        )
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = (
                 ds_var_x,
@@ -112,6 +119,28 @@ def identify_core_in_ds(
                 transform_function,
                 dir_type,
             )
+
+
+    for var in core.magnitudes() + core.directions():
+        search_param = core.meta_parameter(var) or var
+
+        ds_var = _map_geo_parameter_to_ds_variable(search_param, ds, aliases)
+
+        if ds_var is not None:
+            core_vars_to_ds_vars[var] = ds_var
+            continue
+
+        ds_var_x, transform_function, dir_type = _get_inverse_parameter_from_ds(
+            search_param, ds
+        )
+        if ds_var_x is not None:
+            core_vars_to_ds_vars[var] = (
+                ds_var_x,
+                None,
+                transform_function,
+                dir_type,
+            )
+
 
     xy_set = (
         core_coords_to_ds_coords.get("x") is not None
@@ -203,12 +232,15 @@ def _map_geo_parameter_to_ds_variable(
     if aliases.get(var_str) is not None:
         return aliases.get(var_str)
 
-    # 2) Try to decode using cf standard name
+    
     if param is None:
         param = coord_alias_map_to_gp().get(var_str) or var_alias_map_to_gp().get(
             var_str
         )
-
+        if not gp.is_gp(param):
+            param = None
+        
+     
     if param is not None:
         ds_var = _get_geoparameter_from_ds(param, ds)
 
@@ -313,7 +345,7 @@ def _get_geoparameter_from_ds(param: MetaParameter, ds: xr.Dataset) -> Union[str
         return ds_var[0]
 
     raise ValueError(
-        f"The variable '{var}' matches {ds_var} in the Dataset. Specify which one to read by e.g. aliases = {{'{var}': '{ds_var[0]}'}}"
+        f"The variable '{param.name}' matches {ds_var} in the Dataset. Specify which one to read by e.g. aliases = {{'{param.name}': '{ds_var[0]}'}}"
     )
 
 
