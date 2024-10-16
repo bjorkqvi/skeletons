@@ -61,6 +61,8 @@ def create_new_class_dynamically(
         core_vars_to_ds_vars,
         core_coords_to_ds_coords,
         core_lens,
+        addable_vars,
+        addable_magnitudes,
     )
 
     # Create the new class
@@ -93,19 +95,25 @@ def set_core_vars_to_skeleton_from_ds(
 
     core_vars_to_ds_vars = core_vars_to_ds_vars or {}
     meta_dict = meta_dict or {}
-    for var, ds_var in core_vars_to_ds_vars.items():
+    for var, (
+        ds_var_x,
+        ds_var_y,
+        transform_function,
+        dir_type,
+    ) in core_vars_to_ds_vars.items():
         if ds_remapped_coords.get(var):
             skeleton.set(
                 var,
-                ds.get(ds_var),
+                transform_function(ds.get(ds_var_x), ds.get(ds_var_y)),
                 coords=ds_remapped_coords[var],
-                dir_type=ds_dir_types.get(ds_var),
+                dir_type=dir_type,
             )
             old_metadata = {
                 "standard_name": skeleton.meta.get(var).get("standard_name"),
                 "units": skeleton.meta.get(var).get("units"),
             }
-            skeleton.meta.append(ds.get(ds_var).attrs, name=var)
+            if ds_var_y is None:
+                skeleton.meta.append(ds.get(ds_var_x).attrs, name=var)
             skeleton.meta.append(old_metadata, name=var)
             skeleton.meta.append(meta_dict.get(var, {}), name=var)
 
@@ -151,7 +159,10 @@ def _add_dynamic_vars_from_ds(
     for mag_dict in addable_magnitudes:
         # x = new_class.core.find_cf(mag.my_family().get("x").standard_name())[0]
         # y = new_class.core.find_cf(mag.my_family().get("y").standard_name())[0]
-        new_class = new_class.add_magnitude(**mag_dict)
+        if new_class is None:
+            new_class = skeleton_class.add_magnitude(**mag_dict)
+        else:
+            new_class = new_class.add_magnitude(**mag_dict)
 
     if new_class is None:
         new_class = skeleton_class

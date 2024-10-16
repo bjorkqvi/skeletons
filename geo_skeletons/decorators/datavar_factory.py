@@ -77,11 +77,20 @@ def add_datavar(
 
         name_str, meta = gp.decode(name)
 
+        if (
+            meta is not None
+            and meta.i_am() in ["x", "y"]
+            and np.isclose(default_value, 0)
+        ):
+            def_val = 0.1
+        else:
+            def_val = default_value
+
         data_var = DataVar(
             name=name_str,
             meta=meta,
             coord_group=coord_group,
-            default_value=default_value,
+            default_value=def_val,
             dir_type=dir_type,
         )
 

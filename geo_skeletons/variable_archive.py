@@ -17,15 +17,39 @@ LAT_ALIASES = ["lat", "latitude"]
 FREQ_ALIASES = ["freq", "frequency"]
 DIRS_ALIASES = ["dirs", "directions", "direction", "theta"]
 
+LIST_OF_COORD_ALIASES = [
+    TIME_ALIASES,
+    X_ALIASES,
+    Y_ALIASES,
+    LON_ALIASES,
+    LAT_ALIASES,
+    FREQ_ALIASES,
+    DIRS_ALIASES,
+]
+
 # List assumed data variable aliases here
 HS_ALIASES = ["hs", "hsig", "swh", "hm0", "vhm0"]
 TP_ALIASES = ["tp"]
+FP_ALIASES = ["fp"]
 WIND_ALIASES = ["ff", "wind", "wind_speed", "windspeed"]
 XWIND_ALIASES = ["x_wind", "xwnd"]
 YWIND_ALIASES = ["y_wind", "ywnd"]
 XCURRENT_ALIASES = ["x_current", "xcur"]
 YCURRENT_ALIASES = ["y_current", "ycur"]
 DEPTH_ALIASES = ["depth", "water_depth"]
+
+
+LIST_OF_VAR_ALIASES = [
+    HS_ALIASES,
+    TP_ALIASES,
+    FP_ALIASES,
+    WIND_ALIASES,
+    XWIND_ALIASES,
+    YWIND_ALIASES,
+    XCURRENT_ALIASES,
+    YCURRENT_ALIASES,
+    DEPTH_ALIASES,
+]
 
 
 def coord_alias_map_to_gp() -> dict[str, Union[MetaParameter, str]]:
@@ -56,6 +80,8 @@ def var_alias_map_to_gp() -> dict[str, Union[MetaParameter, str]]:
         var_dict[var] = gp.wave.Hs
     for var in TP_ALIASES:
         var_dict[var] = gp.wave.Tp
+    for var in FP_ALIASES:
+        var_dict[var] = gp.wave.Fp
     for var in WIND_ALIASES:
         var_dict[var] = gp.wind.Wind
     for var in XWIND_ALIASES:

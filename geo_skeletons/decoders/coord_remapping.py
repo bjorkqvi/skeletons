@@ -1,6 +1,9 @@
 import xarray as xr
 from geo_skeletons.managers.coordinate_manager import CoordinateManager
 from copy import deepcopy
+from typing import Union
+from geo_parameters.metaparameter import MetaParameter
+import geo_parameters as gp
 
 
 def remap_coords_of_ds_vars_to_skeleton_names(
@@ -9,13 +12,18 @@ def remap_coords_of_ds_vars_to_skeleton_names(
     core_vars_to_ds_vars: dict[str, str],
     core_coords: dict[str, str],
     core_lens: dict[str, int],
+    addable_vars: list[Union[MetaParameter, str]] = None,
+    addable_magnitudes: list[dict[str, MetaParameter]] = None,
     conservative_expansion: bool = False,
 ) -> tuple[dict, dict]:
     """Remaps the coordinates of a Dataset variable to the Skeleton variables of a pre-defined coord_group"""
     remapped_coords = {}
     ds_coord_groups = {}
     core_vars_to_ds_vars = core_vars_to_ds_vars or {}
-    for var, ds_var in core_vars_to_ds_vars.items():
+    addable_vars = addable_vars or []
+    addable_magnitudes = addable_magnitudes or {}
+
+    for var, (ds_var, _, _, _) in core_vars_to_ds_vars.items():
         ds_coords = list(ds.get(ds_var).dims)
         ds_lens = [len(ds.get(c)) for c in ds_coords]
 
@@ -33,6 +41,18 @@ def remap_coords_of_ds_vars_to_skeleton_names(
                 remapped_coord,
                 coord_group,
             )
+    # Fill in coordinate croups of variables that are added but not in the Dataset
+    # E.g. If wind and wind direction in Dataset, then wind_x and wind_y will be added
+    mags = [mag_dict.get("name") for mag_dict in addable_magnitudes]
+    dirs = [mag_dict.get("direction") for mag_dict in addable_magnitudes]
+    for var in addable_vars:
+        var_str, var = gp.decode(var)
+        if var is not None and var_str not in core_vars_to_ds_vars.keys():
+            if var.i_am() in ["x", "y"]:
+                mag = var.my_family("magnitude").find_me_in(mags)
+                remapped_coords[var_str] = remapped_coords.get(mag.name)
+                ds_coord_groups[var_str] = ds_coord_groups.get(mag.name)
+
     return remapped_coords, ds_coord_groups
 
 
