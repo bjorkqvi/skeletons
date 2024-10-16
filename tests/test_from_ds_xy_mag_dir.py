@@ -118,9 +118,15 @@ def test_xy(wind_xy):
     assert set(data.core.data_vars()) == {"x_wind", "y_wind", "tp", "hs", "dummy"}
     assert set(data.core.magnitudes()) == {"ff"}
     assert set(data.core.directions()) == {"dd"}
+    try:
+        np.testing.assert_array_almost_equal(data.x_wind(), 3)
+    except AssertionError:
+        breakpoint()
+    try:
+        np.testing.assert_array_almost_equal(data.y_wind(), 4)
+    except AssertionError:
+        breakpoint()
     np.testing.assert_array_almost_equal(data.ff(), 5)
-    np.testing.assert_array_almost_equal(data.x_wind(), 3)
-    np.testing.assert_array_almost_equal(data.y_wind(), 4)
     np.testing.assert_array_almost_equal(data.dd(), 216.86989765)
     np.testing.assert_array_almost_equal(data.dd(dir_type="from"), 216.86989765)
     np.testing.assert_array_almost_equal(data.dd(dir_type="to"), 216.86989765 - 180.0)
