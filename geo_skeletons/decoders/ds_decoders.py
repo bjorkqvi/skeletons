@@ -166,14 +166,9 @@ def find_addable_vars_and_magnitudes(
         addable_ds_vars = addable_ds_vars.intersection(set(data_vars))
     addable_ds_vars = list(addable_ds_vars)
 
-    # When decoding core we might have ds_y-variabel, a transform function and a dir_type
-    transform_function = lambda x: x
-    dir_type = None
-    ds_var_y = None
-
     for ds_var in addable_ds_vars:
         var, _ = gp.decode(ds_vars_to_gp.get(ds_var))
-        new_core_vars_to_ds_vars[var] = (ds_var, ds_var_y, transform_function, dir_type)
+        new_core_vars_to_ds_vars[var] = ds_var
 
     xy_variables: list[tuple[MetaParameter, MetaParameter]] = (
         _find_xy_variables_present_in_ds(addable_ds_vars, ds_vars_to_gp)
