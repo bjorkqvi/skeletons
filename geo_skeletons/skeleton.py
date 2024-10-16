@@ -362,6 +362,7 @@ class Skeleton:
             core_aliases.update(added_core_vars_to_ds_vars)
         else:
             ds_dir_types = {}
+
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         (
             core_coords_to_ds_coords,

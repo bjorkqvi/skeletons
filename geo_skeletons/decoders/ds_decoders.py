@@ -156,7 +156,9 @@ def find_addable_vars_and_magnitudes(
 ):
     new_core_vars_to_ds_vars = {}
 
-    addable_ds_vars = _find_not_existing_vars(ds_vars_to_gp, core, core_vars_to_ds_vars)
+    addable_ds_vars: list[str] = _find_not_existing_vars(
+        ds_vars_to_gp, core, core_vars_to_ds_vars
+    )
 
     # Restrict to user provided variables if needed
     addable_ds_vars = set(addable_ds_vars) - set(ignore_vars)
@@ -164,23 +166,43 @@ def find_addable_vars_and_magnitudes(
         addable_ds_vars = addable_ds_vars.intersection(set(data_vars))
     addable_ds_vars = list(addable_ds_vars)
 
+    # When decoding core we might have ds_y-variabel, a transform function and a dir_type
+    transform_function = lambda x: x
+    dir_type = None
+    ds_var_y = None
+
     for ds_var in addable_ds_vars:
         var, _ = gp.decode(ds_vars_to_gp.get(ds_var))
-        new_core_vars_to_ds_vars[var] = ds_var
+        new_core_vars_to_ds_vars[var] = (ds_var, ds_var_y, transform_function, dir_type)
 
-    xy_variables = _find_xy_variables_present_in_ds(addable_ds_vars, ds_vars_to_gp)
+    xy_variables: list[tuple[MetaParameter, MetaParameter]] = (
+        _find_xy_variables_present_in_ds(addable_ds_vars, ds_vars_to_gp)
+    )
+    xy_variables_in_core: list[MetaParameter] = _find_xy_variables_present_in_core(core)
+    mag_dir_datavars_in_core: list[MetaParameter] = (
+        _find_mag_dir_datavars_present_in_core(core)
+    )
+
     mag_dirs, ds_dir_types = _find_magnitudes_and_directions_present_in_ds(
         addable_ds_vars, ds_vars_to_gp
     )
 
     addable_vars = _compile_list_of_addable_vars(
-        xy_variables, mag_dirs, addable_ds_vars, ds_vars_to_gp
+        xy_variables,
+        xy_variables_in_core,
+        mag_dirs,
+        mag_dir_datavars_in_core,
+        addable_ds_vars,
+        ds_vars_to_gp,
     )
 
     addable_magnitudes = _compile_list_of_addable_magnitudes_and_directions(
-        addable_vars, xy_variables, mag_dirs
+        addable_vars,
+        xy_variables,
+        xy_variables_in_core,
+        mag_dirs,
+        mag_dir_datavars_in_core,
     )
-
     # settable_vars = _compile_list_of_settable_vars(
     #     addable_vars, addable_magnitudes, addable_ds_vars, ds_vars_to_gp
     # )
@@ -254,23 +276,87 @@ def _find_magnitudes_and_directions_present_in_ds(
     return mag_dirs, ds_dir_types
 
 
+def _find_xy_variables_present_in_core(core: CoordinateManager) -> list[MetaParameter]:
+    """Finds all the xy-variables that have been set to the core"""
+    list_og_gps = [core.get(var).meta for var in core.data_vars()]
+    xy_variables = []
+    for var_str in core.data_vars():
+        __, var = gp.decode(core.get(var_str).meta)
+        if var is not None and var.i_am() == "x":
+            yvar = var.my_family("y").find_me_in(list_og_gps)
+            if yvar is not None:
+                xy_variables.append(var)
+                xy_variables.append(yvar)
+
+    return xy_variables
+
+
+def _find_mag_dir_datavars_present_in_core(
+    core: CoordinateManager,
+) -> list[MetaParameter]:
+    """Finds all the magnitudes and directions that have been set as plain data variables in the core"""
+    mag_dir_variables = []
+    for var_str in core.data_vars():
+        __, var = gp.decode(core.get(var_str).meta)
+        if var is not None and var.i_am() in [
+            "magnitude",
+            "direction",
+            "opposite_direction",
+        ]:
+            mag_dir_variables.append(var)
+
+    return mag_dir_variables
+
+
+def _xy_as_mag_dir(var, mag_dir_datavars_in_core):
+    """Checks if the components are present in another form (magnitude, direction) in the core.
+    Tehen they should not be added"""
+    mag = var.my_family("magnitude")
+    dirs = var.my_family("direction")
+    op_dirs = var.my_family("opposite_direction")
+
+    if mag is None and dirs is None and op_dirs is None:
+        return False
+
+    if var.my_family("magnitude").is_in(mag_dir_datavars_in_core):
+        return True
+
+    if var.my_family("direction").is_in(mag_dir_datavars_in_core):
+        return True
+
+    if var.my_family("opposite_direction").is_in(mag_dir_datavars_in_core):
+        return True
+
+    return False
+
+
 def _compile_list_of_addable_vars(
     xy_variables: list[tuple[MetaParameter, MetaParameter]],
+    xy_variables_in_core: list[MetaParameter],
     mag_dirs: list[tuple[MetaParameter, MetaParameter]],
+    mag_dir_datavars_in_core: list[MetaParameter],
     addable_ds_vars: list[str],
     ds_vars_to_gp: dict[str, MetaParameter],
 ) -> list[Union[MetaParameter, str]]:
     """Compiles a list of all variables that should be added as plain data variables to the new skeleton class"""
+
     addable_vars = []
 
     # Add xy-variables
     for x, y in xy_variables:
-        addable_vars.append(x)
-        addable_vars.append(y)
-
+        if not x.is_in(xy_variables_in_core) and not _xy_as_mag_dir(
+            x, mag_dir_datavars_in_core
+        ):
+            addable_vars.append(x)
+        if not y.is_in(xy_variables_in_core) and not _xy_as_mag_dir(
+            y, mag_dir_datavars_in_core
+        ):
+            addable_vars.append(y)
     # Add xy-variables corresponding to magnitudes and directions if not yet set
     for mag, dirs in mag_dirs:
-        if not mag.my_family("x").is_in(addable_vars):
+        if not mag.my_family("x").is_in(addable_vars) and not mag.my_family("x").is_in(
+            xy_variables_in_core
+        ):
             addable_vars.append(mag.my_family("x")())
             addable_vars.append(mag.my_family("y")())
 
@@ -280,20 +366,26 @@ def _compile_list_of_addable_vars(
         if var is None:
             addable_vars.append(var_str)
         else:
-            if not var.is_in(addable_vars) and var.i_am() not in [
-                "magnitude",
-                "direction",
-                "opposite_direction",
-            ]:
+            if (
+                not var.is_in(addable_vars)
+                and not _xy_as_mag_dir(var, mag_dir_datavars_in_core)
+                and var.i_am()
+                not in [
+                    "magnitude",
+                    "direction",
+                    "opposite_direction",
+                ]
+            ):
                 addable_vars.append(var)
-
     return addable_vars
 
 
 def _compile_list_of_addable_magnitudes_and_directions(
     addable_vars: list[Union[MetaParameter, str]],
     xy_variables: list[tuple[MetaParameter, MetaParameter]],
+    xy_variables_in_core: list[MetaParameter],
     mag_dirs: list[tuple[MetaParameter, MetaParameter]],
+    mag_dir_datavars_in_core: list[MetaParameter],
 ) -> list[dict[str, MetaParameter]]:
     """Compiles a list of all magnitudes and direction that should be added to the new skeleton class
 
@@ -320,10 +412,10 @@ def _compile_list_of_addable_magnitudes_and_directions(
 
     addable_mags_and_dirs = []
 
-    for xvar in addable_vars:
+    for xvar in addable_vars + xy_variables_in_core:
         __, xvar = gp.decode(xvar)
         if xvar is not None and xvar.i_am() == "x":
-            yvar = xvar.my_family("y").find_me_in(addable_vars)
+            yvar = xvar.my_family("y").find_me_in(addable_vars + xy_variables_in_core)
             if yvar is not None:
                 m = xvar.my_family("magnitude").find_me_in(mags) or xvar.my_family(
                     "magnitude"
@@ -332,16 +424,23 @@ def _compile_list_of_addable_magnitudes_and_directions(
                     "direction"
                 )
 
-                x = xvar.my_family("x").find_me_in(xs) or xvar.my_family("x")
-                y = xvar.my_family("y").find_me_in(ys) or xvar.my_family("y")
-
-                mag_dict = {
-                    "name": m,
-                    "direction": d,
-                    "x": x.name,
-                    "y": y.name,
-                }
-                addable_mags_and_dirs.append(mag_dict)
+                x = xvar.my_family("x").find_me_in(
+                    xs + xy_variables_in_core
+                ) or xvar.my_family("x")
+                y = xvar.my_family("y").find_me_in(
+                    ys + xy_variables_in_core
+                ) or xvar.my_family("y")
+                if not (
+                    d.is_in(mag_dir_datavars_in_core)
+                    or m.is_in(mag_dir_datavars_in_core)
+                ):
+                    mag_dict = {
+                        "name": m,
+                        "direction": d,
+                        "x": x.name,
+                        "y": y.name,
+                    }
+                    addable_mags_and_dirs.append(mag_dict)
     return addable_mags_and_dirs
 
 
