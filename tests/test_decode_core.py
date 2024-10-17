@@ -101,7 +101,10 @@ def test_empty_core_specify_missing(wave_no_std, wave_std):
 
 def test_core_with_gp(wave_no_std, wave_std):
     core_coords, core_vars, coords_needed = identify_core_in_ds(
-        wave_std.core, ds=wave_no_std.ds(), strict=False
+        wave_std.core,
+        ds=wave_no_std.ds(),
+        strict=False,
+        ds_aliases={"dirp": gp.wave.Dirp},
     )
     assert set(core_vars.keys()) == {"hs", "tp", "dirp"}
     assert set(core_vars.values()) == {"hs", "tp", "dirp"}

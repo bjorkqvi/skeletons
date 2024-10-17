@@ -391,7 +391,7 @@ def _map_geo_parameter_to_components_in_ds(
     if not gp.is_gp(var):
         var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
     if var is None:
-        return None, None, None
+        return None, None, None, None
 
     if var.i_am() in ["magnitude", "direction", "opposite_direction"]:
         ds_var_x = _map_geo_parameter_to_ds_variable(
