@@ -95,7 +95,9 @@ def identify_core_in_ds(
 
         # Find e.g. fp when we want Tp, or WindDirTo when we want WindDir
         ds_var_x, transform_function, dir_type = (
-            _map_inverse_geo_parameter_to_ds_variable(search_param, ds)
+            _map_inverse_geo_parameter_to_ds_variable(
+                search_param, ds, aliases=aliases, ds_aliases=ds_aliases
+            )
         )
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = (
@@ -108,7 +110,9 @@ def identify_core_in_ds(
 
         # Find e.g. x_wind and y_wind when we want Wind or WindDir
         ds_var_x, ds_var_y, transform_function, dir_type = (
-            _map_geo_parameter_to_components_in_ds(search_param, ds)
+            _map_geo_parameter_to_components_in_ds(
+                search_param, ds, aliases=aliases, ds_aliases=ds_aliases
+            )
         )
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = (
