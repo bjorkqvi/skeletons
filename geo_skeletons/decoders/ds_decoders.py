@@ -178,7 +178,7 @@ def find_addable_vars_and_magnitudes(
         _find_mag_dir_datavars_present_in_core(core)
     )
 
-    mag_dirs, ds_dir_types = _find_magnitudes_and_directions_present_in_ds(
+    mag_dirs = _find_magnitudes_and_directions_present_in_ds(
         addable_ds_vars, ds_vars_to_gp
     )
 
@@ -202,7 +202,7 @@ def find_addable_vars_and_magnitudes(
     #     addable_vars, addable_magnitudes, addable_ds_vars, ds_vars_to_gp
     # )
 
-    return addable_vars, addable_magnitudes, ds_dir_types, new_core_vars_to_ds_vars
+    return addable_vars, addable_magnitudes, new_core_vars_to_ds_vars
 
 
 def _find_not_existing_vars(
@@ -251,10 +251,10 @@ def _find_xy_variables_present_in_ds(
 def _find_magnitudes_and_directions_present_in_ds(
     addable_vars: list[str],
     ds_vars_to_gp: dict[str, Union[MetaParameter, str]],
-) -> list[tuple[MetaParameter, MetaParameter]]:
+) -> list[MetaParameter]:
     """Finds all the magnitudes that also have a corresponding direction"""
     mag_dirs = []
-    ds_dir_types = {}
+
     for ds_var in addable_vars:
         __, var = gp.decode(ds_vars_to_gp.get(ds_var))
         if var is not None and var.i_am() == "magnitude":
@@ -263,12 +263,8 @@ def _find_magnitudes_and_directions_present_in_ds(
             ) or var.my_family("opposite_direction").find_me_in(ds_vars_to_gp.values())
             if dirs is not None:
                 mag_dirs.append((var, dirs.my_family("direction")))
-        elif var is not None and (
-            var.i_am() == "direction" or var.i_am() == "opposite_direction"
-        ):
-            # Save the directional type of Dataset directional variables for setting data
-            ds_dir_types[ds_var] = var.dir_type()
-    return mag_dirs, ds_dir_types
+
+    return mag_dirs
 
 
 def _find_xy_variables_present_in_core(core: CoordinateManager) -> list[MetaParameter]:
