@@ -10,8 +10,8 @@ import geo_parameters as gp
 
 from geo_skeletons.decoders.core_decoders import (
     _map_geo_parameter_to_ds_variable,
-    _get_inverse_parameter_from_ds,
-    _get_components_from_ds,
+    _map_inverse_geo_parameter_to_ds_variable,
+    _map_geo_parameter_to_components_in_ds,
 )
 
 import pytest
@@ -128,49 +128,105 @@ def wind_xy():
 
 
 def test_no_std_name(wave_no_std):
-    assert _map_geo_parameter_to_ds_variable("hs", wave_no_std.ds()) == "hs"
-    assert _map_geo_parameter_to_ds_variable("swh", wave_no_std.ds()) == "hs"
+    assert _map_geo_parameter_to_ds_variable("hs", wave_no_std.ds(), {}, {}) == "hs"
+    assert _map_geo_parameter_to_ds_variable("swh", wave_no_std.ds(), {}, {}) == "hs"
 
 
 def test_alias_to_std_name_mapping(wave2_std):
-    assert _map_geo_parameter_to_ds_variable("hs", wave2_std.ds()) == "hs2"
-    assert _map_geo_parameter_to_ds_variable("swh", wave2_std.ds()) == "hs2"
+    assert _map_geo_parameter_to_ds_variable("hs", wave2_std.ds(), {}, {}) == "hs2"
+    assert _map_geo_parameter_to_ds_variable("swh", wave2_std.ds(), {}, {}) == "hs2"
 
 
 def test_given_aliases(wave2_std):
     assert (
-        _map_geo_parameter_to_ds_variable("hs5", wave2_std.ds(), {"hs5": "hs2"})
+        _map_geo_parameter_to_ds_variable(
+            "hs5", wave2_std.ds(), aliases={"hs5": "hs2"}, ds_aliases={}
+        )
         == "hs2"
     )
     assert (
-        _map_geo_parameter_to_ds_variable("swh5", wave2_std.ds(), {"swh5": "hs2"})
+        _map_geo_parameter_to_ds_variable(
+            "swh5", wave2_std.ds(), aliases={"swh5": "hs2"}, ds_aliases={}
+        )
         == "hs2"
     )
 
 
 def test_gp_to_no_stdname(wave_no_std):
-    assert _map_geo_parameter_to_ds_variable(gp.wave.Hs, wave_no_std.ds()) == "hs"
     assert (
-        _map_geo_parameter_to_ds_variable(gp.wave.Hs("swh"), wave_no_std.ds()) == "hs"
+        _map_geo_parameter_to_ds_variable(gp.wave.Hs, wave_no_std.ds(), {}, {}) == "hs"
+    )
+    assert (
+        _map_geo_parameter_to_ds_variable(gp.wave.Hs("swh"), wave_no_std.ds(), {}, {})
+        == "hs"
     )
 
 
 def test_gp_to_stdname(wave_std):
-    assert _map_geo_parameter_to_ds_variable(gp.wave.Hs, wave_std.ds()) == "hs"
-    assert _map_geo_parameter_to_ds_variable(gp.wave.Hs("swh"), wave_std.ds()) == "hs"
+    assert _map_geo_parameter_to_ds_variable(gp.wave.Hs, wave_std.ds(), {}, {}) == "hs"
+    assert (
+        _map_geo_parameter_to_ds_variable(gp.wave.Hs("swh"), wave_std.ds(), {}, {})
+        == "hs"
+    )
 
 
 def test_get_inverse(wave_std):
-    assert _get_inverse_parameter_from_ds(gp.wave.Fp, wave_std.ds()) == "tp"
-    assert _get_inverse_parameter_from_ds("fp", wave_std.ds()) == "tp"
+    assert (
+        _map_inverse_geo_parameter_to_ds_variable(gp.wave.Fp, wave_std.ds(), {}, {})[0]
+        == "tp"
+    )
+    assert (
+        _map_inverse_geo_parameter_to_ds_variable("fp", wave_std.ds(), {}, {})[0]
+        == "tp"
+    )
 
 
 def test_get_components(wind_xy):
-    assert _get_components_from_ds(gp.wind.Wind, wind_xy.ds()) == ("ux", "uy")
-    assert _get_components_from_ds(gp.wind.WindDir, wind_xy.ds()) == ("ux", "uy")
-    assert _get_components_from_ds(gp.wind.WindDirTo, wind_xy.ds()) == ("ux", "uy")
-    assert _get_components_from_ds("wind_speed", wind_xy.ds()) == ("ux", "uy")
-    # assert _get_components_from_ds("fp", wave_std.ds()) == "tp"
+    assert _map_geo_parameter_to_components_in_ds(gp.wind.Wind, wind_xy.ds(), {}, {})[
+        0:2
+    ] == (
+        "ux",
+        "uy",
+    )
+    assert (
+        _map_geo_parameter_to_components_in_ds(gp.wind.Wind, wind_xy.ds(), {}, {})[-1]
+        is None
+    )
+
+    assert _map_geo_parameter_to_components_in_ds(
+        gp.wind.WindDir, wind_xy.ds(), {}, {}
+    )[0:2] == (
+        "ux",
+        "uy",
+    )
+
+    assert (
+        _map_geo_parameter_to_components_in_ds(gp.wind.WindDir, wind_xy.ds(), {}, {})[
+            -1
+        ]
+        == "math"
+    )
+
+    assert _map_geo_parameter_to_components_in_ds(
+        gp.wind.WindDirTo, wind_xy.ds(), {}, {}
+    )[0:2] == (
+        "ux",
+        "uy",
+    )
+    assert (
+        _map_geo_parameter_to_components_in_ds(gp.wind.WindDirTo, wind_xy.ds(), {}, {})[
+            -1
+        ]
+        == "math"
+    )
+
+    assert _map_geo_parameter_to_components_in_ds("wind_speed", wind_xy.ds(), {}, {})[
+        0:2
+    ] == (
+        "ux",
+        "uy",
+    )
+    # assert _map_geo_parameter_to_components_in_ds("fp", wave_std.ds()) == "tp"
 
 
 # def test_std_name(wave_std):

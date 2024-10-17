@@ -3,18 +3,9 @@ import xarray as xr
 import numpy as np
 from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
-from typing import Union
+from typing import Union, Optional
 from geo_skeletons.errors import GridError
 
-# from geo_skeletons.variable_archive import (
-#     LON_ALIASES,
-#     LAT_ALIASES,
-#     X_ALIASES,
-#     Y_ALIASES,
-#     TIME_ALIASES,
-#     FREQ_ALIASES,
-#     DIRS_ALIASES,
-# )
 from geo_skeletons.variable_archive import (
     LIST_OF_COORD_ALIASES,
     LIST_OF_VAR_ALIASES,
@@ -28,6 +19,7 @@ def identify_core_in_ds(
     core: CoordinateManager,
     ds: xr.Dataset,
     aliases: dict[Union[str, MetaParameter], str] = None,
+    ds_aliases: dict[str, Union[MetaParameter, str]] = None,
     allowed_misses: list[str] = None,
     decode_cf: bool = True,
     strict: bool = True,
@@ -72,22 +64,28 @@ def identify_core_in_ds(
     # Start by remapping any possible MetaParameters to a string
     allowed_misses = allowed_misses or []
 
-    aliases = _remap_core_aliase_keys_to_strings(aliases, core, ds)
+    aliases = _remap_core_aliases_keys_to_strings(aliases, core, ds)
 
+    aliases = aliases or {}
+    ds_aliases = ds_aliases or {}
     core_vars_to_ds_vars = {}
     core_coords_to_ds_coords = {}
     coords = core.coords("init")
 
     for coord in coords:
         search_param = core.meta_parameter(coord) or coord
-        ds_coord = _map_geo_parameter_to_ds_variable(search_param, ds, aliases)
+        ds_coord = _map_geo_parameter_to_ds_variable(
+            search_param, ds, aliases, ds_aliases
+        )
         if ds_coord is not None:
             core_coords_to_ds_coords[coord] = ds_coord
 
     for var in core.data_vars():
         search_param = core.meta_parameter(var) or var
         # Find the parameter straight up
-        ds_var_x = _map_geo_parameter_to_ds_variable(search_param, ds, aliases)
+        ds_var_x = _map_geo_parameter_to_ds_variable(
+            search_param, ds, aliases=aliases, ds_aliases=ds_aliases
+        )
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = ds_var_x
             continue
@@ -96,8 +94,8 @@ def identify_core_in_ds(
             continue
 
         # Find e.g. fp when we want Tp, or WindDirTo when we want WindDir
-        ds_var_x, transform_function, dir_type = _get_inverse_parameter_from_ds(
-            search_param, ds
+        ds_var_x, transform_function, dir_type = (
+            _map_inverse_geo_parameter_to_ds_variable(search_param, ds)
         )
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = (
@@ -109,8 +107,8 @@ def identify_core_in_ds(
             continue
 
         # Find e.g. x_wind and y_wind when we want Wind or WindDir
-        ds_var_x, ds_var_y, transform_function, dir_type = _get_components_from_ds(
-            search_param, ds
+        ds_var_x, ds_var_y, transform_function, dir_type = (
+            _map_geo_parameter_to_components_in_ds(search_param, ds)
         )
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = (
@@ -123,14 +121,18 @@ def identify_core_in_ds(
     for var in core.magnitudes() + core.directions():
         search_param = core.meta_parameter(var) or var
 
-        ds_var = _map_geo_parameter_to_ds_variable(search_param, ds, aliases)
+        ds_var = _map_geo_parameter_to_ds_variable(
+            search_param, ds, aliases=aliases, ds_aliases=ds_aliases
+        )
 
         if ds_var is not None:
             core_vars_to_ds_vars[var] = ds_var
             continue
 
-        ds_var_x, transform_function, dir_type = _get_inverse_parameter_from_ds(
-            search_param, ds
+        ds_var_x, transform_function, dir_type = (
+            _map_inverse_geo_parameter_to_ds_variable(
+                search_param, ds, aliases=aliases, ds_aliases=ds_aliases
+            )
         )
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = (
@@ -204,9 +206,10 @@ def gather_coord_values(
 
 
 def _map_geo_parameter_to_ds_variable(
-    param: MetaParameter,
+    param: Union[MetaParameter, str],
     ds: xr.Dataset,
-    aliases: dict[str, str] = None,
+    aliases: dict[str, str],
+    ds_aliases: dict[str, Union[MetaParameter, str]],
 ) -> Union[str, None]:
     """Gets a given coordinate from a Dataset:
 
@@ -222,8 +225,6 @@ def _map_geo_parameter_to_ds_variable(
     3) Try to find 'lon' directly in eiher ds.data_vars or ds.coords
     4) Go through known aliases of 'lon' (e.g. 'longitude') and try to find the alias 'longitude' in eiher ds.data_vars or ds.coords
     """
-
-    aliases = aliases or {}
     var_str, param = gp.decode(param, init=True)
 
     # 1) Use aliases mapping if exists
@@ -237,8 +238,18 @@ def _map_geo_parameter_to_ds_variable(
         if not gp.is_gp(param):
             param = None
 
+    # Find in ds_aliases
+    ds_match = _match_ds_aliases_to_parameter(var_str, ds_aliases)
+    if ds_match is not None:
+        return ds_match
+
     if param is not None:
-        ds_var = _get_geoparameter_from_ds(param, ds)
+        ds_match = _match_ds_aliases_to_parameter(param, ds_aliases)
+    if ds_match is not None:
+        return ds_match
+
+    if param is not None:
+        ds_var = _find_geoparameter_in_ds(param, ds)
 
         if ds_var:
             return ds_var
@@ -260,73 +271,46 @@ def _map_geo_parameter_to_ds_variable(
                 if alias_var in ds.coords or alias_var in ds.data_vars:
                     return alias_var
 
+                ds_match = _match_ds_aliases_to_parameter(alias_var, ds_aliases)
+                if ds_match in ds.coords or ds_match in ds.data_vars:
+                    return ds_match
     return None
 
 
-def _get_inverse_parameter_from_ds(var: Union[MetaParameter, str], ds):
-    """Get inverse from Dataset (e.g. get fp if we want Tp)"""
-    if not gp.is_gp(var):
-        var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
-    if var is None:
-        return None, None, None
+def _match_ds_aliases_to_parameter(
+    var: Union[MetaParameter, str], ds_aliases: dict[str, Union[MetaParameter, str]]
+) -> Union[str, None]:
+    """Goes through ds_aliases and see if there is defined ds-parameter that matches the give parameter
 
-    if var.i_am() == "period":
-        ds_var = _get_geoparameter_from_ds(var.my_family("frequency"), ds)
-        transform_function = lambda x, y: 1 / x
-        dir_type = None
-    elif var.i_am() == "frequency":
-        ds_var = _get_geoparameter_from_ds(var.my_family("period"), ds)
-        transform_function = lambda x, y: 1 / x
-        dir_type = None
-    elif var.i_am() == "direction":
-        ds_var = _get_geoparameter_from_ds(var.my_family("opposite_direction"), ds)
-        transform_function = lambda x, y: x
-        dir_type = var.my_family("opposite_direction").dir_type()
-    elif var.i_am() == "opposite_direction":
-        ds_var = _get_geoparameter_from_ds(var.my_family("direction"), ds)
-        transform_function = lambda x, y: x
-        dir_type = var.my_family("direction").dir_type()
+    E.g. Core has parameter gp.wave.Hs('swh')
+
+    ds_aliases = {'Hm0': gp.wave.Hs} -> Match and return 'Hm0' bases on gp.wave.Hs('swh').is_same(gp.wave.Hs)
+    ds_aliases = {'Hm0': 'swh'} -> Match and return 'Hm0' bases on gp.wave.Hs('swh').name == 'swh'
+    ds_aliases = {'Hm0': 'hs'} -> No match, return None
+    """
+
+    matching_ds_keys = []
+    var_str, param = gp.decode(var)
+    for key, value in ds_aliases.items():
+        ds_var_str, ds_meta = gp.decode(value)
+        if ds_var_str == var_str:
+            matching_ds_keys.append(key)
+        elif param is not None and ds_meta is not None:
+            if ds_meta.is_same(param):
+                matching_ds_keys.append(key)
+
+    if len(matching_ds_keys) == 1:
+        return matching_ds_keys[0]
     else:
-        return None, None, None
-
-    if ds_var is not None:
-        return ds_var, transform_function, dir_type
-
-    return None, None, None
+        return None
 
 
-def _get_components_from_ds(var: Union[MetaParameter, str], ds):
-    """Get components from Dataset (e.g. get x_wind, y_wind if we want wind_speed)"""
-    if not gp.is_gp(var):
-        var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
-    if var is None:
-        return None, None, None
-
-    if var.i_am() in ["magnitude", "direction", "opposite_direction"]:
-        ds_var_x = _get_geoparameter_from_ds(var.my_family("x"), ds)
-        ds_var_y = _get_geoparameter_from_ds(var.my_family("y"), ds)
-    else:
-        return None, None, None, None
-
-    if var.i_am() == "magnitude":
-        transform_function = compute_magnitude
-        dir_type = None
-    elif var.i_am() in ["direction", "opposite_direction"]:
-        transform_function = compute_math_direction
-        dir_type = "math"
-    if ds_var_x is not None and ds_var_y is not None:
-        return ds_var_x, ds_var_y, transform_function, dir_type
-
-    return None, None, None, None
-
-
-def _get_geoparameter_from_ds(param: MetaParameter, ds: xr.Dataset) -> Union[str, None]:
+def _find_geoparameter_in_ds(param: MetaParameter, ds: xr.Dataset) -> Union[str, None]:
     """Finds a geo-parameter from a Dataset and returns the variable name if a unique match is made"""
     if param is None:
         return None
 
     ds_var = param.find_me_in_ds(ds)
-
     if not ds_var:
         return None
 
@@ -345,7 +329,89 @@ def _get_geoparameter_from_ds(param: MetaParameter, ds: xr.Dataset) -> Union[str
     )
 
 
-def _remap_core_aliase_keys_to_strings(
+def _map_inverse_geo_parameter_to_ds_variable(
+    var: Union[MetaParameter, str],
+    ds: xr.Dataset,
+    aliases: dict[str, str],
+    ds_aliases: dict[str, Union[MetaParameter, str]],
+):
+    """Get inverse from Dataset (e.g. get fp if we want Tp)"""
+    if not gp.is_gp(var):
+        var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
+    if var is None:
+        return None, None, None
+
+    if var.i_am() == "period":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("frequency"), ds, aliases=aliases, ds_aliases=ds_aliases
+        )
+        transform_function = lambda x, y: 1 / x
+        dir_type = None
+    elif var.i_am() == "frequency":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("period"), ds, aliases=aliases, ds_aliases=ds_aliases
+        )
+        transform_function = lambda x, y: 1 / x
+        dir_type = None
+    elif var.i_am() == "direction":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("opposite_direction"),
+            ds,
+            aliases=aliases,
+            ds_aliases=ds_aliases,
+        )
+        transform_function = lambda x, y: x
+        dir_type = var.my_family("opposite_direction").dir_type()
+    elif var.i_am() == "opposite_direction":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("direction"), ds, aliases=aliases, ds_aliases=ds_aliases
+        )
+        transform_function = lambda x, y: x
+        dir_type = var.my_family("direction").dir_type()
+    else:
+        return None, None, None
+
+    if ds_var is not None:
+        return ds_var, transform_function, dir_type
+
+    return None, None, None
+
+
+def _map_geo_parameter_to_components_in_ds(
+    var: Union[MetaParameter, str],
+    ds: xr.Dataset,
+    aliases: dict[str, str],
+    ds_aliases: dict[str, Union[MetaParameter, str]],
+):
+    """Get components from Dataset (e.g. get x_wind, y_wind if we want wind_speed)"""
+    if not gp.is_gp(var):
+        var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
+    if var is None:
+        return None, None, None
+
+    if var.i_am() in ["magnitude", "direction", "opposite_direction"]:
+        ds_var_x = _map_geo_parameter_to_ds_variable(
+            var.my_family("x"), ds, aliases=aliases, ds_aliases=ds_aliases
+        )
+        ds_var_y = _map_geo_parameter_to_ds_variable(
+            var.my_family("y"), ds, aliases=aliases, ds_aliases=ds_aliases
+        )
+    else:
+        return None, None, None, None
+
+    if var.i_am() == "magnitude":
+        transform_function = compute_magnitude
+        dir_type = None
+    elif var.i_am() in ["direction", "opposite_direction"]:
+        transform_function = compute_math_direction
+        dir_type = "math"
+    if ds_var_x is not None and ds_var_y is not None:
+        return ds_var_x, ds_var_y, transform_function, dir_type
+
+    return None, None, None, None
+
+
+def _remap_core_aliases_keys_to_strings(
     aliases: dict[Union[str, MetaParameter], str],
     core: CoordinateManager,
     ds: xr.Dataset,

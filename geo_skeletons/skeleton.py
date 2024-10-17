@@ -359,7 +359,7 @@ class Skeleton:
                 )
             )
 
-            #core_aliases.update(added_core_vars_to_ds_vars)
+            # core_aliases.update(added_core_vars_to_ds_vars)
         else:
             ds_dir_types = {}
 
@@ -369,7 +369,7 @@ class Skeleton:
             core_vars_to_ds_vars,
             coords_needed,
         ) = identify_core_in_ds(
-            cls.core, ds, aliases=core_aliases, allowed_misses=list(kwargs.keys())
+            cls.core, ds, aliases=core_aliases, ds_aliases=ds_aliases, allowed_misses=list(kwargs.keys())
         )
 
         coords = gather_coord_values(
