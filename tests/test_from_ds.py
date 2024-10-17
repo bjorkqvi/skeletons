@@ -207,7 +207,6 @@ def test_ds_aliases_doc_example1():
     hm0.set_Hm0(10)
 
     hs = Hs.from_ds(hm0.ds(), ds_aliases={"Hm0": "hs"}, dynamic=True)
-    breakpoint()
     np.testing.assert_almost_equal(hs.hs(), 10)
 
 
