@@ -345,7 +345,7 @@ class Skeleton:
         ignore_vars = ignore_vars or []
 
         if dynamic:  # Try to decode variables from the dataset
-            cls, added_core_vars_to_ds_vars = create_new_class_dynamically(
+            cls = create_new_class_dynamically(
                 cls=cls,
                 ds=ds,
                 data_vars=data_vars,
@@ -356,10 +356,6 @@ class Skeleton:
                 ds_aliases=ds_aliases,
                 extra_coords=kwargs,
             )
-
-            # core_aliases.update(added_core_vars_to_ds_vars)
-        else:
-            ds_dir_types = {}
 
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         (

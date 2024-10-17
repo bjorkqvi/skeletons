@@ -72,7 +72,7 @@ def create_new_class_dynamically(
         addable_magnitudes,
         ds_coord_groups,
     )
-    return cls, core_vars_to_ds_vars
+    return cls
 
 
 def set_core_vars_to_skeleton_from_ds(
