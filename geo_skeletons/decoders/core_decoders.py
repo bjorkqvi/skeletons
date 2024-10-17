@@ -120,7 +120,6 @@ def identify_core_in_ds(
                 dir_type,
             )
 
-
     for var in core.magnitudes() + core.directions():
         search_param = core.meta_parameter(var) or var
 
@@ -140,7 +139,6 @@ def identify_core_in_ds(
                 transform_function,
                 dir_type,
             )
-
 
     xy_set = (
         core_coords_to_ds_coords.get("x") is not None
@@ -232,15 +230,13 @@ def _map_geo_parameter_to_ds_variable(
     if aliases.get(var_str) is not None:
         return aliases.get(var_str)
 
-    
     if param is None:
         param = coord_alias_map_to_gp().get(var_str) or var_alias_map_to_gp().get(
             var_str
         )
         if not gp.is_gp(param):
             param = None
-        
-     
+
     if param is not None:
         ds_var = _get_geoparameter_from_ds(param, ds)
 
@@ -300,7 +296,7 @@ def _get_inverse_parameter_from_ds(var: Union[MetaParameter, str], ds):
 
 
 def _get_components_from_ds(var: Union[MetaParameter, str], ds):
-    """Get inverse from Dataset (e.g. get x_wind, ywind if we want wind_speed)"""
+    """Get components from Dataset (e.g. get x_wind, y_wind if we want wind_speed)"""
     if not gp.is_gp(var):
         var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
     if var is None:
