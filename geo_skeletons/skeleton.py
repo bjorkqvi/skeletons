@@ -345,18 +345,16 @@ class Skeleton:
         ignore_vars = ignore_vars or []
 
         if dynamic:  # Try to decode variables from the dataset
-            cls, added_core_vars_to_ds_vars, ds_dir_types = (
-                create_new_class_dynamically(
-                    cls=cls,
-                    ds=ds,
-                    data_vars=data_vars,
-                    ignore_vars=ignore_vars,
-                    keep_ds_names=keep_ds_names,
-                    decode_cf=decode_cf,
-                    core_aliases=core_aliases,
-                    ds_aliases=ds_aliases,
-                    extra_coords=kwargs,
-                )
+            cls, added_core_vars_to_ds_vars = create_new_class_dynamically(
+                cls=cls,
+                ds=ds,
+                data_vars=data_vars,
+                ignore_vars=ignore_vars,
+                keep_ds_names=keep_ds_names,
+                decode_cf=decode_cf,
+                core_aliases=core_aliases,
+                ds_aliases=ds_aliases,
+                extra_coords=kwargs,
             )
 
             # core_aliases.update(added_core_vars_to_ds_vars)
@@ -369,7 +367,11 @@ class Skeleton:
             core_vars_to_ds_vars,
             coords_needed,
         ) = identify_core_in_ds(
-            cls.core, ds, aliases=core_aliases, ds_aliases=ds_aliases, allowed_misses=list(kwargs.keys())
+            cls.core,
+            ds,
+            aliases=core_aliases,
+            ds_aliases=ds_aliases,
+            allowed_misses=list(kwargs.keys()),
         )
 
         coords = gather_coord_values(
@@ -393,7 +395,6 @@ class Skeleton:
             ds,
             core_vars_to_ds_vars,
             ds_remapped_coords,
-            ds_dir_types,
             meta_dict,
         )
 

@@ -42,7 +42,7 @@ def create_new_class_dynamically(
 
     # Find which ones of the Dataset variables should be added
     # Also determine if there are some Magnitude-Direction pairs that should be added
-    addable_vars, addable_magnitudes, ds_dir_types, new_core_vars_to_ds_vars = (
+    addable_vars, addable_magnitudes, new_core_vars_to_ds_vars = (
         find_addable_vars_and_magnitudes(
             core=cls.core,
             ds_vars_to_gp=ds_vars_to_gp,
@@ -72,7 +72,7 @@ def create_new_class_dynamically(
         addable_magnitudes,
         ds_coord_groups,
     )
-    return cls, core_vars_to_ds_vars, ds_dir_types
+    return cls, core_vars_to_ds_vars
 
 
 def set_core_vars_to_skeleton_from_ds(
@@ -80,7 +80,6 @@ def set_core_vars_to_skeleton_from_ds(
     ds: xr.Dataset,
     core_vars_to_ds_vars: dict[str, str],
     ds_remapped_coords: dict[str, list[str]],
-    ds_dir_types: dict[str, str],
     meta_dict: dict = None,
 ):
     """Set core (static) variables to a skeleton from an xarray Dataset.

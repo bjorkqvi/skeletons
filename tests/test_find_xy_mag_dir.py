@@ -101,14 +101,14 @@ def test_magdir(wind_magdir):
     mag_dir_datavars_in_core = _find_mag_dir_datavars_present_in_core(
         PointSkeleton.core
     )
-    mag_dirs, ds_dir_types = _find_magnitudes_and_directions_present_in_ds(
+    mag_dirs = _find_magnitudes_and_directions_present_in_ds(
         addable_ds_vars, ds_vars_to_gp
     )
 
     assert len(mag_dirs) == 1
     assert mag_dirs[0][0].is_same(gp.wind.Wind)
     assert mag_dirs[0][1].is_same(gp.wind.WindDir)
-    assert ds_dir_types.get("ud") == "from"
+
     addable_vars = _compile_list_of_addable_vars(
         xy_variables,
         xy_variables_in_core,
@@ -171,7 +171,7 @@ def test_xy(wind_xy):
         PointSkeleton.core
     )
 
-    mag_dirs, ds_dir_types = _find_magnitudes_and_directions_present_in_ds(
+    mag_dirs = _find_magnitudes_and_directions_present_in_ds(
         addable_ds_vars, ds_vars_to_gp
     )
 
@@ -234,14 +234,13 @@ def test_magdirto(wind_magdirto):
     mag_dir_datavars_in_core = _find_mag_dir_datavars_present_in_core(
         PointSkeleton.core
     )
-    mag_dirs, ds_dir_types = _find_magnitudes_and_directions_present_in_ds(
+    mag_dirs = _find_magnitudes_and_directions_present_in_ds(
         addable_ds_vars, ds_vars_to_gp
     )
 
     assert len(mag_dirs) == 1
     assert mag_dirs[0][0].is_same(gp.wind.Wind)
     assert mag_dirs[0][1].is_same(gp.wind.WindDir)
-    assert ds_dir_types.get("ud") == "to"
 
     addable_vars = _compile_list_of_addable_vars(
         xy_variables,
