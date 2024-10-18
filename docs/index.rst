@@ -1,11 +1,19 @@
 Welcome to skeletons's documentation!
 =====================================
 
-**skeletons** is a Python package that provides a structure for gridded and ungridded data. It supports both spherical (lon-lat) and cartesian (UTM) coordinates. A skeleton is initialized as either spherical or cartesian, but it can automatically convert its native coordinates.
+**Geo-skeletons** is an easy extendable way to build python classes to represent gridded and non-gridded geophysical data. It provides the basic structure to work with spherical and cartesian coordinates, and can be extended to data-specific objects by adding coordinates, data variables and logical masks. It also integrates with the geo-parameters module to provide easy access to metadata.
 
-This skeleton structure can easily be expanded to data structures if decorators are used to add additional spatial or temporal dimensons or data variables.
+Quick Installation
+=============================================
+To get started with geo-skeletons, you can install it with pip or conda:
 
+.. code-block:: shell
 
+   $ pip install geo-skeletons
+
+.. code-block:: shell
+
+   $ conda install -c conda-forge geo-skeletons
 
 Using PointSkeletons
 =============================================
@@ -17,14 +25,14 @@ A point cloud can easily be represented as an unstructured skeleton:
 
 .. code-block:: python
 
-  from geo_skeletons.point_skeleton import PointSkeleton
+  from geo_skeletons import PointSkeleton
   points = PointSkeleton(lon=(30.0,30.1,30.5), lat=(60.0,60.0,60.8))
 
 
 Accessing coordinates
 ---------------------------------------------
 
-Coordinates are now accessible both in the (native) spherical and the (non-native) cartesian versions:
+Coordinates are now accessible both in the (native) spherical and the (non-native) cartesian versions, where the best UTM-zone has automatically been deduced for the given lon/lat coordinates:
 
 .. code-block:: python
 
@@ -32,6 +40,18 @@ Coordinates are now accessible both in the (native) spherical and the (non-nativ
   array([30. , 30.1, 30.5])
   >>> points.x()
   array([332705.17887694, 338279.24910909, 363958.72298911])
+
+  >>> points.utm.zone()
+  (36, 'V')
+
+  >>> points.x(utm=(33,'W'))
+  array([1331808.13859715, 1337286.99102854, 1338117.44887216])
+
+  >>> points.utm.set((33,'W'))
+  Setting UTM (33, 'W')
+
+  >>> points.x()
+  array([1331808.13859715, 1337286.99102854, 1338117.44887216])
 
 
 Both methods have a ``strict`` option that only returns the coordinates if matches the native standard for the skeleton and returns ``None`` otherwise:
@@ -62,31 +82,6 @@ The .lonlat() and .xy() methods gives a tuple with arrays of coordinates:
   (array([30. , 30.1, 30.5]), array([60. , 60. , 60.8]))
 
 
-Cartesian UTM coordinates
----------------------------------------------
-
-The UTM zone that is used was automatically set to the one most compatible with the spherical coordinates:
-
-.. code-block:: python
-
-  >>> points.utm()
-  (36, 'V')
-
-
-This can be changed and resetted as follows:
-
-.. code-block:: python
-
-  >>> points.set_utm((35,'V'))
-  Setting UTM (35, V)
-  >>> points.x()
-  array([667294.82112306, 672868.6361206 , 690427.36544455])
-  >>> points.set_utm()
-  Setting UTM (36, V)
-  >>> points.x()
-  array([332705.17887694, 338279.24910909, 363958.72298911])
-
-
 Underlying xarray Dataset structure
 --------------------------------------------
 
@@ -94,14 +89,38 @@ The skeleton information is stored in an xarray Dataset. This will be convenient
 
 .. code-block:: python
 
-  >>> points.ds()
-  <xarray.Dataset>
+  >>> points
+  <PointSkeleton (Skeleton)>
+  ------------------------------ Coordinate groups -------------------------------
+  Spatial:    (inds)
+  Grid:       (inds)
+  Gridpoint:  *empty*
+  All:        (inds)
+  ------------------------------------ Xarray ------------------------------------
+  <xarray.Dataset> Size: 72B
   Dimensions:  (inds: 3)
   Coordinates:
-    * inds     (inds) int64 0 1 2
+    * inds     (inds) int64 24B 0 1 2
   Data variables:
-      lat      (inds) float64 60.0 60.0 60.8
-      lon      (inds) float64 30.0 30.1 30.5
+      lat      (inds) float64 24B 60.0 60.0 60.8
+      lon      (inds) float64 24B 30.0 30.1 30.5
+  Attributes:
+      name:      LonelySkeleton
+      utm_zone:  36V
+  --------------------------------------------------------------------------------
+
+
+  >>> points.ds()
+  <xarray.Dataset> Size: 72B
+  Dimensions:  (inds: 3)
+  Coordinates:
+    * inds     (inds) int64 24B 0 1 2
+  Data variables:
+      lat      (inds) float64 24B 60.0 60.0 60.8
+      lon      (inds) float64 24B 30.0 30.1 30.5
+  Attributes:
+      name:      LonelySkeleton
+      utm_zone:  36V
 
 Since there is no gridded structure, these vectors are given as a function of indeces:
 
@@ -126,6 +145,16 @@ However, the size of the *x- and y-vectors* are given by:
   >>> points.ny()
   3
 
+The core of the Skeleton will still keep track of lon/lat as coordinates (to differentiate from actual data variables that can be added)
+
+.. code-block:: python
+  >>> points.core.data_vars() # 'lon' and 'lat' not included, since they are not "proper" data variables
+  []
+  >>> points.core.coords()
+  ['inds']
+  >>> points.core.coords('init') # A list of coordinates that are needed to initialize this class
+  ['lat', 'lon']
+
 
 Using GriddedSkeletons
 =============================================
@@ -137,7 +166,7 @@ Unlike a PointSkeleton, a GriddedSkeleton is defined on an area:
 
 .. code-block:: python
 
-  from geo_skeletons.gridded_skeleton import GriddedSkeleton
+  from geo_skeletons import GriddedSkeleton
   grid = GriddedSkeleton(lon=(30.0,30.5), lat=(60.0,60.8))
 
 
@@ -224,18 +253,49 @@ Therefore, a list of coordinates for all the points (regardless of which type of
 
   lon, lat = grid.lonlat()
 
+A longitude grid (meshgrid) can be retrieved both in spherical and cartesian coordinates:
 
-Cartesian UTM coordinates
----------------------------------------------
+.. code-block:: python
+
+  >>> grid.longrid()
+  array([[30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5],
+         [30. , 30.1, 30.2, 30.3, 30.4, 30.5]])
+
+  >>> grid.xgrid()
+  array([[332705.17887694, 338279.24910909, 343853.56603089,
+          349428.12110114, 355002.90578231, 360577.91154036],
+         [333210.54871541, 338767.76600796, 344325.23072873,
+          349882.93431135, 355440.86819304, 360999.02381454],
+         [333716.43160159, 339256.77897873, 344797.37450988,
+          350338.20960391, 355879.27567328, 361420.56413389],
+         [334222.82599447, 339746.28653178, 345269.9959361 ,
+          350793.94559198, 356318.12688754, 361842.53121431],
+         [334729.73035137, 340236.28717586, 345743.09356756,
+          351250.14088716, 356757.42049886, 362264.92377027],
+         [335237.14312789, 340726.77941807, 346216.66596286,
+          351706.79409952, 357197.15516879, 362687.74051482],
+         [335745.06277796, 341217.76176387, 346690.711679  ,
+          352163.90383761, 357637.32955744, 363110.98015957],
+         [336253.48775383, 341709.2327171 , 347165.2292714 ,
+          352621.46870845, 358077.9423234 , 363534.64141473],
+         [336762.41650608, 342201.19077999, 347640.21729394,
+          353079.48731754, 358518.99212383, 363958.72298911]])
 
 As with the PointSkeleton, the GriddedSkeleton can also give its cartesian coordinates. However, since any UTM zone will be rotated in respect to the spherically defined structured grid, asking for the cartesian x-vector will cause a slight rotation. In other words, the same points can't be reguratly gridded in both shperical and UTM spaces :
 
 .. code-block:: python
 
-  >>> grid.utm()
+  >>> grid.utm.zone()
   (36, 'V')
   >>> grid.x()
-  Regridding spherical grid to cartesian coordinates. This will cause a rotation!
+  Regridding spherical grid to cartesian coordinates will cause a rotation! Use '_, y = skeleton.xy()' to get a list of all points.
   array([334729.73035137, 340236.28717586, 345743.09356756, 351250.14088716,
          356757.42049886, 362264.92377027])
 
@@ -252,15 +312,35 @@ Underlying xarray Dataset structure
 As with the PointSkeleton, the structure is in an xarray Dataset (but longitude and latitue vectors are now coordinates, not variables):
 
 .. code-block:: python
-
-  >>> grid.ds()
-  <xarray.Dataset>
+  >>> grid
+  <GriddedSkeleton (Skeleton)>
+  ------------------------------ Coordinate groups -------------------------------
+  Spatial:    (lat, lon)
+  Grid:       (lat, lon)
+  Gridpoint:  *empty*
+  All:        (lat, lon)
+  ------------------------------------ Xarray ------------------------------------
+  <xarray.Dataset> Size: 120B
   Dimensions:  (lat: 9, lon: 6)
   Coordinates:
-    * lat      (lat) float64 60.0 60.1 60.2 60.3 60.4 60.5 60.6 60.7 60.8
-    * lon      (lon) float64 30.0 30.1 30.2 30.3 30.4 30.5
+    * lat      (lat) float64 72B 60.0 60.1 60.2 60.3 60.4 60.5 60.6 60.7 60.8
+    * lon      (lon) float64 48B 30.0 30.1 30.2 30.3 30.4 30.5
   Data variables:
       *empty*
+  Attributes:
+      name:     LonelySkeleton
+  --------------------------------------------------------------------------------
+
+  >>> grid.ds()
+  <xarray.Dataset> Size: 120B
+  Dimensions:  (lat: 9, lon: 6)
+  Coordinates:
+    * lat      (lat) float64 72B 60.0 60.1 60.2 60.3 60.4 60.5 60.6 60.7 60.8
+    * lon      (lon) float64 48B 30.0 30.1 30.2 30.3 30.4 30.5
+  Data variables:
+      *empty*
+  Attributes:
+      name:     LonelySkeleton
 
 The size of the x- and y-vectors are given by:
 
@@ -310,6 +390,18 @@ Nonetheless, converting between different types of skeletons is usually not need
   x, y = grid.xy()
   x, y = points.xy()
 
+The core of the Skeleton will still keep track of lon/lat as coordinates (to differentiate from actual data variables that can be added)
+
+.. code-block:: python
+
+  >>> grid.core.data_vars()
+  []
+  >>> grid.core.coords()
+  ['lat', 'lon']
+  >>> grid.core.coords('init') # A list of coordinates that are needed to initialize this class
+  ['lat', 'lon']
+
+
 
 Expanding **skeletons**
 =============================================
@@ -321,15 +413,64 @@ The real benefit from skeletons is that you can define your own objects while st
 
 .. code-block:: python
 
-  from geo_skeletons.gridded_skeleton import GriddedSkeleton
+  from geo_skeletons import GriddedSkeleton
   from geo_skeletons.decorators import add_datavar
 
   @add_datavar(name='hs', default_value=0.)
   class WaveHeight(GriddedSkeleton):
     pass
 
+The core of the Skeleton now keeps track of the data variable even though no data has been set.
 
-Using this new objects is now much like using the GriddedSkeleton, but the xarray Dataset now contains a data variable, and the skeleton automatically creates an ``.hs()`` method to access the wave height data.
+.. code-block:: python
+  >>> WaveHeight.core
+  ------------------------------ Coordinate groups -------------------------------
+  Spatial:    (y, x)
+  Grid:       (y, x)
+  Gridpoint:  *empty*
+  All:        (y, x)
+  ------------------------------------- Data -------------------------------------
+  Variables:
+      hs  (y, x):  0.0
+  Masks:
+      *empty*
+  Magnitudes:
+      *empty*
+  Directions:
+      *empty*
+  --------------------------------------------------------------------------------
+
+A better way is to use the geo-parameters package to add data variables:
+
+.. code-block:: python
+  
+  import geo_parameters as gp
+
+  @add_datavar(name=gp.wave.Hs, default_value=0.)
+  class WaveHeight(GriddedSkeleton):
+    pass
+
+.. code-block:: python
+
+  >>> WaveHeight.core
+  ------------------------------ Coordinate groups -------------------------------
+  Spatial:    (y, x)
+  Grid:       (y, x)
+  Gridpoint:  *empty*
+  All:        (y, x)
+  ------------------------------------- Data -------------------------------------
+  Variables:
+      hs  (y, x):  0.0 [m] sea_surface_wave_significant_height
+  Masks:
+      *empty*
+  Magnitudes:
+      *empty*
+  Directions:
+      *empty*
+  --------------------------------------------------------------------------------
+
+
+Using this new objects is now much like using the GriddedSkeleton, but the xarray Dataset now contains a data variable, and the skeleton automatically creates a ``.hs()`` and ``.set_hs()`` methods to access and set the wave height data.
 
 .. code-block:: python
 
@@ -337,71 +478,108 @@ Using this new objects is now much like using the GriddedSkeleton, but the xarra
   data.set_spacing(dm=1000)
 
   >>> data.dx()
-  1000.9278895090348
+  996.8080414102963
   >>> data.dy()
-  1004.1755527666762
-  >>> data.hs()
+  1001.4167247779651
+  >>> data.hs() # Gives the default value
   array([[0., 0., 0., ..., 0., 0., 0.],
          [0., 0., 0., ..., 0., 0., 0.],
          [0., 0., 0., ..., 0., 0., 0.],
          ...,
          [0., 0., 0., ..., 0., 0., 0.],
          [0., 0., 0., ..., 0., 0., 0.],
-   
+
+  >>> data.hs(strict=True) # Returns 'None' if data has not been set
+  None
+
 This new data variable is contained in the underlying xarray Dataset
 
 .. code-block:: python
 
-  >>> data.ds()
-  <xarray.Dataset>
-  Dimensions:  (lat: 120, lon: 119)
+  >>> data.ds() # hs-not saved since it is not set
+  <xarray.Dataset> Size: 2kB
+  Dimensions:  (lat: 112, lon: 111)
   Coordinates:
-    * lat      (lat) float64 60.0 60.01 60.02 60.03 ... 60.97 60.98 60.99 61.0
-    * lon      (lon) float64 3.0 3.017 3.034 3.051 3.068 ... 4.949 4.966 4.983 5.0
+    * lat      (lat) float64 896B 60.0 60.01 60.02 60.03 ... 60.98 60.99 61.0
+    * lon      (lon) float64 888B 3.0 3.018 3.036 3.055 ... 4.945 4.964 4.982 5.0
   Data variables:
-      hs       (lat, lon) float64 0.0 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0 0.0
+      *empty*
+  Attributes:
+      name:     LonelySkeleton
+
+.. code-block:: python
+
+  >>> data.set_hs(5.6)
+  >>> data.ds()
+  <xarray.Dataset> Size: 101kB
+  Dimensions:  (lat: 112, lon: 111)
+  Coordinates:
+    * lat      (lat) float64 896B 60.0 60.01 60.02 60.03 ... 60.98 60.99 61.0
+    * lon      (lon) float64 888B 3.0 3.018 3.036 3.055 ... 4.945 4.964 4.982 5.0
+  Data variables:
+      hs       (lat, lon) float64 99kB 5.6 5.6 5.6 5.6 5.6 ... 5.6 5.6 5.6 5.6 5.6
+  Attributes:
+      name:     LonelySkeleton
 
 The newly created ``.hs()`` method works directly with the xarray Dataset, and same slicing etc. possibilities work out of the box
 
 .. code-block:: python
 
   >>> data.hs(lon=slice(4,4.5))
-  array([[0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.],
-       ...,
-       [0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.]])
+  array([[5.6, 5.6, 5.6, ..., 5.6, 5.6, 5.6],
+         [5.6, 5.6, 5.6, ..., 5.6, 5.6, 5.6],
+         [5.6, 5.6, 5.6, ..., 5.6, 5.6, 5.6],
+         ...,
+         [5.6, 5.6, 5.6, ..., 5.6, 5.6, 5.6],
+         [5.6, 5.6, 5.6, ..., 5.6, 5.6, 5.6],
+         [5.6, 5.6, 5.6, ..., 5.6, 5.6, 5.6]])
+
 
   >>> data.hs(lon=3)
-  array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0.])
+  array([5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6])
 
-  >>> data.hs(lon=2.98, method='nearest')
-  array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-         0.])
+  # Return xr.DataArray
+  # Not that metadata is added when using a geo-parameter to create the class
+  >>> data.hs(lon=2.98, method='nearest', data_array=True)
+  <xarray.DataArray 'hs' (lat: 112)> Size: 896B
+  array([5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6,
+         5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6, 5.6])
+  Coordinates:
+    * lat      (lat) float64 896B 60.0 60.01 60.02 60.03 ... 60.98 60.99 61.0
+      lon      float64 8B 3.0
+  Attributes:
+      short_name:     hs
+      long_name:      significant_wave_height
+      standard_name:  sea_surface_wave_significant_height
+      units:          m
+
 
 Finding points
---------------------------------------------
+=============================================
 
 Although the above method of slicing is useful, it is not optimal when one want's to find a point nearest to a given coordinate. This is especially true for non-gridded data where one simply can't find the nearest longitude and latitude separately. Skeleton classes are therefore equipped with a dedicated method:
 
 .. code-block:: python
+  >>> points = PointSkeleton(lon=(30.0,30.1,30.5), lat=(60.0,60.0,60.8))
+  >>> data = WaveHeight(lon=(3,5), lat=(60,61))
+  >>> data.set_spacing(dm=1000)
 
-  >>> point_dict = data.yank_point(lon=2.98, lat=60.01)
+  >>> point_dict = grid.yank_point(lon=2.98, lat=60.01)
   {'inds_x': array([0]), 'inds_y': array([1]), 'dx': array([1129.78211206])}
 
 This gives the corresponding index and distance to nearest point (in metres). The method takes tuples, and can be used also for gridded data (then the x- and y-index is returned seprately in the dict). 
