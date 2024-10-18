@@ -1189,7 +1189,7 @@ class Skeleton:
         if self.nx() == 1:
             return 0.0
 
-        return (
+        return float(
             max(self.x(native=native, suppress_warning=True))
             - min(self.x(native=native, suppress_warning=True))
         ) / (self.nx() - 1)
@@ -1202,7 +1202,7 @@ class Skeleton:
         if self.ny() == 1:
             return 0.0
 
-        return (
+        return float(
             max(self.y(native=native, suppress_warning=True))
             - min(self.y(native=native, suppress_warning=True))
         ) / (self.ny() - 1)
@@ -1216,7 +1216,7 @@ class Skeleton:
         if lon is None:
             return None
 
-        return (max(lon) - min(lon)) / (self.nx() - 1)
+        return float(max(lon) - min(lon)) / (self.nx() - 1)
 
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
@@ -1227,7 +1227,7 @@ class Skeleton:
         if lat is None:
             return None
 
-        return (max(lat) - min(lat)) / (self.ny() - 1)
+        return float(max(lat) - min(lat)) / (self.ny() - 1)
 
     def coord_dict(self, coord_group: str = "all") -> dict[str, np.ndarray]:
         """Returns a coord dictionary containing all coordinates of the given coordinate group.
@@ -1245,7 +1245,7 @@ class Skeleton:
         x: Union[float, Iterable[float]] = None,
         y: Union[float, Iterable[float]] = None,
         unique: bool = False,
-        fast: bool = False,
+        fast: bool = True,
         npoints: int = 1,
         gridded_shape: Optional[tuple[int]] = None,
     ) -> dict[str, np.ndarray]:
