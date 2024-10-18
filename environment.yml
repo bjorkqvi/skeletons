@@ -2,7 +2,7 @@ name: skeletons
 channels:
   - conda-forge
 dependencies:
-  - python=>3.9,<3.12
+  - python=>3.9, <=3.11
   - numpy
   - scipy
   - pandas
