@@ -28,9 +28,13 @@ LIST_OF_COORD_ALIASES = [
 ]
 
 # List assumed data variable aliases here
-HS_ALIASES = ["hs", "hsig", "swh", "hm0", "vhm0"]
+HS_ALIASES = ["hs", "hsig", "h13", "swh", "hm0", "vhm0"]
 TP_ALIASES = ["tp"]
 FP_ALIASES = ["fp"]
+TM01_ALIASES = ["tm01"]
+TM02_ALIASES = ["tm02"]
+TM_10_ALIASES = ["tm_10"]
+TZ_ALIASES = ["tz"]
 WIND_ALIASES = ["ff", "wind", "wind_speed", "windspeed"]
 XWIND_ALIASES = ["x_wind", "xwnd"]
 YWIND_ALIASES = ["y_wind", "ywnd"]
@@ -80,6 +84,14 @@ def var_alias_map_to_gp() -> dict[str, Union[MetaParameter, str]]:
         var_dict[var] = gp.wave.Hs
     for var in TP_ALIASES:
         var_dict[var] = gp.wave.Tp
+    for var in TM01_ALIASES:
+        var_dict[var] = gp.wave.Tm01
+    for var in TM02_ALIASES:
+        var_dict[var] = gp.wave.Tm02
+    for var in TM_10_ALIASES:
+        var_dict[var] = gp.wave.Tm_10
+    for var in TZ_ALIASES:
+        var_dict[var] = gp.wave.Tz
     for var in FP_ALIASES:
         var_dict[var] = gp.wave.Fp
     for var in WIND_ALIASES:

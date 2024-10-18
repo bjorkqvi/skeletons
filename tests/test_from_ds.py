@@ -72,6 +72,7 @@ def test_gridded_cartesian():
     np.testing.assert_array_almost_equal(grid2.y(), np.arange(5))
     np.testing.assert_array_almost_equal(grid2.test(), np.array([0, 0.5, 1]))
     assert set(grid2.ds().coords) == set(["x", "y", "test"])
+    breakpoint()
 
 
 def test_gridded_spherical():

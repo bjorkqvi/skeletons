@@ -301,25 +301,30 @@ class Skeleton:
         dynamic: bool = False,
         meta_dict: dict = None,
         name: str = "LonelySkeleton",
-        verbose: bool = False,
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton from an xarray Dataset.
 
-        only_vars: list of ds-variable names that will be read. Default read all.
+        only_vars [default [], i.e. read all]: list of ds-variable names that will be read
+        ignore_vars [default []]: list of ds-variables to ignore. [Default None]
 
-        keep_ds_names [default False]: Uses the Dataset variable names instead of the
-        default names of the geo-parameter if the gp is decoded using the standard name
+        keep_ds_names [default False]: Uses the Dataset variable names instead of the geo-parameter default short names
+        decode_cf [default True]: Allow decoding of cf standard names
 
+        core_aliases [default {}]: dict mapping the existing variables in the Skeleton to a variable name in the Dataset
+        ds_aliases [default {}]: dict describing the ds-variables in terms of geo-parameters or strings
 
-        core_aliases: dict mapping the existing variables in the Skeleton to a variable name in the Dataset
+        dynamic [default: False] Allows creation of new data variables. Otherwise limited to existing variables.
+
+        Core aliases
         ------------------------------------------------------------------------
         Ex1: core_aliases = {'hs': 'Hm0'}
             Reads the Dataset variable 'Hm0' and sets the Skeleton variable 'hs'
         Ex2: core_aliases = {gp.wave.Hs: 'Hm0'}
             Reads the Dataset variable 'Hm0' and set the Skeleton variable that matches the gp.wave.Hs geo-parameter (if unambiguous)
 
-        ds_aliases: dict mapping variable names in the Dataset to a parameter that will be dynamically created in the Skeleton
+
+        Dataset aliases
         ------------------------------------------------------------------------
         Ex1: ds_aliases = {'Hm0', 'hs'}
             Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable 'hs'
@@ -330,12 +335,32 @@ class Skeleton:
         Ex4: core_aliases = {'Hm0': gp.wave.Hs}, keep_ds_names = True
             Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable with the name 'Hm0' using metadata from gp.wave.Hs
 
-        **kwargs: Can be used to provide missing coordinates
 
+        NB! Method uses internal relationships defined inside the geo-parameters module (see e.g. gp.wind.WindDir.my_family())
+        ------------------------------------------------------------------------
+        Ex1: gp.wave.Tp defined in class -> can be read using gp.wave.Fp in the Dataset (known inverse)
+        Ex2: gp.wind.WindDir defined in class -> can be read using gp.wind.WindDirTo in the Dataset (known opposite direction)
+        Ex3: gp.wind.WindDir defined in class -> can be read using gp.wind.XWind and gp.wind.YWind in the Dataset (known components)
+
+
+        NB! Method uses an internal set of known aliases for some parameters
+        ------------------------------------------------------------------------
+        It is NOT RECOMMENDED to RELY on these mappings, since they are in no way exhaustive.
+        If no metadata is present, it is better to use the ds_aliases keyword to assign a geo-parameter for each variable.
+
+        Ex1: 'lon' <-> 'longitude' <-> gp.grid.Lon
+        Ex2: 'hs' <-> 'swh' <-> 'hm0' <-> 'hsig' <-> 'h13' <-> 'vhm0' <-> gp.wave.Hs
+        Ex3: 'xwnd' <-> 'xwnd' <-> gp.wind.XWind
+        Ex4: 'Pdir' not mapped to anything, since directional variables have to/from ambiguity without any metadata
+        Ex5: 'Tm' not mapped to anything, since it can be used interchangeably for gp.wave.Tm01 and gp.wave.Tm_10
+
+
+
+
+        **kwargs: Can be used to provide missing coordinates
+        ------------------------------------------------------------------------
         Ex: The z-variable doesn't exist in the DataSet:
             new_instance = SkeletonClass.from_ds(ds, z=[1,2,3])
-
-        dynamic [default: False] Allows creation of new data variables. Otherwise limited to existing variables.
         """
 
         meta_dict = meta_dict or {}
