@@ -60,7 +60,8 @@ To create an instance of this class, provide the coordinate values at initializa
 data = Wind(
     lon=(0, 10),
     lat=(60, 70),
-    time=("2020-01-01 00:00", "2020-01-10 00:00"), #Shorthand for pd.date_range("2020-01-01 00:00", "2020-01-10 00:00", freq="1h")
+    #Shorthand for pd.date_range("2020-01-01 00:00", "2020-01-10 00:00", freq="1h")
+    time=("2020-01-01 00:00", "2020-01-10 00:00"), 
 )
 data.set_spacing(dm=4000)
 
