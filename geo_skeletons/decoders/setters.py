@@ -10,8 +10,8 @@ from .coord_remapping import remap_coords_of_ds_vars_to_skeleton_names
 def create_new_class_dynamically(
     cls,
     ds,
-    data_vars,
     ignore_vars,
+    only_vars,
     keep_ds_names,
     decode_cf,
     core_aliases,
@@ -23,7 +23,12 @@ def create_new_class_dynamically(
         core_vars_to_ds_vars,
         coords_needed,
     ) = identify_core_in_ds(
-        cls.core, ds, aliases=core_aliases, allowed_misses=list(extra_coords.keys())
+        cls.core,
+        ds,
+        aliases=core_aliases,
+        ignore_vars=ignore_vars,
+        only_vars=only_vars,
+        allowed_misses=list(extra_coords.keys()),
     )
 
     coords = gather_coord_values(
@@ -47,7 +52,7 @@ def create_new_class_dynamically(
             core=cls.core,
             ds_vars_to_gp=ds_vars_to_gp,
             core_vars_to_ds_vars=core_vars_to_ds_vars,
-            data_vars=data_vars,
+            only_vars=only_vars,
             ignore_vars=ignore_vars,
         )
     )
@@ -89,7 +94,7 @@ def set_core_vars_to_skeleton_from_ds(
     coord_map: dict mapping variables of a core var ['time','inds','freq'] to variables of a ds var ['time','x','frequency']
 
     Optional:
-    data_vars [default None]: list of ds_variables that will be set. All set if None.
+    only_vars [default None]: list of ds_variables that will be set. All set if None.
     meta_dict: dict of core-var specific meta-data"""
 
     core_vars_to_ds_vars = core_vars_to_ds_vars or {}
