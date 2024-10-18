@@ -401,7 +401,48 @@ The core of the Skeleton will still keep track of lon/lat as coordinates (to dif
   >>> grid.core.coords('init') # A list of coordinates that are needed to initialize this class
   ['lat', 'lon']
 
+Finding points
+=============================================
 
+Skeleton classes are equipped with a dedicated method to find points:
+
+.. code-block:: python
+   
+   >>> data = GriddedSkeleton(lon=(3,5), lat=(60,61))
+   >>> data.set_spacing(dm=1000)
+   >>> grid.yank_point(lon=2.98, lat=60.01)
+   {'inds_x': array([0]), 'inds_y': array([1]), 'dx': array([1120.6812202])}
+
+   >>> points = PointSkeleton(lon=(3.0, 4.0, 5.0), lat=(60.0, 60.0, 61.0))
+   >>> points.yank_point(lon=2.98, lat=60.01)
+   {'inds': array([0]), 'dx': array([1576.18628188])}
+
+
+This gives the corresponding index and distance to nearest point (in metres). The method can also be used to find several points:
+
+.. code-block:: python
+   
+   >>> points.yank_point(lon=(2.98, 4.1), lat=(60.01, 60.01))
+   {'inds': array([0, 1]), 'dx': array([1576.18628188, 5687.27546285])}
+
+We can also find several closest points to one point:
+
+.. code-block:: python
+   
+   >>> grid.yank_point(lon=2.98, lat=60.01, npoints=4)
+   {'inds_x': array([0, 0, 0, 1]), 'inds_y': array([1, 2, 0, 1]), 'dx': array([1120.6812202 , 1428.55452856, 1576.18628188, 2131.94091801])}
+
+If we know that a PointSkeleton structure has been raveled from a gridded structure, we can also find the gridded indeces after the fact:
+
+.. code-block:: python
+   
+   >>> lon, lat = grid.lonlat()
+   >>> raveled_grid = PointSkeleton(lon=lon, lat=lat)
+   >>> raveled_grid.yank_point(lon=2.98, lat=60.01, npoints=4)
+   {'inds': array([111, 222,   0, 112]), 'dx': array([1120.6812202 , 1428.55452856, 1576.18628188, 2131.94091801])}
+
+   >>> raveled_grid.yank_point(lon=2.98, lat=60.01, npoints=4, gridded_shape=grid.size())
+   {'inds': array([111, 222,   0, 112]), 'dx': array([1120.6812202 , 1428.55452856, 1576.18628188, 2131.94091801]), 'inds_x': array([0, 0, 0, 1]), 'inds_y': array([1, 2, 0, 1])}
 
 Expanding **skeletons**
 =============================================
@@ -446,7 +487,7 @@ A better way is to use the geo-parameters package to add data variables:
   
   import geo_parameters as gp
 
-  @add_datavar(name=gp.wave.Hs, default_value=0.)
+  @add_datavar(name=gp.wave.Hs('hs'), default_value=0.)
   class WaveHeight(GriddedSkeleton):
     pass
 
@@ -469,8 +510,13 @@ A better way is to use the geo-parameters package to add data variables:
       *empty*
   --------------------------------------------------------------------------------
 
+The ``@add_datavar`` decorator does the following:
+  * adds a data variable names ``hs``
+  * sets the default value for this variable to 0.0
+  * creates a ``.hs()`` method to access that variable
+  * creates a method ``.set_hs()`` that takes a numpy array
 
-Using this new objects is now much like using the GriddedSkeleton, but the xarray Dataset now contains a data variable, and the skeleton automatically creates a ``.hs()`` and ``.set_hs()`` methods to access and set the wave height data.
+Using this new objects is now much like using the GriddedSkeleton, but the xarray Dataset now contains a data variable.
 
 .. code-block:: python
 
@@ -569,24 +615,309 @@ The newly created ``.hs()`` method works directly with the xarray Dataset, and s
       units:          m
 
 
-Finding points
-=============================================
+Adding magnitudes and directions
+--------------------------------------------
 
-Although the above method of slicing is useful, it is not optimal when one want's to find a point nearest to a given coordinate. This is especially true for non-gridded data where one simply can't find the nearest longitude and latitude separately. Skeleton classes are therefore equipped with a dedicated method:
+The recommended way to add magnitudes and directions are to add the components as data variables and add a magnitude and direction connected to those components:
 
 .. code-block:: python
-  >>> points = PointSkeleton(lon=(30.0,30.1,30.5), lat=(60.0,60.0,60.8))
-  >>> data = WaveHeight(lon=(3,5), lat=(60,61))
-  >>> data.set_spacing(dm=1000)
 
-  >>> point_dict = grid.yank_point(lon=2.98, lat=60.01)
-  {'inds_x': array([0]), 'inds_y': array([1]), 'dx': array([1129.78211206])}
+   import geo_parameters as gp
 
-This gives the corresponding index and distance to nearest point (in metres). The method takes tuples, and can be used also for gridded data (then the x- and y-index is returned seprately in the dict). 
+   @add_magnitude(gp.wind.Wind("u"), x="ux", y="uy", direction=gp.wind.WindDir("ud"))
+   @add_datavar(gp.wind.YWind("uy"))
+   @add_datavar(gp.wind.XWind("ux"))
+   class Wind(GriddedSkeleton):
+       pass
 
-The method can also be used to find the nearest longitude-latitude point in a grid that has been defined on cartesian UTM-coordinates (or vice versa).
+   >>> Wind.core
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (y, x)
+   Grid:       (y, x)
+   Gridpoint:  *empty*
+   All:        (y, x)
+   ------------------------------------- Data -------------------------------------
+   Variables:
+       ux  (y, x):  0.1 [m/s] x_wind
+       uy  (y, x):  0.1 [m/s] y_wind
+   Masks:
+       *empty*
+   Magnitudes:
+     u: magnitude of (ux,uy) [m/s] wind_speed
+   Directions:
+     ud: direction of (ux,uy) [deg] wind_from_direction
+   --------------------------------------------------------------------------------
+
+The ``@add_magnitude`` decorator does the following:
+  * adds a magnitude ``u`` for the components ``ux`` and ``uy``
+  * adds a direction (optional) ``ud`` for the components ``ux`` and ``uy``
+  * parses the standard_name of gp.wind.WindDir to identify that this is a 'from' direction
+  * creates ``.u()`` and ``.ud()`` methods to access the magnitude and direction
+  * creates ``.set_u()`` and ``.set_ud()`` methods to set the magnitude and direction
+
+Now we can still set the wind speed and direction, but only the components will be stored in the Dataset (obviously the components can also still be set and accessed normally):
+
+.. code-block:: python
+
+   >>> data = Wind(lon=(10, 14), lat=(50, 60))
+   >>> data.set_u(10)
+   >>> data.set_ud(45)
+
+   >>> data
+   <Wind (GriddedSkeleton)>
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (lat, lon)
+   Grid:       (lat, lon)
+   Gridpoint:  *empty*
+   All:        (lat, lon)
+   ------------------------------------ Xarray ------------------------------------
+   <xarray.Dataset> Size: 96B
+   Dimensions:  (lat: 2, lon: 2)
+   Coordinates:
+     * lat      (lat) int64 16B 50 60
+     * lon      (lon) int64 16B 10 14
+   Data variables:
+       ux       (lat, lon) float64 32B -7.071 -7.071 -7.071 -7.071
+       uy       (lat, lon) float64 32B -7.071 -7.071 -7.071 -7.071
+   Attributes:
+       name:     LonelySkeleton
+   -------------------------- Magnitudes and directions ---------------------------
+     u: magnitude of (ux,uy) [m/s] wind_speed
+     ud: direction of (ux,uy) [deg] wind_from_direction
+   --------------------------------------------------------------------------------
+
+The directionality of the wind was parsed from the standard name of the geo-parameter gp.wind.WindDir. Therefore the components could be set properly and unambiguously. The direction can be set and retrieved in different directional conventions:
+
+.. code-block:: python
+
+   >>> data.set_ud(270, dir_type='to')
+   >>> data.ud(dir_type='from')
+   array([[90., 90.],
+          [90., 90.]])
+   >>> data.ud(dir_type='to')
+   array([[270., 270.],
+          [270., 270.]])
+   >>> data.ud(dir_type='math')
+   array([[3.14159265, 3.14159265],
+          [3.14159265, 3.14159265]])
+
+This same functionality is also present for individual parameters of directional nature (that typically don't use components):
+
+.. code-block:: python
+
+   # This is direction from, as determined by the standard name
+   # To get direction to, use gp.wave.DirpTo
+   @add_datavar(gp.wave.Dirp) 
+   class Wave(GriddedSkeleton):
+      pass
+   
+   >>> data.core
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (lat, lon)
+   Grid:       (lat, lon)
+   Gridpoint:  *empty*
+   All:        (lat, lon)
+   ------------------------------------- Data -------------------------------------
+   Variables:
+       dirp  (lat, lon):  0.0 [deg] sea_surface_wave_from_direction_at_variance_spectral_density_maximum
+   Masks:
+       *empty*
+   Magnitudes:
+       *empty*
+   Directions:
+       *empty*
+   --------------------------------------------------------------------------------
+
+.. code-block:: python
+
+   data = Wave(lon=(10, 14), lat=(50, 60))
+   data.set_dirp(45, dir_type="to")
+   
+   >>> data.dirp() # default dir_type is the one that the parameter is, in this case 'from'
+   array([[225., 225.],
+          [225., 225.]])
+
+Adding additional coordinates
+--------------------------------------------
+
+Although all skeletons will have the x-y or lon-lat spatial coordinates, decorators can be used to add additional coordinates that the possible data is defined on. As an example, lets create a structure to represent wind data on a spherical 3D grid:
+
+.. code-block:: python
+
+   from geo_skeletons import GriddedSkeleton
+   from geo_skeletons.decorators import add_coord, add_datavar
+   import numpy as np
+
+   @add_datavar(gp.wind.Wind, default_value=10.0)
+   @add_coord(name="z", grid_coord=True)
+   class WindSpeed(GriddedSkeleton):
+       pass
+   
+   >>> WindSpeed.core
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (y, x)
+   Grid:       (y, x, z)
+   Gridpoint:  *empty*
+   All:        (y, x, z)
+   ------------------------------------- Data -------------------------------------
+   Variables:
+       ff  (y, x, z):  10.0 [m/s] wind_speed
+   Masks:
+       *empty*
+   Magnitudes:
+       *empty*
+   Directions:
+       *empty*
+   --------------------------------------------------------------------------------
+
+The ``@add_coord`` decorator does the following:
+  * adds a coordinate named ``z`` to signify the height
+  * adds the requirement to provide the variable ``z`` when initializing the skeleton
+  * adds a method ``.z()`` to access the values of this coordinate
+  * adds a method ``.set_z_spacing()`` to set the spacing of the coordinate (only ``dx`` and ``nx`` keywords possible)
+
+.. code-block:: python
+
+   grid = WindSpeed(lon=(25, 30), lat=(58, 62), z=(0, 100))
+   grid.set_spacing(dnmi=1)
+   grid.set_z_spacing(dx=1)
+
+   new_data = np.random.rand(grid.ny(), grid.nx(), len(grid.z()))
+   grid.set_ff(new_data)
+
+   >>> grid
+   <WindSpeed (GriddedSkeleton)>
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (lat, lon)
+   Grid:       (lat, lon, z)
+   Gridpoint:  *empty*
+   All:        (lat, lon, z)
+   ------------------------------------ Xarray ------------------------------------
+   <xarray.Dataset> Size: 29MB
+   Dimensions:  (lat: 241, lon: 151, z: 101)
+   Coordinates:
+     * lat      (lat) float64 2kB 58.0 58.02 58.03 58.05 ... 61.95 61.97 61.98 62.0
+     * lon      (lon) float64 1kB 25.0 25.03 25.07 25.1 ... 29.9 29.93 29.97 30.0
+     * z        (z) float64 808B 0.0 1.0 2.0 3.0 4.0 ... 96.0 97.0 98.0 99.0 100.0
+   Data variables:
+       ff       (lat, lon, z) float64 29MB 0.8337 0.1296 0.6254 ... 0.2336 0.1013
+   --------------------------------------------------------------------------------
+
+If we want to have several variables that are defined on different coordinate, we have some flixibility by using coordinate groups. If we, e.g. want to add a data variable that defines the surface rougness we can let the z-coordinate default to beeing added as a ``gridpoint`` coordinate instead of ``grid`` coordinate. We can then define over which coordinate group the data variable is added:
+
+.. code-block:: python
+
+   @add_datavar("roughness", default_value=0.0, coord_group="grid")
+   @add_datavar(gp.wind.Wind, default_value=10.0, coord_group="all")
+   @add_coord(name="z", grid_coord=False)
+   class WindSpeed(GriddedSkeleton):
+       pass
+   
+   >>> WindSpeed.core
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (y, x)
+   Grid:       (y, x)
+   Gridpoint:  (z)
+   All:        (y, x, z)
+   ------------------------------------- Data -------------------------------------
+   Variables:
+       ff         (y, x, z):  10.0 [m/s] wind_speed
+       roughness  (y, x):  0.0
+   Masks:
+       *empty*
+   Magnitudes:
+       *empty*
+   Directions:
+       *empty*
+   --------------------------------------------------------------------------------
 
 
+Adding a time, frequency and direction variable
+--------------------------------------------
+
+The adding of certain coordinates have dedicated method. As an example, let us use a wave spectrum:
+
+.. code-block:: python
+
+   @add_datavar(gp.wave.Efth("spec"), coord_group="all")
+   @add_direction()
+   @add_frequency()
+   @add_time()
+   class Spectrum(GriddedSkeleton):
+     pass
+
+   Spectrum.core
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (y, x)
+   Grid:       (time, y, x)
+   Gridpoint:  (freq, dirs)
+   All:        (time, y, x, freq, dirs)
+   ------------------------------------- Data -------------------------------------
+   Variables:
+       spec  (time, y, x, freq, dirs):  0.0 [m**2*s/rad] sea_surface_wave_directional_variance_spectral_density
+   Masks:
+       *empty*
+   Magnitudes:
+       *empty*
+   Directions:
+       *empty*
+   --------------------------------------------------------------------------------
+
+We can see that by default time is added as a grid coordinate, while frequency and direction are added as gridpoint coordinates. This doesn't affect the spectrum directly, since it is still defined over all coordinates. However, we can think of grid coordinates as "outer" coordinates, defining the grid on which we have a certain object that is defined over "inner" (gridpoint) coordinates. 
+
+
+.. code-block:: python
+
+   data = Spectrum(
+      lon=(10, 20),
+      lat=(50, 60),
+      freq=np.arange(0, 1, 0.1),
+      dirs=np.arange(0, 360, 10),
+      time=("2020-01-01 00:00", "2020-01-02 00:00", "6h"),
+   )
+
+   >>> data.size('gridpoint') # Gives the dimensions of a single object (spectrum)
+   (10, 36)
+
+The coordinate groups also determines the order of iteration (iteration this way is easy, but slow for larger data sets):
+
+.. code-block:: python
+
+   for one_spec in data:
+      pass
+
+   >>> one_spec
+   <Spectrum (GriddedSkeleton)>
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (lat, lon)
+   Grid:       (time, lat, lon)
+   Gridpoint:  (freq, dirs)
+   All:        (time, lat, lon, freq, dirs)
+   ------------------------------------ Xarray ------------------------------------
+   <xarray.Dataset> Size: 392B
+   Dimensions:  (time: 1, lat: 1, lon: 1, freq: 10, dirs: 36)
+   Coordinates:
+     * time     (time) datetime64[ns] 8B 2020-01-02
+     * lat      (lat) int64 8B 60
+     * lon      (lon) int64 8B 20
+     * freq     (freq) float64 80B 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+     * dirs     (dirs) int64 288B 0 10 20 30 40 50 60 ... 300 310 320 330 340 350
+   Data variables:
+       *empty*
+   Attributes:
+       name:     LonelySkeleton
+   ---------------------------------- Empty data ----------------------------------
+   Empty variables:
+       spec  (time, lat, lon, freq, dirs):  0.0 [m**2*s/rad] sea_surface_wave_directional_variance_spectral_density
+   --------------------------------------------------------------------------------
+
+   >>> one_spec.spec().shape # The method automatically squeezes out trivial dimensions
+   (10, 36)
+
+   >>> spec.spec(squeeze=False).shape
+   (1, 1, 1, 10, 36)
+
+   >>> one_spec.set_spec(one_spec.spec()*2) # Automatically expands trivial dimensions
 
 
 Adding masks
@@ -674,43 +1005,7 @@ Where ``lon`` and ``lat`` now gives the coordinates of the land points. Notice, 
 
   lon, lat = data.lonlat(mask=data.land_mask())
 
-Adding additional coordinates
---------------------------------------------
 
-Although all skeletons will have the x-y or lon-lat spatial coordinates, decorators can be used to add additional coordinates that the possible data is defined on. As an example, lets create a structure to keep water temperature data on a spherical 3D grid:
-
-.. code-block:: python
-
-  from geo_skeletons.gridded_skeleton import GriddedSkeleton
-  from geo_skeletons.coordinate_factory import add_coord, add_datavar
-  import numpy as np
-
-
-  @add_datavar(name="water_temperature", default_value=10.0)
-  @add_coord(name="z", grid_coord=True)
-  class a3DGrid(GriddedSkeleton):
-      pass
-
-
-  grid = a3DGrid(lon=(25, 30), lat=(58, 62), z=(0, 100))
-  grid.set_spacing(dnmi=1)
-  grid.set_z_spacing(dx=1)
-
-  new_data = np.random.rand(grid.ny(), grid.nx(), len(grid.z()))
-  grid.set_water_temperature(new_data)
-
-
-The ``@add_coord`` decorator does the following:
-  * adds a coordinate named ``z`` to signify the depth
-  * adds the possibility to provide the variable ``z`` when initializing the skeleton
-  * adds a method ``.z()`` to access the values of this coordinate
-  * adds a method ``.set_z_spacing()`` to set the spacing of the coordinate (only ``dx`` and ``nx`` keywords possible)
-  
-The ``@add_datavar`` decordator does the following:
-  * adds a data variable names ``water_temperature`` defined on all three coordinates
-  * sets the default value for this variable to 10
-  * creates a ``.water_temperature()`` method to access that variable
-  * creates a method ``.set_water_temperature()`` that takes a numpy array
   
 
 Plotting the data
