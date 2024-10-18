@@ -151,7 +151,7 @@ def find_addable_vars_and_magnitudes(
     core,
     ds_vars_to_gp: dict[str, Union[str, MetaParameter]],
     core_vars_to_ds_vars: dict[str, str],
-    data_vars: list[str] = None,
+    only_vars: list[str] = None,
     ignore_vars: list[str] = None,
 ):
     new_core_vars_to_ds_vars = {}
@@ -162,8 +162,8 @@ def find_addable_vars_and_magnitudes(
 
     # Restrict to user provided variables if needed
     addable_ds_vars = set(addable_ds_vars) - set(ignore_vars)
-    if data_vars:
-        addable_ds_vars = addable_ds_vars.intersection(set(data_vars))
+    if only_vars:
+        addable_ds_vars = addable_ds_vars.intersection(set(only_vars))
     addable_ds_vars = list(addable_ds_vars)
 
     for ds_var in addable_ds_vars:
@@ -357,8 +357,11 @@ def _compile_list_of_addable_vars(
         if var is None:
             addable_vars.append(var_str)
         else:
+            addable_vars_names = [v.name for v in addable_vars if gp.is_gp(v)] + [
+                v for v in addable_vars if not gp.is_gp(v)
+            ]
             if (
-                not var.is_in(addable_vars)
+                not var_str in addable_vars_names
                 and not _xy_as_mag_dir(var, mag_dir_datavars_in_core)
                 and var.i_am()
                 not in [

@@ -292,7 +292,7 @@ class Skeleton:
         cls,
         ds: xr.Dataset,
         chunks: Optional[Union[tuple[int], str]] = None,
-        data_vars: Optional[list[str]] = None,
+        only_vars: Optional[list[str]] = None,
         ignore_vars: Optional[list[str]] = None,
         keep_ds_names: bool = False,
         decode_cf: bool = True,
@@ -306,7 +306,7 @@ class Skeleton:
     ) -> "Skeleton":
         """Generats an instance of a Skeleton from an xarray Dataset.
 
-        data_vars: list of ds-variable names that will be read. Default read all.
+        only_vars: list of ds-variable names that will be read. Default read all.
 
         keep_ds_names [default False]: Uses the Dataset variable names instead of the
         default names of the geo-parameter if the gp is decoded using the standard name
@@ -341,14 +341,14 @@ class Skeleton:
         meta_dict = meta_dict or {}
         core_aliases = core_aliases or {}
         ds_aliases = ds_aliases or {}
-        data_vars = data_vars or []
+        only_vars = only_vars or []
         ignore_vars = ignore_vars or []
 
         if dynamic:  # Try to decode variables from the dataset
             cls = create_new_class_dynamically(
                 cls=cls,
                 ds=ds,
-                data_vars=data_vars,
+                only_vars=only_vars,
                 ignore_vars=ignore_vars,
                 keep_ds_names=keep_ds_names,
                 decode_cf=decode_cf,
@@ -367,6 +367,8 @@ class Skeleton:
             ds,
             aliases=core_aliases,
             ds_aliases=ds_aliases,
+            ignore_vars=ignore_vars,
+            only_vars=only_vars,
             allowed_misses=list(kwargs.keys()),
         )
 
