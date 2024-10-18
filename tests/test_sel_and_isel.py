@@ -1,16 +1,13 @@
 from geo_skeletons import PointSkeleton, GriddedSkeleton
 import numpy as np
-from geo_skeletons.decorators import add_datavar, dynamic
+from geo_skeletons.decorators import add_datavar
 
 import geo_parameters as gp
 
 
 def test_point():
-    assert PointSkeleton.core.static
     points = PointSkeleton(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
 
-    assert PointSkeleton.core.static
-    assert points.core.static
     np.testing.assert_array_almost_equal(
         points.lon(), points.sel(inds=slice(0, 10)).lon()
     )
@@ -31,17 +28,11 @@ def test_point():
 
 
 def test_point_old_datavar():
-    assert PointSkeleton.core.static
-
     @add_datavar(name="dummyvar")
     class Dummy(PointSkeleton):
         pass
 
-    assert Dummy.core.static
-
     points = Dummy(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
-
-    assert points.core.static
 
     points.set_dummyvar(5)
     assert points.core.data_vars() == ["dummyvar"]
@@ -51,17 +42,10 @@ def test_point_old_datavar():
 
 
 def test_point_dynamic_datavar():
-    assert PointSkeleton.core.static
-
-    @dynamic
     class Dummy(PointSkeleton):
         pass
 
-    assert PointSkeleton.core.static
-    assert not Dummy.core.static
-
-    points = Dummy(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
-    points.add_datavar("dummyvar")
+    points = Dummy.add_datavar("dummyvar")(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
     points.set_dummyvar(5)
     assert points.core.data_vars() == ["dummyvar"]
 
@@ -70,17 +54,13 @@ def test_point_dynamic_datavar():
 
 
 def test_point_dynamic_datavar_geoparam():
-    assert PointSkeleton.core.static
-
-    @dynamic
     class Dummy(PointSkeleton):
         pass
 
-    assert PointSkeleton.core.static
-    assert not Dummy.core.static
+    points = Dummy.add_datavar(gp.wave.Hs("hsig"))(
+        lon=(1, 2, 3, 4), lat=(10, 20, 30, 40)
+    )
 
-    points = Dummy(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
-    points.add_datavar(gp.wave.Hs("hsig"))
     points.set_hsig(5)
     assert points.core.data_vars() == ["hsig"]
 
@@ -90,35 +70,27 @@ def test_point_dynamic_datavar_geoparam():
 
 
 def test_point_dynamic_datavars_from_ds():
-    assert PointSkeleton.core.static
 
-    @dynamic
     class Dummy(PointSkeleton):
         pass
 
-    assert PointSkeleton.core.static
-    assert not Dummy.core.static
-
-    points = Dummy(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
-    points.add_datavar(gp.wave.Hs("hsig"))
+    points = Dummy.add_datavar(gp.wave.Hs("hsig"))(
+        lon=(1, 2, 3, 4), lat=(10, 20, 30, 40)
+    )
     points.set_hsig(5)
     assert points.core.data_vars() == ["hsig"]
 
     ds = points.ds()
     points2 = PointSkeleton.from_ds(ds, dynamic=True, keep_ds_names=True)
-    assert PointSkeleton.core.static
-    assert points2.core.static
 
     assert points2.core.data_vars() == ["hsig"]
     assert points2.meta.get("hsig") == points.meta.get("hsig")
 
-
     points3 = PointSkeleton.from_ds(ds, dynamic=True)
-    assert PointSkeleton.core.static
-    assert points3.core.static
 
     assert points3.core.data_vars() == ["hs"]
     assert points3.meta.get("hs") == points.meta.get("hsig")
+
 
 def test_gridded():
     points = GriddedSkeleton(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))

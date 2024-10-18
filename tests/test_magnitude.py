@@ -1,5 +1,5 @@
 from geo_skeletons import GriddedSkeleton, PointSkeleton
-from geo_skeletons.decorators import add_datavar, add_magnitude, dynamic
+from geo_skeletons.decorators import add_datavar, add_magnitude
 import numpy as np
 
 
@@ -142,14 +142,14 @@ def test_magnitude_gridded():
 
 
 def test_add_magnitude():
-    @dynamic
     @add_datavar("v", default_value=1)
     @add_datavar("u", default_value=1)
     class Magnitude(GriddedSkeleton):
         pass
 
-    points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8))
-    points.add_magnitude("wind", x="u", y="v", direction="wdir", dir_type="from")
+    points = Magnitude.add_magnitude(
+        "wind", x="u", y="v", direction="wdir", dir_type="from"
+    )(x=(0, 1, 2), y=(5, 6, 7, 8))
     points.dask.activate(rechunk=False)
     points.dask.deactivate()
 

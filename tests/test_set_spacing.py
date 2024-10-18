@@ -126,8 +126,8 @@ def test_dnmi_spherical():
 
     np.testing.assert_array_almost_equal(grid.dlat(), 1 / 60, decimal=3)
     np.testing.assert_array_almost_equal(grid.dlon(), grid.dlat() * dy / dx, decimal=3)
-    assert grid.nx() == (5 / grid.dlon()).astype(int) + 1
-    assert grid.ny() == (1 / grid.dlat()).astype(int) + 1
+    assert grid.nx() == int((5 / grid.dlon())) + 1
+    assert grid.ny() == int((1 / grid.dlat())) + 1
     np.testing.assert_array_almost_equal(grid.dy() / 1000, dy / grid.ny(), decimal=1)
     np.testing.assert_array_almost_equal(
         grid.dx() / 1000, dx * 5 / grid.nx(), decimal=1

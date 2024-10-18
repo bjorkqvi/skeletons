@@ -5,11 +5,11 @@ if TYPE_CHECKING:
     from .coordinate_manager import CoordinateManager
     from .dataset_manager import DatasetManager
 
+from copy import deepcopy
+
 
 class MetaDataManager:
-    def __init__(
-        self, ds_manager: Union[DatasetManager, None]
-    ):
+    def __init__(self, ds_manager: Union[DatasetManager, None]):
         self._ds_manager = ds_manager
         self._metadata: dict = {}
         # This will be used to make a deepcopy of the manager for different classes
@@ -32,7 +32,7 @@ class MetaDataManager:
     def set_by_dict(self, meta_dict: dict) -> None:
         """Sets the metadata by a dict where the key names are variable names"""
         for key, value in meta_dict.items():
-            if key != '_global_':
+            if key != "_global_":
                 self.set(value, key)
             else:
                 self.set(value)
@@ -83,9 +83,9 @@ class MetaDataManager:
         If 'name' is not given, it return the metadata not connected to any variable.
         """
         if name is None:
-            return self.meta_dict().get("_global_", {})
+            return deepcopy(self.meta_dict().get("_global_", {}))
 
-        return self.meta_dict().get(name, {})
+        return deepcopy(self.meta_dict().get(name, {}))
 
     def meta_dict(self) -> dict:
         """Returns a dictonary of all the metadata"""
