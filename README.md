@@ -15,7 +15,7 @@ $ pip install geo-skeletons
 or
 
 ```shell
-$ conda install conda-forge geo-skeletons
+$ conda install -c conda-forge geo-skeletons
 ```
 
 Please see https://data-skeletons.readthedocs.io/en/latest/ for a documentation.
