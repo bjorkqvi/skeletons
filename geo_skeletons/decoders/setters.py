@@ -1,6 +1,10 @@
+from __future__ import annotations
 import xarray as xr
 import geo_parameters as gp
-from typing import Union
+from typing import Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
 from geo_parameters.metaparameter import MetaParameter
 from .core_decoders import identify_core_in_ds, gather_coord_values
 from .ds_decoders import map_ds_to_gp, find_addable_vars_and_magnitudes
@@ -9,15 +13,16 @@ from .coord_remapping import remap_coords_of_ds_vars_to_skeleton_names
 
 def create_new_class_dynamically(
     cls,
-    ds,
-    ignore_vars,
-    only_vars,
-    keep_ds_names,
-    decode_cf,
-    core_aliases,
-    ds_aliases,
-    extra_coords,
+    ds: xr.Dataset,
+    ignore_vars: list[str],
+    only_vars: list[str],
+    keep_ds_names: bool,
+    decode_cf: bool,
+    core_aliases: dict[Union[str, MetaParameter], str],
+    ds_aliases: dict[str, Union[MetaParameter, str]],
+    extra_coords: dict[str, Union[np.ndarray, xr.DataArray]],
 ):
+    """Creates a new Skeleton class (modified from provided class) that contains the variables matching the xr.Dataset"""
     (
         core_coords_to_ds_coords,
         core_vars_to_ds_vars,
@@ -91,10 +96,9 @@ def set_core_vars_to_skeleton_from_ds(
 
     Using the function 'geo_skeleton.decorders.identify_core_in_ds' we have gotten
     core_vars_to_ds_vars: dict mapping core variable to ds variable name
-    coord_map: dict mapping variables of a core var ['time','inds','freq'] to variables of a ds var ['time','x','frequency']
+    ds_remapped_coords: dict mapping variables of a core var ['time','inds','freq'] to variables of a ds var ['time','x','frequency']
 
     Optional:
-    only_vars [default None]: list of ds_variables that will be set. All set if None.
     meta_dict: dict of core-var specific meta-data"""
 
     core_vars_to_ds_vars = core_vars_to_ds_vars or {}
