@@ -163,6 +163,7 @@ def add_mask(
                 point_name=f"{opposite_name_str}_points",
                 meta=opposite_meta,
                 coord_group=coord_group,
+                default_value=int(bool(not default_value)),
                 primary_mask=False,
             )
         else:
