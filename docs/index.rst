@@ -923,102 +923,138 @@ The coordinate groups also determines the order of iteration (iteration this way
 Adding masks
 --------------------------------------------
 
-Logical masks (for example marking land points or points of interest) can be added to the skeletons. To for example add a land-sea mask to the previous example:
+Logical masks (for example marking land points or points of interest) can be added to the skeletons. To for example add a land-sea mask to a gridded significant wave height:
 
 .. code-block:: python
 
-  from geo_skeletons.gridded_skeleton import GriddedSkeleton
-  from geo_skeletons.datavar_factory import add_datavar, add_mask
+   from geo_skeleton.decorators import add_datavar, add_mask
+   import geo_parameters as gp
+   
+   @add_datavar(gp.wave.Hs("hs"), default_value=0.0)
+   @add_mask(
+       name="sea",
+       default_value=0,
+       coord_group="grid",
+       opposite_name="land",
+   )
+   class WaveHeight(GriddedSkeleton):
+       pass
 
-  @add_datavar(name='hs', default_value=0.)
-  @add_mask(name='sea', default_value=1, coords='grid', opposite_name='land')
-  class WaveHeight(GriddedSkeleton):
-    pass
-
-This creates a logical mask that has value true for sea points. The ``opposite_name`` options automatically create a land mask that is false for poits that are not sea points.
-
-.. code-block:: python
-
-  data = WaveHeight(lon=(3,5), lat=(60,61))
-  data.set_spacing(dm=1000)
-
-  >>> data.land_mask()
-  array([[False, False, False, ..., False, False, False],
-         [False, False, False, ..., False, False, False],
-         [False, False, False, ..., False, False, False],
-         ...,
-         [False, False, False, ..., False, False, False],
-         [False, False, False, ..., False, False, False],
-         [False, False, False, ..., False, False, False]])
-  
-  >>> data.sea_mask()
-  array([[ True,  True,  True, ...,  True,  True,  True],
-         [ True,  True,  True, ...,  True,  True,  True],
-         [ True,  True,  True, ...,  True,  True,  True],
-         ...,
-         [ True,  True,  True, ...,  True,  True,  True],
-         [ True,  True,  True, ...,  True,  True,  True],
-         [ True,  True,  True, ...,  True,  True,  True]])
-
-
-To set a new mask, you can use the created methods. To e.g. set all points to land, you can either set sea points to false
+The geo-skeleton now has a land-sea mask. Only the sea mask is stored in the xr.Dataset and the land mask is calculated as the inverse of the sea mask. 
 
 .. code-block:: python
 
-  new_mask = np.zeros(data.size())
-  data.set_sea_mask(new_mask)
+   >>> grid = WaveHeight(lon=(0, 1), lat=(60, 61), name="Wavegrid")
 
-or land points to true
+   >>> grid
+   <WaveHeight (GriddedSkeleton)>
+   ------------------------------ Coordinate groups -------------------------------
+   Spatial:    (lat, lon)
+   Grid:       (lat, lon)
+   Gridpoint:  *empty*
+   All:        (lat, lon)
+   ------------------------------------ Xarray ------------------------------------
+   <xarray.Dataset> Size: 32B
+   Dimensions:  (lat: 2, lon: 2)
+   Coordinates:
+   * lat      (lat) int64 16B 60 61
+   * lon      (lon) int64 16B 0 1
+   Data variables:
+    *empty*
+   Attributes:
+    name:     Wavegrid
+   ---------------------------------- Empty data ----------------------------------
+   Empty variables:
+    hs  (lat, lon):  0.0 [m] sea_surface_wave_significant_height
+   Empty masks:
+    sea_mask   (lat, lon):  False
+    land_mask  (lat, lon):  True
+   --------------------------------------------------------------------------------
 
-.. code-block:: python
-
-  new_mask = np.ones(data.size())
-  data.set_land_mask(new_mask)
-
-Only the sea mask is saved in the underlying xarray dataset, meaning that the land and the sea mask will always be consistent.
-
-.. code-block:: python
-
-  >>> data.ds()
-  <xarray.Dataset>
-  Dimensions:   (lat: 120, lon: 119)
-  Coordinates:
-    * lat       (lat) float64 60.0 60.01 60.02 60.03 ... 60.97 60.98 60.99 61.0
-    * lon       (lon) float64 3.0 3.017 3.034 3.051 ... 4.949 4.966 4.983 5.0
-  Data variables:
-      sea_mask  (lat, lon) int64 0 0 0 0 0 0 0 0 0 0 0 0 ... 0 0 0 0 0 0 0 0 0 0 0
-      hs        (lat, lon) float64 0.0 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0 0.0
-
-You can also access the coordinates of the points in the mask. Let's set all points to sea points except the northern (upper) edge:
-
-.. code-block:: python
-
-  new_mask = np.ones(data.size())
-  new_mask[0,:] = 0
-  data.set_sea_mask(new_mask)
-
-  lon, lat = data.land_points()
-
-Where ``lon`` and ``lat`` now gives the coordinates of the land points. Notice, that this is just a convinently named wrapper for
+Both are still gettable, and also the points corresponding to the masks have methods:
 
 .. code-block:: python
 
-  lon, lat = data.lonlat(mask=data.land_mask())
+   >>> grid.sea_mask()
+   array([[False, False],
+          [False, False]])
+   >>> grid.land_mask()
+   array([[ True,  True],
+          [ True,  True]])
+   
+   >>> grid.sea_points()
+   (array([], dtype=int64), array([], dtype=int64))
+   >>> grid.land_points()
+   (array([0, 1, 0, 1]), array([60, 60, 61, 61]))
+
+We can also set either the land mask or the sea mask, and that defines boths masks, since they are per definition opposites of each other:
+
+.. code-block:: python
+
+   >>> grid.set_sea_mask([[True, False], [True, False]])
+   >>> grid.sea_mask()
+   array([[ True, False],
+          [ True, False]])
+   >>> grid.sea_points()
+   (array([0, 0]), array([60, 61]))
+   
+   >>> grid.land_mask()
+   array([[False,  True],
+          [False,  True]])
+   >>> grid.land_points()
+   (array([1, 1]), array([60, 61]))
 
 
-  
+It is also possible to connect the masks to a certain data variable. E.g. to have only positive significant wave height values to be sea points:
+
+.. code-block:: python
+
+   @add_datavar(gp.wave.Hs("hs"), default_value=0.0)
+   @add_mask(
+       name="sea",
+       default_value=0,
+       coord_group="grid",
+       opposite_name="land",
+       triggered_by="hs",
+       valid_range=(0, None),
+       range_inclusive=False,
+   )
+   class WaveHeight(GriddedSkeleton):
+       pass
+
+Here ``triggered_by`` means that setting the data variable ``hs`` sets the land-sea masks. ``valid_range`` means the ``hs`` values that define the primary mask (here ``sea_mask``), and ``range_inclusive=False`` means that ``0`` does **not** become a sea point:
+
+.. code-block:: python
+
+   >>> grid.set_hs([[0,1],[2,-999]])
+   >>> grid.hs()
+   array([[   0,    1],
+          [   2, -999]])
+   
+   >>> grid.sea_mask()
+   array([[False,  True],
+          [ True, False]])
+   >>> grid.land_points()
+   (array([0, 1]), array([60, 61]))
+
+The masks are still settable independently if needed (e.g. if onw wants to apply a separate land mask after the fact), but if they are not set then they are always "in sync" with the significant wave height data.
 
 Plotting the data
 --------------------------------------------
 
-Skeletons don't have any plotting functionality built in, but since it wraps around xarray datasets, the xarray plotting functions can be used. To plot the surface temperature in the previous example, just use:
+Skeletons don't have any plotting functionality built in, but since it wraps around xarray datasets, the xarray plotting functions can be used. We can take as an example the wind class defined in the "Adding magnitudes and directions" section. Note, that even though the wind speed (added as a magnitude of the components) is not stored in the underlying xr.Dataset, we can still get it as a DataArray and plot it:
 
 .. code-block:: python
 
-  import matplotlib.pyplot as plt
-  
-  grid.water_temperature(z=0, data_array=True).plot()
-  plt.show()
+   import numpy as np
+   import matplotlib.pyplot as plt
+   
+   data = Wind(lon=(0, 10), lat=(50, 60))
+   data.set_spacing(dm=1000)
+   new_data = np.random.rand(*data.size())
+   data.set_u(new_data)
+   data.u(data_array=True).plot()
+   plt.show()
   
 .. image:: simple_plot.png
 
