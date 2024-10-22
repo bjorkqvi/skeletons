@@ -1056,6 +1056,6 @@ Skeletons don't have any plotting functionality built in, but since it wraps aro
    data.u(data_array=True).plot()
    plt.show()
   
-.. image:: simple_plot.png
+.. image:: example_wind_plot.png
 
 Here, the ``data_array=True`` tells the method to return the xarray data array instead of a numpy array of the values.
