@@ -51,7 +51,7 @@ def remap_coords_of_ds_vars_to_skeleton_names(
         var_str, var = gp.decode(var)
         if var is not None and var_str not in core_vars_to_ds_vars.keys():
             if var.i_am() in ["x", "y"]:
-                mag = var.my_family("magnitude").find_me_in(mags)
+                mag = var.my_family("magnitude").find_me_in(mags, return_first=True)
                 remapped_coords[var_str] = remapped_coords.get(mag.name)
                 ds_coord_groups[var_str] = ds_coord_groups.get(mag.name)
 

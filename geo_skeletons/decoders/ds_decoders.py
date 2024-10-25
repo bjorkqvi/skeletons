@@ -241,7 +241,9 @@ def _find_xy_variables_present_in_ds(
     for ds_var in addable_vars:
         __, var = gp.decode(ds_vars_to_gp.get(ds_var))
         if var is not None and var.i_am() == "x":
-            yvar = var.my_family("y").find_me_in(ds_vars_to_gp.values())
+            yvar = var.my_family("y").find_me_in(
+                ds_vars_to_gp.values(), return_first=True
+            )
             if yvar is not None:
                 xy_variables.append((var, yvar))
 
@@ -259,8 +261,10 @@ def _find_magnitudes_and_directions_present_in_ds(
         __, var = gp.decode(ds_vars_to_gp.get(ds_var))
         if var is not None and var.i_am() == "magnitude":
             dirs = var.my_family("direction").find_me_in(
-                ds_vars_to_gp.values()
-            ) or var.my_family("opposite_direction").find_me_in(ds_vars_to_gp.values())
+                ds_vars_to_gp.values(), return_first=True
+            ) or var.my_family("opposite_direction").find_me_in(
+                ds_vars_to_gp.values(), return_first=True
+            )
             if dirs is not None:
                 mag_dirs.append((var, dirs.my_family("direction")))
 
@@ -274,7 +278,7 @@ def _find_xy_variables_present_in_core(core: CoordinateManager) -> list[MetaPara
     for var_str in core.data_vars():
         __, var = gp.decode(core.get(var_str).meta)
         if var is not None and var.i_am() == "x":
-            yvar = var.my_family("y").find_me_in(list_og_gps)
+            yvar = var.my_family("y").find_me_in(list_og_gps, return_first=True)
             if yvar is not None:
                 xy_variables.append(var)
                 xy_variables.append(yvar)
@@ -309,9 +313,11 @@ def _xy_as_mag_dir(var, mag_dir_datavars_in_core):
     if mag is None and dirs is None and op_dirs is None:
         return False
 
-    if var.my_family("magnitude").is_in(mag_dir_datavars_in_core):
-        return True
-
+    try:
+        if var.my_family("magnitude").is_in(mag_dir_datavars_in_core):
+            return True
+    except AttributeError:
+        breakpoint()
     if var.my_family("direction").is_in(mag_dir_datavars_in_core):
         return True
 
@@ -409,20 +415,22 @@ def _compile_list_of_addable_magnitudes_and_directions(
     for xvar in addable_vars + xy_variables_in_core:
         __, xvar = gp.decode(xvar)
         if xvar is not None and xvar.i_am() == "x":
-            yvar = xvar.my_family("y").find_me_in(addable_vars + xy_variables_in_core)
+            yvar = xvar.my_family("y").find_me_in(
+                addable_vars + xy_variables_in_core, return_first=True
+            )
             if yvar is not None:
-                m = xvar.my_family("magnitude").find_me_in(mags) or xvar.my_family(
-                    "magnitude"
-                )
-                d = xvar.my_family("direction").find_me_in(dirs) or xvar.my_family(
-                    "direction"
-                )
+                m = xvar.my_family("magnitude").find_me_in(
+                    mags, return_first=True
+                ) or xvar.my_family("magnitude")
+                d = xvar.my_family("direction").find_me_in(
+                    dirs, return_first=True
+                ) or xvar.my_family("direction")
 
                 x = xvar.my_family("x").find_me_in(
-                    xs + xy_variables_in_core
+                    xs + xy_variables_in_core, return_first=True
                 ) or xvar.my_family("x")
                 y = xvar.my_family("y").find_me_in(
-                    ys + xy_variables_in_core
+                    ys + xy_variables_in_core, return_first=True
                 ) or xvar.my_family("y")
                 if not (
                     d.is_in(mag_dir_datavars_in_core)
