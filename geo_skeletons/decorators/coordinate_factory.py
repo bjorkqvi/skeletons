@@ -79,7 +79,7 @@ def add_time(grid_coord: bool = True):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d %H"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
         def days(self, datetime=True, fmt: str = "%Y-%m-%d"):
             """Determins a Pandas data range of all the days in the time span."""
@@ -89,7 +89,7 @@ def add_time(grid_coord: bool = True):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
         def months(self, datetime=True, fmt: str = "%Y-%m"):
             """Determins a Pandas data range of all the months in the time span."""
@@ -99,7 +99,7 @@ def add_time(grid_coord: bool = True):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
         def years(self, datetime=True, fmt: str = "%Y"):
             """Determins a Pandas data range of all the months in the time span."""
@@ -109,7 +109,7 @@ def add_time(grid_coord: bool = True):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
         def dt(self) -> Union[float, None]:
             """Returns the time step in hours"""
