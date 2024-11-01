@@ -3,7 +3,7 @@ name = "geo-skeletons"
 version = "0.19.1"
 description = "Easily extended way to build classes for structured and unstructured geophysical data."
 authors = [ { name = "Jan-Victor Björkqvist", email = "janvb@met.no" } ]
-dependencies = [ "numpy", "scipy", "xarray", "pandas", "utm", "geopy", "dask", "geo-parameters>=0.9.3" ]
+dependencies = [ "numpy", "scipy", "xarray", "pandas", "utm", "geopy", "dask", "geo-parameters>=0.9.4" ]
 requires-python = ">=3.9,<3.12"
 readme = "README.md"
 
