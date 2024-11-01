@@ -2,14 +2,15 @@ name: skeletons
 channels:
   - conda-forge
 dependencies:
-  - python=>3.9
+  - python >=3.9,<3.12
   - numpy
   - scipy
   - pandas
   - xarray
+  - pip
   - utm
   - pytest
   - geopy
   - pylint
   - dask
-  - geo-parameters=>0.5.1
+  - geo-parameters >=0.9.4

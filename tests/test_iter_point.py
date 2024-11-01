@@ -90,7 +90,7 @@ def test_iter_over_points_not_time():
     """Iterates over points and not added time coordinate"""
 
     # Should NOT be iterated over by default
-    @add_time()
+    @add_time(grid_coord=False)
     class Expanded(PointSkeleton):
         pass
 

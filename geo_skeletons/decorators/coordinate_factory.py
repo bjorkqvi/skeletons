@@ -40,10 +40,8 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
             return data
         return data.values.copy()
 
-    if not c.core._is_altered():
-        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-        c.meta = deepcopy(c.meta)
-        c.meta._coord_manager = c.core
+    c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+    c.meta = c.core.meta
     name_str, meta = gp.decode(name)
 
     coord_group = "grid" if grid_coord else "gridpoint"
@@ -68,7 +66,7 @@ def add_coord(name: Union[str, MetaParameter] = "dummy", grid_coord: bool = Fals
     return partial(coord_decorator, name, grid_coord)
 
 
-def add_time(grid_coord: bool = False):
+def add_time(grid_coord: bool = True):
     def wrapper(c):
         def unique_times(times, strf: str):
             return np.unique(np.array(pd.to_datetime(times).strftime(strf).to_list()))
@@ -81,7 +79,7 @@ def add_time(grid_coord: bool = False):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d %H"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
         def days(self, datetime=True, fmt: str = "%Y-%m-%d"):
             """Determins a Pandas data range of all the days in the time span."""
@@ -91,7 +89,7 @@ def add_time(grid_coord: bool = False):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m-%d"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
         def months(self, datetime=True, fmt: str = "%Y-%m"):
             """Determins a Pandas data range of all the months in the time span."""
@@ -101,7 +99,7 @@ def add_time(grid_coord: bool = False):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y-%m"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
         def years(self, datetime=True, fmt: str = "%Y"):
             """Determins a Pandas data range of all the months in the time span."""
@@ -111,9 +109,9 @@ def add_time(grid_coord: bool = False):
             if datetime:
                 return pd.to_datetime(unique_times(times, "%Y"))
             else:
-                return list(unique_times(times, fmt))
+                return [str(t) for t in unique_times(times, fmt)]
 
-        def dt(self) -> Union[float ,None]:
+        def dt(self) -> Union[float, None]:
             """Returns the time step in hours"""
             if self.ds() is None:
                 return None
@@ -146,19 +144,18 @@ def add_time(grid_coord: bool = False):
 
             return times
 
-        if not c.core._is_altered():
-            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+        c.meta = c.core.meta
         coord_group = "grid" if grid_coord else "gridpoint"
         coord_var = Coordinate(
             name="time",
             meta=None,
             coord_group=coord_group,
         )
-        c.core.add_coord(coord_var)
-        c.time = get_time
 
+        c.core.add_coord(coord_var)
+
+        c.time = get_time
         c.hours = hours
         c.days = days
         c.months = months
@@ -185,10 +182,8 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
             freq = get_freq(self, angular=angular).copy()
             return (freq[-1] - freq[0]) / (len(freq) - 1)
 
-        if not c.core._is_altered():
-            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+        c.meta = c.core.meta
         name_str, meta = gp.decode(name)
 
         coord_group = "grid" if grid_coord else "gridpoint"
@@ -227,10 +222,8 @@ def add_direction(
             dmax = 2 * np.pi if angular else 360
             return dmax / len(dirs)
 
-        if not c.core._is_altered():
-            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+        c.meta = c.core.meta
         name_str, meta = gp.decode(name)
         coord_group = "grid" if grid_coord else "gridpoint"
         coord_var = Coordinate(
@@ -244,9 +237,9 @@ def add_direction(
         return c
 
     if name is None:
-        if dir_type == 'from':
+        if dir_type == "from":
             name = DirsFrom
-        elif dir_type == 'to':
+        elif dir_type == "to":
             name = DirsTo
         else:
             name = Dirs
