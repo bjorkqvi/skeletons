@@ -13,9 +13,10 @@ def min_distance(
     dx = []
     for n, __ in enumerate(lat_vec):
         dx.append(distance_2points(lat, lon, lat_vec[n], lon_vec[n]))
-    inds = np.argpartition(dx, npoints - 1)[:npoints]
+    # inds = np.argpartition(dx, npoints - 1)[:npoints]
+    inds = np.argsort(dx)[0:npoints]
     # if npoints > 1:
-    #     breakpoint()
+    #    breakpoint()
     return np.array(dx)[inds], inds
 
     # return [np.array(dx).min()], [np.array(dx).argmin()]
