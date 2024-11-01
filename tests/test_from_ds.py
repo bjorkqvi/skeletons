@@ -1,6 +1,6 @@
 from geo_skeletons.point_skeleton import PointSkeleton
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
-from geo_skeletons.decorators import add_coord, add_datavar
+from geo_skeletons.decorators import add_coord, add_datavar, add_time
 import numpy as np
 import geo_parameters as gp
 import pytest
@@ -160,6 +160,19 @@ def test_not_add_extra_var_to_static():
     assert "test" in grid3.core.data_vars()
     assert "test2" not in grid3.core.data_vars()
     assert "test3" not in grid3.core.data_vars()
+
+
+def test_mag_dir_unstructured():
+    @add_datavar(gp.wind.Wind)
+    @add_datavar(gp.wind.WindDir)
+    @add_time()
+    class Wind(PointSkeleton):
+        pass
+
+    data = Wind(lon=0, lat=3, time=("2020-01-01 00:00", "2020-01-01 23:00"))
+    data.set_ff(5.0)
+    data.set_dd(80.0)
+    data2 = PointSkeleton.add_time().from_ds(data.ds(), dynamic=True)
 
 
 def test_core_aliases_doc_example1():

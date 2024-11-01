@@ -706,13 +706,12 @@ class Skeleton:
         Data needs to be exactly right shape."""
         obj = self.core.get(name)
         x_component, y_component = obj.x, obj.y
-        dir_data = self.get(obj.direction.name, dir_type="math")
+        dir_data = self.get(obj.direction.name, dir_type="math", squeeze=False)
 
         s = dask_computations.sin(dir_data)
         c = dask_computations.cos(dir_data)
         ux = data * c
         uy = data * s
-
         self._set_data(
             name=x_component,
             data=ux,
@@ -735,7 +734,7 @@ class Skeleton:
         Data needs to be exactly right shape."""
         obj = self.core.get(name)
         x_component, y_component = obj.x, obj.y
-        mag_data = self.get(obj.magnitude.name)
+        mag_data = self.get(obj.magnitude.name, squeeze=False)
 
         dir_type = dir_type or obj.dir_type
 
@@ -1146,7 +1145,7 @@ class Skeleton:
         if val is None:
             return (None, None)
 
-        return np.min(val), np.max(val)
+        return float(np.min(val)), float(np.max(val))
 
     def extent(self, coord: str, strict: bool = False) -> float:
         """Gives the extent in metres in x- or y-direction.
