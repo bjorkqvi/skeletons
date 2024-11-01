@@ -35,7 +35,7 @@ def test_yank():
     )
     np.testing.assert_array_equal(point_dict["inds_x"], np.array([0, 0, 0, 1]))
     np.testing.assert_array_equal(point_dict["inds_y"], np.array([1, 2, 0, 1]))
-    breakpoint()
+
     lon, lat = grid.lonlat()
     raveled_grid = PointSkeleton(lon=lon, lat=lat)
     point_dict = raveled_grid.yank_point(lon=2.98, lat=60.01, npoints=4)
@@ -43,6 +43,8 @@ def test_yank():
     point_dict = raveled_grid.yank_point(
         lon=2.98, lat=60.01, npoints=4, gridded_shape=grid.size()
     )
+    np.testing.assert_array_equal(point_dict["inds_x"], np.array([0, 0, 0, 1]))
+    np.testing.assert_array_equal(point_dict["inds_y"], np.array([1, 2, 0, 1]))
 
 
 def test_mag_dir():
