@@ -27,9 +27,15 @@ def test_yank():
     assert point_dict["inds"][1] == 1
 
     point_dict = grid.yank_point(lon=2.98, lat=60.01, npoints=4)
+    np.testing.assert_array_equal(
+        point_dict["dx"].astype(int),
+        np.array([1120.6812202, 1428.55452856, 1576.18628188, 2131.94091801]).astype(
+            int
+        ),
+    )
     np.testing.assert_array_equal(point_dict["inds_x"], np.array([0, 0, 0, 1]))
     np.testing.assert_array_equal(point_dict["inds_y"], np.array([1, 2, 0, 1]))
-
+    breakpoint()
     lon, lat = grid.lonlat()
     raveled_grid = PointSkeleton(lon=lon, lat=lat)
     point_dict = raveled_grid.yank_point(lon=2.98, lat=60.01, npoints=4)
