@@ -30,11 +30,16 @@ def min_cartesian_distance(
 
     Also returns incex of found minimum"""
     dx = ((y - y_vec) ** 2 + (x - x_vec) ** 2) ** 0.5
-    inds = np.argpartition(dx, npoints - 1)[:npoints]
+    inds = np.argsort(dx)[0:npoints]
     # if npoints > 1:
-    #     breakpoint()
-    return dx[inds], inds
-    # return dx.min(), dx.argmin()
+    #    breakpoint()
+    return np.array(dx)[inds], inds
+
+    # inds = np.argpartition(dx, npoints - 1)[:npoints]
+    # # if npoints > 1:
+    # #     breakpoint()
+    # return dx[inds], inds
+    # # return dx.min(), dx.argmin()
 
 
 def lon_in_km(lat: float) -> float:
