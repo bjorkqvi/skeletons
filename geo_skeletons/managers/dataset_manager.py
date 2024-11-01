@@ -271,6 +271,7 @@ class DatasetManager:
 
     def compile_data_array(self, data: np.ndarray, name: str) -> xr.DataArray:
         """Creates an xr.DataArray based on the np.array data and the variable name"""
+
         if name in self.coord_manager.coords("all"):
             # E.g. 'lon' should only depend on dim 'lon', not ['lat','lon']
             coord_dict = {name: ([name], data)}
