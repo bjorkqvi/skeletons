@@ -6,7 +6,7 @@ from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coo
 from typing import Union
 from geo_skeletons.errors import StaticSkeletonError
 
-SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
+from geo_skeletons.variable_archive import SPATIAL_COORDS
 
 
 class CoordinateManager:
@@ -14,7 +14,10 @@ class CoordinateManager:
     by the decorators."""
 
     def __init__(
-        self, initial_coords: list[Coordinate], initial_vars: list[DataVar], metadata_manager
+        self,
+        initial_coords: list[Coordinate],
+        initial_vars: list[DataVar],
+        metadata_manager,
     ) -> None:
         self.x_str = None
         self.y_str = None
@@ -31,7 +34,6 @@ class CoordinateManager:
         self.set_initial_coords(initial_coords)
         self.set_initial_vars(initial_vars)
 
-        self.static = True
         self.meta = metadata_manager
 
     def _is_initialized(self) -> bool:
@@ -64,20 +66,16 @@ class CoordinateManager:
 
     def add_var(self, data_var: DataVar) -> None:
         """Adds a data variable to the structure"""
-        if self.static:
-            raise StaticSkeletonError
         if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
-        
+
         # Set metadata from MetaParameter if it is provided
         if data_var.meta is not None:
             self.meta.append(data_var.meta.meta_dict(), data_var.name)
 
     def add_mask(self, grid_mask: GridMask) -> None:
         """Adds a mask to the structure"""
-        if self.static:
-            raise StaticSkeletonError
         if self.get(grid_mask.name) is not None:
             raise VariableExistsError(grid_mask.name)
         if grid_mask.triggered_by:
@@ -107,16 +105,13 @@ class CoordinateManager:
         if self.get(coord.name) is not None:
             raise VariableExistsError(coord.name)
         self._added_coords[coord.name] = coord
-        
+
         # Set metadata from MetaParameter if it is provided
         if coord.meta is not None:
             self.meta.append(coord.meta.meta_dict(), coord.name)
 
     def add_magnitude(self, magnitude: Magnitude) -> None:
         """Adds a magnitude to the structure"""
-        if self.static:
-            raise StaticSkeletonError
-
         if self.get(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
         self._added_magnitudes[magnitude.name] = magnitude
@@ -127,8 +122,6 @@ class CoordinateManager:
 
     def add_direction(self, direction: Direction) -> None:
         """Adds a direction to the structure"""
-        if self.static:
-            raise StaticSkeletonError
         if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
         self._added_directions[direction.name] = direction
@@ -159,19 +152,28 @@ class CoordinateManager:
         for coord in initial_coords:
             self._added_coords[coord.name] = coord
 
-    def coords(self, coord_group: str = "all") -> list[str]:
+    def coords(self, coord_group: str = "all", cartesian: bool = None) -> list[str]:
         """Returns list of coordinats that have been added to a specific coord group.
 
         'all': All added coordinates
         'spatial': spatial coords (e.g. inds, or lat/lon)
         'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'init': coordinates needed to initialize Skeleton: All coords (including lat/lon in PointSkeleton) but without 'inds'
+        'init': coordinates needed to initialize Skeleton: All coords (including lat/lon, x/y in PointSkeleton) but without 'inds'
+            Provide cartesian = True/False to only get x/y or lon/lat
         'grid': coordinates for the grid (e.g. z, time)
         'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
         """
-        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint", "init"]:
-            raise ValueError("Coord group needs to be 'all', 'spatial', 'nonspatial', 'grid', 'gridpoint' or 'init'.")
-
+        if coord_group not in [
+            "all",
+            "spatial",
+            "nonspatial",
+            "grid",
+            "gridpoint",
+            "init",
+        ]:
+            raise ValueError(
+                "Coord group needs to be 'all', 'spatial', 'nonspatial', 'grid', 'gridpoint' or 'init'."
+            )
 
         if coord_group == "all":
             coords = self._added_coords.values()
@@ -187,10 +189,19 @@ class CoordinateManager:
                 for coord in self._added_coords.values()
                 if coord.coord_group in [coord_group, "spatial"]
             ]
-        elif coord_group == 'init':
-            coords = list(set(self.coords()) - set(['inds'])) + self.data_vars('spatial')
-            if not self._is_initialized(): # Can use either x/y or lon/lat if it has not yet been determined
-                coords = coords + ['lon','lat'] 
+        elif coord_group == "init":
+            coords = list(set(self.coords()) - set(["inds"])) + self.data_vars(
+                "spatial"
+            )
+            if (
+                not self._is_initialized()
+            ):  # Can use either x/y or lon/lat if it has not yet been determined
+                coords = coords + ["lon", "lat"]
+            if cartesian is not None:
+                if cartesian:
+                    coords = list(set(coords) - {"lon", "lat"})
+                else:
+                    coords = list(set(coords) - {"x", "y"})
         else:
             coords = [
                 coord
@@ -198,10 +209,9 @@ class CoordinateManager:
                 if coord.coord_group == coord_group
             ]
 
-        if coord_group != 'init':    
+        if coord_group != "init":
             coords = [coord.name for coord in coords]
-        
-        
+
         return move_time_and_spatial_to_front(coords)
 
     def masks(self, coord_group: str = "all") -> list[str]:
@@ -436,7 +446,7 @@ class CoordinateManager:
         dirs = [v for v in self._added_directions.values() if v.name == var]
         all_vars = coords + vars + masks + mags + dirs
         if not all_vars:
-            raise KeyError(f"Cannot find the data {var}!")
+            raise KeyError(f"Cannot get coord_group for unknown variable {var}!")
 
         return all_vars[0].coord_group
 
@@ -493,20 +503,6 @@ class CoordinateManager:
 
         return names
 
-
-    @property
-    def static(self) -> bool:
-        if not hasattr(self, "_static"):
-            raise KeyError("The core has not set static property!")
-        return self._static
-
-    @static.setter
-    def static(self, static: bool) -> None:
-        if isinstance(static, bool):
-            self._static = static
-        else:
-            raise ValueError("static needs to be a boolean!")
-
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:
@@ -540,7 +536,7 @@ class CoordinateManager:
                 string += f":  {self.default_value(var)}"
                 meta_parameter = self.meta_parameter(var)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
         else:
             string += "\n    *empty*"
@@ -565,7 +561,7 @@ class CoordinateManager:
 
                 meta_parameter = self.meta_parameter(key)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
         else:
             string += "\n    *empty*"
@@ -578,7 +574,7 @@ class CoordinateManager:
                 string += f"\n  {key}: direction of ({value.x},{value.y})"
                 meta_parameter = self.meta_parameter(key)
                 if meta_parameter is not None:
-                    string += f" [{meta_parameter.unit()}]"
+                    string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
         else:
             string += "\n    *empty*"

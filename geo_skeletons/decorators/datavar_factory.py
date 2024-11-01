@@ -14,7 +14,6 @@ def add_datavar(
     coord_group: str = "all",
     default_value: float = 0.0,
     dir_type: Optional[bool] = None,
-    append: bool = False,
 ):
     """name: name of variable
     coord_group: 'all', 'spatial', 'grid' or 'gridpoint'
@@ -78,35 +77,32 @@ def add_datavar(
 
         name_str, meta = gp.decode(name)
 
+        if (
+            meta is not None
+            and meta.i_am() in ["x", "y"]
+            and np.isclose(default_value, 0)
+        ):
+            def_val = 0.1
+        else:
+            def_val = default_value
+
         data_var = DataVar(
             name=name_str,
             meta=meta,
             coord_group=coord_group,
-            default_value=default_value,
+            default_value=def_val,
             dir_type=dir_type,
         )
 
-        if not c.core._is_altered():
-            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = c.core.meta
+        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+        c.meta = c.core.meta
 
         # Temporarily cahnge core to dynamic if being set by decorator
-        core_was_static = c.core.static
-        if core_was_static and not append:
-            c.core.static = False
-
 
         c.core.add_var(data_var)
 
-        if core_was_static and not append:
-            c.core.static = True
-
-        if append:
-            exec(f"c.{name_str} = partial(get_var, c)")
-            exec(f"c.set_{name_str} = partial(set_var, c)")
-        else:
-            exec(f"c.{name_str} = get_var")
-            exec(f"c.set_{name_str} = set_var")
+        exec(f"c.{name_str} = get_var")
+        exec(f"c.set_{name_str} = set_var")
 
         return c
 

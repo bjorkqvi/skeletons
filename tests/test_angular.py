@@ -53,9 +53,11 @@ def test_angular_str():
 
 
 def test_angular_gp():
-    @add_datavar(gp.wave.StokesDir, default_value=0)
-    @add_datavar(gp.wave.Stokes, default_value=0.1)
-    @add_magnitude(gp.wind.Wind, x="u", y="v", direction=gp.wind.WindDir("wdir"))
+    @add_datavar(gp.wave.StokesDir("us_dir"), default_value=0)
+    @add_datavar(gp.wave.Stokes("us"), default_value=0.1)
+    @add_magnitude(
+        gp.wind.Wind("wind"), x="u", y="v", direction=gp.wind.WindDir("wdir")
+    )
     @add_datavar(gp.wind.YWind("v"), default_value=-1)
     @add_datavar(gp.wind.YWind("u"), default_value=1)
     class Magnitude(PointSkeleton):
@@ -102,9 +104,11 @@ def test_angular_gp():
 
 
 def test_angular_gp_flip_dir():
-    @add_datavar(gp.wave.StokesDirFrom, default_value=0)
-    @add_datavar(gp.wave.Stokes, default_value=0.1)
-    @add_magnitude(gp.wind.Wind, x="u", y="v", direction=gp.wind.WindDirTo("wdir"))
+    @add_datavar(gp.wave.StokesDirFrom("us_dir"), default_value=0)
+    @add_datavar(gp.wave.Stokes("us"), default_value=0.1)
+    @add_magnitude(
+        gp.wind.Wind("wind"), x="u", y="v", direction=gp.wind.WindDirTo("wdir")
+    )
     @add_datavar(gp.wind.YWind("v"), default_value=-1)
     @add_datavar(gp.wind.YWind("u"), default_value=1)
     class Magnitude(PointSkeleton):

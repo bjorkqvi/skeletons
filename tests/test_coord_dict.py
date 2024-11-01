@@ -33,7 +33,7 @@ def test_plain_gridded():
 
 
 def test_time_point():
-    @add_time()
+    @add_time(grid_coord=False)
     class Dummy(PointSkeleton):
         pass
 

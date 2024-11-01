@@ -15,7 +15,6 @@ def add_magnitude(
     y: str,
     direction: Optional[Union[str, MetaParameter]] = None,
     dir_type: Optional[str] = None,
-    append: bool = False,
 ):
     """name: name of variable
     x [str]: name of already set variable that will be used as x-component
@@ -121,10 +120,9 @@ def add_magnitude(
                 silent=silent,
             )
 
-        if not c.core._is_altered():
-            c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
-            c.meta = deepcopy(c.meta)
-            c.meta._coord_manager = c.core
+        c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
+        c.meta = c.core.meta
+
         name_str, meta = gp.decode(name)
         if direction is not None:
             dir_str, meta_dir = gp.decode(direction)
@@ -146,41 +144,17 @@ def add_magnitude(
             )
             mag_obj.direction = dir_obj
 
-            # Temporarily cahnge core to dynamic if being set by decorator
-            core_was_static = c.core.static
-            if core_was_static and not append:
-                c.core.static = False
-
             c.core.add_direction(dir_obj)
 
-            if core_was_static and not append:
-                c.core.static = True
-
-            if append:
-                exec(f"c.{dir_str} = partial(get_direction, c)")
-                exec(f"c.set_{dir_str} = partial(set_direction, c)")
-            else:
-                exec(f"c.{dir_str} = get_direction")
-                exec(f"c.set_{dir_str} = set_direction")
+            exec(f"c.{dir_str} = get_direction")
+            exec(f"c.set_{dir_str} = set_direction")
         else:
             dir_str = None
 
-        if append:
-            exec(f"c.{name_str} = partial(get_magnitude, c)")
-            exec(f"c.set_{name_str} = partial(set_magnitude, c)")
-        else:
-            exec(f"c.{name_str} = get_magnitude")
-            exec(f"c.set_{name_str} = set_magnitude")
-
-        # Temporarily cahnge core to dynamic if being set by decorator
-        core_was_static = c.core.static
-        if core_was_static and not append:
-            c.core.static = False
+        exec(f"c.{name_str} = get_magnitude")
+        exec(f"c.set_{name_str} = set_magnitude")
 
         c.core.add_magnitude(mag_obj)
-
-        if core_was_static and not append:
-            c.core.static = True
 
         return c
 

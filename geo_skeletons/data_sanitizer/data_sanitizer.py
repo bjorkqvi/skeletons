@@ -124,7 +124,11 @@ def sanitize_singe_variable(name: str, x: Optional[np.ndarray]) -> np.ndarray:
     if x is None or all(v is None for v in x):
         x = None
 
+    if x is not None:
+        x = np.atleast_1d(np.squeeze(x))
+
     if x is not None and len(x.shape) > 1:
+        
         raise CoordinateWrongDimensionError(name, x.shape)
 
     return x
