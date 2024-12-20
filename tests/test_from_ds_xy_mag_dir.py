@@ -119,7 +119,7 @@ def test_xy(wind_xy):
     assert set(data.core.data_vars()) == {"x_wind", "y_wind", "tp", "hs", "dummy"}
     assert set(data.core.magnitudes()) == {"ff"}
     assert set(data.core.directions()) == {"dd"}
-    
+
     np.testing.assert_array_almost_equal(data.x_wind(), 3)
     np.testing.assert_array_almost_equal(data.y_wind(), 4)
     np.testing.assert_array_almost_equal(data.ff(), 5)
