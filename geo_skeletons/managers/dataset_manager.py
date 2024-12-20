@@ -239,9 +239,11 @@ class DatasetManager:
         If data_array_name is not given, sets global attributes
         """
 
-        if data_array_name is None:
+        if data_array_name is None or data_array_name == "_global_":
+            self.data = self.data.drop_attrs(deep=False)
             self.data = self.data.assign_attrs(**attributes)
         else:
+            self.data[data_array_name] = self.data[data_array_name].drop_attrs()
             self.data[data_array_name] = self.data.get(data_array_name).assign_attrs(
                 **attributes
             )
