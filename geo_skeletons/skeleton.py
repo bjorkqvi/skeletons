@@ -469,6 +469,7 @@ class Skeleton:
             self.ds().sel(**kwargs),
             data_vars=self.core.non_coord_objects(),
             keep_ds_names=True,
+            name=self.name,
         )
 
     def isel(self, **kwargs) -> "Skeleton":
@@ -480,6 +481,7 @@ class Skeleton:
             self.ds().isel(**kwargs),
             data_vars=self.core.non_coord_objects(),
             keep_ds_names=True,
+            name=self.name
         )
 
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
