@@ -465,6 +465,43 @@ class Skeleton:
         e.g. new_skeleton = skeleton.sel(lon=slice(10,20))
 
         Calls the Xarray .sel method on the underlying DataSet"""
+
+        # Xarray cant slice longitude and latitude if defined over inds
+        lon_slice = kwargs.get("lon")
+        lat_slice = kwargs.get("lat")
+        if not self.is_gridded():
+            if lon_slice is None:
+                lon_inds = self.inds()
+            else:
+                if isinstance(lon_slice, slice):
+                    if lon_slice.step is not None:
+                        raise ValueError("PointSkeletons can't be sliced with a step!")
+                    lon_inds = np.where(
+                        np.logical_and(
+                            self.lon() >= lon_slice.start, self.lon() <= lon_slice.stop
+                        )
+                    )[0]
+
+                    del kwargs["lon"]
+
+            if lat_slice is None:
+                lat_inds = self.inds()  #
+            else:
+                if isinstance(lon_slice, slice):
+                    if lat_slice.step is not None:
+                        raise ValueError("PointSkeletons can't be sliced with a step!")
+                    lat_inds = np.where(
+                        np.logical_and(
+                            self.lat() >= lat_slice.start, self.lat() <= lat_slice.stop
+                        )
+                    )[0]
+
+                    del kwargs["lat"]
+
+            if lon_slice is not None or lat_slice is not None:
+                inds = np.array(list(set(lon_inds).intersection(set(lat_inds))))
+                return self.sel(inds=inds, **kwargs)
+
         return self.from_ds(
             self.ds().sel(**kwargs),
             data_vars=self.core.non_coord_objects(),
@@ -481,7 +518,7 @@ class Skeleton:
             self.ds().isel(**kwargs),
             data_vars=self.core.non_coord_objects(),
             keep_ds_names=True,
-            name=self.name
+            name=self.name,
         )
 
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:

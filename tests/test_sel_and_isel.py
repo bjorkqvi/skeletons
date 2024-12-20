@@ -110,3 +110,13 @@ def test_gridded():
     np.testing.assert_array_almost_equal(points.lat(), points.isel(lon=[0, 1, 3]).lat())
 
     np.testing.assert_array_almost_equal([1, 2, 4], points.isel(lon=[0, 0, 1, 3]).lon())
+
+
+def test_slice_lon_lat_in_pointskeleton():
+    points = PointSkeleton(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
+    points2 = points.sel(lon=slice(2, 3))
+    np.testing.assert_array_almost_equal(points2.lon(), (2, 3))
+    np.testing.assert_array_almost_equal(points2.lat(), (20, 30))
+    points3 = points.sel(lon=slice(1, 3), lat=slice(20, 40))
+    np.testing.assert_array_almost_equal(points3.lon(), (2, 3))
+    np.testing.assert_array_almost_equal(points3.lat(), (20, 30))
