@@ -22,9 +22,9 @@ def wave():
     return data
 
 
-def test_confict(wave):
+def test_conflict(wave):
 
-    data = PointSkeleton.from_ds(wave.ds(), dynamic=True)
+    data = PointSkeleton.from_ds(wave.ds(), dynamic=True, verbose=True)
     # Hs added to core, but cannot be decoded
     assert data.hs(strict=True) is None
 
