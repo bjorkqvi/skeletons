@@ -469,38 +469,24 @@ class Skeleton:
         # Xarray cant slice longitude and latitude if defined over inds
         lon_slice = kwargs.get("lon")
         lat_slice = kwargs.get("lat")
+        x_slice = kwargs.get("x")
+        y_slice = kwargs.get("y")
         if not self.is_gridded():
-            if lon_slice is None:
-                lon_inds = self.inds()
-            else:
-                if isinstance(lon_slice, slice):
-                    if lon_slice.step is not None:
-                        raise ValueError("PointSkeletons can't be sliced with a step!")
-                    lon_inds = np.where(
-                        np.logical_and(
-                            self.lon() >= lon_slice.start, self.lon() <= lon_slice.stop
-                        )
-                    )[0]
+            slice_inds = self._determine_slice_inds(lon_slice, lat_slice, "lon", "lat")
+            if slice_inds is None:
+                slice_inds = self._determine_slice_inds(x_slice, y_slice, "x", "y")
 
-                    del kwargs["lon"]
+            if lon_slice is not None:
+                del kwargs["lon"]
+            if lat_slice is not None:
+                del kwargs["lat"]
+            if x_slice is not None:
+                del kwargs["x"]
+            if y_slice is not None:
+                del kwargs["y"]
 
-            if lat_slice is None:
-                lat_inds = self.inds()  #
-            else:
-                if isinstance(lon_slice, slice):
-                    if lat_slice.step is not None:
-                        raise ValueError("PointSkeletons can't be sliced with a step!")
-                    lat_inds = np.where(
-                        np.logical_and(
-                            self.lat() >= lat_slice.start, self.lat() <= lat_slice.stop
-                        )
-                    )[0]
-
-                    del kwargs["lat"]
-
-            if lon_slice is not None or lat_slice is not None:
-                inds = np.array(list(set(lon_inds).intersection(set(lat_inds))))
-                return self.sel(inds=inds, **kwargs)
+            if slice_inds is not None:
+                return self.sel(inds=slice_inds, **kwargs)
 
         return self.from_ds(
             self.ds().sel(**kwargs),
@@ -508,6 +494,23 @@ class Skeleton:
             keep_ds_names=True,
             name=self.name,
         )
+
+    def _determine_slice_inds(self, x_slice, y_slice, x: str, y: str):
+        """Determines the indeces of e.g. a lon-slice for a PointSkeleton"""
+        if x_slice is None and y_slice is None:
+            return None
+
+        x_not_a_slice = x_slice is not None and not isinstance(x_slice, slice)
+        y_not_a_slice = y_slice is not None and not isinstance(y_slice, slice)
+
+        if x_not_a_slice and y_not_a_slice:
+            inds_dict = self.yank_point(**{x: x_slice, y: y_slice})
+            return inds_dict["inds"]
+        else:
+            x_inds = _determine_inds(x_slice, self.get(x))
+            y_inds = _determine_inds(y_slice, self.get(y))
+
+            return np.array(list(set(x_inds).intersection(set(y_inds))))
 
     def isel(self, **kwargs) -> "Skeleton":
         """Creates a new instance by selecting only some of the wanted variables.
@@ -878,6 +881,15 @@ class Skeleton:
         """
         if self.ds() is None:
             return None
+
+        if name == "x":
+            return self.x(strict=strict, **kwargs)
+        elif name == "y":
+            return self.y(strict=strict, **kwargs)
+        elif name == "lon":
+            return self.lon(strict=strict, **kwargs)
+        elif name == "lat":
+            return self.lat(strict=strict, **kwargs)
 
         if dir_type not in ["to", "from", "math", None]:
             raise ValueError(
@@ -1443,22 +1455,6 @@ class Skeleton:
                 dxx, ii = distance_funcs.min_cartesian_distance(
                     x[n], y[n], xlist, ylist, npoints
                 )
-            # if lat is None:
-            #     dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
-            # elif posmask[n] or np.any(
-            #     np.isnan(ylist)
-            # ):
-            #     if latlist is not None:
-            #         dxx, ii = distance_funcs.min_distance(
-            #             lon[n], lat[n], lonlist, latlist
-            #         )
-            # elif fast:
-            #     dxx, ii = distance_funcs.min_cartesian_distance(xx, yy, xlist, ylist)
-            # else:
-            #     if latlist is not None:
-            #         dxx, ii = distance_funcs.min_distance(
-            #             lon[n], lat[n], lonlist, latlist
-            #         )
 
             if dxx is not None:
                 inds.append(ii)
@@ -1601,3 +1597,20 @@ def _modified_name(old_name: str) -> str:
     if "Modified" in old_name:
         return old_name
     return f"Modified{old_name}"
+
+
+def _determine_inds(coord_slice, all_vals):
+    if coord_slice is None:
+        start, stop = np.nanmin(all_vals), np.nanmax(all_vals)
+    else:
+        if coord_slice.step is not None:
+            raise ValueError("PointSkeletons can't be sliced with a step!")
+        start, stop = coord_slice.start, coord_slice.stop
+
+    coord_inds = np.where(
+        np.logical_and(
+            all_vals >= start,
+            all_vals <= stop,
+        )
+    )[0]
+    return coord_inds
