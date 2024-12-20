@@ -75,16 +75,18 @@ class ResampleManager:
     def time(
         self,
         dt: Union[str, pd.Timedelta],
-        dropna: bool = True,
+        dropna: bool = False,
         mode: str = "left",
         skipna: bool = False,
+        all_times: bool = False,
     ):
         """Resamples the data of the Skeleton in time.
 
         dt is new time step: '30min', '3h', pd.Timedelta(hours=6)
-        dropna [default True]: If false, time vector will be defined for all values but have NaN's
+        dropna [default False]: Drop NaN values
         mode ('start' [default], 'end', or 'centered'): Type of average being calculated
         skipna [default False]: skips NaN values in the original data when calculating the mean values
+        all_times [default False]: Create NaN values for miossing time stamps
 
         - Significant wave height (geo_parameters.wave.Hs) will be averaged using np.sqrt(np.mean(hs**2))
         - Circular variables (those having a dir_type) will be averaged using scipy.stats.circmean
@@ -112,33 +114,41 @@ class ResampleManager:
 
         dt = pd.Timedelta(dt) / pd.Timedelta("1 hour")  # float in hours
 
+        if mode == "left":
+            closed = "left"
+            label = "left"
+        elif mode == "right":
+            closed = "right"
+            label = "right"
+        elif mode == "centered":
+            closed = "right"
+            label = None
+        else:
+            raise ValueError(f"'mode' must be 'left', 'right' or 'centered'!")
+
         coord_dict["time"] = (
             self.skeleton.time(data_array=True)
-            .resample(time=f"{dt}h", skipna=skipna)
+            .resample(time=f"{dt}h", closed=closed, skipna=skipna, label=label)
             .mean()
             .time
         )
 
         # Create new skeleton with hourly values
         new_skeleton = self.skeleton.from_coord_dict(coord_dict)
+        new_skeleton.meta.set_by_dict({"_global_": self.skeleton.meta.get()})
 
         new_data = {}
 
         if mode == "left":
-            closed = "left"
             offset = pd.Timedelta(hours=0)
         elif mode == "right":
-            closed = "right"
             offset = pd.Timedelta(hours=0)
         elif mode == "centered":
             if np.isclose(new_skeleton.dt() / self.skeleton.dt() % 2, 0):
                 raise ValueError(
                     f"When using centered mean, the new time step {new_skeleton.dt()} must be and odd multiple of the old timestep {self.skeleton.dt()}!"
                 )
-            closed = "right"
             offset = pd.Timedelta(hours=new_skeleton.dt() / 2)
-        else:
-            raise ValueError(f"'mode' must be 'left', 'right' or 'centered'!")
 
         data_vars_not_to_resample = []
         data_vars_to_resample = self.skeleton.core.data_vars()
@@ -194,13 +204,14 @@ class ResampleManager:
         for key, value in new_data.items():
             new_skeleton.set(key, value)
 
-        new_skeleton = new_skeleton.from_ds(
-            new_skeleton.ds().dropna(dim="time"),
-            meta_dict=new_skeleton.meta.meta_dict(),
-            keep_ds_names=True,
-            decode_cf=False,
-        )
-        if not dropna:
+        if dropna:
+            new_skeleton = new_skeleton.from_ds(
+                new_skeleton.ds().dropna(dim="time"),
+                meta_dict=new_skeleton.meta.meta_dict(),
+                keep_ds_names=True,
+                decode_cf=False,
+            )
+        elif all_times:
             new_skeleton = new_skeleton.from_ds(
                 new_skeleton.ds()
                 .resample(time=f"{dt}h")
