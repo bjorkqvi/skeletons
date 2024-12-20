@@ -31,8 +31,8 @@ LIST_OF_COORD_ALIASES = [
 HS_ALIASES = ["hs", "hsig", "h13", "swh", "hm0", "vhm0"]
 TP_ALIASES = ["tp"]
 FP_ALIASES = ["fp"]
-TM01_ALIASES = ["tm01"]
-TM02_ALIASES = ["tm02"]
+TM01_ALIASES = ["tm01", "t01", "tm1"]
+TM02_ALIASES = ["tm02", "t02", "tm2"]
 TM_10_ALIASES = ["tm_10"]
 TZ_ALIASES = ["tz"]
 WIND_ALIASES = ["ff", "wind", "wind_speed", "windspeed"]
@@ -47,6 +47,10 @@ LIST_OF_VAR_ALIASES = [
     HS_ALIASES,
     TP_ALIASES,
     FP_ALIASES,
+    TM01_ALIASES,
+    TM02_ALIASES,
+    TM_10_ALIASES,
+    TZ_ALIASES,
     WIND_ALIASES,
     XWIND_ALIASES,
     YWIND_ALIASES,
