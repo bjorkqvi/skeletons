@@ -17,7 +17,7 @@ from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
 from . import distance_funcs
-from .errors import DataWrongDimensionError, DirTypeError
+from .errors import DataWrongDimensionError, DirTypeError, SkeletonError
 
 from typing import Iterable
 from copy import deepcopy
@@ -299,6 +299,7 @@ class Skeleton:
         core_aliases: dict[Union[MetaParameter, str], str] = None,
         ds_aliases: dict[str, Union[MetaParameter, str]] = None,
         dynamic: bool = False,
+        verbose: bool = False,
         meta_dict: dict = None,
         name: str = "LonelySkeleton",
         **kwargs,
@@ -380,6 +381,7 @@ class Skeleton:
                 core_aliases=core_aliases,
                 ds_aliases=ds_aliases,
                 extra_coords=kwargs,
+                verbose=verbose,
             )
 
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
@@ -395,11 +397,13 @@ class Skeleton:
             ignore_vars=ignore_vars,
             only_vars=only_vars,
             allowed_misses=list(kwargs.keys()),
+            verbose=verbose,
         )
 
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
+
         name = ds.attrs.get("name") or name
         points = cls(**coords, chunks=chunks, name=name)
         # Lengths needed for matching coordinates with wrong name
@@ -439,6 +443,22 @@ class Skeleton:
             ).sortby(dim)
         )
         return new_skeleton
+
+    def cut_to_common_times(self, skeleton_to_compare_with: "Skeleton") -> "Skeleton":
+        """Cuts the skeletons to cover only the coinciding times in the two skeletons.
+
+        Returns a tuple of skeletons that have identical times."""
+        if not "time" in skeleton_to_compare_with.core.coords():
+            raise SkeletonError("Provided Skeleton does not have a time dimension!")
+        if not "time" in self.core.coords():
+            raise SkeletonError("Skeleton does not have a time dimension!")
+        common_times = (
+            self.time(data_array=True) - skeleton_to_compare_with.time(data_array=True)
+        ).time.values
+
+        return self.sel(time=common_times), skeleton_to_compare_with.sel(
+            time=common_times
+        )
 
     def sel(self, **kwargs) -> "Skeleton":
         """Creates a new instance by selecting only some of the wanted variables.
