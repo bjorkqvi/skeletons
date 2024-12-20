@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union, Optional, Any
 
 if TYPE_CHECKING:
-    from .coordinate_manager import CoordinateManager
     from .dataset_manager import DatasetManager
 
 from copy import deepcopy
