@@ -13,6 +13,7 @@ def map_ds_to_gp(
     decode_cf: bool = True,
     aliases: dict = None,
     keep_ds_names: bool = False,
+    verbose: bool = False,
 ) -> tuple[dict[str, Union[str, MetaParameter]]]:
     """Maps data variables in the dataset to geoparameters
 
@@ -37,7 +38,7 @@ def map_ds_to_gp(
         # Check if we are dealing with a coordinate
         if _var_is_coordinate(var, aliases):
             coords[var] = _map_ds_variable_to_geo_parameter(
-                var, ds, aliases, decode_cf, keep_ds_names=False
+                var, ds, aliases, decode_cf, keep_ds_names=False, verbose=verbose
             )
         else:  # Data variable
             data_vars[var] = _map_ds_variable_to_geo_parameter(
@@ -46,11 +47,12 @@ def map_ds_to_gp(
                 aliases,
                 decode_cf,
                 keep_ds_names=keep_ds_names,
+                verbose=verbose,
             )
 
     for coord in ds.coords:
         coords[coord] = _map_ds_variable_to_geo_parameter(
-            coord, ds, aliases, decode_cf, keep_ds_names=False
+            coord, ds, aliases, decode_cf, keep_ds_names=False, verbose=verbose
         )
 
     return data_vars, coords
@@ -62,6 +64,7 @@ def _map_ds_variable_to_geo_parameter(
     aliases: dict[str, Union[str, MetaParameter]],
     decode_cf: bool,
     keep_ds_names: bool,
+    verbose: bool,
 ) -> Union[MetaParameter, str]:
     """Maps a variable name to geo-parameter (if possible)
 
@@ -102,20 +105,28 @@ def _map_ds_variable_to_geo_parameter(
     # 1) Use given alias
     if aliases.get(var) is not None:
         if gp.is_gp_class(aliases.get(var)) and keep_ds_names:
-            return aliases.get(var)(var)
+            return_var = aliases.get(var)(var)
         elif gp.is_gp_class(aliases.get(var)):
-            return aliases.get(var)()
+            return_var = aliases.get(var)()
         else:
-            return aliases.get(var)
+            return_var = aliases.get(var)
+        if verbose:
+            print(f"Given alias: {var} >> {return_var}")
+        return return_var
 
     # 2) Check for standard name
     if hasattr(ds[var], "standard_name") and decode_cf:
         param = gp.get(ds[var].standard_name)
         if param is not None:
             if keep_ds_names:
-                return param(var)
+                return_var = param(var)
             else:
-                return param()
+                return_var = param()
+            if verbose:
+                print(
+                    f"Standard_name: {var} [{ds[var].standard_name}] >> {return_var} [{return_var.name}]"
+                )
+            return return_var
 
     # 3) Use known coordinate geo-parameters or only a string_of_coords
     for alias_dict in [coord_alias_map_to_gp(), var_alias_map_to_gp()]:

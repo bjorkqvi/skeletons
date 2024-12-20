@@ -26,7 +26,10 @@ def remap_coords_of_ds_vars_to_skeleton_names(
     for var, ds_var in core_vars_to_ds_vars.items():
         if isinstance(ds_var, tuple):
             ds_var = ds_var[0]
+        if ds.get(ds_var) is None:
+            continue
         ds_coords = list(ds.get(ds_var).dims)
+
         ds_lens = [len(ds.get(c)) for c in ds_coords]
 
         remapped_coord, coord_group = _remap_ds_coords(
