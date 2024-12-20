@@ -23,6 +23,7 @@ def identify_core_in_ds(
     ignore_vars: list[str] = None,
     only_vars: list[str] = None,
     allowed_misses: list[str] = None,
+    verbose: bool = False,
     decode_cf: bool = True,
     strict: bool = True,
 ) -> tuple[dict[str, str], dict[str, str], dict[str, list[str]], list[str]]:
@@ -65,7 +66,6 @@ def identify_core_in_ds(
 
     # Start by remapping any possible MetaParameters to a string
     allowed_misses = allowed_misses or []
-
     aliases = _remap_core_aliases_keys_to_strings(aliases, core, ds)
 
     aliases = aliases or {}
@@ -76,6 +76,10 @@ def identify_core_in_ds(
     core_coords_to_ds_coords = {}
     coords = core.coords("init")
 
+    for key in list(ds_aliases.keys()):
+        if not key in list(ds.data_vars):
+            del ds_aliases[key]
+
     for coord in coords:
         search_param = core.meta_parameter(coord) or coord
         ds_coord = _map_geo_parameter_to_ds_variable(
@@ -85,12 +89,14 @@ def identify_core_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
         if ds_coord is not None:
             core_coords_to_ds_coords[coord] = ds_coord
 
     for var in core.data_vars():
         search_param = core.meta_parameter(var) or var
+
         # Find the parameter straight up
         ds_var_x = _map_geo_parameter_to_ds_variable(
             search_param,
@@ -99,7 +105,9 @@ def identify_core_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
+
         if ds_var_x is not None:
             core_vars_to_ds_vars[var] = ds_var_x
             continue
@@ -116,6 +124,7 @@ def identify_core_in_ds(
                 ds_aliases=ds_aliases,
                 ignore_vars=ignore_vars,
                 only_vars=only_vars,
+                verbose=verbose,
             )
         )
         if ds_var_x is not None:
@@ -136,6 +145,7 @@ def identify_core_in_ds(
                 ds_aliases=ds_aliases,
                 ignore_vars=ignore_vars,
                 only_vars=only_vars,
+                verbose=verbose,
             )
         )
         if ds_var_x is not None:
@@ -156,6 +166,7 @@ def identify_core_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
 
         if ds_var is not None:
@@ -170,6 +181,7 @@ def identify_core_in_ds(
                 ds_aliases=ds_aliases,
                 ignore_vars=ignore_vars,
                 only_vars=only_vars,
+                verbose=verbose,
             )
         )
         if ds_var_x is not None:
@@ -202,11 +214,11 @@ def identify_core_in_ds(
     else:
         coords_needed = core.coords("init", cartesian=(not lonlat_set))
 
-    missing_coords = set(coords_needed) - set(core_coords_to_ds_coords.keys())
-    if not missing_coords.issubset(set(allowed_misses)) and strict:
-        raise GridError(
-            f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!"
-        )
+    # missing_coords = set(coords_needed) - set(core_coords_to_ds_coords.keys())
+    # if not missing_coords.issubset(set(allowed_misses)) and strict:
+    #     raise GridError(
+    #         f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!"
+    #     )
 
     return (
         core_coords_to_ds_coords,
@@ -228,9 +240,9 @@ def gather_coord_values(
 
     for coord in coords_needed:
         val = (
-            ds.get(core_coords_to_ds_coords.get(coord))
-            if core_coords_to_ds_coords.get(coord) is not None
-            else extra_coords.get(coord)
+            extra_coords.get(coord)
+            if extra_coords.get(coord) is not None
+            else ds.get(core_coords_to_ds_coords.get(coord))
         )
 
         if isinstance(val, xr.DataArray):
@@ -250,6 +262,7 @@ def _map_geo_parameter_to_ds_variable(
     ds_aliases: dict[str, Union[MetaParameter, str]],
     ignore_vars: list[str],
     only_vars: list[str],
+    verbose: bool,
 ) -> Union[str, None]:
     """Gets a given coordinate from a Dataset:
 
@@ -269,7 +282,10 @@ def _map_geo_parameter_to_ds_variable(
 
     # 1) Use aliases mapping if exists
     if aliases.get(var_str) is not None:
-        return aliases.get(var_str)
+        return_var = aliases.get(var_str)
+        if verbose:
+            print("Alias: {var_str} >> {return_var}")
+        return return_var
 
     if param is None:
         param = coord_alias_map_to_gp().get(var_str) or var_alias_map_to_gp().get(
@@ -285,6 +301,7 @@ def _map_geo_parameter_to_ds_variable(
 
     if param is not None:
         ds_match = _match_ds_aliases_to_parameter(param, ds_aliases)
+
     if ds_match is not None:
         return ds_match
 
@@ -296,25 +313,37 @@ def _map_geo_parameter_to_ds_variable(
             only_vars=only_vars,
         )
 
-        if ds_var:
-            return ds_var
+        if ds_var is not None:
+            if len(ds_var) == 1:
+                return ds_var[0]
+            elif len(ds_var) > 1:
+                if verbose:
+                    print(
+                        f"Conflicting matches in Dataset for {param} [{var_str}]: {ds_var}!"
+                    )
+                return None
 
     # 3) Try to see it the name is the same in the skeleton and the dataset
     # Don't do this name matching for directional variables because of the from-to ambiguity
-    if param is None or param.dir_type is None:
-        if var_str in ds.data_vars:
+    ds_coords = {c.lower(): c for c in ds.coords}
+    ds_vars = {dv.lower(): dv for dv in ds.data_vars}
+
+    if param is None or param.dir_type() is None:
+        if var_str.lower() in ds_vars:
             return var_str
 
-    if var_str in ds.coords:
+    if var_str.lower() in ds_coords:
         return var_str
 
     # 4) Reads from a known list of aliases
     for alias_list in LIST_OF_COORD_ALIASES + LIST_OF_VAR_ALIASES:
-        if var_str in alias_list:  # E.g. 'lon' in LON_ALIASES
+        if var_str.lower() in alias_list:  # E.g. 'lon' in LON_ALIASES
             for alias_var in alias_list:  # E.g. LON_ALIASES = ['lon','lognitude']
                 # E.g. 'longitude' in ds.data_vars
-                if alias_var in ds.coords or alias_var in ds.data_vars:
-                    return alias_var
+                if alias_var in ds_coords.keys():
+                    return ds_coords[alias_var]
+                if alias_var in ds_vars.keys():
+                    return ds_vars[alias_var]
 
                 ds_match = _match_ds_aliases_to_parameter(alias_var, ds_aliases)
                 if ds_match in ds.coords or ds_match in ds.data_vars:
@@ -363,19 +392,22 @@ def _find_geoparameter_in_ds(
     if only_vars:
         ds_var = ds_var.intersection(set(only_vars))
     ds_var = list(ds_var)
+
     if not ds_var:
         return None
 
     if len(ds_var) == 1:
-        return ds_var[0]
+        return ds_var
 
-    ds_var = [
+    ds_var_name_match = [
         dv for dv in ds_var if param.name == dv
     ]  # See if we have a perfect name match
 
-    if len(ds_var) == 1:
-        return ds_var[0]
+    if len(ds_var_name_match) == 1:
+        return ds_var_name_match
 
+    if len(ds_var) > 1:
+        return ds_var
     # if ds_var:
     #     raise ValueError(
     #         f"The variable '{param.name}' matches {ds_var} in the Dataset. Specify which one to read by e.g. aliases = {{'{param.name}': '{ds_var[0]}'}}"
@@ -391,6 +423,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
     ds_aliases: dict[str, Union[MetaParameter, str]],
     ignore_vars: list[str],
     only_vars: list[str],
+    verbose: bool,
 ):
     """Get inverse from Dataset (e.g. get fp if we want Tp)"""
     if not gp.is_gp(var):
@@ -406,6 +439,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
         transform_function = lambda x, y: 1 / x
         dir_type = None
@@ -417,6 +451,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
         transform_function = lambda x, y: 1 / x
         dir_type = None
@@ -428,6 +463,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
         transform_function = lambda x, y: x
         dir_type = var.my_family("opposite_direction").dir_type()
@@ -439,6 +475,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
         transform_function = lambda x, y: x
         dir_type = var.my_family("direction").dir_type()
@@ -458,6 +495,7 @@ def _map_geo_parameter_to_components_in_ds(
     ds_aliases: dict[str, Union[MetaParameter, str]],
     ignore_vars: list[str],
     only_vars: list[str],
+    verbose: bool,
 ):
     """Get components from Dataset (e.g. get x_wind, y_wind if we want wind_speed)"""
     if not gp.is_gp(var):
@@ -473,6 +511,7 @@ def _map_geo_parameter_to_components_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
         ds_var_y = _map_geo_parameter_to_ds_variable(
             var.my_family("y"),
@@ -481,6 +520,7 @@ def _map_geo_parameter_to_components_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
+            verbose=verbose,
         )
     else:
         return None, None, None, None

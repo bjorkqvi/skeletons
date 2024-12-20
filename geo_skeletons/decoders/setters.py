@@ -21,6 +21,7 @@ def create_new_class_dynamically(
     core_aliases: dict[Union[str, MetaParameter], str],
     ds_aliases: dict[str, Union[MetaParameter, str]],
     extra_coords: dict[str, Union[np.ndarray, xr.DataArray]],
+    verbose: bool,
 ):
     """Creates a new Skeleton class (modified from provided class) that contains the variables matching the xr.Dataset"""
     (
@@ -47,7 +48,11 @@ def create_new_class_dynamically(
 
     # Map every variable in the Dataset to a MetaParameter if possible
     ds_vars_to_gp, __ = map_ds_to_gp(
-        ds, decode_cf=decode_cf, keep_ds_names=keep_ds_names, aliases=ds_aliases
+        ds,
+        decode_cf=decode_cf,
+        keep_ds_names=keep_ds_names,
+        aliases=ds_aliases,
+        verbose=verbose,
     )
 
     # Find which ones of the Dataset variables should be added
