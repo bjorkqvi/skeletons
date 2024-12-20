@@ -54,7 +54,6 @@ class MetaDataManager:
             self._metadata[name] = metadata
         else:
             self._metadata["_global_"] = metadata
-
         self.metadata_to_ds(name)
 
     def metadata_to_ds(self, name: Optional[str]) -> None:
