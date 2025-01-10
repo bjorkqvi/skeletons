@@ -1,4 +1,5 @@
 from geo_parameters.metaparameter import MetaParameter
+import geo_parameters as gp
 import numpy as np
 from geo_skeletons.errors import VariableExistsError
 
@@ -502,6 +503,26 @@ class CoordinateManager:
                 names.append(obj.name)
 
         return names
+
+    def find(self, param: Union[MetaParameter, str]) -> list[str]:
+        """Finds the name of a parameter based on the standard name or a MetaParameter
+
+        If several matches exist and a MetaParameter is provided, a name match is attempted.
+        """
+        if gp.is_gp(param):
+            std_name = param.standard_name()
+        else:
+            std_name = param
+
+        names = self.find_cf(std_name)
+
+        if len(names) < 2 or not gp.is_gp_instance(param):
+            return names
+        else:
+            clean_names = [n for n in names if n == param.name]
+            if clean_names:
+                return clean_names
+            return names
 
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:
