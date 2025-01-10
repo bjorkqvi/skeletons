@@ -17,7 +17,12 @@ from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
 from typing import Iterable, Union, Optional
 from . import distance_funcs
-from .errors import DataWrongDimensionError, DirTypeError, SkeletonError
+from .errors import (
+    DataWrongDimensionError,
+    DirTypeError,
+    SkeletonError,
+    UnknownVariableError,
+)
 
 from typing import Iterable
 from copy import deepcopy
@@ -575,7 +580,7 @@ class Skeleton:
 
     def set(
         self,
-        name: str,
+        name: Union[str, MetaParameter],
         data: Optional[Union[np.ndarray, xr.DataArray]] = None,
         dir_type: Optional[str] = None,
         allow_reshape: bool = True,
@@ -610,10 +615,20 @@ class Skeleton:
 
         """
 
-        if not isinstance(name, str):
+        if not isinstance(name, str) and not gp.is_gp(name):
             raise TypeError(
-                f"'name' must be of type 'str', not '{type(name).__name__}'!"
+                f"'name' must be of type 'str', or 'MetaParameter' not '{type(name).__name__}'!"
             )
+
+        if gp.is_gp(name):
+            names = self.core.find(name)
+            if len(names) == 0:
+                raise UnknownVariableError(f"Variable matching {name} not found!")
+            if len(names) > 1:
+                raise UnknownVariableError(
+                    f"Found several variables ({names}) matching {name}!"
+                )
+            name = names[0]
 
         first_set = (
             name in self._ds_manager.empty_vars()
@@ -881,6 +896,21 @@ class Skeleton:
         """
         if self.ds() is None:
             return None
+
+        if not isinstance(name, str) and not gp.is_gp(name):
+            raise TypeError(
+                f"'name' must be of type 'str', or 'MetaParameter' not '{type(name).__name__}'!"
+            )
+
+        if gp.is_gp(name):
+            names = self.core.find(name)
+            if len(names) == 0:
+                raise UnknownVariableError(f"Variable matching {name} not found!")
+            if len(names) > 1:
+                raise UnknownVariableError(
+                    f"Found several variables ({names}) matching {name}!"
+                )
+            name = names[0]
 
         if name == "x":
             return self.x(strict=strict, **kwargs)
