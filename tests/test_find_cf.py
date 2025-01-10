@@ -18,6 +18,11 @@ def test_cf_no_info():
     assert points.core.find_cf(gp.wind.Wind.standard_name()) == []
     assert points.core.find_cf(gp.wind.WindDir.standard_name()) == []
 
+    assert points.core.find(gp.wind.XWind) == []
+    assert points.core.find(gp.wind.YWind) == []
+    assert points.core.find(gp.wind.Wind) == []
+    assert points.core.find(gp.wind.WindDir) == []
+
 
 def test_cf():
     @add_magnitude(name=gp.wind.Wind, x="u", y="v", direction=gp.wind.WindDir)
@@ -31,6 +36,11 @@ def test_cf():
     assert points.core.find_cf(gp.wind.YWind.standard_name()) == ["v"]
     assert points.core.find_cf(gp.wind.Wind.standard_name()) == ["ff"]
     assert points.core.find_cf(gp.wind.WindDir.standard_name()) == ["dd"]
+
+    assert points.core.find(gp.wind.XWind) == ["u"]
+    assert points.core.find(gp.wind.YWind) == ["v"]
+    assert points.core.find(gp.wind.Wind) == ["ff"]
+    assert points.core.find(gp.wind.WindDir) == ["dd"]
 
 
 def test_cf_several():
@@ -53,4 +63,17 @@ def test_cf_several():
         "ff",
         "wind2",
     ]
-    assert points.core.find_cf(gp.wind.WindDir.standard_name()) == ["dd"]
+    assert points.core.find(gp.wind.WindDir) == ["dd"]
+    assert points.core.find(gp.wind.WindDir.standard_name()) == ["dd"]
+    assert points.core.find(gp.wind.XWind) == ["u", "umodel"]
+    assert points.core.find(gp.wind.YWind) == ["v", "vmodel"]
+
+    assert points.core.find(gp.wind.Wind) == [
+        "umag",
+        "ff",
+        "wind2",
+    ]
+    assert points.core.find(gp.wind.Wind("umag")) == [
+        "umag",
+    ]
+    assert points.core.find(gp.wind.WindDir) == ["dd"]
