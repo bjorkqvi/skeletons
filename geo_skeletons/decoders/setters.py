@@ -123,7 +123,7 @@ def set_core_vars_to_skeleton_from_ds(
         if ds_remapped_coords.get(var):
             skeleton.set(
                 var,
-                data_to_set,
+                data_to_set.data,
                 coords=ds_remapped_coords[var],
                 dir_type=dir_type,
             )
@@ -131,6 +131,8 @@ def set_core_vars_to_skeleton_from_ds(
                 "standard_name": skeleton.meta.get(var).get("standard_name"),
                 "units": skeleton.meta.get(var).get("units"),
             }
+            old_metadata = {k: v for k, v in old_metadata.items() if v is not None}
+
             if get_metadata_from_ds:
                 skeleton.meta.append(ds.get(ds_var_x).attrs, name=var)
             skeleton.meta.append(old_metadata, name=var)
