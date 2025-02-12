@@ -130,13 +130,27 @@ def wind_xy():
 def test_no_std_name(wave_no_std):
     assert (
         _map_geo_parameter_to_ds_variable(
-            "hs", wave_no_std.ds(), {}, {}, [], [], verbose=False
+            "hs",
+            wave_no_std.ds(),
+            {},
+            {},
+            [],
+            [],
+            ignore_dir_ambiguity=False,
+            verbose=False,
         )
         == "hs"
     )
     assert (
         _map_geo_parameter_to_ds_variable(
-            "swh", wave_no_std.ds(), {}, {}, [], [], verbose=False
+            "swh",
+            wave_no_std.ds(),
+            {},
+            {},
+            [],
+            [],
+            ignore_dir_ambiguity=False,
+            verbose=False,
         )
         == "hs"
     )
@@ -145,13 +159,27 @@ def test_no_std_name(wave_no_std):
 def test_alias_to_std_name_mapping(wave2_std):
     assert (
         _map_geo_parameter_to_ds_variable(
-            "hs", wave2_std.ds(), {}, {}, [], [], verbose=False
+            "hs",
+            wave2_std.ds(),
+            {},
+            {},
+            [],
+            [],
+            ignore_dir_ambiguity=False,
+            verbose=False,
         )
         == "hs2"
     )
     assert (
         _map_geo_parameter_to_ds_variable(
-            "swh", wave2_std.ds(), {}, {}, [], [], verbose=False
+            "swh",
+            wave2_std.ds(),
+            {},
+            {},
+            [],
+            [],
+            ignore_dir_ambiguity=False,
+            verbose=False,
         )
         == "hs2"
     )
@@ -166,6 +194,7 @@ def test_given_aliases(wave2_std):
             ds_aliases={},
             ignore_vars=[],
             only_vars=[],
+            ignore_dir_ambiguity=False,
             verbose=False,
         )
         == "hs2"
@@ -178,6 +207,7 @@ def test_given_aliases(wave2_std):
             ds_aliases={},
             ignore_vars=[],
             only_vars=[],
+            ignore_dir_ambiguity=False,
             verbose=False,
         )
         == "hs2"
@@ -187,13 +217,27 @@ def test_given_aliases(wave2_std):
 def test_gp_to_no_stdname(wave_no_std):
     assert (
         _map_geo_parameter_to_ds_variable(
-            gp.wave.Hs, wave_no_std.ds(), {}, {}, [], [], verbose=False
+            gp.wave.Hs,
+            wave_no_std.ds(),
+            {},
+            {},
+            [],
+            [],
+            ignore_dir_ambiguity=False,
+            verbose=False,
         )
         == "hs"
     )
     assert (
         _map_geo_parameter_to_ds_variable(
-            gp.wave.Hs("swh"), wave_no_std.ds(), {}, {}, [], [], verbose=False
+            gp.wave.Hs("swh"),
+            wave_no_std.ds(),
+            {},
+            {},
+            [],
+            [],
+            ignore_dir_ambiguity=False,
+            verbose=False,
         )
         == "hs"
     )
@@ -208,13 +252,21 @@ def test_gp_to_stdname(wave_std):
             {},
             ignore_vars=[],
             only_vars=[],
+            ignore_dir_ambiguity=False,
             verbose=False,
         )
         == "hs"
     )
     assert (
         _map_geo_parameter_to_ds_variable(
-            gp.wave.Hs("swh"), wave_std.ds(), {}, {}, [], [], verbose=False
+            gp.wave.Hs("swh"),
+            wave_std.ds(),
+            {},
+            {},
+            [],
+            [],
+            ignore_dir_ambiguity=False,
+            verbose=False,
         )
         == "hs"
     )
