@@ -746,6 +746,8 @@ class Skeleton:
             data = reshape_manager.unsqueeze(data, expected_shape=self.size(coord_type))
 
         # Try to set the data
+        if data is None:
+            raise DataWrongDimensionError(self.shape(name), len(coords))
         if data.shape != self.shape(name):
             # If we are here then the data could not be set, but we are allowed to try to reshape
             if not silent:
