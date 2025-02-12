@@ -408,7 +408,6 @@ class Skeleton:
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
-
         name = ds.attrs.get("name") or name
         points = cls(**coords, chunks=chunks, name=name)
         # Lengths needed for matching coordinates with wrong name
@@ -416,6 +415,10 @@ class Skeleton:
         # Reason is that we want 'inds' for PointSkeletons etc
         core_lens = {c: len(points.get(c)) for c in points.core.coords("all")}
 
+        # We might have some trivial 'x': 'x' mapping even though longitude is set, so remove note needed mappings
+        core_coords_to_ds_coords = {
+            c: v for (c, v) in core_coords_to_ds_coords.items() if c in coords_needed
+        }
         # Remap the names of the Dataset dimension so that we can traspose data when setting
         ds_remapped_coords, __ = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
