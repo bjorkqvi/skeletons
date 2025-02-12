@@ -128,7 +128,7 @@ def sanitize_singe_variable(name: str, x: Optional[np.ndarray]) -> np.ndarray:
         x = np.atleast_1d(np.squeeze(x))
 
     if x is not None and len(x.shape) > 1:
-        
+
         raise CoordinateWrongDimensionError(name, x.shape)
 
     return x
@@ -188,13 +188,19 @@ def sanitize_time_input(
         else:
             dt = time[2]
         return pd.date_range(time[0], time[1], freq=dt)
+
     if isinstance(time, str):
-        return pd.DatetimeIndex([time])
-    if isinstance(time, np.ndarray):
-        return pd.DatetimeIndex(np.atleast_1d(time))
-    if not isinstance(time, Iterable):
-        return pd.DatetimeIndex([time])
-    return pd.DatetimeIndex(time)
+        timevec = pd.DatetimeIndex([time])
+    elif isinstance(time, np.ndarray):
+        timevec = pd.DatetimeIndex(np.atleast_1d(time))
+    elif not isinstance(time, Iterable):
+        timevec = pd.DatetimeIndex([time])
+    else:
+        timevec = pd.DatetimeIndex(time)
+    if timevec.tz is not None:
+        timevec = timevec.tz_convert(None).tz_localize(None)
+
+    return timevec
 
 
 def clean_lons(lon: np.ndarray) -> np.ndarray:
