@@ -77,9 +77,8 @@ def identify_core_in_ds(
     coords = core.coords("init")
 
     for key in list(ds_aliases.keys()):
-        if not key in list(ds.data_vars):
+        if not key in list(ds.data_vars) + list(ds.coords):
             del ds_aliases[key]
-
     for coord in coords:
         search_param = core.meta_parameter(coord) or coord
         ds_coord = _map_geo_parameter_to_ds_variable(
@@ -284,7 +283,6 @@ def _map_geo_parameter_to_ds_variable(
     4) Go through known aliases of 'lon' (e.g. 'longitude') and try to find the alias 'longitude' in eiher ds.data_vars or ds.coords
     """
     var_str, param = gp.decode(param, init=True)
-
     # 1) Use aliases mapping if exists
     if aliases.get(var_str) is not None:
         return_var = aliases.get(var_str)
