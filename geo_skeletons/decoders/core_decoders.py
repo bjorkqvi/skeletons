@@ -88,7 +88,7 @@ def identify_core_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=False,
+            ignore_dir_ambiguity=False,
             verbose=verbose,
         )
         if ds_coord is not None:
@@ -105,7 +105,7 @@ def identify_core_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=False,
+            ignore_dir_ambiguity=False,
             verbose=verbose,
         )
 
@@ -168,7 +168,7 @@ def identify_core_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=False,
+            ignore_dir_ambiguity=False,
             verbose=verbose,
         )
 
@@ -265,7 +265,7 @@ def _map_geo_parameter_to_ds_variable(
     ds_aliases: dict[str, Union[MetaParameter, str]],
     ignore_vars: list[str],
     only_vars: list[str],
-    ignore_dir_type: bool,
+    ignore_dir_ambiguity: bool,
     verbose: bool,
 ) -> Union[str, None]:
     """Gets a given coordinate from a Dataset:
@@ -300,16 +300,28 @@ def _map_geo_parameter_to_ds_variable(
             if verbose:
                 print(f"Internal alias map: {var_str} >> {param}")
 
-    # Find in ds_aliases
-    if param is None or param.dir_type() is None and not ignore_dir_type:
+    ## Find in ds_aliases
+    # Only use var_str if we have no param OR param has now dir_type and we are not set to ignore that
+    # E.g. 'dirp' and gp.wave.Dirp will not match only using a string 'dirp' because of directional ambiguity
+    # Unless we set ignore_dir_ambiguity, which is needed if we read e.g. inverse parameters
+    if ignore_dir_ambiguity:
+        directional_ambiguity = False
+    elif param is None:
+        directional_ambiguity = True
+    elif param.dir_type() is None:
+        directional_ambiguity = False
+    else:
+        directional_ambiguity = True
+
+    if not directional_ambiguity:
         ds_match = _match_ds_aliases_to_parameter(var_str, ds_aliases)
         if ds_match is not None:
             if verbose:
                 print(f"Dataset Alias: {var_str} >> {ds_match}")
             return ds_match
 
-        if param is not None:
-            ds_match = _match_ds_aliases_to_parameter(param, ds_aliases)
+    if param is not None:
+        ds_match = _match_ds_aliases_to_parameter(param, ds_aliases)
 
         if ds_match is not None:
             if verbose:
@@ -465,7 +477,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=False,
+            ignore_dir_ambiguity=False,
             verbose=verbose,
         )
         transform_function = lambda x, y: 1 / x
@@ -478,7 +490,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=False,
+            ignore_dir_ambiguity=False,
             verbose=verbose,
         )
         transform_function = lambda x, y: 1 / x
@@ -491,7 +503,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=True,
+            ignore_dir_ambiguity=True,
             verbose=verbose,
         )
         transform_function = lambda x, y: x
@@ -504,7 +516,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=True,
+            ignore_dir_ambiguity=True,
             verbose=verbose,
         )
         transform_function = lambda x, y: x
@@ -543,7 +555,7 @@ def _map_geo_parameter_to_components_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=False,
+            ignore_dir_ambiguity=False,
             verbose=verbose,
         )
         ds_var_y = _map_geo_parameter_to_ds_variable(
@@ -553,7 +565,7 @@ def _map_geo_parameter_to_components_in_ds(
             ds_aliases=ds_aliases,
             ignore_vars=ignore_vars,
             only_vars=only_vars,
-            ignore_dir_type=False,
+            ignore_dir_ambiguity=False,
             verbose=verbose,
         )
     else:
