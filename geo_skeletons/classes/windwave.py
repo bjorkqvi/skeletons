@@ -11,8 +11,8 @@ import numpy as np
 
 
 @add_magnitude(name=gp.wind.Wind, x="u", y="v", direction=gp.wind.WindDir)
-@add_datavar(gp.wind.YWind("u"))
-@add_datavar(gp.wind.XWind("v"))
+@add_datavar(gp.wind.YWind("v"))
+@add_datavar(gp.wind.XWind("u"))
 class Wind(PointSkeleton):
     pass
 
