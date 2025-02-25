@@ -4,7 +4,11 @@ from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union
 from geo_skeletons.errors import GridError
-from geo_skeletons.variable_archive import coord_alias_map_to_gp, var_alias_map_to_gp
+from geo_skeletons.variable_archive import (
+    coord_alias_to_gp,
+    var_alias_to_gp,
+    COORD_ALIASES,
+)
 from copy import deepcopy
 
 
@@ -129,16 +133,17 @@ def _map_ds_variable_to_geo_parameter(
             return return_var
 
     # 3) Use known coordinate geo-parameters or only a string_of_coords
-    for alias_dict in [coord_alias_map_to_gp(), var_alias_map_to_gp()]:
-        param = alias_dict.get(var.lower())
-        if param is not None:
-            if gp.is_gp(param):
-                if keep_ds_names:
-                    return param(var)
-                else:
-                    return param()
+    # for alias_dict in [coord_alias_map_to_gp(), var_alias_map_to_gp()]:
+    param = coord_alias_to_gp(var.lower()) or var_alias_to_gp(var.lower())
+
+    if param is not None:
+        if gp.is_gp(param):
+            if keep_ds_names:
+                return param(var)
             else:
-                return param
+                return param()
+        else:
+            return param
 
     # Return string as is
     return var
@@ -147,13 +152,13 @@ def _map_ds_variable_to_geo_parameter(
 def _var_is_coordinate(var, aliases) -> bool:
     """Checks if a variable that is technicly given as a data varaible in a Dataset should actually be treated as a coordinate"""
     var = var.lower()
-    coord_dict = coord_alias_map_to_gp()
-    if var in coord_dict.keys():
+
+    if coord_alias_to_gp(var) is not None:
         return True
     if aliases.get(var) is not None:
-        if aliases.get(var) in coord_dict.keys():
+        if aliases.get(var) in COORD_ALIASES.keys():
             return True
-        if aliases.get(var) in coord_dict.values():
+        if coord_alias_to_gp(aliases.get(var)) is not None:
             return True
     return False
 
