@@ -153,8 +153,9 @@ def test_core_with_gp2_explicit_dict_str(wave_no_std, wave_std, wave2_std):
     core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_no_std.ds(), aliases={"hs2": "hs"}, strict=False
     )
-    assert set(core_vars.keys()) == {"hs2"}
-    assert set(core_vars.values()) == {"hs"}
+
+    assert set(core_vars.keys()) == {"hs2", "tp2"}
+    assert set(core_vars.values()) == {"hs", "tp"}
     assert core_coords == {}
     assert set(coords_needed) == {"lon", "lat"}
 
@@ -171,8 +172,9 @@ def test_core_with_gp2_explicit_dict_gp(wave_no_std, wave_std, wave2_std):
     core_coords, core_vars, coords_needed = identify_core_in_ds(
         wave2_std.core, ds=wave_no_std.ds(), aliases={gp.wave.Hs: "hs"}, strict=False
     )
-    assert set(core_vars.keys()) == {"hs2"}
-    assert set(core_vars.values()) == {"hs"}
+
+    assert set(core_vars.keys()) == {"hs2", "tp2"}
+    assert set(core_vars.values()) == {"hs", "tp"}
     assert core_coords == {}
     assert set(coords_needed) == {"lon", "lat"}
 

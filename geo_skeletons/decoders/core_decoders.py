@@ -9,8 +9,9 @@ from geo_skeletons.errors import GridError
 from geo_skeletons.variable_archive import (
     LIST_OF_COORD_ALIASES,
     LIST_OF_VAR_ALIASES,
-    coord_alias_map_to_gp,
-    var_alias_map_to_gp,
+    VAR_ALIASES,
+    coord_alias_to_gp,
+    var_alias_to_gp,
 )
 from geo_skeletons.dir_conversions import compute_magnitude, compute_math_direction
 
@@ -291,9 +292,7 @@ def _map_geo_parameter_to_ds_variable(
         return return_var
 
     if param is None:
-        param = coord_alias_map_to_gp().get(var_str) or var_alias_map_to_gp().get(
-            var_str
-        )
+        param = coord_alias_to_gp(var_str) or var_alias_to_gp(var_str)
         if not gp.is_gp(param):
             param = None
         else:
@@ -347,6 +346,21 @@ def _map_geo_parameter_to_ds_variable(
                         f"Conflicting matches in Dataset for {param} [{var_str}]: {ds_var}!"
                     )
                 return None
+
+        if param.is_in(VAR_ALIASES.keys()):
+            ds_coords = {c.lower(): c for c in ds.coords}
+            ds_vars = {dv.lower(): dv for dv in ds.data_vars}
+            alias_list = VAR_ALIASES.get(param.find_me_in(VAR_ALIASES.keys())[0])
+            for alias_var in alias_list:  # E.g. LON_ALIASES = ['lon','lognitude']
+                # E.g. 'longitude' in ds.data_vars
+                if alias_var in ds_coords.keys():
+                    if verbose:
+                        print(f"Intenal alias map: {param} >> {alias_var}")
+                    return ds_coords[alias_var]
+                if alias_var in ds_vars.keys():
+                    if verbose:
+                        print(f"Intenal alias map: {param} >> {alias_var}")
+                    return ds_vars[alias_var]
 
     # 3) Try to see it the name is the same in the skeleton and the dataset
     # Don't do this name matching for directional variables because of the from-to ambiguity
@@ -465,7 +479,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
 ):
     """Get inverse from Dataset (e.g. get fp if we want Tp)"""
     if not gp.is_gp(var):
-        var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
+        var = var_alias_to_gp(var) or coord_alias_to_gp(var)
     if var is None:
         return None, None, None
 
@@ -543,7 +557,7 @@ def _map_geo_parameter_to_components_in_ds(
 ):
     """Get components from Dataset (e.g. get x_wind, y_wind if we want wind_speed)"""
     if not gp.is_gp(var):
-        var = var_alias_map_to_gp().get(var) or coord_alias_map_to_gp().get(var)
+        var = var_alias_to_gp(var) or coord_alias_to_gp(var)
     if var is None:
         return None, None, None, None
 
