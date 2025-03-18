@@ -69,4 +69,5 @@ jobs:
           pip install typing-extensions
           pip install --upgrade setuptools wheel twine
           pip install --upgrade pkginfo
+          pip install -U packaging
           twine upload --skip-existing *
