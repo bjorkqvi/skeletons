@@ -8,8 +8,6 @@ requires-python = ">=3.9,<3.12"
 readme = "README.md"
 license = {file = "LICENSE"}
 
-[tool.setuptools]
-license_files = ["LICENSE"]  # Specify your license file(s)
 [project.urls]
 repository = "http://github.com/bjorkqvi/skeletons"
 
