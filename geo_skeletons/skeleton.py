@@ -1351,7 +1351,22 @@ class Skeleton:
 
         Set unique=True to remove any repeated points.
         Set fast=True to use UTM cartesian search for low latitudes.
-        npoints can be used to find N nearest points."""
+        npoints can be used to find N nearest points.
+        
+        Use gridded_shape to get the inds_x and inds_y in case you have ravelled a 2d matrix, e.g.:
+
+        grid = GriddedSkeleton(lon=(10, 11), lat=(0, 1))
+        grid.set_spacing(nx=10, ny=5)
+
+        ind_dict_gridded = grid.yank_point(lon=10.09, lat=0.51)
+        lon, lat = grid.lonlat()
+        points = PointSkeleton(lon=lon, lat=lat)
+        ind_dict = points.yank_point(lon=10.09, lat=0.51, gridded_shape=grid.size())
+
+        assert ind_dict_gridded["inds_y"][0] == ind_dict["inds_y"][0]
+        assert ind_dict_gridded["inds_x"][0] == ind_dict["inds_x"][0]
+        
+        """
 
         if all([x is None for x in (x, y, lon, lat)]):
             raise ValueError("Give either x-y pair or lon-lat pair!")
