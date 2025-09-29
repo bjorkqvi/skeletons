@@ -68,4 +68,75 @@ def test_slice_down_to_single_value_gridded():
     data.set_hs(1)
 
     assert data.hs(z=0, lon=1).shape == (2,)
-    assert data.hs(z=0, lon=1, lat=6).shape == (1,)
+    assert data.hs(z=0, lon=1, lat=6).shape == (1,1)
+
+def test_point_slice_one_point_to_trivial_dimension():
+    @add_datavar('hs')
+    @add_coord('quantile')
+    @add_time()
+    class Quantiles(PointSkeleton):
+        pass
+
+    data = Quantiles(x=1, y=2, time=["2020-05-01 00:00"], quantile=[0.1,0.5,0.9])
+    data.set_hs([1,5,9])
+    assert data.hs().shape == (3,)
+    assert data.hs(squeeze=False).shape == (1,1,3)
+
+    assert data.hs(quantile=0.1, squeeze=False).shape == (1,1,1)
+    assert data.hs(quantile=0.1).shape == (1,)
+
+def test_point_slice_one_point_to_trivial_dimension_with_two_coordinates():
+    @add_datavar('hs')
+    @add_coord('member')
+    @add_coord('quantile')
+    @add_time()
+    class Quantiles(PointSkeleton):
+        pass
+
+    data = Quantiles(x=1, y=2, time=["2020-05-01 00:00"], quantile=[0.1,0.5,0.9], member=[0,1])
+    data.set_hs([[1,5,9],[2,6,10]], coords=['member','quantile'])
+
+    assert data.hs().shape == (3,2)
+    assert data.hs(squeeze=False).shape == (1,1,3,2)
+
+    assert data.hs(quantile=0.1, squeeze=False).shape == (1,1,1,2)
+    assert data.hs(quantile=0.1).shape == (2,)
+    
+    assert data.hs(quantile=0.1, member=0, squeeze=False).shape == (1,1,1,1)
+    assert data.hs(quantile=0.1, member=0).shape == (1,)
+
+
+def test_gridded_slice_one_point_to_trivial_dimension():
+    @add_datavar('hs')
+    @add_coord('quantile')
+    @add_time()
+    class Quantiles(GriddedSkeleton):
+        pass
+
+    data = Quantiles(x=1, y=2, time=["2020-05-01 00:00"], quantile=[0.1,0.5,0.9])
+    data.set_hs([1,5,9])
+    assert data.hs().shape == (3,)
+    assert data.hs(squeeze=False).shape == (1,1,1,3)
+
+    assert data.hs(quantile=0.1, squeeze=False).shape == (1,1,1,1)
+    assert data.hs(quantile=0.1).shape == (1,1)
+
+def test_gridded_slice_one_point_to_trivial_dimension_with_two_coordinates():
+    @add_datavar('hs')
+    @add_coord('member')
+    @add_coord('quantile')
+    @add_time()
+    class Quantiles(GriddedSkeleton):
+        pass
+
+    data = Quantiles(x=1, y=2, time=["2020-05-01 00:00"], quantile=[0.1,0.5,0.9], member=[0,1])
+    data.set_hs([[1,5,9],[2,6,10]], coords=['member','quantile'])
+
+    assert data.hs().shape == (3,2)
+    assert data.hs(squeeze=False).shape == (1,1,1,3,2)
+
+    assert data.hs(quantile=0.1, squeeze=False).shape == (1,1,1,1,2)
+    assert data.hs(quantile=0.1).shape == (2,)
+    
+    assert data.hs(quantile=0.1, member=0, squeeze=False).shape == (1,1,1,1,1)
+    assert data.hs(quantile=0.1, member=0).shape == (1,1)
