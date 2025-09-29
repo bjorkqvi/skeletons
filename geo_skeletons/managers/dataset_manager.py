@@ -259,6 +259,8 @@ class DatasetManager:
 
         for key, value in coordinates.items():
             data = data.sel({key: value}, **keywords)
+            if key not in data.dims: # Some versions of xarray drops the dimension even with drop=False
+                data = data.expand_dims({key: np.atleast_1d(value)})
 
         return data
 

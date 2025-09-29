@@ -1117,34 +1117,22 @@ class Skeleton:
     def _smart_squeeze(self, name: str, data: xr.DataArray) -> xr.DataArray:
         """Squeezes the data but takes care that one dimension is kept.
 
-        Spatial dims are not protected, but if the results is a 0-dim,
-        then 'inds' or 'lat' is kept."""
+        Spatial dims are not generally protected, but if the results is a 0-dim,
+        then 'inds' or 'lon'&'lat' or 'x'&'y' is kept."""
         dims_to_drop = [
             dim
             for dim in self.core.coords("all")
-            if self.shape(dim)[0] == 1 and dim in data.dims
+            if (dim in data.dims and len(data[dim].values) == 1)
         ]
-
+        
         # If it looks like we are dropping all coords, then save the spatial ones
-        if dims_to_drop == list(data.coords):
+        if set(dims_to_drop) == set(data.coords):
             dims_to_drop = list(
-                set(dims_to_drop) - set(self.core.coords("spatial")) - set([name])
+                set(dims_to_drop) - set(self.core.coords('spatial')) - set([name])
             )
 
         if dims_to_drop:
             data = data.squeeze(dim=dims_to_drop, drop=True)
-
-        # If slicing down to one point, we have to make sure we still have some dimension in the DataArray
-        if data.shape == ():
-            if "inds" in self.core.coords("spatial"):
-                coord_to_create = "inds"
-            else:
-                coord_to_create = "lat"
-            val = np.atleast_1d(data[coord_to_create].values)
-
-            data = self._ds_manager.force_compile_data_array(
-                np.atleast_1d(data.values), {coord_to_create: val}
-            )
 
         return data
 
