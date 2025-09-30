@@ -103,7 +103,7 @@ def test_freq_dir_time():
         "short_name": "freq",
         "long_name": "frequency",
         "standard_name": "wave_frequency",
-        "units": "1/s",
+        "units": "Hz",
     }
 
     assert points.meta.get("dirs") == {
