@@ -68,10 +68,9 @@ class Skeleton:
         chunks: Union[tuple[int], str] = None,
         **kwargs,
     ) -> None:
-        self.name = name
         self._init_structure(x, y, lon, lat, **kwargs)
         self._init_managers(utm=utm, chunks=chunks)
-        self._init_metadata()
+        self._init_metadata(name=name)
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
@@ -125,14 +124,14 @@ class Skeleton:
         self.utm.set(utm, silent=True)
         self.resample = ResampleManager(self)
 
-    def _init_metadata(self) -> None:
+    def _init_metadata(self, name: str) -> None:
         """Initialized the metadata by using availabe metadata in the GeoParameters"""
-        for name in self.core.all_objects("all"):
-            metavar = self.core.get(name).meta
+        for coord_name in self.core.all_objects("all"):
+            metavar = self.core.get(coord_name).meta
             if metavar is not None:
-                self.meta.append(metavar.meta_dict(), name)
+                self.meta.append(metavar.meta_dict(), coord_name)
 
-        self.meta.append({"name": self.name})
+        self.meta.append({"name":name})
 
     @classmethod
     def add_time(cls, grid_coord: bool = True):
@@ -284,12 +283,18 @@ class Skeleton:
         return cls(**coord_dict)
 
     @classmethod
-    def from_netcdf(cls, filename: str, **kwargs) -> "Skeleton":
+    def from_netcdf(cls, filename: str, name: Optional[str]=None, **kwargs) -> "Skeleton":
         """Generates a instance of the Skeleton class from a netcdf.
 
         For information about the keywords, see the from_ds-method"""
+        ds = xr.open_dataset(filename)
+        if hasattr(ds, 'name'):
+            ds_name = ds.name
+        else:
+            ds_name = None
+        name = name or ds_name or f"Created from {filename}"
         return cls.from_ds(
-            xr.open_dataset(filename), name=f"Created from {filename}", **kwargs
+            ds, name=name, **kwargs
         )
 
     @classmethod
@@ -306,7 +311,7 @@ class Skeleton:
         dynamic: bool = False,
         verbose: bool = False,
         meta_dict: dict = None,
-        name: str = "LonelySkeleton",
+        name: Optional[str] = None,
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton from an xarray Dataset.
@@ -408,7 +413,8 @@ class Skeleton:
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
-        name = ds.attrs.get("name") or name
+
+        name = name or ds.attrs.get("name")
         points = cls(**coords, chunks=chunks, name=name)
         # Lengths needed for matching coordinates with wrong name
         # We do this instead of reading the lengths of the arrays directyl
@@ -432,9 +438,11 @@ class Skeleton:
             ds_remapped_coords,
             meta_dict,
         )
-
+        
         metadata = meta_dict.get("_global_") or ds.attrs
-        points.meta.set(metadata)
+
+        metadata = {key: value for key, value in metadata.items() if key != 'name'}
+        points.meta.append(metadata)
 
         return points
 
@@ -1503,14 +1511,12 @@ class Skeleton:
 
     @property
     def name(self) -> str:
-        if not hasattr(self, "_name"):
-            return "LonelySkeleton"
-        return self._name
+        return self._ds_manager.get_attrs().get('_global_').get('name') or 'LonelySkeleton'
 
     @name.setter
     def name(self, new_name: str) -> None:
         if isinstance(new_name, str):
-            self._name = new_name
+            self.meta.append({'name': new_name})
         else:
             raise ValueError("name needs to be a string")
 
