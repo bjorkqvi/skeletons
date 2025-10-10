@@ -53,3 +53,12 @@ def test_set_new_name_on_creation_netcdf(ds):
     assert points.ds().name == 'NewName'
     if os.path.exists('TestFile.nc'):
         os.remove('TestFile.nc')
+
+def test_set_new_name_attribute(ds):
+    points = PointSkeleton.from_ds(ds)
+    assert points.name == 'TestName'
+    assert points.ds().name == 'TestName'
+    points.name = 'NewName'
+    assert points.name == 'NewName'
+    assert points.ds().name == 'NewName'
+

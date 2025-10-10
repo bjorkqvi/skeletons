@@ -68,10 +68,9 @@ class Skeleton:
         chunks: Union[tuple[int], str] = None,
         **kwargs,
     ) -> None:
-        self.name = name
         self._init_structure(x, y, lon, lat, **kwargs)
         self._init_managers(utm=utm, chunks=chunks)
-        self._init_metadata()
+        self._init_metadata(name=name)
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
@@ -125,14 +124,14 @@ class Skeleton:
         self.utm.set(utm, silent=True)
         self.resample = ResampleManager(self)
 
-    def _init_metadata(self) -> None:
+    def _init_metadata(self, name: str) -> None:
         """Initialized the metadata by using availabe metadata in the GeoParameters"""
-        for name in self.core.all_objects("all"):
-            metavar = self.core.get(name).meta
+        for coord_name in self.core.all_objects("all"):
+            metavar = self.core.get(coord_name).meta
             if metavar is not None:
-                self.meta.append(metavar.meta_dict(), name)
+                self.meta.append(metavar.meta_dict(), coord_name)
 
-        self.meta.append({"name": self.name})
+        self.meta.append({"name":name})
 
     @classmethod
     def add_time(cls, grid_coord: bool = True):
@@ -1512,14 +1511,12 @@ class Skeleton:
 
     @property
     def name(self) -> str:
-        if not hasattr(self, "_name"):
-            return "LonelySkeleton"
-        return self._name
+        return self._ds_manager.get_attrs().get('_global_').get('name') or 'LonelySkeleton'
 
     @name.setter
     def name(self, new_name: str) -> None:
         if isinstance(new_name, str):
-            self._name = new_name
+            self.meta.append({'name': new_name})
         else:
             raise ValueError("name needs to be a string")
 
