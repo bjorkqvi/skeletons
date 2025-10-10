@@ -284,12 +284,13 @@ class Skeleton:
         return cls(**coord_dict)
 
     @classmethod
-    def from_netcdf(cls, filename: str, **kwargs) -> "Skeleton":
+    def from_netcdf(cls, filename: str, name: Optional[str]=None, **kwargs) -> "Skeleton":
         """Generates a instance of the Skeleton class from a netcdf.
 
         For information about the keywords, see the from_ds-method"""
+        name = name or f"Created from {filename}"
         return cls.from_ds(
-            xr.open_dataset(filename), name=f"Created from {filename}", **kwargs
+            xr.open_dataset(filename), name=name, **kwargs
         )
 
     @classmethod
