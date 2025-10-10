@@ -1,6 +1,7 @@
 import xarray as xr
 import pytest
 from geo_skeletons import PointSkeleton
+import os
 
 @pytest.fixture
 def ds():
@@ -26,3 +27,29 @@ def test_set_new_name_on_creation(ds):
     points = PointSkeleton.from_ds(ds, name = 'NewName')
     assert points.name == 'NewName'
     assert points.ds().name == 'NewName'
+
+
+def test_set_name_from_netcdf_taken_from_ds(ds):
+    ds.to_netcdf('TestFile.nc')
+    points = PointSkeleton.from_netcdf('TestFile.nc')
+    assert points.name == 'TestName'
+    assert points.ds().name == 'TestName'
+    if os.path.exists('TestFile.nc'):
+        os.remove('TestFile.nc')
+
+def test_set_name_from_netcdf_no_name_in_ds(ds):
+    del ds.attrs['name']
+    ds.to_netcdf('TestFile.nc')
+    points = PointSkeleton.from_netcdf('TestFile.nc')
+    assert points.name == 'Created from TestFile.nc'
+    assert points.ds().name == 'Created from TestFile.nc'
+    if os.path.exists('TestFile.nc'):
+        os.remove('TestFile.nc')
+
+def test_set_new_name_on_creation_netcdf(ds):
+    ds.to_netcdf('TestFile.nc')
+    points = PointSkeleton.from_netcdf('TestFile.nc', name='NewName')
+    assert points.name == 'NewName'
+    assert points.ds().name == 'NewName'
+    if os.path.exists('TestFile.nc'):
+        os.remove('TestFile.nc')

@@ -288,9 +288,14 @@ class Skeleton:
         """Generates a instance of the Skeleton class from a netcdf.
 
         For information about the keywords, see the from_ds-method"""
-        name = name or f"Created from {filename}"
+        ds = xr.open_dataset(filename)
+        if hasattr(ds, 'name'):
+            ds_name = ds.name
+        else:
+            ds_name = None
+        name = name or ds_name or f"Created from {filename}"
         return cls.from_ds(
-            xr.open_dataset(filename), name=name, **kwargs
+            ds, name=name, **kwargs
         )
 
     @classmethod
