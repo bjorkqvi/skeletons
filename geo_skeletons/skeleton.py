@@ -306,7 +306,7 @@ class Skeleton:
         dynamic: bool = False,
         verbose: bool = False,
         meta_dict: dict = None,
-        name: str = "LonelySkeleton",
+        name: Optional[str] = None,
         **kwargs,
     ) -> "Skeleton":
         """Generats an instance of a Skeleton from an xarray Dataset.
@@ -408,7 +408,8 @@ class Skeleton:
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
-        name = ds.attrs.get("name") or name
+
+        name = name or ds.attrs.get("name")
         points = cls(**coords, chunks=chunks, name=name)
         # Lengths needed for matching coordinates with wrong name
         # We do this instead of reading the lengths of the arrays directyl
@@ -432,9 +433,11 @@ class Skeleton:
             ds_remapped_coords,
             meta_dict,
         )
-
+        
         metadata = meta_dict.get("_global_") or ds.attrs
-        points.meta.set(metadata)
+
+        metadata = {key: value for key, value in metadata.items() if key != 'name'}
+        points.meta.append(metadata)
 
         return points
 
