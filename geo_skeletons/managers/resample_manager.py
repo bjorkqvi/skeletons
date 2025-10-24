@@ -3,7 +3,7 @@ import geo_parameters as gp
 import numpy as np
 from scipy.stats import circmean
 from typing import Union, Optional
-
+from .resample.regridders import scipy_regridder
 
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
@@ -68,13 +68,25 @@ def set_up_mean_func(
     return mean_func, attr_str
 
 
+
+
+
+REGRID_ENGINES = {'scipy': scipy_regridder}
 class ResampleManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
 
 
-    def grid(self, new_grid):
-        return self.skeleton
+    def grid(self, new_grid, engine: str='scipy'):
+        """Regrids the data of the skeleton to a new grid"""
+        if engine not in REGRID_ENGINES.keys():
+            raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
+
+        regridder = REGRID_ENGINES.get(engine)
+
+        new_data = regridder(self.skeleton, new_grid)
+        
+        return new_data
 
     def time(
         self,
