@@ -72,6 +72,10 @@ class ResampleManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
 
+
+    def grid(self, new_grid):
+        return self.skeleton
+
     def time(
         self,
         dt: Union[str, pd.Timedelta],
