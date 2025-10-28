@@ -7,13 +7,6 @@ def scipy_gridded_to_gridded(data, new_grid, new_data, method: str ='nearest'):
     """Uses a simple scipy griddata to regrid gridded data to gridded data.
     
     Can only interpolate spatial data for now (not time variable allowed)."""
-    if not new_grid.is_gridded():
-        raise GridError('Can only handel gridded data for now!')
-    if not data.is_gridded():
-        raise GridError('Can only handel gridded data for now!')
-    
-
-
 
     # Determine the coordinates
     target_lon, target_lat = new_grid.longrid(native=True), new_grid.latgrid(native=True)
@@ -25,11 +18,6 @@ def scipy_gridded_to_gridded(data, new_grid, new_data, method: str ='nearest'):
 
 
     spatial_coords = data.core.coords('spatial')
-    print(f'Original data has spatial coords {spatial_coords}')
-    if new_data.core.is_cartesian():
-        print(f"Target grid has spatial coords {new_data.core.coords('spatial')} UTM {new_data.utm.zone()}")
-    else:
-        print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
 
     for var_name in data.core.data_vars('all'):
         var = data.core.get(var_name)
