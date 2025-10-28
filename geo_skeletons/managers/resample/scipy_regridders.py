@@ -3,7 +3,7 @@ import numpy as np
 from geo_skeletons.errors import GridError
 
 
-def scipy_gridded_to_gridded(data, new_grid, method: str ='nearest'):
+def scipy_gridded_to_gridded(data, new_grid, new_data, method: str ='nearest'):
     """Uses a simple scipy griddata to regrid gridded data to gridded data.
     
     Can only interpolate spatial data for now (not time variable allowed)."""
@@ -12,18 +12,6 @@ def scipy_gridded_to_gridded(data, new_grid, method: str ='nearest'):
     if not data.is_gridded():
         raise GridError('Can only handel gridded data for now!')
     
-    # This is a hack. Make it better later
-    new_lon, new_lat = new_grid.lon(native=True), new_grid.lat(native=True)
-    new_coords = {new_grid.core.x_str: new_lon, new_grid.core.y_str: new_lat}
-    if 'time' in data.core.coords():
-        new_coords['time'] = data.time()
-
-
-    new_cls = data.__class__
-
-    new_data = new_cls(**new_coords)
-    if new_data.core.is_cartesian():
-        new_data.utm.set(data.utm.zone(), silent=True)
 
 
 
