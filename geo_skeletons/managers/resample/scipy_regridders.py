@@ -1,7 +1,9 @@
 from scipy.interpolate import griddata
 import numpy as np
 from geo_skeletons.errors import GridError
-def scipy_regridder(data, new_grid, method: str ='nearest'):
+
+
+def scipy_gridded_to_gridded(data, new_grid, method: str ='nearest'):
     """Uses a simple scipy griddata to regrid gridded data to gridded data.
     
     Can only interpolate spatial data for now (not time variable allowed)."""
@@ -71,3 +73,6 @@ def scipy_regridder(data, new_grid, method: str ='nearest'):
         
 
     return new_data
+
+
+scipy_regridders = {'gridded_to_gridded': scipy_gridded_to_gridded}
