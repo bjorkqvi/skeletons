@@ -5,6 +5,7 @@ from scipy.stats import circmean
 from typing import Union, Optional
 from .resample.scipy_regridders import scipy_regridders
 
+from copy import deepcopy
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
     return np.sqrt(np.mean(x**2, *args, **kwargs))
@@ -67,14 +68,57 @@ def set_up_mean_func(
     attr_str = f"{mode} mean {attr_str}"
     return mean_func, attr_str
 
+def find_original_skeleton_in_inheritance_chain(data):
+    cls = data.__class__
+    chain = [cls]
+    while cls.__bases__:  # While there are more parents in the hierarchy
+        cls = cls.__bases__[0]
+        chain.append(cls)
+    return chain[-3]
 
-
-def sort_out_regridded_type(data, new_grid):
+def sort_out_regridded_type(data, new_grid) -> str:
     """Determines if we need to do gridded-gridded, point-gridded etc regridding"""
     source = 'gridded' if data.is_gridded() else 'point'
     target = 'gridded' if new_grid.is_gridded() else 'point'
     return f"{source}_to_{target}"
-        
+
+
+def create_new_class(data, new_grid):
+    """Creates a new class that will contain the gridded data. 
+    If we change type (i.e. from gridded to point), then we will reconstruct the class to contain the correct data variables etc"""
+    if data.is_gridded() and new_grid.is_gridded():
+        return data.__class__
+    if not data.is_gridded() and not new_grid.is_gridded():
+        return data.__class__
+
+    
+    new_base = find_original_skeleton_in_inheritance_chain(new_grid)
+    new_base_coords = new_base.core._added_coords
+    new_base_vars = new_base.core._added_vars
+    new_base.core = deepcopy(data.__class__.core) # Copy over coordinates, data variables, magnitudes, masks etc.
+    
+    if not data.is_gridded() and new_grid.is_gridded():
+        del new_base.core._added_coords['inds']
+        del new_base.core._added_vars['x']
+        del new_base.core._added_vars['y']
+        new_base.core._added_coords['x'] = new_base_coords['x']
+        new_base.core._added_coords['y'] = new_base_coords['y']
+
+        new_base = type(f'Point{data.__class__.__name__}', (new_base,), {})
+        return new_base
+
+    if data.is_gridded() and not new_grid.is_gridded():
+        del new_base.core._added_coords['x']
+        del new_base.core._added_coords['y']
+
+        new_base.core._added_coords['inds'] = new_base_coords['inds']
+        new_base.core._added_vars['x'] = new_base_vars['x']
+        new_base.core._added_vars['y'] = new_base_vars['y']
+
+        new_base = type(f'Gridded{data.__class__.__name__}', (new_base,), {})
+        return new_base
+
+
 REGRID_ENGINES = {'scipy': scipy_regridders}
 
 class ResampleManager:
@@ -86,7 +130,9 @@ class ResampleManager:
         """Regrids the data of the skeleton to a new grid"""
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
-
+        
+        new_cls = create_new_class(self.skeleton, new_grid)
+        breakpoint()
         regridder_dict = REGRID_ENGINES.get(engine)
         regrid_type = sort_out_regridded_type(self.skeleton, new_grid)
 
