@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import circmean
 from typing import Union, Optional
 from .resample.scipy_regridders import scipy_regridders
-
+import geo_parameters as gp
 from copy import deepcopy
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
@@ -99,7 +99,15 @@ def create_new_class(data, new_grid):
         new_base = type(f'Point{data.__class__.__name__}', (old_base,), {})
 
     for key, param in data.core._added_coords.items():
-        if key not in ['x','y','lon','lat','inds']:
+        if key == 'time':
+            new_base=new_base.add_time()
+        elif key in ['x','y','lon','lat','inds']:
+            continue
+        elif gp.wave.Freq.is_same(param.meta):
+            new_base = new_base.add_frequency(param)
+        elif gp.wave.Dirs.is_same(param.meta):
+            new_base = new_base.add_direction(param)
+        else:   
             new_base = new_base.add_coord(param)
 
     for key, param in data.core._added_vars.items():
