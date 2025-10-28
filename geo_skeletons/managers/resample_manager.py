@@ -92,11 +92,30 @@ def create_new_class(data, new_grid):
         return data.__class__
 
     
-    new_base = find_original_skeleton_in_inheritance_chain(new_grid)
+    old_base = find_original_skeleton_in_inheritance_chain(new_grid)
+    if new_grid.is_gridded():
+        new_base = type(f'Gridded{data.__class__.__name__}', (old_base,), {})
+    else:
+        new_base = type(f'Point{data.__class__.__name__}', (old_base,), {})
+
+    for key, param in data.core._added_coords.items():
+        if key not in ['x','y','lon','lat','inds']:
+            new_base = new_base.add_coord(param)
+    breakpoint()
+
+    for key, param in data.core._added_vars.items():
+        if key not in ['x','y','lon','lat']:
+            new_base = new_base.add_datavar(param.meta or param.name, coord_group=param.coord_group, default_value=param.default_value)
+    
+    for key, param in data.core._added_magnitudes.items():
+        breakpoint()
+        new_base = new_base.add_datavar(param.meta or param.name, x=param.x, y=param.y, direction=param.direction, dir_type=param.dir_type)
+    
+    
+    breakpoint()
     new_base_coords = new_base.core._added_coords
     new_base_vars = new_base.core._added_vars
     new_base.core = deepcopy(data.__class__.core) # Copy over coordinates, data variables, magnitudes, masks etc.
-    
     if not data.is_gridded() and new_grid.is_gridded():
         del new_base.core._added_coords['inds']
         del new_base.core._added_vars['x']
@@ -104,7 +123,7 @@ def create_new_class(data, new_grid):
         new_base.core._added_coords['x'] = new_base_coords['x']
         new_base.core._added_coords['y'] = new_base_coords['y']
 
-        new_base = type(f'Point{data.__class__.__name__}', (new_base,), {})
+        
         return new_base
 
     if data.is_gridded() and not new_grid.is_gridded():
@@ -115,9 +134,26 @@ def create_new_class(data, new_grid):
         new_base.core._added_vars['x'] = new_base_vars['x']
         new_base.core._added_vars['y'] = new_base_vars['y']
 
-        new_base = type(f'Gridded{data.__class__.__name__}', (new_base,), {})
+        
         return new_base
 
+
+def init_new_class_to_grid(new_class, new_grid, data):
+    """Initializes new class to the wanted grid
+    Other coordinates (such as time) are copied over from original data"""
+    # This is a hack. Make it better later
+    new_lon, new_lat = new_grid.lon(native=True), new_grid.lat(native=True)
+    new_coords = {new_grid.core.x_str: new_lon, new_grid.core.y_str: new_lat}
+    
+    for coord in data.core.coords():
+        if coord not in ['x','y','lon','lat','inds']:
+            new_coords[coord] = data.get(coord)
+       
+    new_data = new_class(**new_coords)
+    if new_data.core.is_cartesian():
+        new_data.utm.set(data.utm.zone(), silent=True)
+
+    return new_data
 
 REGRID_ENGINES = {'scipy': scipy_regridders}
 
@@ -132,7 +168,8 @@ class ResampleManager:
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
         
         new_cls = create_new_class(self.skeleton, new_grid)
-        breakpoint()
+        new_data = init_new_class_to_grid(new_class, new_grid, self.skeleton)
+
         regridder_dict = REGRID_ENGINES.get(engine)
         regrid_type = sort_out_regridded_type(self.skeleton, new_grid)
 
@@ -141,7 +178,7 @@ class ResampleManager:
         if regridder is None:
             raise NotImplementedError(f"'{regrid_type}' regridding not available for engine '{engine}'")
 
-        new_data = regridder(self.skeleton, new_grid)
+        new_data = regridder(self.skeleton, new_grid, new_data)
         
         return new_data
 
