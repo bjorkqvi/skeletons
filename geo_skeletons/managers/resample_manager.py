@@ -188,9 +188,6 @@ class ResampleManager:
         """Regrids the data of the skeleton to a new grid"""
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
-        
-        new_cls = create_new_class(self.skeleton, new_grid)
-        new_data = init_new_class_to_grid(new_class, new_grid, self.skeleton)
 
         regridder_dict = REGRID_ENGINES.get(engine)
         regrid_type = sort_out_regridded_type(self.skeleton, new_grid)
@@ -199,6 +196,9 @@ class ResampleManager:
 
         if regridder is None:
             raise NotImplementedError(f"'{regrid_type}' regridding not available for engine '{engine}'")
+
+        new_class = create_new_class(self.skeleton, new_grid)
+        new_data = init_new_class_to_grid(new_class, new_grid, self.skeleton)
 
         new_data = regridder(self.skeleton, new_grid, new_data)
         
