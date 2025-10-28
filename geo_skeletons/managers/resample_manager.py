@@ -101,18 +101,32 @@ def create_new_class(data, new_grid):
     for key, param in data.core._added_coords.items():
         if key not in ['x','y','lon','lat','inds']:
             new_base = new_base.add_coord(param)
-    breakpoint()
 
     for key, param in data.core._added_vars.items():
         if key not in ['x','y','lon','lat']:
-            new_base = new_base.add_datavar(param.meta or param.name, coord_group=param.coord_group, default_value=param.default_value)
+            new_base = new_base.add_datavar(param)
     
     for key, param in data.core._added_magnitudes.items():
-        breakpoint()
-        new_base = new_base.add_datavar(param.meta or param.name, x=param.x, y=param.y, direction=param.direction, dir_type=param.dir_type)
+        direction = param.direction
+        if direction is not None:
+            dir_type = direction.dir_type
+            direction = direction.meta or direction.name
+        else:
+            direction, dir_type = None, None
+        new_base = new_base.add_magnitude(param.meta or param.name, x=param.x, y=param.y, direction=direction, dir_type=dir_type)
+           
+    ignore_these = []
+    for key, param in data.core._added_masks.items():
+        opposite_mask = param.opposite_mask
+        if opposite_mask is not None:
+            opposite_name = opposite_mask.meta or opposite_mask.name[:-5]
+            ignore_these.append(opposite_name)
+        else:
+            opposite_name = None
+        if (param.meta or param.name[:-5]) not in ignore_these:
+            new_base = new_base.add_mask(param.meta or param.name[:-5], default_value=param.default_value, coord_group=param.coord_group, opposite_name=opposite_name, triggered_by=param.triggered_by, valid_range=param.valid_range, range_inclusive=param.range_inclusive)
     
-    
-    breakpoint()
+
     new_base_coords = new_base.core._added_coords
     new_base_vars = new_base.core._added_vars
     new_base.core = deepcopy(data.__class__.core) # Copy over coordinates, data variables, magnitudes, masks etc.
