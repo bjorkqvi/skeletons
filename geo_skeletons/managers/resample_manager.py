@@ -3,7 +3,7 @@ import geo_parameters as gp
 import numpy as np
 from scipy.stats import circmean
 from typing import Union, Optional
-from .resample.regridders import scipy_regridder
+from .resample.scipy_regridders import scipy_regridders
 
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
@@ -69,9 +69,14 @@ def set_up_mean_func(
 
 
 
+def sort_out_regridded_type(data, new_grid):
+    """Determines if we need to do gridded-gridded, point-gridded etc regridding"""
+    source = 'gridded' if data.is_gridded() else 'point'
+    target = 'gridded' if new_grid.is_gridded() else 'point'
+    return f"{source}_to_{target}"
+        
+REGRID_ENGINES = {'scipy': scipy_regridders}
 
-
-REGRID_ENGINES = {'scipy': scipy_regridder}
 class ResampleManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
@@ -82,7 +87,13 @@ class ResampleManager:
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
 
-        regridder = REGRID_ENGINES.get(engine)
+        regridder_dict = REGRID_ENGINES.get(engine)
+        regrid_type = sort_out_regridded_type(self.skeleton, new_grid)
+
+        regridder = regridder_dict.get(regrid_type)
+
+        if regridder is None:
+            raise NotImplementedError(f"'{regrid_type}' regridding not available for engine '{engine}'")
 
         new_data = regridder(self.skeleton, new_grid)
         
