@@ -206,7 +206,7 @@ class ResampleManager:
             print(f"'{key}'\t\t{value.get('options')}")
         print('-'*125)
 
-    def grid(self, new_grid, engine: str='scipy', verbose: bool=True, **kwargs):
+    def grid(self, new_grid, target_class = None, engine: str='scipy', verbose: bool=True, **kwargs):
         """Regrids the data of the skeleton to a new grid"""
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
@@ -219,9 +219,8 @@ class ResampleManager:
         if regridder is None:
             raise NotImplementedError(f"'{regrid_type}' regridding not available for engine '{engine}'")
 
-        new_class = create_new_class(self.skeleton, new_grid)
+        new_class = target_class or create_new_class(self.skeleton, new_grid)
         new_data = init_new_class_to_grid(new_class, new_grid, self.skeleton)
-
 
         if verbose:
             print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
