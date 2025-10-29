@@ -42,14 +42,19 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
 
     c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
     c.meta = c.core.meta
-    name_str, meta = gp.decode(name)
+    
 
     coord_group = "grid" if grid_coord else "gridpoint"
-    coord_var = Coordinate(
-        name=name_str,
-        meta=meta,
-        coord_group=coord_group,
-    )
+    if isinstance(name, Coordinate):
+        coord_var = name
+        name_str = coord_var.name
+    else:
+        name_str, meta = gp.decode(name)
+        coord_var = Coordinate(
+            name=name_str,
+            meta=meta,
+            coord_group=coord_group,
+        )
     c.core.add_coord(coord_var)
 
     if stash_get:
@@ -147,6 +152,7 @@ def add_time(grid_coord: bool = True):
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
         c.meta = c.core.meta
         coord_group = "grid" if grid_coord else "gridpoint"
+        
         coord_var = Coordinate(
             name="time",
             meta=None,
@@ -184,14 +190,19 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
 
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
         c.meta = c.core.meta
-        name_str, meta = gp.decode(name)
+        
 
         coord_group = "grid" if grid_coord else "gridpoint"
-        coord_var = Coordinate(
-            name=name_str,
-            meta=meta,
-            coord_group=coord_group,
-        )
+        if isinstance(name, Coordinate):
+            coord_var = name
+            name_str = coord_var.name
+        else:
+            name_str, meta = gp.decode(name)
+            coord_var = Coordinate(
+                name=name_str,
+                meta=meta,
+                coord_group=coord_group,
+            )
         c.core.add_coord(coord_var)
         exec(f"c.{name_str} = get_freq")
         c.df = df
@@ -224,13 +235,18 @@ def add_direction(
 
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
         c.meta = c.core.meta
-        name_str, meta = gp.decode(name)
+
         coord_group = "grid" if grid_coord else "gridpoint"
-        coord_var = Coordinate(
-            name=name_str,
-            meta=meta,
-            coord_group=coord_group,
-        )
+        if isinstance(name, Coordinate):
+            coord_var = name
+            name_str = coord_var.name
+        else:
+            name_str, meta = gp.decode(name)
+            coord_var = Coordinate(
+                name=name_str,
+                meta=meta,
+                coord_group=coord_group,
+            )
         c.core.add_coord(coord_var)
         exec(f"c.{name_str} = get_dirs")
         c.dd = ddir

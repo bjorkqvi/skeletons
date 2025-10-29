@@ -75,23 +75,27 @@ def add_datavar(
                 silent=silent,
             )
 
-        name_str, meta = gp.decode(name)
-
-        if (
-            meta is not None
-            and meta.i_am() in ["x", "y"]
-            and np.isclose(default_value, 0)
-        ):
-            def_val = 0.1
+        if isinstance(name, DataVar):
+            data_var = name
+            name_str = data_var.name
         else:
-            def_val = default_value
+            name_str, meta = gp.decode(name)
 
-        data_var = DataVar(
-            name=name_str,
-            meta=meta,
-            coord_group=coord_group,
-            default_value=def_val,
-            dir_type=dir_type,
+            if (
+                meta is not None
+                and meta.i_am() in ["x", "y"]
+                and np.isclose(default_value, 0)
+            ):
+                def_val = 0.1
+            else:
+                def_val = default_value
+
+            data_var = DataVar(
+                name=name_str,
+                meta=meta,
+                coord_group=coord_group,
+                default_value=def_val,
+                dir_type=dir_type,
         )
 
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
