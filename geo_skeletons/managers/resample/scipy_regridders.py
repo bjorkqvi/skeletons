@@ -37,7 +37,7 @@ def scipy_griddata(data, new_grid, new_data, verbose, method: str ='nearest', dr
                     print(f"'{var_name}' {var_coords}: Regridding...")
                 new_array = griddata(points, data.get(var_name).flatten(), (target_lon, target_lat), method=method)
                 new_data.set(var_name, new_array)
-            elif set(spatial_coords + ['time']) == set(var_coords):
+            elif set(spatial_coords + ['time']) == set(var_coords) and 'time' in new_data.core.coords():
                 if verbose:
                     print(f"'{var_name}' {var_coords}: Regridding over time.", end='')
                 new_array = np.empty(new_data.shape(var_name))
