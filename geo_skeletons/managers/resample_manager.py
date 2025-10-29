@@ -223,7 +223,8 @@ class ResampleManager:
         else:
             print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
 
-        print(f"Starting regridding with {regridder}...")
+        
+        print(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
         new_data = regridder(self.skeleton, new_grid, new_data)
         
         return new_data

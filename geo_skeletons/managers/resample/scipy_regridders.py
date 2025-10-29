@@ -3,13 +3,16 @@ import numpy as np
 from geo_skeletons.errors import GridError
 
 
-def scipy_to_gridded(data, new_grid, new_data, method: str ='nearest'):
+def scipy_griddata(data, new_grid, new_data, method: str ='nearest'):
     """Uses a simple scipy griddata to regrid gridded data to gridded data.
     
     Can only interpolate spatial data for now (not time variable allowed)."""
 
     # Determine the coordinates
-    target_lon, target_lat = new_grid.longrid(native=True), new_grid.latgrid(native=True)
+    if new_grid.is_gridded():
+        target_lon, target_lat = new_grid.longrid(native=True), new_grid.latgrid(native=True)
+    else:
+        target_lon, target_lat = new_grid.lonlat(native=True)
     if new_data.core.is_cartesian():
         lon, lat = data.xy()
     else:
@@ -41,7 +44,7 @@ def scipy_to_gridded(data, new_grid, new_data, method: str ='nearest'):
                     source_values = data.get(var_name)[t, ...].flatten()
 
                     # Interpolate to the target grid
-                    new_array[t, :, :] = griddata(points, source_values, (target_lon, target_lat), method=method)
+                    new_array[t, ...] = griddata(points, source_values, (target_lon, target_lat), method=method)
                     ct += 1
                 new_data.set(var_name, new_array)
                 print('')
@@ -51,4 +54,4 @@ def scipy_to_gridded(data, new_grid, new_data, method: str ='nearest'):
 
     return new_data
 
-scipy_regridders = {'gridded_to_gridded': scipy_to_gridded,'point_to_gridded': scipy_to_gridded, 'available': True, 'installation': 'Natively available (default)'}
+scipy_regridders = {'gridded_to_gridded': scipy_griddata,'point_to_gridded': scipy_griddata, 'gridded_to_point': scipy_griddata, 'point_to_point': scipy_griddata,'available': True, 'installation': 'Natively available (default)'}
