@@ -197,10 +197,16 @@ class ResampleManager:
             
             available = 'Installed' if value.get('available') else 'Not installed'
 
-            print(f"'{key}' ({available})\t     {g2g}\t      {p2g}\t      {p2p}\t     {g2p}\t\t{value.get('installation')}")
+            print(f"'{key}' ({available})\t     {g2g}\t      {p2g}\t      {p2p}\t     {g2p}\t{value.get('installation')}")
+        print('-'*125)
+        print('Engine\t\tOptions')
+        print('-'*125)
+        for key, value in REGRID_ENGINES.items():
+            
+            print(f"'{key}'\t\t{value.get('options')}")
         print('-'*125)
 
-    def grid(self, new_grid, engine: str='scipy'):
+    def grid(self, new_grid, engine: str='scipy', **kwargs):
         """Regrids the data of the skeleton to a new grid"""
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
@@ -225,7 +231,7 @@ class ResampleManager:
 
         
         print(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
-        new_data = regridder(self.skeleton, new_grid, new_data)
+        new_data = regridder(self.skeleton, new_grid, new_data, **kwargs)
         
         return new_data
 

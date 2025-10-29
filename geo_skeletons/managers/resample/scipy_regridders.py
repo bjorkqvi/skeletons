@@ -3,7 +3,7 @@ import numpy as np
 from geo_skeletons.errors import GridError
 
 
-def scipy_griddata(data, new_grid, new_data, method: str ='nearest'):
+def scipy_griddata(data, new_grid, new_data, method: str ='nearest', drop_nan: bool=False, mask_nan: float=None,**kwargs):
     """Uses a simple scipy griddata to regrid gridded data to gridded data.
     
     Can only interpolate spatial data for now (not time variable allowed)."""
@@ -17,11 +17,15 @@ def scipy_griddata(data, new_grid, new_data, method: str ='nearest'):
         lon, lat = data.xy()
     else:
         lon, lat = data.lonlat()
-    points = np.array([(lon, lat) for lon, lat in zip(lon, lat)])
+    all_points = np.array([(lon, lat) for lon, lat in zip(lon, lat)])
 
 
     spatial_coords = data.core.coords('spatial')
 
+    if drop_nan:
+        print("Excluding nan values from interpolation")
+    elif mask_nan is not None:
+        print(f"Replacing nan values with {mask_nan}")
     for var_name in data.core.data_vars('all'):
         if var_name not in ['x','y','lon','lat']:
             var = data.core.get(var_name)
@@ -42,7 +46,17 @@ def scipy_griddata(data, new_grid, new_data, method: str ='nearest'):
 
                     # Flatten the data for the current time step
                     source_values = data.get(var_name)[t, ...].flatten()
-
+                    if drop_nan:
+                        mask = np.isnan(source_values)
+                        source_values = source_values[mask]
+                        
+                        points = all_points[mask]
+                    elif mask_nan is not None:
+                        mask = np.isnan(source_values)
+                        source_values[mask] = mask_nan
+                        points = all_points
+                    else:
+                        points = all_points
                     # Interpolate to the target grid
                     new_array[t, ...] = griddata(points, source_values, (target_lon, target_lat), method=method)
                     ct += 1
@@ -54,4 +68,4 @@ def scipy_griddata(data, new_grid, new_data, method: str ='nearest'):
 
     return new_data
 
-scipy_regridders = {'gridded_to_gridded': scipy_griddata,'point_to_gridded': scipy_griddata, 'gridded_to_point': scipy_griddata, 'point_to_point': scipy_griddata,'available': True, 'installation': 'Natively available (default)'}
+scipy_regridders = {'gridded_to_gridded': scipy_griddata,'point_to_gridded': scipy_griddata, 'gridded_to_point': scipy_griddata, 'point_to_point': scipy_griddata,'available': True, 'installation': 'Native (default)', 'options': 'drop_nan: bool, mask_nan: float'}
