@@ -206,7 +206,7 @@ class ResampleManager:
             print(f"'{key}'\t\t{value.get('options')}")
         print('-'*125)
 
-    def grid(self, new_grid, engine: str='scipy', **kwargs):
+    def grid(self, new_grid, engine: str='scipy', verbose: bool=True, **kwargs):
         """Regrids the data of the skeleton to a new grid"""
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
@@ -223,15 +223,17 @@ class ResampleManager:
         new_data = init_new_class_to_grid(new_class, new_grid, self.skeleton)
 
 
-        print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
-        if new_data.core.is_cartesian():
-            print(f"Target grid has spatial coords {new_data.core.coords('spatial')} UTM {new_data.utm.zone()}")
-        else:
-            print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
+        if verbose:
+            print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
+            if new_data.core.is_cartesian():
+                print(f"Target grid has spatial coords {new_data.core.coords('spatial')} UTM {new_data.utm.zone()}")
+            else:
+                print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
 
+            
+            print(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
         
-        print(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
-        new_data = regridder(self.skeleton, new_grid, new_data, **kwargs)
+        new_data = regridder(self.skeleton, new_grid, new_data, verbose=verbose, **kwargs)
         
         return new_data
 
