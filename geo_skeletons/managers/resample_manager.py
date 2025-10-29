@@ -184,6 +184,22 @@ class ResampleManager:
         self.skeleton = skeleton
 
 
+    def engines(self):
+        """Lists engines that are available for regridding"""
+        print('-'*125)
+        print('Engine\t\t\tgrid-to-grid\tpoint-to-grid\tpoint-to-point\tgrid-to-point\tInstallation')
+        print('-'*125)
+        for key, value in REGRID_ENGINES.items():
+            g2g = 'Yes' if value.get('gridded_to_gridded') is not None else 'No'
+            p2g = 'Yes' if value.get('point_to_gridded') is not None else 'No'
+            p2p = 'Yes' if value.get('point_to_point') is not None else 'No'
+            g2p = 'Yes' if value.get('gridded_to_point') is not None else 'No'
+            
+            available = 'Installed' if value.get('available') else 'Not installed'
+
+            print(f"'{key}' ({available})\t     {g2g}\t      {p2g}\t      {p2p}\t     {g2p}\t\t{value.get('installation')}")
+        print('-'*125)
+
     def grid(self, new_grid, engine: str='scipy'):
         """Regrids the data of the skeleton to a new grid"""
         if engine not in REGRID_ENGINES.keys():

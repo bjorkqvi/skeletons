@@ -51,4 +51,4 @@ def scipy_to_gridded(data, new_grid, new_data, method: str ='nearest'):
 
     return new_data
 
-scipy_regridders = {'gridded_to_gridded': scipy_to_gridded,'point_to_gridded': scipy_to_gridded}
+scipy_regridders = {'gridded_to_gridded': scipy_to_gridded,'point_to_gridded': scipy_to_gridded, 'available': True, 'installation': 'Natively available (default)'}
