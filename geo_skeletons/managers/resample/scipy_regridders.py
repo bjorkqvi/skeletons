@@ -47,7 +47,7 @@ def scipy_griddata(data, new_grid, new_data, method: str ='nearest', drop_nan: b
                     # Flatten the data for the current time step
                     source_values = data.get(var_name)[t, ...].flatten()
                     if drop_nan:
-                        mask = np.isnan(source_values)
+                        mask = np.logical_not(np.isnan(source_values))
                         source_values = source_values[mask]
                         
                         points = all_points[mask]
