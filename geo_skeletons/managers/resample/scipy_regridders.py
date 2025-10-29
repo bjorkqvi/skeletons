@@ -30,8 +30,8 @@ def scipy_griddata(data, new_grid, new_data, verbose, method: str ='nearest', dr
 
     for var_name in data.core.data_vars('all'):
         if var_name not in ['x','y','lon','lat']:
-            var = data.core.get(var_name, strict=True)
-            if var is not None:
+            if data.get(var_name, strict=True) is not None:
+                var = data.core.get(var_name)
                 var_coords = data.core.coords(var.coord_group)
                 if var_coords == spatial_coords:
                     if verbose:
