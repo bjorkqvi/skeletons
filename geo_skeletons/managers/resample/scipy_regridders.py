@@ -3,7 +3,7 @@ import numpy as np
 from geo_skeletons.errors import GridError
 
 
-def scipy_griddata(data, new_grid, new_data, method: str ='nearest', drop_nan: bool=False, mask_nan: float=None,**kwargs):
+def scipy_griddata(data, new_grid, new_data, verbose, method: str ='nearest', drop_nan: bool=False, mask_nan: float=None,**kwargs):
     """Uses a simple scipy griddata to regrid gridded data to gridded data.
     
     Can only interpolate spatial data for now (not time variable allowed)."""
@@ -22,20 +22,24 @@ def scipy_griddata(data, new_grid, new_data, method: str ='nearest', drop_nan: b
 
     spatial_coords = data.core.coords('spatial')
 
-    if drop_nan:
-        print("Excluding nan values from interpolation")
-    elif mask_nan is not None:
-        print(f"Replacing nan values with {mask_nan}")
+    if verbose:
+        if drop_nan:
+            print("Excluding nan values from interpolation")
+        elif mask_nan is not None:
+            print(f"Replacing nan values with {mask_nan}")
+
     for var_name in data.core.data_vars('all'):
         if var_name not in ['x','y','lon','lat']:
             var = data.core.get(var_name)
             var_coords = data.core.coords(var.coord_group)
             if var_coords == spatial_coords:
-                print(f"'{var_name}' {var_coords}: Regridding...")
+                if verbose:
+                    print(f"'{var_name}' {var_coords}: Regridding...")
                 new_array = griddata(points, data.get(var_name).flatten(), (target_lon, target_lat), method=method)
                 new_data.set(var_name, new_array)
             elif set(spatial_coords + ['time']) == set(var_coords):
-                print(f"'{var_name}' {var_coords}: Regridding over time.", end='')
+                if verbose:
+                    print(f"'{var_name}' {var_coords}: Regridding over time.", end='')
                 new_array = np.empty(new_data.shape(var_name))
                 Nt = len(data.time())
                 ct = 0
@@ -61,9 +65,11 @@ def scipy_griddata(data, new_grid, new_data, method: str ='nearest', drop_nan: b
                     new_array[t, ...] = griddata(points, source_values, (target_lon, target_lat), method=method)
                     ct += 1
                 new_data.set(var_name, new_array)
-                print('')
+                if verbose:
+                    print('')
             else:
-                print(f"'{var_name}' {var_coords}: Skipping!")
+                if verbose:
+                    print(f"'{var_name}' {var_coords}: Skipping!")
             
 
     return new_data
