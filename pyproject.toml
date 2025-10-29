@@ -1,6 +1,6 @@
 [project]
 name = "geo-skeletons"
-version = "0.21.0"
+version = "0.21.1"
 description = "Easily extended way to build classes for structured and unstructured geophysical data."
 authors = [ { name = "Jan-Victor Björkqvist", email = "janvb@met.no" } ]
 dependencies = [ "numpy", "scipy", "xarray", "pandas", "utm", "geopy", "dask", "geo-parameters>=0.10.0" ]
