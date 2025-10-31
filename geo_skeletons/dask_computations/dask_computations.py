@@ -14,6 +14,14 @@ def reshape_me(
     else:
         return np.transpose(data, coord_order)
 
+def set_new_shape(
+    data: Union[np.ndarray, da.array], shape: tuple[int]
+) -> Union[np.ndarray, da.array]:
+    """Reshapes a dask or numpy array"""
+    if data_is_dask(data):
+        return da.reshape(data, shape)
+    else:
+        return np.reshape(data, shape)
 
 def expand_dims(
     data: Union[np.ndarray, da.array], axis=tuple[int]

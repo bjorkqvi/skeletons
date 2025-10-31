@@ -91,3 +91,13 @@ class ReshapeManager:
             return None
 
         return data
+
+    def fit_to_shape(self, data: Union[np.ndarray, da.array], wanted_shape: tuple[int]) -> Union[np.ndarray, da.array]:
+        if data is None:
+            return None
+
+        original_shape = data.shape
+        data = dask_computations.set_new_shape(data, shape=wanted_shape)
+
+        return data
+        
