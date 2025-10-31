@@ -13,6 +13,11 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
     if verbose:
         print(f"Using method '{method}'")
 
+    if drop_nan:
+        print(f'Cannot drop nans and keep data gridded. Redirecting interpolation to {scipy_regrid_point_data}')
+        new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
+        return new_data
+
     # Needs to use native here since it has to be regularly gridded
     x, y = data.lon(native=True), data.lat(native=True)
     if 'time' in data.core.coords():
@@ -50,10 +55,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
         print(f"Data ({data.core.x_str}={data.edges(data.core.x_str)}, {data.core.y_str}={data.edges(data.core.y_str)}) doesnt cover new grid ({data.core.x_str}=({min(xq):.4f}, {max(xq):.4f}, {data.core.y_str}=({min(yq):.4f}, {max(yq):.4f})). Redirecting interpolation to {scipy_regrid_point_data}")
         new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
         return new_data
-    elif drop_nan:
-        print(f'Cannot drop nans and keep data gridded. Redirecting interpolation to {scipy_regrid_point_data}')
-        new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
-        return new_data
+
     if verbose:
         if mask_nan is not None:
             print(f"Replacing nan values with {mask_nan}")
@@ -64,32 +66,30 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                 var = data.core.get(var_name)
                 var_coords = data.core.coords(var.coord_group)
                 if var_coords == spatial_coords:
-                    source_values = data.get(var_name)
-                    if mask_nan is not None:
-                        source_values = copy(source_values)
-                        mask = np.isnan(source_values)
-                        source_values[mask] = mask_nan
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding...")
-                    interpolator = RegularGridInterpolator((y, x), source_values, method=method)
-                    interpolated_values = interpolator(query_points)
-                    new_data.set(var_name, interpolated_values, fit_to_data=True)
+                    target_points = (y, x)
+                    qp = query_points
                 elif set(spatial_coords + ['time']) == set(var_coords) and 'time' in new_data.core.coords():
-                    source_values = data.get(var_name)
-                    if mask_nan is not None:
-                        source_values = copy(source_values)
-                        mask = np.isnan(source_values)
-                        source_values[mask] = mask_nan
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding over time...")
-                    interpolator = RegularGridInterpolator((t, y, x), source_values, method=method)
-                    interpolated_values = interpolator(query_points_time)
-                    new_data.set(var_name, interpolated_values, fit_to_data=True)
-                    
+                    target_points = (t, y, x)
+                    qp = query_points_time
                 else:
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Skipping!")
+                    continue
 
+                source_values = data.get(var_name)
+                if mask_nan is not None:
+                    source_values = copy(source_values)
+                    mask = np.isnan(source_values)
+                    source_values[mask] = mask_nan
+
+                interpolator = RegularGridInterpolator(target_points, source_values, method=method)
+                interpolated_values = interpolator(qp)
+                new_data.set(var_name, interpolated_values, fit_to_data=True)
+                
     return new_data
 
 
