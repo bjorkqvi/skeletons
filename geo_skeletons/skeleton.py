@@ -596,6 +596,7 @@ class Skeleton:
         dir_type: Optional[str] = None,
         allow_reshape: bool = True,
         allow_transpose: bool = False,
+        fit_to_data: bool = False, 
         coords: Optional[list[str]] = None,
         silent: bool = True,
         chunks: Optional[Union[tuple, str]] = None,
@@ -611,6 +612,7 @@ class Skeleton:
 
         allow_reshape [True]: Allow squeezing out trivial dimensions.
         allow_transpose [False]: Allow trying to transpose exactly two non-trivial dimensions
+        fit_to_data [False]: Reshape the data the dimensions of the variable
 
         Otherwise, data is assumed to be in the right dimension, but can also be reshaped:
 
@@ -672,6 +674,7 @@ class Skeleton:
             silent,
             allow_reshape,
             allow_transpose,
+            fit_to_data, 
         )
 
         if dir_type not in ["to", "from", "math", None]:
@@ -716,6 +719,7 @@ class Skeleton:
         silent: bool,
         allow_reshape: bool,
         allow_transpose: bool,
+        fit_to_data: bool, 
     ) -> np.ndarray:
         """Reshapes the data using the following logic:
 
@@ -763,9 +767,13 @@ class Skeleton:
             # If we are here then the data could not be set, but we are allowed to try to reshape
             if not silent:
                 print(f"Size of {name} does not match size of {type(self).__name__}...")
-
             # Save this for messages
             original_data_shape = data.shape
+
+            if fit_to_data:
+                data = reshape_manager.fit_to_shape(
+                    data, wanted_shape=self.size(coord_type)
+                )
 
             if allow_transpose:
                 data = reshape_manager.transpose_2d(
@@ -775,6 +783,9 @@ class Skeleton:
                 data = reshape_manager.unsqueeze(
                     data, expected_shape=self.size(coord_type)
                 )
+            
+
+            
             if data is None or (data.shape != self.shape(name)):
                 raise DataWrongDimensionError(
                     original_data_shape, self.shape(name)
