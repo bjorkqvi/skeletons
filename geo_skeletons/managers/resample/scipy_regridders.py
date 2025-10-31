@@ -22,7 +22,6 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
     spatial_coords = data.core.coords('spatial')
     
     if new_data.core.x_str == data.core.x_str and new_data.is_gridded(): # Go from gridded to gridded
-        query_gridded = True
         xq, yq = new_data.lon(native=True), new_data.lat(native=True)
         
         T, Y, X = np.meshgrid(t, yq, xq, indexing="ij")  # Use "ij" indexing for (t, y, x) order
@@ -31,7 +30,6 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
         Y, X = np.meshgrid(yq, xq, indexing="ij")  # Use "ij" indexing for (t, y, x) order
         query_points = np.column_stack([Y.ravel(), X.ravel()])   
     else: # We need to get the query points in the native coordinates of the original data, which will make is non-gridded
-        query_gridded = False
         if data.core.is_cartesian():
             xq, yq = new_data.xy()
         else:
@@ -75,13 +73,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                         print(f"'{var_name}' {var_coords}: Regridding...")
                     interpolator = RegularGridInterpolator((y, x), source_values, method=method)
                     interpolated_values = interpolator(query_points)
-                    if query_gridded:
-                        interpolated_values_grid = interpolated_values.reshape((len(yq), len(xq)))
-                    elif new_data.is_gridded():
-                        interpolated_values_grid = interpolated_values.reshape((new_data.ny(), new_data.nx()))
-                    else:
-                        interpolated_values_grid = interpolated_values.reshape((len(yq),1))
-                    new_data.set(var_name, interpolated_values_grid)
+                    new_data.set(var_name, interpolated_values, fit_to_data=True)
                 elif set(spatial_coords + ['time']) == set(var_coords) and 'time' in new_data.core.coords():
                     source_values = data.get(var_name)
                     if mask_nan is not None:
@@ -92,11 +84,8 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                         print(f"'{var_name}' {var_coords}: Regridding over time...")
                     interpolator = RegularGridInterpolator((t, y, x), source_values, method=method)
                     interpolated_values = interpolator(query_points_time)
-                    if query_gridded:
-                        interpolated_values_grid = interpolated_values.reshape((len(t), len(yq), len(xq)))
-                    elif new_data.is_gridded:
-                        interpolated_values_grid = interpolated_values.reshape((len(t), new_data.ny(), new_data.nx()))
-                    new_data.set(var_name, interpolated_values_grid)
+                    new_data.set(var_name, interpolated_values, fit_to_data=True)
+                    
                 else:
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Skipping!")
