@@ -65,12 +65,16 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
             if data.get(var_name, strict=True) is not None:
                 var = data.core.get(var_name)
                 var_coords = data.core.coords(var.coord_group)
+                squeezed_var_coords = data.coord_squeeze(data.core.coords(var.coord_group))
+                if set(var_coords) != set(squeezed_var_coords):
+                    if verbose:
+                        print(f"Ignoring coordinates {list(set(var_coords)-set(squeezed_var_coords))} with trivial dimensions...")
                 if var_coords == spatial_coords:
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding...")
                     target_points = (y, x)
                     qp = query_points
-                elif set(spatial_coords + ['time']) == set(var_coords) and 'time' in new_data.core.coords():
+                elif set(spatial_coords + ['time']) == set(squeezed_var_coords) and 'time' in new_data.core.coords():
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding over time...")
                     target_points = (t, y, x)
@@ -123,12 +127,16 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
             if data.get(var_name, strict=True) is not None:
                 var = data.core.get(var_name)
                 var_coords = data.core.coords(var.coord_group)
+                squeezed_var_coords = data.coord_squeeze(data.core.coords(var.coord_group))
+                if set(var_coords) != set(squeezed_var_coords):
+                    if verbose:
+                        print(f"Ignoring coordinates {list(set(var_coords)-set(squeezed_var_coords))} with trivial dimensions...")
                 if var_coords == spatial_coords:
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding...")
                     new_array = griddata(points, data.get(var_name).flatten(), (target_lon, target_lat), method=method)
                     new_data.set(var_name, new_array)
-                elif set(spatial_coords + ['time']) == set(var_coords) and 'time' in new_data.core.coords():
+                elif set(spatial_coords + ['time']) == set(squeezed_var_coords) and 'time' in new_data.core.coords():
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding over time.", end='')
                     new_array = np.empty(new_data.shape(var_name))
