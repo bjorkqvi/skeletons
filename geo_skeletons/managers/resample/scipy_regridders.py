@@ -51,7 +51,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
         new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
         return new_data
     elif drop_nan:
-        print('Cannot drop nans and keep data gridded. Redirecting interpolation to {scipy_regrid_point_data}')
+        print(f'Cannot drop nans and keep data gridded. Redirecting interpolation to {scipy_regrid_point_data}')
         new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
         return new_data
     if verbose:
