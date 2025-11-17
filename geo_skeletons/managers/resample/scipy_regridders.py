@@ -29,8 +29,9 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
     if new_data.core.x_str == data.core.x_str and new_data.is_gridded(): # Go from gridded to gridded
         xq, yq = new_data.lon(native=True), new_data.lat(native=True)
         
-        T, Y, X = np.meshgrid(t, yq, xq, indexing="ij")  # Use "ij" indexing for (t, y, x) order
-        query_points_time = np.column_stack([T.ravel(), Y.ravel(), X.ravel()])
+        if 'time' in data.core.coords():
+            T, Y, X = np.meshgrid(t, yq, xq, indexing="ij")  # Use "ij" indexing for (t, y, x) order
+            query_points_time = np.column_stack([T.ravel(), Y.ravel(), X.ravel()])
         
         Y, X = np.meshgrid(yq, xq, indexing="ij")  # Use "ij" indexing for (t, y, x) order
         query_points = np.column_stack([Y.ravel(), X.ravel()])   
@@ -42,11 +43,12 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
         
             query_points = np.column_stack((yq, xq))
 
-            t_repeated = np.repeat(t, len(xq)) 
-            xq_tiled = np.tile(xq, len(t))  
-            yq_tiled = np.tile(yq, len(t)) 
+            if 'time' in data.core.coords():
+                t_repeated = np.repeat(t, len(xq)) 
+                xq_tiled = np.tile(xq, len(t))  
+                yq_tiled = np.tile(yq, len(t)) 
 
-            query_points_time = np.column_stack((t_repeated, yq_tiled, xq_tiled))
+                query_points_time = np.column_stack((t_repeated, yq_tiled, xq_tiled))
             
             
     # Check that we are not out of bounds, since RegularGridInterpolator can't handle that
@@ -134,7 +136,21 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
                 if var_coords == spatial_coords:
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding...")
-                    new_array = griddata(points, data.get(var_name).flatten(), (target_lon, target_lat), method=method)
+                    source_values = data.get(var_name).flatten()
+                    if drop_nan:
+                        mask = np.logical_not(np.isnan(source_values))
+                        source_values = source_values[mask]
+                        
+                        points = all_points[mask]
+                    elif mask_nan is not None:
+                        mask = np.isnan(source_values)
+                        source_values[mask] = mask_nan
+                        points = all_points
+                    else:
+                        points = all_points
+                    
+                    
+                    new_array = griddata(points, source_values, (target_lon, target_lat), method=method)
                     new_data.set(var_name, new_array)
                 elif set(spatial_coords + ['time']) == set(squeezed_var_coords) and 'time' in new_data.core.coords():
                     if verbose:
