@@ -1,8 +1,6 @@
 from geo_skeletons.managers.proj_manager import ProjManager
 import numpy as np
 
-
-
 def test_ww3_4km():
     proj4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
     pm = ProjManager(metadata_manager=None, crs=proj4)
@@ -19,3 +17,29 @@ def test_ww3_4km():
     np.testing.assert_array_almost_equal(relon,rlon,decimal=5)
 
     np.testing.assert_array_almost_equal(relat,rlat, decimal=5)
+
+
+def test_meps():
+    crs_metadata = {
+    "grid_mapping_name": "lambert_conformal_conic",
+    "standard_parallel": [63.3, 63.3],
+    "longitude_of_central_meridian": 15.0,
+    "latitude_of_projection_origin": 63.3,
+    "earth_radius": 6371000.0,
+    }
+    pm = ProjManager(metadata_manager=None, crs=crs_metadata)
+
+    x = np.array([-1060084.  , -1057584.  , -1055084.  , -1052584.  , -1050084. , -1047584.06, -1045084.06, -1042584.06, -1040084.06, -1037584.06])
+    y = np.array([-1332517.9]*len(x))
+    lon = np.array([0.27828066, 0.31179626, 0.34532003, 0.37885195, 0.41239201,0.44593935, 0.47949564, 0.51306002, 0.54663247, 0.58021299])
+    lat = np.array([50.31961636, 50.32461057, 50.32959368, 50.33456568, 50.33952657,50.34447622, 50.34941488, 50.35434242, 50.35925882, 50.36416409])
+
+    plon, plat = pm._lonlat(x=x, y=y)
+    np.testing.assert_array_almost_equal(lon,plon,decimal=6)
+    np.testing.assert_array_almost_equal(lat,plat, decimal=6)
+
+    # Transform back
+    relon, relat = pm._xy(lon=plon, lat=plat)
+    np.testing.assert_array_almost_equal(relon,x,decimal=6)
+
+    np.testing.assert_array_almost_equal(relat,y, decimal=6)
