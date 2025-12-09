@@ -86,6 +86,45 @@ class GriddedSkeleton(Skeleton):
         """
         return INITIAL_VARS
 
+    def quicklook(self) -> None:
+        """Quicklook of the data"""
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as e:
+            print(f"Quicklook required matplotlib")
+            raise e
+
+        vars = []
+        for var in self.core.data_vars():
+            if self.get(var, strict=True) is not None:
+                vars.append(var)
+        cols = int(np.ceil(len(vars)**0.5))
+        rows = int(np.ceil(len(vars)/cols))
+
+        fig, ax = plt.subplots(rows, cols)
+ 
+        ax = np.atleast_2d(ax)
+        
+        r, c = 0, 0
+        for var in vars:
+            data = self.get(var)
+            if 'time' in self.core.coords():
+                data = data[0,:,:]
+            else:
+                data = data[:,:]
+
+            ax[r,c].contourf(self.x(native=True), self.y(native=True),data)
+            ax[r,c].set_xlabel(self.core.x_str)
+            ax[r,c].set_ylabel(self.core.y_str)
+            ax[r,c].set_title(var)
+            c += 1
+            if c > cols-1:
+                c = 0
+                r += 1
+
+
+        plt.show()
+
     def xgrid(
         self, native: bool = False, strict: bool = False, normalize: bool = False
     ) -> np.ndarray:
