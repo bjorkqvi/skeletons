@@ -26,9 +26,9 @@ class ProjManager:
     def __init__(
         self, metadata_manager: MetaDataManager, crs: Optional[Union[int, str]]=None,
     ):
-        self.set(crs)
+        
         self._meta: MetaDataManager = metadata_manager
-
+        self.set(crs)
 
     def epsg(self) -> Union[int, None]:
         return self._epsg
@@ -47,17 +47,23 @@ class ProjManager:
         if epsg is not None:
             if not silent:
                 print(f"Setting EPSG code {epsg}")
+            if self._meta is not None:
+                self._meta.append({'epsg':epsg})
         if proj4 is not None:
             if not silent:
                 print(f"Setting proj4 string {proj4}")
+            if self._meta is not None:
+                self._meta.append({'proj4':proj4})
         if cf_dict is not None:
             if not silent:
-                print(f"Setting projetcion from dict {cf_dict}")
-
+                print(f"Setting projection from dict {cf_dict}")
+            if self._meta is not None:
+                self._meta.append({'projection':cf_dict})
         self._epsg = epsg
         self._proj4 = proj4
         self._cf_dict = cf_dict
         
+
 
 
     def crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, None]:
