@@ -1,5 +1,8 @@
 from geo_skeletons.managers.proj_manager import ProjManager
+from geo_skeletons import PointSkeleton
 import numpy as np
+
+
 
 def test_ww3_4km():
     proj4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
@@ -43,3 +46,15 @@ def test_meps():
     np.testing.assert_array_almost_equal(relon,x,decimal=6)
 
     np.testing.assert_array_almost_equal(relat,y, decimal=6)
+
+
+def test_utm():
+    lon = np.array([6.1, 7.5, 10.9])
+
+    lat = np.array([56.5, 58.9,63.9])
+    points = PointSkeleton(lon=lon, lat=lat)
+    assert points.utm.zone() == (32,'V')
+    pm = ProjManager(metadata_manager=None, crs=32632)
+    x, y = pm._xy(lon=lon, lat=lat)
+    np.testing.assert_array_almost_equal(x, points.x(), decimal=2)
+    np.testing.assert_array_almost_equal(y, points.y(), decimal=2)
