@@ -15,6 +15,7 @@ from .decoders import (
 )
 from . import data_sanitizer as sanitize
 from .managers.utm_manager import UTMManager
+from .managers.proj_manager import ProjManager
 from typing import Iterable, Union, Optional
 from . import distance_funcs
 from .errors import (
@@ -65,11 +66,12 @@ class Skeleton:
         lat: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
         name: str = "LonelySkeleton",
         utm: Optional[tuple[int, str]] = None,
+        crs: Optional[Union[int, str, dict]] = None,
         chunks: Union[tuple[int], str] = None,
         **kwargs,
     ) -> None:
         self._init_structure(x, y, lon, lat, **kwargs)
-        self._init_managers(utm=utm, chunks=chunks)
+        self._init_managers(utm=utm, crs=crs, chunks=chunks)
         self._init_metadata(name=name)
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
@@ -108,7 +110,7 @@ class Skeleton:
 
         self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
-    def _init_managers(self, utm: tuple[str, int], chunks: tuple[int]) -> None:
+    def _init_managers(self, utm: tuple[str, int], crs: Union[int, str, dict], chunks: tuple[int]) -> None:
         """Initialized a DirTypeManager, UTMManager and DaskManager, and sets a UTM-zone"""
         if chunks is None:
             if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
@@ -121,6 +123,7 @@ class Skeleton:
             lon=self.edges("lon", strict=True),
             metadata_manager=self.meta,
         )
+        self.proj = ProjManager(crs=crs, metadata_manager=self.meta)
         self.utm.set(utm, silent=True)
         self.resample = ResampleManager(self)
 
