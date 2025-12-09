@@ -1,6 +1,5 @@
 from .metadata_manager import MetaDataManager
 import numpy as np
-import numpy as np
 import utm as utm_module
 from typing import Optional
 
