@@ -93,7 +93,7 @@ class ProjManager:
         """Calculates projected x and y coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
         # Make pyproj CRS object
         crs = self.crs(crs)
-        transformer = Transformer.from_crs(CRS.from_epsg(4326), crs)
+        transformer = Transformer.from_crs(CRS.from_epsg(4326), crs, always_xy=True)
         x, y = transformer.transform(lon, lat)
 
         return x,y

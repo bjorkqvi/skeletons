@@ -13,3 +13,9 @@ def test_ww3_4km():
     tlon, tlat = pm._lonlat(x=rlon, y=rlat)
     np.testing.assert_array_almost_equal(lon,tlon,decimal=5)
     np.testing.assert_array_almost_equal(lat,tlat, decimal=5)
+
+    # Transform back
+    relon, relat = pm._xy(lon=tlon, lat=tlat)
+    np.testing.assert_array_almost_equal(relon,rlon,decimal=5)
+
+    np.testing.assert_array_almost_equal(relat,rlat, decimal=5)
