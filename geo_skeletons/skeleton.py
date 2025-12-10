@@ -65,13 +65,12 @@ class Skeleton:
         lon: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
         lat: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
         name: str = "LonelySkeleton",
-        utm: Optional[tuple[int, str]] = None,
         crs: Optional[Union[int, str, dict]] = None,
         chunks: Union[tuple[int], str] = None,
         **kwargs,
     ) -> None:
         self._init_structure(x, y, lon, lat, **kwargs)
-        self._init_managers(utm=utm, crs=crs, chunks=chunks)
+        self._init_managers(crs=crs, chunks=chunks)
         self._init_metadata(name=name)
 
     def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
@@ -110,21 +109,16 @@ class Skeleton:
 
         self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
-    def _init_managers(self, utm: tuple[str, int], crs: Union[int, str, dict], chunks: tuple[int]) -> None:
+    def _init_managers(self, crs: Union[int, str, dict], chunks: tuple[int]) -> None:
         """Initialized a DirTypeManager, UTMManager and DaskManager, and sets a UTM-zone"""
         if chunks is None:
             if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
                 chunks = self._chunks
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
-
-        # self.utm = UTMManager(
-        #     lat=self.edges("lat", strict=True),
-        #     lon=self.edges("lon", strict=True),
-        #     metadata_manager=self.meta,
-        # )
         self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), metadata_manager=self.meta)
-        self.proj.set(crs, silent=True)
+        if crs is None and not self.core.is_cartesian():
+            self.proj.reset_utm()
         self.resample = ResampleManager(self)
 
     def _init_metadata(self, name: str) -> None:
@@ -1241,7 +1235,7 @@ class Skeleton:
         coord: str,
         native: bool = False,
         strict: bool = False,
-        utm: tuple[int, str] = None,
+        crs: Optional[Union[int, str, dict]] = None,
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
         if coord not in ["x", "y", "lon", "lat"]:
@@ -1249,9 +1243,9 @@ class Skeleton:
             return
 
         if coord in ["x", "y"]:
-            x, y = self.xy(native=native, strict=strict, utm=utm)
+            x, y = self.xy(native=native, strict=strict, crs=crs)
         else:
-            x, y = self.lonlat(native=native, strict=strict, utm=utm)
+            x, y = self.lonlat(native=native, strict=strict, crs=crs)
 
         if coord in ["x", "lon"]:
             val = x
