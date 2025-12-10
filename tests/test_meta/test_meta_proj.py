@@ -1,5 +1,5 @@
 from geo_skeletons import PointSkeleton
-
+import geo_parameters as gp
 def test_no_meta():
     points = PointSkeleton(x=0, y=0)
     assert points.meta.get('crs') == {}
@@ -57,3 +57,19 @@ def test_crs_with_ds_compile():
     assert 'crs_wkt' not in ds.crs.attrs
     ds = points.ds(compile=True)
     assert 'crs_wkt' in ds.crs.attrs
+
+def test_on_class():
+    cls = PointSkeleton.add_datavar(gp.wave.Hs)
+    points = cls(x=0, y=0)
+    points.set_hs(3)
+    points.proj.set(4326)
+    assert points.ds().hs.grid_mapping == 'crs'
+    assert points.ds().x.grid_mapping == 'crs'
+
+    points2 = cls(lon=0, lat=0)
+    points2.set_hs(3)
+    points2.proj.set(4325)
+
+    assert points2.ds().hs.grid_mapping == 'wgs84'
+    assert points2.ds().lon.grid_mapping == 'wgs84'
+    breakpoint()
