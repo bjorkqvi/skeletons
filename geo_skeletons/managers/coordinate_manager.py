@@ -5,7 +5,6 @@ from geo_skeletons.errors import VariableExistsError
 
 from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coordinate
 from typing import Union
-from geo_skeletons.errors import StaticSkeletonError
 
 from geo_skeletons.variable_archive import SPATIAL_COORDS
 

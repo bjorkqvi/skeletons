@@ -9,3 +9,4 @@ class DataVar:
     coord_group: str
     default_value: float
     dir_type: str = None
+    grid_mapping: str = None
