@@ -6,6 +6,7 @@ import pytest
 
 def test_nx_ny_cartesian():
     grid = GriddedSkeleton(x=(-2, 2), y=(-3, 3))
+
     grid.set_spacing(nx=5, ny=7)
     assert grid.nx() == 5
     assert grid.ny() == 7
@@ -13,16 +14,14 @@ def test_nx_ny_cartesian():
     np.testing.assert_array_almost_equal(grid.x(), np.array([-2, -1, 0, 1, 2]))
     np.testing.assert_array_almost_equal(grid.y(), np.array([-3, -2, -1, 0, 1, 2, 3]))
 
-
 def test_nx_ny_spherical():
-    grid = GriddedSkeleton(lon=(-2, 2), lat=(0, 3))
+    grid = GriddedSkeleton(lon=(-2, 2), lat=(60, 63))
     grid.set_spacing(nx=5, ny=4)
     assert grid.nx() == 5
     assert grid.ny() == 4
     assert grid.size() == (4, 5)
     np.testing.assert_array_almost_equal(grid.lon(), np.array([-2, -1, 0, 1, 2]))
     np.testing.assert_array_almost_equal(grid.lat(), np.array([0, 1, 2, 3]))
-
 
 def test_dx_dy_cartesian():
     grid = GriddedSkeleton(x=(-1, 1), y=(-3, 3))
@@ -71,7 +70,7 @@ def test_dx_dy_spherical():
 
 def test_dlon_dlat_cartesian():
     grid = GriddedSkeleton(x=(0, 150_000), y=(6_700_000, 6_800_000))
-    grid.utm.set((33, "W"))
+    grid.proj.set((33, "W"))
     grid.set_spacing(dlon=0.02, dlat=0.01)
     np.testing.assert_array_almost_equal(grid.dlat(), 0.01, decimal=2)
     np.testing.assert_array_almost_equal(grid.dlon(), 0.02, decimal=2)
@@ -97,7 +96,7 @@ def test_dlon_dlat_spherical_floating():
 
 def test_dlon_dlat_cartesian_floating():
     grid = GriddedSkeleton(x=(-1, 0.999), y=(-3, 2.999))
-    grid.utm.set((33, "W"))
+    grid.proj.set((33, "W"))
     with pytest.raises(ValueError):
         grid.set_spacing(dlon=0.5, dlat=1.5, floating_edge=True)
 
@@ -136,15 +135,18 @@ def test_dnmi_spherical():
 
 def test_dnmi_cartesian():
     grid = GriddedSkeleton(x=(0, 150_000), y=(6_700_000, 6_800_000))
-    grid.utm.set((33, "W"))
+    grid.proj.set((33, "W"))
     grid.set_spacing(dnmi=0.5)
     np.testing.assert_array_almost_equal(grid.dy() / 1000, 1.85 / 2, decimal=2)
     np.testing.assert_array_almost_equal(grid.dx() / 1000, 1.85 / 2, decimal=2)
     assert grid.nx() == 150_000 / grid.dx() + 1
     assert grid.ny() == 100_000 / grid.dy() + 1
-    dx = lon_in_km(np.median(grid.lat()))
-    dy = lat_in_km(np.median(grid.lat()))
-    np.testing.assert_array_almost_equal(grid.dlat(), 1 / 120, decimal=3)
+
+    __,  lat = grid.lonlat()
+    dx = lon_in_km(np.median(lat))
+    dy = lat_in_km(np.median(lat))
+
+    np.testing.assert_array_almost_equal(grid.dlat(), 1 / 120, decimal=4)
     np.testing.assert_array_almost_equal(grid.dlon(), grid.dlat() * dy / dx, decimal=3)
 
 
