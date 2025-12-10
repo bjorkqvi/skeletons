@@ -21,7 +21,7 @@ INITIAL_CARTESIAN_COORDS = [y_var, x_var]
 INITIAL_SPERICAL_COORDS = [lat_var, lon_var]
 
 INITIAL_VARS = []
-
+from .distance_funcs import distance_2points
 
 class GriddedSkeleton(Skeleton):
     """Gives a gridded structure to the Skeleton.
@@ -557,6 +557,97 @@ class GriddedSkeleton(Skeleton):
         old_metadata = self.meta._metadata
         self._init_structure(x, y, lon, lat)
         self.meta.set_by_dict(old_metadata)
+
+    def dy(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+        if not self.core.is_cartesian() and strict and (not native):
+            return None
+
+        if self.ny() == 1:
+            return 0.0
+
+        
+        if self.core.is_cartesian():
+            y = self.edges('y')
+            return float((y[1]-y[0])/(self.ny()-1))
+        else:
+            if native:
+                return self.dlat()
+            lon = self.edges('lon')
+            lat = self.edges('lat')
+            lon = (lon[1]-lon[0])/2
+            d = distance_2points(lat[0], lon, lat[1], lon) 
+            return float(d/(self.ny()-1))
+
+
+    def dx(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the x vector. Conversion made for spherical grids."""
+        if not self.core.is_cartesian() and strict and (not native):
+            return None
+
+        if self.nx() == 1:
+            return 0.0
+
+        
+        if self.core.is_cartesian():
+            x = self.edges('x')
+            return float((x[1]-x[0])/(self.nx()-1))
+        else:
+            if native:
+                return self.dlon()
+            lon = self.edges('lon')
+            lat = self.edges('lat')
+            lat = (lat[1]+lat[0])/2
+            d = distance_2points(lat, lon[0], lat, lon[1]) 
+            return float(d/(self.nx()-1))
+
+    def dlat(self, native: bool = False, strict: bool = False):
+        """Mean grid spacing of the latitude vector. Conversion made for
+        cartesian grids."""
+        if self.core.is_cartesian() and strict and (not native):
+            return None
+        
+        if self.ny() == 1:
+            return 0.0
+        
+        if not self.core.is_cartesian():
+            lat = self.edges('lat')
+            return float((lat[1]-lat[0])/(self.ny()-1))
+        else:
+            if native:
+                return self.dy()
+            y = self.edges('y')
+            d = abs(y[1]-y[0])
+            dy = d/(self.ny()-1)
+            one_lat = distance_2points(0, 0, 1, 0) # One latitude degree in metres
+            return float(dy/one_lat)
+
+    def dlon(self, native: bool = False, strict: bool = False):
+        """Mean grid spacing of the latitude vector. Conversion made for
+        cartesian grids."""
+        if self.core.is_cartesian() and strict and (not native):
+            return None
+        
+        if self.nx() == 1:
+            return 0.0
+        
+        if not self.core.is_cartesian():
+            lon = self.edges('lon')
+            return float((lon[1]-lon[0])/(self.nx()-1))
+        else:
+            if native:
+                return self.dx()
+            x = self.edges('x')
+            y = self.edges('y')
+            d = abs(x[1]-x[0])
+            dx = d/(self.nx()-1)
+            points = PointSkeleton(x=x, y=y, crs=self.proj.crs())
+            lon, lat = points.lonlat()
+            if lon is None:
+                return None
+            lat = (max(lat) + min(lat))/2
+            one_lon = distance_2points(lat, lon[0], lat, lon[0]+1) # One latitude degree in metres
+            return float(dx/one_lon)
 
     def _check_mask_right_shape(
         self, mask: np.ndarray, coord: str, **kwargs

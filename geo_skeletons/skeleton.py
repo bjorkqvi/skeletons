@@ -1284,11 +1284,11 @@ class Skeleton:
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
-        return len(self.x(native=True, suppress_warning=True))
+        return len(self.x(native=True))
 
     def ny(self) -> int:
         """Length of y/lat-vector."""
-        return len(self.y(native=True, suppress_warning=True))
+        return len(self.y(native=True))
 
     def dx(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the x vector. Conversion made for spherical grids."""
@@ -1448,16 +1448,16 @@ class Skeleton:
     ) -> tuple[np.ndarray, np.ndarray]:
         """Finds the indeces of nearest points and distances if lon,lat coordinates are provided"""
         if self.core.is_cartesian():
-            utm_to_use = self.utm.zone()
+            crs_to_use = self.proj.crs()
         else:
-            utm_to_use = self.utm.optimal_utm(lon=lon, lat=lat)
+            crs_to_use = self.proj._optimal_utm(lon=lon, lat=lat)
 
-        if utm_to_use[0] is not None:
-            x = self.utm._x(lon=lon, lat=lat, utm=utm_to_use)
-            y = self.utm._y(lon=lon, lat=lat, utm=utm_to_use)
+        if crs_to_use is not None:
+            x = self.proj._x(lon=lon, lat=lat, crs=crs_to_use)
+            y = self.proj._y(lon=lon, lat=lat, crs=crs_to_use)
         else:
             x, y = None, None
-        inds, dx = self._yank_inds(x, y, lon, lat, utm_to_use, fast, npoints)
+        inds, dx = self._yank_inds(x, y, lon, lat, crs_to_use, fast, npoints)
         return inds, dx
 
     def _yank_inds(
@@ -1466,14 +1466,14 @@ class Skeleton:
         y: np.ndarray,
         lon: np.ndarray,
         lat: np.ndarray,
-        utm_to_use: tuple[int, str],
+        crs_to_use: tuple[int, str],
         fast: bool,
         npoints: int,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Applies a cartesian or spherical search on given coordinates, finding nearest points and returning indeces and distances."""
         inds = []
         dx = []
-        xlist, ylist = self.xy(utm=utm_to_use)
+        xlist, ylist = self.xy(crs=crs_to_use)
         lonlist, latlist = self.lonlat()
 
         if (
