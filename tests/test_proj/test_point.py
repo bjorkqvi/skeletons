@@ -102,3 +102,7 @@ def test_utm_lonlat_cartesian():
     lo, la = p26.lonlat(crs=(26,'U'))
     np.testing.assert_array_almost_equal(lon, lo)
     np.testing.assert_array_almost_equal(lat, la)
+    p26.proj.set((26,'U'))
+    x,y = p26.xy(crs=(26,'U'))
+    np.testing.assert_array_almost_equal(x,x26, decimal=1)
+    np.testing.assert_array_almost_equal(y,y26, decimal=1)
