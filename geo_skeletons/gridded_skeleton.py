@@ -431,6 +431,10 @@ class GriddedSkeleton(Skeleton):
 
         if not self.core.is_cartesian():
             return x[mask], y[mask]
+        
+        if self.core.is_cartesian() and native:
+            return x[mask], y[mask]
+            
 
         points = PointSkeleton(x=x, y=y)
         if self.proj.crs() is None:
