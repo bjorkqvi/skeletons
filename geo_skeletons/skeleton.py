@@ -1196,6 +1196,7 @@ class Skeleton:
         ds = self._ds_manager.ds()
         if compile:
             ds = deepcopy(ds)
+            ds['crs'].attrs = self.proj.crs().to_cf()
             for mag in self.core.magnitudes():
                 ds[mag] = self.get(mag, data_array=True)
             for dirs in self.core.directions():
