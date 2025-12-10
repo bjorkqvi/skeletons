@@ -146,6 +146,7 @@ class ProjManager:
             raise ValueError(f"{crs} is not a valid coordinate reference system!")
         self._crs = crs
         
+
     def to_crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
         """Return a pyproj CRS object for the given crs that can be either EPSG code (int), proj4 string (str) or dict"""
         epsg, proj4, cf_dict, utm, crs = decode_crs(crs)
