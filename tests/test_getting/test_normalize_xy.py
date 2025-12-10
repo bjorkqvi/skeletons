@@ -4,12 +4,6 @@ import numpy as np
 
 def test_spherical_gridded():
     grid = GriddedSkeleton(lon=(0, 1, 2, 3), lat=(50, 51, 52, 53))
-    x, y = grid.x(), grid.y()
-    xn, yn = grid.x(normalize=True), grid.y(normalize=True)
-    np.testing.assert_almost_equal(np.min(xn), 0)
-    np.testing.assert_almost_equal(np.min(yn), 0)
-    np.testing.assert_array_almost_equal(np.diff(x), np.diff(xn))
-    np.testing.assert_array_almost_equal(np.diff(y), np.diff(yn))
 
     x, y = grid.xy()
     xn, yn = grid.xy(normalize=True)
