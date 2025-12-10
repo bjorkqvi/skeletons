@@ -433,7 +433,8 @@ class GriddedSkeleton(Skeleton):
             return x[mask], y[mask]
 
         points = PointSkeleton(x=x, y=y)
-        
+        if self.proj.crs() is None:
+            return None, None
         points.proj.set(self.proj.crs(), silent=True)
         return points.lonlat(mask=mask, native=native, crs = crs or self.proj.crs())
     
