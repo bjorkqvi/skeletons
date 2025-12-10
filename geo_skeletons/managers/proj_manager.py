@@ -2,31 +2,64 @@ from .metadata_manager import MetaDataManager
 from typing import Optional, Union
 from pyproj import CRS, Transformer
 import numpy as np
+import utm as utm_module
+VALID_UTM_ZONES = [
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+]
+
+VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
 
 
 def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
     """Decodes the give crs hat can be either EPSG code (int) or roj4 string (str) to an EPSG code and proj4 string (and None)"""
     if crs is None:
-        return None, None, None
+        return None, None, None, None
+    
     if isinstance(crs, dict):
-        return None, None, crs
+        return None, None, crs, None
     
     if isinstance(crs, int):
-        return crs, None, None
-    
+        return crs, None, None, None
+
+    # UTM zone
+    if isinstance(crs, tuple):
+        return None, None, None, crs
+
     if not isinstance(crs, str):
-        raise ValueError(f"crs needs to be of type 'int' or 'str', not {crs}!")
+        raise ValueError(f"crs needs to be of type 'int' or 'str' or tuple[int, str], not {crs}!")
 
     if crs[0:4] == 'EPSG':
-        return int(crs[5:]), None, None
+        return int(crs[5:]), None, None, None
     
-    return None, crs, None
+
+    
+    return None, crs, None, None
 
 class ProjManager:
     def __init__(
-        self, metadata_manager: MetaDataManager, crs: Optional[Union[int, str]]=None,
+        self,  lat: tuple[float], lon: tuple[float], metadata_manager: MetaDataManager, crs: Optional[Union[int, str]]=None,
     ):
-        
+        self._lat_edges: float = lat
+        self._lon_edges: float = lon        
         self._meta: MetaDataManager = metadata_manager
         self.set(crs)
 
@@ -36,50 +69,107 @@ class ProjManager:
     def proj4(self) -> Union[str, None]:
         return self._proj4
     
-    
     def cf_dict(self) -> Union[str, None]:
         return self._cf_dict
-    
+
+    def utm(self) -> tuple[int, str]:
+        return self._utm
+
+    def _is_valid_utm(self, utm: tuple[int, str]) -> bool:
+        """Checks that the given utm zone is valid"""
+        if len(utm) != 2:
+            return False
+        if not utm[0] in VALID_UTM_NUMBERS:
+            return False
+        if not utm[1] in VALID_UTM_ZONES:
+            return False
+        return True
+
+    def _optimal_utm(self, lon: np.ndarray, lat: np.ndarray) -> tuple[int, str]:
+        """Determines an optimat UTM-zone given longitude and latitude coordinates."""
+        lat = np.array(lat)
+        lon = np.array(lon)
+
+        mask = np.logical_and(lat <= 84, lat >= -80)
+        if np.logical_not(np.all(mask)):
+            return (None, None)
+
+        lat = lat[mask]
+        lon = lon[mask]
+        try:
+            __, __, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
+        except ValueError:  # ValueError: latitudes must all have the same sign
+            __, __, zone_number, zone_letter = utm_module.from_latlon(
+                np.median(lat), np.median(lon)
+            )
+        return (zone_number, zone_letter)
+
+    def reset_utm(self, silent: bool = False) -> None:
+        """Resets the UTM-zone based on the lon/lat edges"""
+
+        if self._lat_edges[0] is None:
+            self._utm = (None, None)
+        else:
+            lon = self._lon_edges
+            lat = np.minimum(np.maximum(self._lat_edges, -80), 84)
+            # *** utm.error.OutOfRangeError: latitude out of range (must be between 80 deg S and 84 deg N)
+            # raise OutOfRangeError('longitude out of range (must be between 180 deg W and 180 deg E)')
+            self._utm = self._optimal_utm(lon=lon, lat=lat)
+        if not silent:
+            print(f"Setting UTM {self._utm}")
+
     def set(self, crs: Union[int, str], silent: bool = False) -> None:
         """Sets the CRS (Coordinate reference system) based on eithern an EPSG code [int] or a proj4 string [str]. A string 'EPSG:4326' will be docoded to 4326."""
-        epsg, proj4, cf_dict = decode_crs(crs)
+        epsg, proj4, cf_dict, utm = decode_crs(crs)
         
         if epsg is not None:
             if not silent:
                 print(f"Setting EPSG code {epsg}")
             if self._meta is not None:
                 self._meta.append({'epsg':epsg})
-        if proj4 is not None:
+        elif proj4 is not None:
             if not silent:
                 print(f"Setting proj4 string {proj4}")
             if self._meta is not None:
                 self._meta.append({'proj4':proj4})
-        if cf_dict is not None:
+        elif cf_dict is not None:
             if not silent:
                 print(f"Setting projection from dict {cf_dict}")
             if self._meta is not None:
                 self._meta.append({'projection':cf_dict})
+        elif utm is not None:
+            if not silent:
+                print(f"Setting UTM {utm}")
+            if self._meta is not None:
+                self._meta.append({"utm_zone": f"{utm[0]:02.0f}{utm[1]}"})
+        else:
+            self.reset_utm()
+            utm = self._utm
         self._epsg = epsg
         self._proj4 = proj4
         self._cf_dict = cf_dict
+        self._utm = utm
         
-
-
-
     def crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, None]:
         """Return a pyproj CRS object for the set crs, or the given crs that can be either EPSG code (int), proj4 string (str) or dict"""
-        epsg, proj4, cf_dict = decode_crs(crs)
+        if isinstance(crs, CRS):
+            return crs
+        
+        epsg, proj4, cf_dict, utm = decode_crs(crs)
 
         epsg = epsg or self._epsg
         proj4 = proj4 or self._proj4
         cf_dict = cf_dict or self._cf_dict
+        utm = utm or self._utm
         
         if epsg is not None:
             return CRS.from_epsg(epsg)
         elif proj4 is not None:
             return CRS.from_proj4(proj4)
         elif cf_dict is not None:
-            return CRS.from_cf(cf_dict)
+            return CRS.from_cf(cf_dict) 
+        elif utm != (None, None):
+            return utm
         else:
             return None
         
@@ -98,12 +188,18 @@ class ProjManager:
 
     def _lon(self, x: np.ndarray, y: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates lon coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
-        lon, __ = self._lonlat(x=x, y=y, crs=crs)
+        if self._utm is not None:
+            lon = self._utm_lon(x=x, y=y, utm=crs)
+        else:
+            lon, __ = self._lonlat(x=x, y=y, crs=crs)
         return lon
     
     def _lat(self, x: np.ndarray, y: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
-        __, lat = self._lonlat(x=x, y=y, crs=crs)
+        if self._utm is not None:
+            lat = self._utm_lat(x=x, y=y, utm=crs)
+        else:
+            __, lat = self._lonlat(x=x, y=y, crs=crs)
         return lat
     
 
@@ -118,10 +214,122 @@ class ProjManager:
 
     def _x(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates projected x coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
-        x, __ = self._lonlat(lon=lon, lat=lat, crs=crs)
+        if self._utm is not None:
+            x = self._utm_x(lon=lon, lat=lat, utm=crs)
+        else:
+            x, __ = self._xy(lon=lon, lat=lat, crs=crs)
         return x
     
-    def _lat(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
+    def _y(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates projected y coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
-        __, y = self._lonlat(lon=lon, lat=lat, crs=crs)
+        if self._utm is not None:
+            y = self._utm_y(lon=lon, lat=lat, utm=crs)
+        else:
+            __, y = self._xy(lon=lon, lat=lat, crs=crs)
         return y
+    
+
+    def _utm_lat(self, x: np.ndarray, y: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        """Calculates latitudes based on given x,y-coordinates and the set UTM-zone"""
+        if self._utm[0] is None:
+            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get latitudes!")
+            return None
+        utm = utm or self._utm
+        if not self._is_valid_utm(self._utm):
+            raise ValueError(f"{self._utm} is not a valid UTM zone!")
+        lat, __ = utm_module.to_latlon(
+            x,
+            np.mod(y, 10_000_000),
+            zone_number=utm[0],
+            zone_letter=utm[1],
+            strict=False,
+        )
+        return lat
+
+    def _utm_lon(self, x: np.ndarray, y: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        """Calculates longitudes based on given x,y-coordinates and the set UTM-zone"""
+        if self._utm[0] is None:
+            print("Need to set an UTM-zone, e.g. set_utm((33,'W')), to get longitudes!")
+            return None
+        utm = utm or self._utm
+        if not self._is_valid_utm(self._utm):
+            raise ValueError(f"{self._utm} is not a valid UTM zone!")
+
+        __, lon = utm_module.to_latlon(
+            x,
+            np.mod(y, 10_000_000),
+            zone_number=utm[0],
+            zone_letter=utm[1],
+            strict=False,
+        )
+        return lon
+
+    def _utm_x(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone.
+
+        latitudes higher than 84 or lower than -80 will produce np.nan"""
+        assert len(lon) == len(
+            lat
+        ), f"lon and lat vectors need to be of equal length ({len(lon)}, {len(lat)})!"
+        utm = utm or self._utm
+        # lat = cap_lat_for_utm(lat)
+        # High/low latitudes cannot be transformed to UTM
+        good_mask = np.logical_and(lat <= 84, lat >= -80)
+        posmask = np.logical_and(lat >= 0, good_mask)
+        negmask = np.logical_and(lat < 0, good_mask)
+        x = np.zeros(len(lon))
+        if np.any(posmask):
+            x[posmask], __, __, __ = utm_module.from_latlon(
+                lat[posmask],
+                lon[posmask],
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+        if np.any(negmask):
+            x[negmask], __, __, __ = utm_module.from_latlon(
+                -lat[negmask],
+                lon[negmask],
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+        if not np.all(good_mask):
+            x[np.logical_not(good_mask)] = np.nan
+        return x
+
+    def _utm_y(self, lon: np.ndarray, lat: np.ndarray, utm: tuple[int, str]) -> np.ndarray:
+        """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone.
+
+        latitudes higher than 84 or lower than -80 will produce np.nan"""
+
+        assert len(lon) == len(
+            lat
+        ), f"lon and lat vectors need to be of equal length ({len(lon)}, {len(lat)})!"
+        utm = utm or self._utm
+        # lat = cap_lat_for_utm(lat)
+        # High/low latitudes cannot be transformed to UTM
+        good_mask = np.logical_and(lat <= 84, lat >= -80)
+        lon = np.atleast_1d(lon)
+        posmask = np.logical_and(lat >= 0, good_mask)
+        negmask = np.logical_and(lat < 0, good_mask)
+        y = np.zeros(len(lat))
+
+        if np.any(posmask):
+            _, y[posmask], __, __ = utm_module.from_latlon(
+                lat[posmask],
+                lon[posmask],
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+        if np.any(negmask):
+            _, y[negmask], __, __ = utm_module.from_latlon(
+                -lat[negmask],
+                lon[negmask],
+                force_zone_number=utm[0],
+                force_zone_letter=utm[1],
+            )
+            y[negmask] = -y[negmask]
+        if not np.all(good_mask):
+            y[np.logical_not(good_mask)] = np.nan
+
+        return y
+

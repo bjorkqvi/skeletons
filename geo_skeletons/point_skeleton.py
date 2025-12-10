@@ -7,7 +7,7 @@ from .managers.metadata_manager import MetaDataManager
 from .managers.dask_manager import DaskManager
 from .variables import DataVar, Coordinate
 import geo_parameters as gp
-from typing import Optional
+from typing import Optional, Union
 from .dask_computations import undask_me
 
 inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
@@ -144,6 +144,7 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         utm: Optional[tuple[int, str]] = None,
+        crs: Optional[Union[int, str, dict]] = None,
         mask: Optional[np.ndarray] = None,
         normalize: bool = False,
         **kwargs,
@@ -169,14 +170,19 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and strict:
             return None
 
-        if self.core.is_cartesian() and (self.utm.zone() == utm or utm is None):
+
+        crs = crs or self.proj.crs()
+
+        if self.core.is_cartesian() and (self.proj.crs() == crs ):
             x = self._ds_manager.get("x", **kwargs).values.copy()[mask]
         else:
-            x = self.utm._x(
+            x = self.proj._x(
                 lon=self.lon(mask=mask, **kwargs),
                 lat=self.lat(mask=mask, **kwargs),
-                utm=utm,
+                crs=crs,
             )
+    
+
 
         if normalize:
             x = x - min(x)
@@ -188,7 +194,7 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        utm: Optional[tuple[int, str]] = None,
+        crs: Optional[Union[int, str, dict]] = None,
         normalize: bool = False,
         **kwargs,
     ) -> np.ndarray:
@@ -213,16 +219,18 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and strict:
             return None
 
-        utm = utm or self.utm.zone()
+        crs = crs or self.proj.crs()
 
-        if self.core.is_cartesian() and (self.utm.zone() == utm):
+
+        if self.core.is_cartesian() and (self.proj.crs() == crs):
             y = self._ds_manager.get("y", **kwargs).values.copy()[mask]
         else:
-            y = self.utm._y(
+            y = self.proj._y(
                 lon=self.lon(mask=mask, **kwargs),
                 lat=self.lat(mask=mask, **kwargs),
-                utm=utm,
+                crs=crs,
             )
+
 
         if normalize:
             y = y - min(y)
@@ -234,7 +242,7 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict=False,
         mask: Optional[np.ndarray] = None,
-        utm: Optional[tuple[int, str]] = None,
+        crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> np.ndarray:
         """Returns the spherical lon-coordinate. 'None' for cartesian grids that have no UTM-zone.
@@ -252,7 +260,7 @@ class PointSkeleton(Skeleton):
             return None
 
         if self.core.is_cartesian() and native:
-            return self.x(mask=mask, utm=utm, **kwargs)
+            return self.x(mask=mask, crs=crs, **kwargs)
 
         if self.core.is_cartesian() and strict:
             return None
@@ -260,18 +268,19 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lon", **kwargs).values.copy()[mask]
 
-        return self.utm._lon(
-            x=self.x(mask=mask, utm=utm, **kwargs),
-            y=self.y(mask=mask, utm=utm, **kwargs),
-            utm=utm,
+        return self.proj._lon(
+            x=self.x(mask=mask, crs=crs, **kwargs),
+            y=self.y(mask=mask, crs=crs, **kwargs),
+            crs=crs,
         )
+
 
     def lat(
         self,
         native: bool = False,
         strict=False,
         mask: Optional[np.ndarray] = None,
-        utm: Optional[tuple[int, str]] = None,
+        crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> np.ndarray:
         """Returns the spherical lat-coordinate. 'None' for cartesian grids that have no UTM-zone.
@@ -289,7 +298,7 @@ class PointSkeleton(Skeleton):
             return None
 
         if self.core.is_cartesian() and native:
-            return self.y(mask=mask, utm=utm, **kwargs)
+            return self.y(mask=mask, crs=crs, **kwargs)
 
         if self.core.is_cartesian() and strict:
             return None
@@ -297,20 +306,21 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lat", **kwargs).values.copy()[mask]
 
-        return self.utm._lat(
-            x=self.x(mask=mask, utm=utm, **kwargs),
-            y=self.y(mask=mask, utm=utm, **kwargs),
-            utm=utm,
+        return self.proj._lat(
+            x=self.x(mask=mask, crs=crs, **kwargs),
+            y=self.y(mask=mask, crs=crs, **kwargs),
+            crs=crs,
         )
+
 
     def xy(
         self,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        utm: Optional[tuple[int, str]] = None,
+        crs: Optional[Union[int, str, dict]] = None,
         normalize: bool = False,
         **kwargs,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:           
         """Returns a tuple of UTM x- and y-coordinates of all points.
 
         strict = True gives '(None, None)' if Skeleton is spherical
@@ -326,8 +336,8 @@ class PointSkeleton(Skeleton):
 
         # Transforms x-y to lon-lat if necessary
         x, y = self.x(
-            strict=strict, normalize=normalize, utm=utm, mask=mask, **kwargs
-        ), self.y(strict=strict, normalize=normalize, utm=utm, mask=mask, **kwargs)
+            strict=strict, normalize=normalize, crs=crs, mask=mask, **kwargs
+        ), self.y(strict=strict, normalize=normalize, crs=crs, mask=mask, **kwargs)
 
         if x is None:
             return None, None
@@ -339,7 +349,7 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        utm: Optional[tuple[int, str]] = None,
+        crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of longitude and latitude of all points.
@@ -354,8 +364,8 @@ class PointSkeleton(Skeleton):
         mask = self._check_mask_right_shape(mask)
 
         lon, lat = self.lon(
-            native=native, strict=strict, mask=mask, utm=utm, **kwargs
-        ), self.lat(native=native, strict=strict, mask=mask, utm=utm, **kwargs)
+            native=native, strict=strict, mask=mask, crs=crs ,**kwargs
+        ), self.lat(native=native, strict=strict, mask=mask,  crs=crs, **kwargs)
 
         if lon is None:
             return None, None
