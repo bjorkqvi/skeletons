@@ -118,13 +118,13 @@ class Skeleton:
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
 
-        self.utm = UTMManager(
-            lat=self.edges("lat", strict=True),
-            lon=self.edges("lon", strict=True),
-            metadata_manager=self.meta,
-        )
-        self.proj = ProjManager(crs=crs, metadata_manager=self.meta)
-        self.utm.set(utm, silent=True)
+        # self.utm = UTMManager(
+        #     lat=self.edges("lat", strict=True),
+        #     lon=self.edges("lon", strict=True),
+        #     metadata_manager=self.meta,
+        # )
+        self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), metadata_manager=self.meta)
+        self.proj.set(crs, silent=True)
         self.resample = ResampleManager(self)
 
     def _init_metadata(self, name: str) -> None:
