@@ -91,7 +91,7 @@ def test_magdir(wind_magdir):
     addable_ds_vars = _find_not_existing_vars(
         ds_vars_to_gp, PointSkeleton.core, core_vars_to_ds_vars={}
     )
-
+    
     assert set(addable_ds_vars) == {"u", "ud", "swh", "tp", "dummy"}
 
     xy_variables = _find_xy_variables_present_in_ds(addable_ds_vars, ds_vars_to_gp)

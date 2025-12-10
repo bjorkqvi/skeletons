@@ -126,9 +126,11 @@ class Skeleton:
             metavar = self.core.get(coord_name).meta
             if metavar is not None:
                 self.meta.append(metavar.meta_dict(), coord_name)
-            crs_str = self.core.get(coord_name).grid_mapping
-            if crs_str is not None:
-                self.meta.append({'grid_mapping': crs_str}, coord_name)
+            if self.core.get(coord_name).coord_group in ['all', 'spatial', 'grid'] and coord_name not in ['inds', 'time']:
+                if self.core.is_cartesian():
+                    self.meta.append({'grid_mapping': 'crs'}, coord_name)
+                else:
+                    self.meta.append({'grid_mapping': 'wgs84'}, coord_name)
 
         self.meta.append({"name":name})
         self.meta.set({'epsg': 4326}, 'wgs84')
