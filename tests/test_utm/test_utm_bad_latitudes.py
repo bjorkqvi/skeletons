@@ -35,8 +35,8 @@ def test_point_low_lat():
 def test_gridded_high_lat():
     points = GriddedSkeleton(lon=(0, 1, 2, 3), lat=(80, 82, 84, 85))
     x, y = points.x(), points.y()
-    assert not np.any(np.isnan(x))
-    assert np.isnan(y[-1])
+    assert x is None
+    assert y is None
 
     x, y = points.xy()
     assert np.all(np.isnan(x[-4:]))
@@ -50,8 +50,8 @@ def test_gridded_high_lat():
 def test_gridded_low_lat():
     points = GriddedSkeleton(lon=(0, 1, 2, 3), lat=(-81, 80, 82, 84))
     x, y = points.x(), points.y()
-    assert not np.any(np.isnan(x))
-    assert np.isnan(y[0])
+    assert x is None
+    assert y is None
 
     x, y = points.xy()
     assert np.all(np.isnan(x[0:4]))

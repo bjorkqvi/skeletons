@@ -11,7 +11,9 @@ def test_utm_conversion():
     grid = GriddedSkeleton(
         lon=lon, lat=lat
     )  # Discards "middle" points, so this is equal to lon=(3,5) etc.
+    
     grid.set_spacing(nx=3, ny=3)
+
     assert grid.nx() == 3
     assert grid.ny() == 3
     assert grid.size() == (3, 3)
@@ -34,18 +36,14 @@ def test_utm_conversion():
     grid.proj.set((zone, letter))
     assert grid.proj.crs() == (zone, letter)
 
-    x_rot, __, __, __ = utm.from_latlon(
-        np.median(lat), lon, force_zone_number=zone, force_zone_letter=letter
-    )
-    __, y_rot, __, __ = utm.from_latlon(
-        lat, np.median(lon), force_zone_number=zone, force_zone_letter=letter
-    )
+    
     x_vec, y_vec, __, __ = utm.from_latlon(
         lat_vec, lon_vec, force_zone_number=zone, force_zone_letter=letter
     )
 
-    np.testing.assert_array_almost_equal(grid.x(), x_rot)
-    np.testing.assert_array_almost_equal(grid.y(), y_rot)
+    assert grid.x() is None
+    assert grid.y() is None
+    
     np.testing.assert_array_almost_equal(grid.xy(), (x_vec, y_vec))
 
     # Make linearly spaced in cartesian, not in spherical
@@ -64,21 +62,7 @@ def test_utm_conversion():
         strict=False,
     )
 
-    __, lon_rot = utm.to_latlon(
-        x,
-        np.median(y),
-        zone_number=zone,
-        zone_letter=letter,
-        strict=False,
-    )
 
-    lat_rot, __ = utm.to_latlon(
-        np.median(x),
-        y,
-        zone_number=zone,
-        zone_letter=letter,
-        strict=False,
-    )
 
     grid2 = GriddedSkeleton(x=x, y=y)
     grid2.set_spacing(nx=3, ny=3)
@@ -97,6 +81,6 @@ def test_utm_conversion():
     np.testing.assert_array_almost_equal(grid2.y(strict=True), y)
 
     np.testing.assert_array_almost_equal(grid2.xy(strict=True), (x_vec, y_vec))
-    np.testing.assert_array_almost_equal(grid2.lon(), lon_rot, decimal=5)
-    np.testing.assert_array_almost_equal(grid2.lat(), lat_rot, decimal=5)
+    assert grid2.lon() is None
+    assert grid2.lat() is None
     np.testing.assert_array_almost_equal(grid2.lonlat(), (lon_vec, lat_vec), decimal=5)

@@ -361,7 +361,7 @@ class PointSkeleton(Skeleton):
         lon, lat = self.lon(
             native=native, strict=strict, mask=mask, crs=crs ,**kwargs
         ), self.lat(native=native, strict=strict, mask=mask,  crs=crs, **kwargs)
-
+        
         if lon is None:
             return None, None
         return lon, lat
