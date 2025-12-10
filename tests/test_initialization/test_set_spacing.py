@@ -21,7 +21,7 @@ def test_nx_ny_spherical():
     assert grid.ny() == 4
     assert grid.size() == (4, 5)
     np.testing.assert_array_almost_equal(grid.lon(), np.array([-2, -1, 0, 1, 2]))
-    np.testing.assert_array_almost_equal(grid.lat(), np.array([0, 1, 2, 3]))
+    np.testing.assert_array_almost_equal(grid.lat(), np.array([60, 61, 62, 63]))
 
 def test_dx_dy_cartesian():
     grid = GriddedSkeleton(x=(-1, 1), y=(-3, 3))
