@@ -15,7 +15,7 @@ def test_class_grid_grid_time():
     data.set_spacing(nx=11, ny=21)
 
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
@@ -31,7 +31,7 @@ def test_class_grid_grid():
     data.set_spacing(nx=11, ny=21)
 
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
@@ -47,7 +47,7 @@ def test_class_point_point_time():
         lon=(10, 20), lat=(50, 60), time=("2020-01-01 00:00", "2020-01-10 06:00")
     )
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
 
@@ -58,7 +58,7 @@ def test_class_point_point_time():
 def test_class_point_point():
     data = Wind(lon=(10, 20), lat=(50, 60))
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
 
@@ -73,7 +73,7 @@ def test_class_grid_point_time():
     )(lon=(10, 20), lat=(50, 60), time=("2020-01-01 00:00", "2020-01-10 06:00"))
     data.set_spacing(nx=11, ny=21)
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
 
@@ -90,7 +90,7 @@ def test_class_grid_point():
     )(lon=(10, 20), lat=(50, 60))
     data.set_spacing(nx=11, ny=21)
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
 
@@ -116,7 +116,7 @@ def test_class_point_grid_time():
         )
     )
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
@@ -140,7 +140,7 @@ def test_class_point_grid():
         )
     )
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
@@ -161,7 +161,7 @@ def test_init_data_grid_grid_time():
     data.set_spacing(nx=11, ny=21)
 
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
@@ -184,7 +184,7 @@ def test_init_data_grid_grid():
     data.set_spacing(nx=11, ny=21)
 
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
@@ -206,7 +206,7 @@ def test_init_data_point_point_time():
         lon=(10, 20), lat=(50, 60), time=("2020-01-01 00:00", "2020-01-10 06:00")
     )
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
     new_data = init_new_class_to_grid(new_cls, new_grid, data)
@@ -224,7 +224,7 @@ def test_init_data_point_point():
         lon=(10, 20), lat=(50, 60)
     )
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
     new_data = init_new_class_to_grid(new_cls, new_grid, data)
@@ -244,7 +244,7 @@ def test_init_data_grid_point_time():
     )
     data.set_spacing(nx=11, ny=21)
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
     new_data = init_new_class_to_grid(new_cls, new_grid, data)
@@ -264,7 +264,7 @@ def test_init_data_grid_point():
     )
     data.set_spacing(nx=11, ny=21)
 
-    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone())
+    new_grid = PointSkeleton(x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs())
 
     new_cls = create_new_class(data, new_grid)
     new_data = init_new_class_to_grid(new_cls, new_grid, data)
@@ -283,7 +283,7 @@ def test_init_data_point_grid_time():
         lon=(10, 20), lat=(50, 60), time=("2020-01-01 00:00", "2020-01-10 06:00")
     )
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
@@ -304,7 +304,7 @@ def test_init_data_point_grid():
         lon=(10, 20), lat=(50, 60)
     )
     new_grid = GriddedSkeleton(
-        x=data.edges("x"), y=data.edges("y"), utm=data.utm.zone()
+        x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
     new_grid.set_spacing(nx=10, ny=21)
 
