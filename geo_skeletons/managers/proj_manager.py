@@ -141,7 +141,10 @@ class ProjManager:
             if not silent:
                 print(f"Setting CRS {crs_obj}")
             if self._meta is not None:
-                self._meta.set(crs.to_cf(),'crs')
+                try:
+                    self._meta.set(crs.to_cf(),'crs')
+                except KeyError: # *** KeyError: 'o_lon_p'
+                    self._meta.set(crs.to_dict(),'crs')
         else:
             raise ValueError(f"{crs} is not a valid coordinate reference system!")
         self._crs = crs

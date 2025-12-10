@@ -19,12 +19,14 @@ def test_lonlat():
         "long_name": "longitude",
         "standard_name": "longitude",
         "units": "degrees_east",
+        "grid_mapping": 'wgs84'
     }
     assert points.meta.get("lat") == {
         "short_name": "lat",
         "long_name": "latitude",
         "standard_name": "latitude",
         "units": "degrees_north",
+        "grid_mapping": 'wgs84'
     }
 
     assert points.meta.get("inds") == {
@@ -46,12 +48,14 @@ def test_xy():
         "long_name": "x_distance",
         "standard_name": "distance_in_x_direction",
         "units": "m",
+        "grid_mapping": 'crs'
     }
     assert points.meta.get("y") == {
         "short_name": "y",
         "long_name": "y_distance",
         "standard_name": "distance_in_y_direction",
         "units": "m",
+        "grid_mapping": 'crs'
     }
 
     assert points.meta.get("inds") == {
@@ -73,12 +77,14 @@ def test_lonlat_gridded():
         "long_name": "longitude",
         "standard_name": "longitude",
         "units": "degrees_east",
+        "grid_mapping": 'wgs84'
     }
     assert points.meta.get("lat") == {
         "short_name": "lat",
         "long_name": "latitude",
         "standard_name": "latitude",
         "units": "degrees_north",
+        "grid_mapping": 'wgs84'
     }
     assert points.meta.get("inds") == {}
     assert points.meta.get("lat") == points.ds().lat.attrs
@@ -124,7 +130,6 @@ def test_dirto():
         pass
 
     points = Expanded(lon=[1, 2], lat=[4, 5], dirs=range(360))
-
     assert points.meta.get("dirs") == {
         "short_name": "dirs",
         "long_name": "wave_direction",
@@ -147,31 +152,33 @@ def test_add_datavar():
     assert points.meta.get("x").get("standard_name") == "distance_in_x_direction"
     assert points.meta.get("y").get("standard_name") == "distance_in_y_direction"
     points.proj.set((33, "W"))
-    assert points.meta.get() == {"name": "test_name", "utm_zone": "33W"}
+    assert points.meta.get() == {"name": "test_name"}
     points.meta.append({"general_info": "who knew!?"})
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
     }
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     points.set_u(0)
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
     }
-    assert points.meta.get("u") == gp.wind.XWind.meta_dict()
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
+    
+    meta_dict = gp.wind.XWind.meta_dict()
+    meta_dict['grid_mapping'] = 'crs'
+    assert points.meta.get("u") ==  meta_dict
     assert points.meta.get("u") == points.ds().u.attrs
 
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
     }
-
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     assert gp.wind.XWind.meta_dict().items() <= points.meta.get("u").items()
     assert points.meta.get("u").get("new") == "u-specific"
     assert points.meta.get("u") == points.ds().u.attrs
@@ -193,30 +200,32 @@ def test_add_magnitude():
 
     assert points.meta.get() == {"name": "test_name"}
     points.proj.set((33, "W"))
-    assert points.meta.get() == {"name": "test_name", "utm_zone": "33W"}
+    assert points.meta.get() == {"name": "test_name"}
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     points.meta.append({"general_info": "who knew!?"})
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
     }
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     points.set_u(0)
     points.set_v(1)
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
     }
-    assert points.meta.get("u") == gp.wind.XWind.meta_dict()
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
+    meta_dict = gp.wind.XWind.meta_dict()
+    meta_dict['grid_mapping'] = 'crs'
+    assert points.meta.get("u") == meta_dict
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
     }
-
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     assert gp.wind.XWind.meta_dict().items() <= points.meta.get("u").items()
     assert points.meta.get("u").get("new") == "u-specific"
     assert points.core.magnitudes() == ["wnd"]
@@ -236,28 +245,30 @@ def test_add_mask():
     points.set_land_mask(0)
     assert points.meta.get() == {"name": "test_name"}
     points.proj.set((33, "W"))
-    assert points.meta.get() == {"name": "test_name", "utm_zone": "33W"}
+    assert points.meta.get() == {"name": "test_name"}
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     points.meta.append({"general_info": "who knew!?"})
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
     }
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     points.set_u(0)
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
     }
-    assert points.meta.get("u") == gp.wind.XWind.meta_dict()
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
+    meta_dict = gp.wind.XWind.meta_dict()
+    meta_dict['grid_mapping'] = 'crs'
+    assert points.meta.get("u") == meta_dict
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
     assert points.meta.get() == {
         "name": "test_name",
-        "utm_zone": "33W",
         "general_info": "who knew!?",
         "new": "global",
     }
-
+    assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     assert gp.wind.XWind.meta_dict().items() <= points.meta.get("u").items()
     assert points.meta.get("u").get("new") == "u-specific"
