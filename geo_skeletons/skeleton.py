@@ -1290,54 +1290,6 @@ class Skeleton:
         """Length of y/lat-vector."""
         return len(self.y(native=True))
 
-    def dx(self, native: bool = False, strict: bool = False) -> float:
-        """Mean grid spacing of the x vector. Conversion made for spherical grids."""
-        if not self.core.is_cartesian() and strict and (not native):
-            return None
-
-        if self.nx() == 1:
-            return 0.0
-
-        return float(
-            max(self.x(native=native, suppress_warning=True))
-            - min(self.x(native=native, suppress_warning=True))
-        ) / (self.nx() - 1)
-
-    def dy(self, native: bool = False, strict: bool = False) -> float:
-        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
-        if not self.core.is_cartesian() and strict and (not native):
-            return None
-
-        if self.ny() == 1:
-            return 0.0
-
-        return float(
-            max(self.y(native=native, suppress_warning=True))
-            - min(self.y(native=native, suppress_warning=True))
-        ) / (self.ny() - 1)
-
-    def dlon(self, native: bool = False, strict: bool = False):
-        """Mean grid spacing of the longitude vector. Conversion made for cartesian grids."""
-        if self.nx() == 1:
-            return 0.0
-
-        lon = self.lon(native=native, strict=strict, suppress_warning=True)
-        if lon is None:
-            return None
-
-        return float(max(lon) - min(lon)) / (self.nx() - 1)
-
-    def dlat(self, native: bool = False, strict: bool = False):
-        """Mean grid spacing of the latitude vector. Conversion made for
-        cartesian grids."""
-        if self.ny() == 1:
-            return 0.0
-        lat = self.lat(native=native, strict=strict, suppress_warning=True)
-        if lat is None:
-            return None
-
-        return float(max(lat) - min(lat)) / (self.ny() - 1)
-
     def coord_dict(self, coord_group: str = "all") -> dict[str, np.ndarray]:
         """Returns a coord dictionary containing all coordinates of the given coordinate group.
 

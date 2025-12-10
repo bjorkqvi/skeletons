@@ -575,7 +575,7 @@ class GriddedSkeleton(Skeleton):
                 return self.dlat()
             lon = self.edges('lon')
             lat = self.edges('lat')
-            lon = (lon[1]-lon[0])/2
+            lon = (lon[1]+lon[0])/2
             d = distance_2points(lat[0], lon, lat[1], lon) 
             return float(d/(self.ny()-1))
 

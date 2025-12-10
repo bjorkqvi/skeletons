@@ -214,10 +214,14 @@ def clean_lons(lon: np.ndarray) -> np.ndarray:
 
 def get_unique_values(spatial: Union[float, Iterable[float]]):
     """e.g. lon=(4.0, 4.0) should behave like lon=4.0 if data is gridded"""
+    coords = []
     if spatial.get("lon") is not None and spatial.get("lat") is not None:
         coords = ["lon", "lat"]
     elif spatial.get("x") is not None and spatial.get("y") is not None:
         coords = ["x", "y"]
+
+    if not coords:
+        raise GridError()
 
     for coord in coords:
         val = spatial.get(coord)
