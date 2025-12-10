@@ -269,8 +269,8 @@ class PointSkeleton(Skeleton):
             return self._ds_manager.get("lon", **kwargs).values.copy()[mask]
 
         return self.proj._lon(
-            x=self.x(mask=mask, crs=crs, **kwargs),
-            y=self.y(mask=mask, crs=crs, **kwargs),
+            x=self.x(mask=mask, **kwargs),
+            y=self.y(mask=mask, **kwargs),
             crs=crs,
         )
 
@@ -307,8 +307,8 @@ class PointSkeleton(Skeleton):
             return self._ds_manager.get("lat", **kwargs).values.copy()[mask]
 
         return self.proj._lat(
-            x=self.x(mask=mask, crs=crs, **kwargs),
-            y=self.y(mask=mask, crs=crs, **kwargs),
+            x=self.x(mask=mask, **kwargs),
+            y=self.y(mask=mask, **kwargs),
             crs=crs,
         )
 
