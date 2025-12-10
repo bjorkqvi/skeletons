@@ -24,6 +24,30 @@ def test_xy_utm():
     points = PointSkeleton(x=lon, y=lat)
     assert points.proj.crs() is None
 
+def test_xy_utm_from_proj4():
+    
+    lon = np.array([-31.023573, -30.959545, -30.895535, -30.831545, -30.767574, -30.703623, -30.639692, -30.575779, -30.511889, -30.448015])
+    lat =np.array([53.24779 , 53.241985, 53.236137, 53.230247, 53.22432 , 53.218346,53.212334, 53.206284, 53.20019 , 53.194057])
+    proj4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
+    points = PointSkeleton(lon=lon, lat=lat, crs=proj4)
+        
+    points2 = PointSkeleton(lon=lon, lat=lat)
+    assert points2.proj.crs() == (25, 'U')
+    
+    rlon, rlat = points.xy()
+    x, y = points2.xy()
+
+    rpoints = PointSkeleton(x=rlon, y=rlat, crs=proj4)
+    rx, ry = rpoints.xy()
+    lo, la = rpoints.lonlat()
+    np.testing.assert_array_almost_equal(rx, rlon)
+    np.testing.assert_array_almost_equal(ry, rlat)
+    np.testing.assert_array_almost_equal(lo, lon)
+    np.testing.assert_array_almost_equal(la, lat)
+
+    rxutm, ryutm = rpoints.xy(crs=(25,'U'))
+    np.testing.assert_array_almost_equal(rxutm, x)
+    np.testing.assert_array_almost_equal(ryutm, y)
 def test_utm_request():
     lon = np.array([-31.023573, -30.959545, -30.895535, -30.831545, -30.767574, -30.703623, -30.639692, -30.575779, -30.511889, -30.448015])
     lat =np.array([53.24779 , 53.241985, 53.236137, 53.230247, 53.22432 , 53.218346,53.212334, 53.206284, 53.20019 , 53.194057])

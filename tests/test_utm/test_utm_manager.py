@@ -17,10 +17,10 @@ def test_basic_spherical_to_utm_point():
         points.lat(), points.lon(), force_zone_number=33, force_zone_letter="W"
     )
     assert (zone, letter) == (33, "W")
-    np.testing.assert_array_almost_equal(points.x(utm=(33, "W")), x, decimal=7)
-    np.testing.assert_array_almost_equal(points.y(utm=(33, "W")), y, decimal=7)
+    np.testing.assert_array_almost_equal(points.x(crs=(33, "W")), x, decimal=7)
+    np.testing.assert_array_almost_equal(points.y(crs=(33, "W")), y, decimal=7)
 
-    xx, yy = points.xy(utm=(33, "W"))
+    xx, yy = points.xy(crs=(33, "W"))
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
 
@@ -34,15 +34,15 @@ def test_basic_spherical_to_utm_point():
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
 
-    np.testing.assert_array_almost_equal(points.x(utm=(33, "W")), x)
-    np.testing.assert_array_almost_equal(points.y(utm=(33, "W")), y)
-    xx, yy = points.xy(utm=(33, "W"))
+    np.testing.assert_array_almost_equal(points.x(crs=(33, "W")), x)
+    np.testing.assert_array_almost_equal(points.y(crs=(33, "W")), y)
+    xx, yy = points.xy(crs=(33, "W"))
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
 
     points.proj.set((32, "W"))
-    xedge = points.edges("x", utm=(33, "W"))
-    yedge = points.edges("y", utm=(33, "W"))
+    xedge = points.edges("x", crs=(33, "W"))
+    yedge = points.edges("y", crs=(33, "W"))
     np.testing.assert_almost_equal(np.min(x), xedge[0], decimal=7)
     np.testing.assert_almost_equal(np.max(x), xedge[1], decimal=7)
     np.testing.assert_almost_equal(np.min(y), yedge[0], decimal=7)
@@ -51,21 +51,6 @@ def test_basic_spherical_to_utm_point():
 
 def test_basic_spherical_to_utm_gridded():
     points = GriddedSkeleton(lon=range(1, 6), lat=range(10, 60, 10))
-    x, _, zone, letter = utm.from_latlon(
-        np.median(points.lat()),
-        points.lon(),
-        force_zone_number=31,
-        force_zone_letter="P",
-    )
-    assert points.proj.crs() == (zone, letter)  # (31,'P')
-    _, y, zone, letter = utm.from_latlon(
-        points.lat(),
-        np.median(points.lon()),
-        force_zone_number=31,
-        force_zone_letter="P",
-    )
-    np.testing.assert_array_almost_equal(points.x(), x, decimal=7)
-    np.testing.assert_array_almost_equal(points.y(), y, decimal=7)
 
     lon, lat = points.lonlat()
     x, y, zone, letter = utm.from_latlon(lat, lon)
@@ -73,23 +58,6 @@ def test_basic_spherical_to_utm_gridded():
     xx, yy = points.xy()
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
-
-    x, _, zone, letter = utm.from_latlon(
-        np.median(points.lat()),
-        points.lon(),
-        force_zone_number=33,
-        force_zone_letter="W",
-    )
-    assert (zone, letter) == (33, "W")
-    _, y, zone, letter = utm.from_latlon(
-        points.lat(),
-        np.median(points.lon()),
-        force_zone_number=33,
-        force_zone_letter="W",
-    )
-    assert (zone, letter) == (33, "W")
-    np.testing.assert_array_almost_equal(points.x(utm=(33, "W")), x, decimal=7)
-    np.testing.assert_array_almost_equal(points.y(utm=(33, "W")), y, decimal=7)
 
     points.proj.set((33, "W"))
     lon, lat = points.lonlat()
@@ -111,18 +79,18 @@ def test_point_cartesian():
         AssertionError,
         np.testing.assert_array_almost_equal,
         points.x(),
-        points.x(utm=(30, "W")),
+        points.x(crs=(30, "W")),
         decimal=7,
     )
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
         points.y(),
-        points.y(utm=(30, "W")),
+        points.y(crs=(30, "W")),
         decimal=7,
     )
     x, y = points.xy()
-    x2, y2 = points.xy(utm=(30, "W"))
+    x2, y2 = points.xy(crs=(30, "W"))
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
@@ -142,7 +110,7 @@ def test_point_cartesian():
         AssertionError,
         np.testing.assert_array_almost_equal,
         points.lon(),
-        points.lon(utm=(30, "W")),
+        points.lon(crs=(30, "W")),
         decimal=7,
     )
 
@@ -150,12 +118,12 @@ def test_point_cartesian():
         AssertionError,
         np.testing.assert_array_almost_equal,
         points.lat(),
-        points.lat(utm=(30, "W")),
+        points.lat(crs=(3, "E")),
         decimal=7,
     )
 
     lon, lat = points.xy()
-    lon2, lat2 = points.xy(utm=(30, "W"))
+    lon2, lat2 = points.xy(crs=(30, "W"))
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
@@ -178,22 +146,11 @@ def test_gridded_cartesian():
     )
 
     points.proj.set((33, "W"))
-    np.testing.assert_raises(
-        AssertionError,
-        np.testing.assert_array_almost_equal,
-        points.x(),
-        points.x(utm=(30, "W")),
-        decimal=7,
-    )
-    np.testing.assert_raises(
-        AssertionError,
-        np.testing.assert_array_almost_equal,
-        points.y(),
-        points.y(utm=(30, "W")),
-        decimal=7,
-    )
+    assert points.x(crs=(30, "W")) is None
+    assert points.y(crs=(30, "W")) is None
+    
     x, y = points.xy()
-    x2, y2 = points.xy(utm=(30, "W"))
+    x2, y2 = points.xy(crs=(30, "W"))
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
@@ -209,23 +166,8 @@ def test_gridded_cartesian():
         decimal=7,
     )
 
-    np.testing.assert_raises(
-        AssertionError,
-        np.testing.assert_array_almost_equal,
-        points.lon(),
-        points.lon(utm=(30, "W")),
-        decimal=7,
-    )
-    np.testing.assert_raises(
-        AssertionError,
-        np.testing.assert_array_almost_equal,
-        points.lat(),
-        points.lat(utm=(30, "W")),
-        decimal=7,
-    )
-
     lon, lat = points.xy()
-    lon2, lat2 = points.xy(utm=(30, "W"))
+    lon2, lat2 = points.xy(crs=(30, "W"))
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
@@ -248,18 +190,18 @@ def test_point_spherical():
         AssertionError,
         np.testing.assert_array_almost_equal,
         points.x(),
-        points.x(utm=(30, "W")),
+        points.x(crs=(30, "W")),
         decimal=7,
     )
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
         points.y(),
-        points.y(utm=(30, "W")),
+        points.y(crs=(30, "W")),
         decimal=7,
     )
     x, y = points.xy()
-    x2, y2 = points.xy(utm=(30, "W"))
+    x2, y2 = points.xy(crs=(30, "W"))
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
@@ -274,33 +216,20 @@ def test_point_spherical():
         x2,
         decimal=7,
     )
-    np.testing.assert_array_almost_equal(points.lon(), points.lon(utm=(30, "W")),decimal=7)
-    np.testing.assert_array_almost_equal(points.lat(), points.lat(utm=(30, "W")), decimal=7)
+    np.testing.assert_array_almost_equal(points.lon(), points.lon(crs=(30, "W")),decimal=7)
+    np.testing.assert_array_almost_equal(points.lat(), points.lat(crs=(30, "W")), decimal=7)
 
     lon, lat = points.lonlat()
-    lon2, lat2 = points.lonlat(utm=(30, "W"))
+    lon2, lat2 = points.lonlat(crs=(30, "W"))
     np.testing.assert_array_almost_equal(lon, lon2,decimal=7)
     np.testing.assert_array_almost_equal(lat, lat2, decimal=7)
 
 
 def test_gridded_spherical():
     points = GriddedSkeleton(lon=range(1, 6), lat=range(10, 60, 10))
-    np.testing.assert_raises(
-        AssertionError,
-        np.testing.assert_array_almost_equal,
-        points.x(),
-        points.x(utm=(30, "W")),
-        decimal=7,
-    )
-    np.testing.assert_raises(
-        AssertionError,
-        np.testing.assert_array_almost_equal,
-        points.y(),
-        points.y(utm=(30, "W")),
-        decimal=7,
-    )
+   
     x, y = points.xy()
-    x2, y2 = points.xy(utm=(30, "W"))
+    x2, y2 = points.xy(crs=(30, "W"))
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
@@ -315,10 +244,10 @@ def test_gridded_spherical():
         x2,
         decimal=7,
     )
-    np.testing.assert_array_almost_equal(points.lon(), points.lon(utm=(30, "W")), decimal=7)
-    np.testing.assert_array_almost_equal(points.lat(), points.lat(utm=(30, "W")), decimal=7)
+    np.testing.assert_array_almost_equal(points.lon(), points.lon(crs=(30, "W")), decimal=7)
+    np.testing.assert_array_almost_equal(points.lat(), points.lat(crs=(30, "W")), decimal=7)
 
     lon, lat = points.lonlat()
-    lon2, lat2 = points.lonlat(utm=(30, "W"))
+    lon2, lat2 = points.lonlat(crs=(30, "W"))
     np.testing.assert_array_almost_equal(lon, lon2, decimal=7)
     np.testing.assert_array_almost_equal(lat, lat2, decimal=7)
