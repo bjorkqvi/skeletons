@@ -102,7 +102,7 @@ def test_nan_treatment_point_point_to_utm():
     data_nan.set_u(u)
     data_nan.set_v(v)
 
-    grid = Wind(x=data.edges('x'),y=data.edges('y'), utm=data.utm.zone())
+    grid = Wind(x=data.edges('x'),y=data.edges('y'), crs=data.proj.crs())
     #grid.set_spacing(nx=10, ny=21)
 
     new_data = data.resample.grid(grid)

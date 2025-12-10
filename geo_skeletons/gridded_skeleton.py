@@ -61,7 +61,7 @@ class GriddedSkeleton(Skeleton):
         x, y = skeleton.x(strict=True, mask=mask), skeleton.y(strict=True, mask=mask)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        new_skeleton.utm.set(skeleton.utm.zone(), silent=True)
+        new_skeleton.proj.set(skeleton.proj.crs(), silent=True)
 
         return new_skeleton
 
