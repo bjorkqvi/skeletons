@@ -9,7 +9,9 @@ from .variables import DataVar, Coordinate
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
+from scipy.spatial.distance import cdist
 
+from .distance_funcs import distance_2points
 inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
 INITIAL_COORDS = [inds_coord]
 
@@ -21,6 +23,15 @@ INITIAL_CARTESIAN_VARS = [x_var, y_var]  #: "inds", "y": "inds"}
 INITIAL_SPHERICAL_VARS = [lon_var, lat_var]  # {"lat": "inds", "lon": "inds"}
 
 
+def get_dist_point(x, y):
+    points = [(i, j) for i, j in zip(x, y)]
+    dist = cdist(points, points, metric="euclidean")
+    dist_point = []
+    for i in range(dist.shape[0]):
+        sl = dist[i,:]
+        sl[sl<0.0000001] = 99999999
+        dist_point.append(np.min(sl))
+    return dist_point
 class PointSkeleton(Skeleton):
     """Gives a unstructured structure to the Skeleton.
 
@@ -378,3 +389,85 @@ class PointSkeleton(Skeleton):
                 f"Skeleton has shape {self.size('spatial',**kwargs)} but mask is shape {mask.shape}"
             )
         return mask
+
+    def dy(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+
+        
+        if not self.core.is_cartesian() and strict and (not native):
+            return None
+
+        if self.ny() == 1:
+            return 0.0
+        
+        if not self.core.is_cartesian() and native:
+            return self.dlat()
+            
+        x, y = self.xy()
+        # Find distance to nearest neighbour for all points
+        dist_point = get_dist_point(x, y)
+        return float(np.median(dist_point))
+    
+    def dx(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+
+        
+        if not self.core.is_cartesian() and strict and (not native):
+            return None
+
+        if self.nx() == 1:
+            return 0.0
+        
+        if not self.core.is_cartesian() and native:
+            return self.dlon()
+            
+        x, y = self.xy()
+        # Find distance to nearest neighbour for all points
+        dist_point = get_dist_point(x, y)
+        return float(np.median(dist_point))
+    
+    def dlat(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+
+        
+        if not self.core.is_cartesian() and strict and (not native):
+            return None
+
+        if self.ny() == 1:
+            return 0.0
+        
+        if not self.core.is_cartesian() and native:
+            return self.dy()
+            
+        # median distance in meter
+        dy = self.dy()
+
+        lon = self.edges('lon')
+        lat = self.edges('lat')
+        lon = (lon[1]+lon[0])/2
+        d = distance_2points(lat[0], lon, lat[1], lon)
+        d= d/(lat[1]-lat[0])
+        return float(dy/d)
+    
+    def dlon(self, native: bool = False, strict: bool = False) -> float:
+        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+
+        
+        if not self.core.is_cartesian() and strict and (not native):
+            return None
+
+        if self.nx() == 1:
+            return 0.0
+        
+        if not self.core.is_cartesian() and native:
+            return self.dx()
+            
+        # median distance in meter
+        dx = self.dx()
+
+        lon = self.edges('lon')
+        lat = self.edges('lat')
+        lat = (lat[1]+lat[0])/2
+        d = distance_2points(lat, lon[0], lat, lon[0]+1)
+
+        return float(dx/d)

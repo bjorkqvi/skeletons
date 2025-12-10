@@ -37,7 +37,7 @@ def test_drop_one_point():
     np.testing.assert_array_almost_equal(points.lon(), points.lon(mask=mask))
     np.testing.assert_array_almost_equal(points.lat(), points.lat(mask=mask))
 
-    points2 = GriddedSkeleton(x=points.x(), y=points.y())
+    points2 = GriddedSkeleton(x=(1, 2, 3, 4, 5), y=(6, 7, 8, 9))
     np.testing.assert_array_almost_equal(points2.x(), points2.x(mask=mask))
     np.testing.assert_array_almost_equal(points2.y(), points2.y(mask=mask))
 
@@ -49,7 +49,7 @@ def test_drop_one_row():
     np.testing.assert_array_almost_equal(points.lon(), points.lon(mask=mask))
     np.testing.assert_array_almost_equal(points.lat()[:-1], points.lat(mask=mask))
 
-    points2 = GriddedSkeleton(x=points.x(), y=points.y())
+    points2 = GriddedSkeleton(x=(1, 2, 3, 4, 5), y=(6, 7, 8, 9))
     np.testing.assert_array_almost_equal(points2.x(), points2.x(mask=mask))
     np.testing.assert_array_almost_equal(points2.y()[:-1], points2.y(mask=mask))
 
@@ -61,7 +61,7 @@ def test_drop_one_column():
     np.testing.assert_array_almost_equal(points.lon()[:-1], points.lon(mask=mask))
     np.testing.assert_array_almost_equal(points.lat(), points.lat(mask=mask))
 
-    points2 = GriddedSkeleton(x=points.x(), y=points.y())
+    points2 = GriddedSkeleton(x=(1, 2, 3, 4, 5), y=(6, 7, 8, 9))
     np.testing.assert_array_almost_equal(points2.x()[:-1], points2.x(mask=mask))
     np.testing.assert_array_almost_equal(points2.y(), points2.y(mask=mask))
 
@@ -77,7 +77,7 @@ def test_drop_one_row_lonlatmethod():
     np.testing.assert_array_almost_equal(lons, lon)
     np.testing.assert_array_almost_equal(lats, lat)
 
-    points2 = GriddedSkeleton(x=points.x(), y=points.y())
+    points2 = GriddedSkeleton(x=(1, 2, 3, 4, 5), y=(6, 7, 8, 9))
     x, y = points2.xy(mask=mask)
     xs = np.tile(points2.x(), 3)
     ys = np.repeat(points2.y()[:-1], 5)
