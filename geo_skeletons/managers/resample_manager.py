@@ -173,7 +173,7 @@ def init_new_class_to_grid(new_class, new_grid, data):
        
     new_data = new_class(**new_coords)
     if new_data.core.is_cartesian():
-        new_data.utm.set(data.utm.zone(), silent=True)
+        new_data.proj.set(data.proj.crs(), silent=True)
 
     return new_data
 
@@ -225,7 +225,7 @@ class ResampleManager:
         if verbose:
             print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
             if new_data.core.is_cartesian():
-                print(f"Target grid has spatial coords {new_data.core.coords('spatial')} UTM {new_data.utm.zone()}")
+                print(f"Target grid has spatial coords {new_data.core.coords('spatial')} CRS {new_data.proj.crs()}")
             else:
                 print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
 

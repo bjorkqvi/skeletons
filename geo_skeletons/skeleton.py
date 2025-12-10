@@ -14,7 +14,6 @@ from .decoders import (
     gather_coord_values,
 )
 from . import data_sanitizer as sanitize
-from .managers.utm_manager import UTMManager
 from .managers.proj_manager import ProjManager
 from typing import Iterable, Union, Optional
 from . import distance_funcs
@@ -1386,13 +1385,13 @@ class Skeleton:
         self, x: np.ndarray, y: np.ndarray, fast: bool, npoints: int
     ) -> dict[str, np.ndarray]:
         """Finds the indeces of nearest points and distances if x,y coordinates are provided"""
-        if self.utm.is_set():
-            lat = self.utm._lat(x, y, self.utm.zone())
-            lon = self.utm._lon(x, y, self.utm.zone())
+        if self.proj.crs() is not None:
+            lat = self.proj._lat(x, y, crs=self.proj.crs())
+            lon = self.proj._lon(x, y, crs=self.proj.crs())
         else:
             lat, lon = None, None
 
-        inds, dx = self._yank_inds(x, y, lon, lat, self.utm.zone(), fast, npoints)
+        inds, dx = self._yank_inds(x, y, lon, lat, self.proj.crs(), fast, npoints)
         return inds, dx
 
     def _yank_using_lonlat(
