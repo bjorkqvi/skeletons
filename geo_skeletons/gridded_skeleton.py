@@ -12,8 +12,8 @@ import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
 
-lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial")
-lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial")
+lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
+lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
 x_var = Coordinate(name="x", meta=gp.grid.X, coord_group="spatial")
 y_var = Coordinate(name="y", meta=gp.grid.Y, coord_group="spatial")
 
