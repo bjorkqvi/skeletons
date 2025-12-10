@@ -121,25 +121,27 @@ class ProjManager:
             if not silent:
                 print(f"Setting EPSG code {epsg}")
             if self._meta is not None:
-                self._meta.append({'epsg':epsg})
+                self._meta.set({'epsg':epsg},'crs')
         elif proj4 is not None:
             if not silent:
                 print(f"Setting proj4 string {proj4}")
             if self._meta is not None:
-                self._meta.append({'proj4':proj4})
+                self._meta.set({'proj4':proj4},'crs')
         elif cf_dict is not None:
             if not silent:
                 print(f"Setting projection from dict {cf_dict}")
             if self._meta is not None:
-                self._meta.append({'projection':cf_dict})
+                self._meta.set(cf_dict,'crs')
         elif utm is not None:
             if not silent:
                 print(f"Setting UTM {utm}")
             if self._meta is not None:
-                self._meta.append({"utm_zone": f"{utm[0]:02.0f}{utm[1]}"})
+                self._meta.set({"utm": utm[0], 'utm_letter': utm[1]},'crs')
         elif crs_obj is not None:
             if not silent:
                 print(f"Setting CRS {crs_obj}")
+            if self._meta is not None:
+                self._meta.set(crs.to_dict(),'crs')
         else:
             raise ValueError(f"{crs} is not a valid coordinate reference system!")
         self._crs = crs

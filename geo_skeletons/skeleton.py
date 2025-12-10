@@ -128,6 +128,7 @@ class Skeleton:
                 self.meta.append(metavar.meta_dict(), coord_name)
 
         self.meta.append({"name":name})
+        self.meta.set({'epsg': 4326}, 'wgs84')
 
     @classmethod
     def add_time(cls, grid_coord: bool = True):
