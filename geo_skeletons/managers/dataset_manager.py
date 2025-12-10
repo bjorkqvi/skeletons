@@ -45,6 +45,8 @@ class DatasetManager:
         var_dict = self.create_var_dict_from_input(x=x, y=y, coord_dict=coord_dict)
 
         self.check_consistency(coord_dict=coord_dict, var_dict=var_dict)
+        var_dict['crs'] = 0
+        var_dict['wgs84'] = 0
         self.set_new_ds(xr.Dataset(coords=coord_dict, data_vars=var_dict))
 
     def create_coord_dict_from_input(
