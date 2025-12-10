@@ -38,6 +38,8 @@ def map_ds_to_gp(
     data_vars = {}
     coords = {}
     for var in ds.data_vars:
+        if var in ['wgs84', 'crs']:
+            continue
         # Coordinates can be listed as data variables in unstructured datasets
         # Check if we are dealing with a coordinate
         if _var_is_coordinate(var, aliases):
