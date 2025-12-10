@@ -17,8 +17,8 @@ INITIAL_COORDS = [inds_coord]
 
 lon_var = DataVar(name="lon", meta=gp.grid.Lon, coord_group="spatial", default_value=0, grid_mapping='wgs84')
 lat_var = DataVar(name="lat", meta=gp.grid.Lat, coord_group="spatial", default_value=0, grid_mapping='wgs84')
-x_var = DataVar(name="x", meta=gp.grid.X, coord_group="spatial", default_value=0)
-y_var = DataVar(name="y", meta=gp.grid.Y, coord_group="spatial", default_value=0)
+x_var = DataVar(name="x", meta=gp.grid.X, coord_group="spatial", default_value=0, grid_mapping='crs')
+y_var = DataVar(name="y", meta=gp.grid.Y, coord_group="spatial", default_value=0, grid_mapping='crs')
 INITIAL_CARTESIAN_VARS = [x_var, y_var]  #: "inds", "y": "inds"}
 INITIAL_SPHERICAL_VARS = [lon_var, lat_var]  # {"lat": "inds", "lon": "inds"}
 

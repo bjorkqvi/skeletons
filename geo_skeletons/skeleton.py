@@ -708,7 +708,11 @@ class Skeleton:
 
         if first_set:
             self.meta.metadata_to_ds(name)
-
+            if self.core.get(name).coord_group in ['all', 'spatial', 'grid']:
+                if self.core.is_cartesian():
+                    self.meta.append({'grid_mapping': 'crs'}, name)
+                else:
+                    self.meta.append({'grid_mapping': 'wgs84'}, name)
         return
 
     def _reshape_data(
