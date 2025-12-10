@@ -6,11 +6,11 @@ def test_no_meta():
 
 def test_utm():
     points = PointSkeleton(x=0, y=0, crs=(32, 'W'))
-    assert points.meta.get('crs') == {'utm': 32, 'utm_letter': 'W'}
+    assert points.meta.get('crs') == {'utm_zone': 32, 'utm_letter': 'W'}
 
 def test_proj4():
     points = PointSkeleton(x=0, y=0, crs=(32, 'W'))
-    assert points.meta.get('crs') == {'utm': 32, 'utm_letter': 'W'}
+    assert points.meta.get('crs') == {'utm_zone': 32, 'utm_letter': 'W'}
     points.proj.set("+proj=ob_tran +o_proj=latlon +o_lat_p=45 +o_lon_p=30 +lon_0=0")
     assert points.meta.get('crs') == {'proj4':"+proj=ob_tran +o_proj=latlon +o_lat_p=45 +o_lon_p=30 +lon_0=0"}
 
@@ -23,18 +23,28 @@ def test_dict():
     "earth_radius": 6371000.0,
     }
     points = PointSkeleton(x=0, y=0, crs=(32, 'W'))
-    assert points.meta.get('crs') == {'utm': 32, 'utm_letter': 'W'}
+    assert points.meta.get('crs') == {'utm_zone': 32, 'utm_letter': 'W'}
     points.proj.set(crs_metadata)
     assert points.meta.get('crs') == crs_metadata
 
 
 def test_epsg():
     points = PointSkeleton(x=0, y=0, crs=(32, 'W'))
-    assert points.meta.get('crs') == {'utm': 32, 'utm_letter': 'W'}
+    assert points.meta.get('crs') == {'utm_zone': 32, 'utm_letter': 'W'}
     points.proj.set(4326)
     assert points.meta.get('crs') == {'epsg': 4326}
 
 def test_epsg_spherical():
     points = PointSkeleton(lat=0, lon=0, crs=(32, 'W'))
-    assert points.meta.get('crs') == {'utm': 32, 'utm_letter': 'W'}
+    assert points.meta.get('crs') == {'utm_zone': 32, 'utm_letter': 'W'}
     assert points.meta.get('wgs84') == {'epsg': 4326}
+
+def test_crs():
+    points = PointSkeleton(x=0, y=0)
+    points.proj.set(4326)
+    assert points.meta.get('crs') == {'epsg': 4326}
+    crs = points.proj.to_crs(points.proj.crs()) # Pyproj CRS object
+    points.proj.set(crs)
+
+    assert 'crs_wkt' in points.meta.get('crs').keys()
+

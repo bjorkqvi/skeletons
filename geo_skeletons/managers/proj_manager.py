@@ -136,12 +136,12 @@ class ProjManager:
             if not silent:
                 print(f"Setting UTM {utm}")
             if self._meta is not None:
-                self._meta.set({"utm": utm[0], 'utm_letter': utm[1]},'crs')
+                self._meta.set({"utm_zone": utm[0], 'utm_letter': utm[1]},'crs')
         elif crs_obj is not None:
             if not silent:
                 print(f"Setting CRS {crs_obj}")
             if self._meta is not None:
-                self._meta.set(crs.to_dict(),'crs')
+                self._meta.set(crs.to_cf(),'crs')
         else:
             raise ValueError(f"{crs} is not a valid coordinate reference system!")
         self._crs = crs
