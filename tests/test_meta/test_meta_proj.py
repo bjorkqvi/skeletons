@@ -72,4 +72,3 @@ def test_on_class():
 
     assert points2.ds().hs.grid_mapping == 'wgs84'
     assert points2.ds().lon.grid_mapping == 'wgs84'
-    breakpoint()
