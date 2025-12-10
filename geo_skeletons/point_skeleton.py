@@ -143,7 +143,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        utm: Optional[tuple[int, str]] = None,
         crs: Optional[Union[int, str, dict]] = None,
         mask: Optional[np.ndarray] = None,
         normalize: bool = False,
@@ -170,18 +169,14 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and strict:
             return None
 
-
-        crs = crs or self.proj.crs()
-
-        if self.core.is_cartesian() and (self.proj.crs() == crs ):
+        if self.core.is_cartesian() and (crs is None or self.proj.crs() == crs):
             x = self._ds_manager.get("x", **kwargs).values.copy()[mask]
         else:
             x = self.proj._x(
-                lon=self.lon(mask=mask, **kwargs),
-                lat=self.lat(mask=mask, **kwargs),
+                lon=self.lon(mask=mask,crs=self.proj.crs(), **kwargs),
+                lat=self.lat(mask=mask,crs=self.proj.crs(), **kwargs),
                 crs=crs,
             )
-    
 
 
         if normalize:
@@ -219,17 +214,16 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and strict:
             return None
 
-        crs = crs or self.proj.crs()
 
-
-        if self.core.is_cartesian() and (self.proj.crs() == crs):
+        if self.core.is_cartesian() and (crs is None or self.proj.crs() == crs):
             y = self._ds_manager.get("y", **kwargs).values.copy()[mask]
         else:
             y = self.proj._y(
-                lon=self.lon(mask=mask, **kwargs),
-                lat=self.lat(mask=mask, **kwargs),
+                lon=self.lon(mask=mask, crs=self.proj.crs(),**kwargs),
+                lat=self.lat(mask=mask, crs=self.proj.crs(), **kwargs),
                 crs=crs,
             )
+        
 
 
         if normalize:
@@ -268,9 +262,10 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian():
             return self._ds_manager.get("lon", **kwargs).values.copy()[mask]
 
+        
         return self.proj._lon(
-            x=self.x(mask=mask, **kwargs),
-            y=self.y(mask=mask, **kwargs),
+            x=self.x(mask=mask, **kwargs) ,
+            y= self.y(mask=mask, **kwargs) ,
             crs=crs,
         )
 
