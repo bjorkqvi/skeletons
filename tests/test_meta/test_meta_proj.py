@@ -43,8 +43,17 @@ def test_crs():
     points = PointSkeleton(x=0, y=0)
     points.proj.set(4326)
     assert points.meta.get('crs') == {'epsg': 4326}
-    crs = points.proj.to_crs(points.proj.crs()) # Pyproj CRS object
+    crs = points.proj.crs() # Pyproj CRS object
     points.proj.set(crs)
 
     assert 'crs_wkt' in points.meta.get('crs').keys()
 
+def test_crs_with_ds_compile():
+    points = PointSkeleton(x=0, y=0)
+    points.proj.set(4326)
+    assert points.meta.get('crs') == {'epsg': 4326}
+    
+    ds = points.ds()
+    assert 'crs_wkt' not in ds.crs.attrs
+    ds = points.ds(compile=True)
+    assert 'crs_wkt' in ds.crs.attrs
