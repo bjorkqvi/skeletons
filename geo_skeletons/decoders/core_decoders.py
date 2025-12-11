@@ -92,6 +92,7 @@ def identify_core_in_ds(
             ignore_dir_ambiguity=False,
             verbose=verbose,
         )
+
         if ds_coord is not None:
             core_coords_to_ds_coords[coord] = ds_coord
 
@@ -283,6 +284,7 @@ def _map_geo_parameter_to_ds_variable(
     3) Try to find 'lon' directly in eiher ds.data_vars or ds.coords
     4) Go through known aliases of 'lon' (e.g. 'longitude') and try to find the alias 'longitude' in eiher ds.data_vars or ds.coords
     """
+
     var_str, param = gp.decode(param, init=True)
     # 1) Use aliases mapping if exists
     if aliases.get(var_str) is not None:
@@ -339,7 +341,13 @@ def _map_geo_parameter_to_ds_variable(
             if len(ds_var) == 1:
                 if verbose:
                     print(f"Match: {param} >> {ds_var}")
-                return ds_var[0]
+                var_shape = ds.get(ds_var[0]).shape
+                if var_str not in ['lon','lat','time','x','y'] or len(var_shape) == 1:
+                    return ds_var[0]
+                else:
+                    if verbose:
+                        print(f"Expected '{var_str}' to be an array but '{ds_var[0]}' has shape {var_shape}. Skipping.")
+                        return None
             elif len(ds_var) > 1:
                 if verbose:
                     print(
