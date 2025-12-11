@@ -347,7 +347,7 @@ def _map_geo_parameter_to_ds_variable(
                 else:
                     if verbose:
                         print(f"Expected '{var_str}' to be an array but '{ds_var[0]}' has shape {var_shape}. Skipping.")
-                        return None
+                    return None
             elif len(ds_var) > 1:
                 if verbose:
                     print(
