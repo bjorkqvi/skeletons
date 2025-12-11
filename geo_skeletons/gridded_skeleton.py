@@ -86,7 +86,7 @@ class GriddedSkeleton(Skeleton):
         """
         return INITIAL_VARS
 
-    def quicklook(self) -> None:
+    def quicklook(self, proj: str = None) -> None:
         """Quicklook of the data"""
         try:
             import matplotlib.pyplot as plt
@@ -112,11 +112,21 @@ class GriddedSkeleton(Skeleton):
                 data = data[0,:,:]
             else:
                 data = data[:,:]
-
-            ax[r,c].contourf(self.x(native=True), self.y(native=True),data)
-            ax[r,c].set_xlabel(self.core.x_str)
-            ax[r,c].set_ylabel(self.core.y_str)
-            ax[r,c].set_title(var)
+            if proj is None:
+                ax[r,c].contourf(self.x(native=True), self.y(native=True),data)
+                ax[r,c].set_xlabel(self.core.x_str)
+                ax[r,c].set_ylabel(self.core.y_str)
+                ax[r,c].set_title(var)
+            elif proj == 'lonlat':
+                ax[r,c].pcolormesh(self.longrid(), self.latgrid(),data)
+                ax[r,c].set_xlabel('longitude')
+                ax[r,c].set_ylabel('latitude')
+                ax[r,c].set_title(var)
+            elif proj == 'xy':
+                ax[r,c].pcolormesh(self.xgrid(), self.ygrid(),data)
+                ax[r,c].set_xlabel('x')
+                ax[r,c].set_ylabel('y')
+                ax[r,c].set_title(var)
             c += 1
             if c > cols-1:
                 c = 0
