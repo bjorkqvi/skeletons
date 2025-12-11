@@ -8,10 +8,9 @@ from .decoders import (
     identify_core_in_ds,
     set_core_vars_to_skeleton_from_ds,
     create_new_class_dynamically,
-    find_addable_vars_and_magnitudes,
-    map_ds_to_gp,
     remap_coords_of_ds_vars_to_skeleton_names,
     gather_coord_values,
+    find_proj
 )
 from . import data_sanitizer as sanitize
 from .managers.proj_manager import ProjManager
@@ -440,11 +439,17 @@ class Skeleton:
             ds_remapped_coords,
             meta_dict,
         )
-        
+
         metadata = meta_dict.get("_global_") or ds.attrs
 
         metadata = {key: value for key, value in metadata.items() if key != 'name'}
         points.meta.append(metadata)
+
+        proj_obj = find_proj(ds)
+        if proj_obj is not None:
+            points.proj.set(proj_obj)
+        elif points.core.is_cartesian():
+            print('Could not decode any projection for the cartesian data!')
 
         return points
 
