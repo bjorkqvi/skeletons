@@ -116,7 +116,7 @@ class Skeleton:
         self.dask = DaskManager(skeleton=self, chunks=chunks)
         self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), metadata_manager=self.meta)
         if crs is None and not self.core.is_cartesian():
-            self.proj.reset_utm()
+            self.proj.reset_utm(silent=True)
         self.resample = ResampleManager(self)
 
     def _init_metadata(self, name: str) -> None:
@@ -447,7 +447,7 @@ class Skeleton:
 
         proj_obj = find_proj(ds)
         if proj_obj is not None:
-            points.proj.set(proj_obj)
+            points.proj.set(proj_obj, silent=not verbose)
         elif points.core.is_cartesian():
             print('Could not decode any projection for the cartesian data!')
 

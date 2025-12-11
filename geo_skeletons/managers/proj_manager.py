@@ -66,7 +66,7 @@ class ProjManager:
         self._meta: MetaDataManager = metadata_manager
         self._crs = None
         if crs is not None:
-            self.set(crs)
+            self.set(crs, silent=True)
         
 
     def _is_valid_utm(self, utm: tuple[int, str]) -> bool:
@@ -112,7 +112,7 @@ class ProjManager:
         if not silent and self._crs is not None:
             print(f"Setting UTM {self._crs}")
 
-    def set(self, crs: Union[int, str], silent: bool = False) -> None:
+    def set(self, crs: Union[int, str], silent: bool = True) -> None:
         """Sets the CRS (Coordinate reference system) based on eithern an EPSG code [int] or a proj4 string [str]. A string 'EPSG:4326' will be docoded to 4326."""
 
         epsg, proj4, cf_dict, utm, crs_obj = decode_crs(crs)
