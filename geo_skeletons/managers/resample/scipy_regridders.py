@@ -26,7 +26,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
 
     spatial_coords = data.core.coords('spatial')
     
-    if new_data.core.x_str == data.core.x_str and new_data.is_gridded(): # Go from gridded to gridded
+    if new_data.core.x_str == 'lon' and data.core.x_str == 'lon' and new_data.is_gridded(): # Go from gridded to gridded
         xq, yq = new_data.lon(native=True), new_data.lat(native=True)
         
         if 'time' in data.core.coords():
@@ -34,22 +34,22 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
             query_points_time = np.column_stack([T.ravel(), Y.ravel(), X.ravel()])
         
         Y, X = np.meshgrid(yq, xq, indexing="ij")  # Use "ij" indexing for (t, y, x) order
-        query_points = np.column_stack([Y.ravel(), X.ravel()])   
+        query_points = np.column_stack([Y.ravel(), X.ravel()])  
     else: # We need to get the query points in the native coordinates of the original data, which will make is non-gridded
         if data.core.is_cartesian():
-            xq, yq = new_data.xy()
+            xq, yq = new_data.xy(crs=data.proj.crs())
         else:
             xq, yq = new_data.lonlat()
         
-            query_points = np.column_stack((yq, xq))
+        query_points = np.column_stack((yq, xq))
 
-            if 'time' in data.core.coords():
-                t_repeated = np.repeat(t, len(xq)) 
-                xq_tiled = np.tile(xq, len(t))  
-                yq_tiled = np.tile(yq, len(t)) 
+        if 'time' in data.core.coords():
+            t_repeated = np.repeat(t, len(xq)) 
+            xq_tiled = np.tile(xq, len(t))  
+            yq_tiled = np.tile(yq, len(t)) 
 
-                query_points_time = np.column_stack((t_repeated, yq_tiled, xq_tiled))
-            
+            query_points_time = np.column_stack((t_repeated, yq_tiled, xq_tiled))
+        
             
     # Check that we are not out of bounds, since RegularGridInterpolator can't handle that
     # We also can't drop nan values and still keep data gridded
@@ -110,7 +110,7 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
     else:
         target_lon, target_lat = new_grid.lonlat(native=True)
     if new_data.core.is_cartesian():
-        lon, lat = data.xy()
+        lon, lat = data.xy(crs=new_data.proj.crs())
     else:
         lon, lat = data.lonlat()
     all_points = np.array([(lon, lat) for lon, lat in zip(lon, lat)])
