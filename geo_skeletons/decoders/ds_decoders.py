@@ -3,13 +3,51 @@ import xarray as xr
 from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union
-from geo_skeletons.errors import GridError
 from geo_skeletons.variable_archive import (
     coord_alias_to_gp,
     var_alias_to_gp,
     COORD_ALIASES,
 )
-from copy import deepcopy
+
+
+def find_proj(ds: xr.Dataset):
+    """Finds a projection in the dataset"""
+    
+    #1 Look for standard geo-skeletons format
+    if 'crs' in ds.data_vars:
+        attrs = ds.crs.attrs
+        # pyproj cant decode the utm zone, so check that separately
+        if 'utm_zone' in attrs.keys() and 'utm_letter' in attrs.keys():
+            return (attrs['utm_zone'], attrs['utm_letter'])
+        return attrs
+    
+    #2 Look for proj4 string in attributes
+    proj4 = ds.attrs.get('proj4')
+    if proj4 is not None:
+        return proj4
+    
+    #3 Look for UTM information in the attributes
+    utm_zone = ds.attrs.get('utm_zone')
+    utm_letter = ds.attrs.get('utm_letter')
+    if utm_zone is not None:
+        if isinstance(utm_zone, str):
+            
+            return (int(utm_zone[:-1]), str(utm_zone[-1]))
+        if utm_letter is not None:
+            return (int(utm_zone), str(utm_letter))
+
+    #4 Go through data variables and see if we can find projection information there
+    for var in ds.data_vars:
+        da = ds.get(var)
+        if 'grid_mapping_name' in da.attrs:
+            attrs = da.attrs
+            if 'proj4' in attrs: # It will interfere with the more extensive information provided in the dict and cause warnings in pyproj
+                del attrs['proj4']
+            return attrs
+        elif 'proj4' in da.attrs:
+            return da.attrs.get('proj4')
+
+    return
 
 
 def map_ds_to_gp(
