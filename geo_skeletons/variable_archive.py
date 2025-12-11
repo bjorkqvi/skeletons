@@ -11,8 +11,8 @@ SPATIAL_COORDS = ["y", "x", "lat", "lon", "inds"]
 # List assumed coordinate aliases here. These are used e.g. by decoders.
 COORD_ALIASES = {
     "time": ["time"],
-    gp.grid.X: ["x"],
-    gp.grid.Y: ["y"],
+    gp.grid.X: ["x", 'rlon'],
+    gp.grid.Y: ["y",'rlat'],
     gp.grid.Lon: ["lon", "longitude"],
     gp.grid.Lat: ["lat", "latitude"],
     gp.wave.Freq: ["freq", "frequency"],
