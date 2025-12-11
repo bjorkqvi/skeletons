@@ -118,12 +118,12 @@ class GriddedSkeleton(Skeleton):
                 ax[r,c].set_ylabel(self.core.y_str)
                 ax[r,c].set_title(var)
             elif proj == 'lonlat':
-                ax[r,c].pcolormesh(self.longrid(), self.latgrid(),data)
+                ax[r,c].contourf(self.longrid(), self.latgrid(),data)
                 ax[r,c].set_xlabel('longitude')
                 ax[r,c].set_ylabel('latitude')
                 ax[r,c].set_title(var)
             elif proj == 'xy':
-                ax[r,c].pcolormesh(self.xgrid(), self.ygrid(),data)
+                ax[r,c].contourf(self.xgrid(), self.ygrid(),data)
                 ax[r,c].set_xlabel('x')
                 ax[r,c].set_ylabel('y')
                 ax[r,c].set_title(var)
