@@ -393,7 +393,6 @@ class GriddedSkeleton(Skeleton):
                 f"Skeleton has {num_of_elements} elements but mask has shape {mask.shape}, not ({num_of_elements},)!"
             )
         mask = mask.ravel()
-
         x, y = self._native_xy(**kwargs)
 
         if self.core.is_cartesian():
@@ -402,6 +401,7 @@ class GriddedSkeleton(Skeleton):
             points = PointSkeleton(lon=x, lat=y)
         if self.proj.crs() is not None:    
             points.proj.set(self.proj.crs(), silent=True)
+       
         return points.xy(mask=mask, normalize=normalize, native=native, crs = crs or self.proj.crs())
 
     def lonlat(
