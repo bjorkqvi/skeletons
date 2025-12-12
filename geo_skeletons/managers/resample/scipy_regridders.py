@@ -2,8 +2,9 @@ from scipy.interpolate import griddata, RegularGridInterpolator
 import numpy as np
 from geo_skeletons.errors import GridError
 from copy import copy
-
-
+from geo_skeletons.dask_computations import undask_me
+def data_doesnt_cover_request(x,y, xq,yq):
+    return min(xq) < min(x) or max(xq) > max(x) or min(yq) < min(y) or max(yq) > max(y)
 def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='nearest', drop_nan: bool=False, mask_nan: float=None,**kwargs):
     """Regrids gridded data using RegularGridInterpolator, which is faster than griddata"""
     
@@ -20,6 +21,8 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
 
     # Needs to use native here since it has to be regularly gridded
     x, y = data.lon(native=True), data.lat(native=True)
+    # Pad the longitude edges to have values if we are wrapping around +-180
+    
     if 'time' in data.core.coords():
         t = data.time()
         t = np.array((t-t[0]).total_seconds()).astype(int)
@@ -53,10 +56,17 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
             
     # Check that we are not out of bounds, since RegularGridInterpolator can't handle that
     # We also can't drop nan values and still keep data gridded
-    if min(xq) < min(x) or max(xq) > max(x) or min(yq) < min(y) or max(yq) > max(y):
-        print(f"Data ({data.core.x_str}={data.edges(data.core.x_str)}, {data.core.y_str}={data.edges(data.core.y_str)}) doesnt cover new grid ({data.core.x_str}=({min(xq):.4f}, {max(xq):.4f}, {data.core.y_str}=({min(yq):.4f}, {max(yq):.4f})). Redirecting interpolation to {scipy_regrid_point_data}")
-        new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
-        return new_data
+
+    x_expanded = False
+    if data_doesnt_cover_request(x,y,xq,yq):
+        print("Data doesn't cover requested area. Trying to see if it is a +-180 longitude wrapping issue...")
+        x = np.concatenate(([x[-1]-360], x, [x[0]+360]))
+        x_expanded = True
+        if data_doesnt_cover_request(x,y,xq,yq):
+            print(f"Data ({data.core.x_str}={data.edges(data.core.x_str)}, {data.core.y_str}={data.edges(data.core.y_str)}) doesnt cover new grid ({data.core.x_str}=({min(xq):.4f}, {max(xq):.4f}, {data.core.y_str}=({min(yq):.4f}, {max(yq):.4f})). Redirecting interpolation to {scipy_regrid_point_data}")
+            new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
+            return new_data
+    
 
     if verbose:
         if mask_nan is not None:
@@ -85,15 +95,22 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Skipping!")
                     continue
-
+                
                 source_values = data.get(var_name)
+                if x_expanded:
+                    print('Fixed +-180 longitude wrapping issue and expanding data to match...')
+                    first_column = source_values[:, 0:1] 
+                    last_column = source_values[:, -1:] 
+
+                source_values = np.concatenate([last_column, source_values, first_column], axis=1) 
                 if mask_nan is not None:
                     source_values = copy(source_values)
                     mask = np.isnan(source_values)
                     source_values[mask] = mask_nan
 
-                interpolator = RegularGridInterpolator(target_points, source_values, method=method)
+                interpolator = RegularGridInterpolator(target_points, undask_me(source_values), method=method)
                 interpolated_values = interpolator(qp)
+                
                 new_data.set(var_name, interpolated_values, fit_to_data=True)
                 
     return new_data
