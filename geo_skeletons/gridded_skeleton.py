@@ -86,7 +86,7 @@ class GriddedSkeleton(Skeleton):
         """
         return INITIAL_VARS
 
-    def quicklook(self, proj: str = None) -> None:
+    def quicklook(self, compare: Skeleton = None, proj: str = None, contour: bool = True) -> None:
         """Quicklook of the data"""
         try:
             import matplotlib.pyplot as plt
@@ -95,9 +95,23 @@ class GriddedSkeleton(Skeleton):
             raise e
 
         vars = []
+        
+
+        
         for var in self.core.data_vars():
             if self.get(var, strict=True) is not None:
                 vars.append(var)
+        if not vars:
+            if proj is None:
+                x, y = self.xy(native=True)
+            elif proj =='lonlat':
+                x, y = self.lonlat()
+            elif proj == 'xy':
+                x, y = self.xy()
+            plt.scatter(x,y)
+            plt.show()
+            return
+
         cols = int(np.ceil(len(vars)**0.5))
         rows = int(np.ceil(len(vars)/cols))
 
@@ -106,6 +120,13 @@ class GriddedSkeleton(Skeleton):
         ax = np.atleast_2d(ax)
         
         r, c = 0, 0
+        
+        if compare is not None:
+            if proj == 'xy' or proj is None and self.core.is_cartesian():
+                xedge, yedge = compare.xy(crs=self.proj.crs())
+            else:
+                xedge, yedge = compare.lonlat()
+
         for var in vars:
             data = self.get(var)
             if 'time' in self.core.coords():
@@ -113,24 +134,50 @@ class GriddedSkeleton(Skeleton):
             else:
                 data = data[:,:]
             if proj is None:
-                ax[r,c].contourf(self.x(native=True), self.y(native=True),data)
+                if contour:
+                    cont = ax[r,c].contourf(self.x(native=True), self.y(native=True),data)
+                else:
+                    cont = ax[r,c].pcolormesh(self.x(native=True), self.y(native=True),data)
                 ax[r,c].set_xlabel(self.core.x_str)
                 ax[r,c].set_ylabel(self.core.y_str)
-                ax[r,c].set_title(var)
             elif proj == 'lonlat':
-                ax[r,c].contourf(self.longrid(), self.latgrid(),data)
+                if contour:
+                    cont = ax[r,c].contourf(self.longrid(), self.latgrid(),data)
+                else:
+                    cont = ax[r,c].scatter(self.longrid(), self.latgrid(),c=data, s=2)
+                
                 ax[r,c].set_xlabel('longitude')
                 ax[r,c].set_ylabel('latitude')
-                ax[r,c].set_title(var)
             elif proj == 'xy':
-                ax[r,c].contourf(self.xgrid(), self.ygrid(),data)
+                if contour:
+                    cont = ax[r,c].contourf(self.xgrid(), self.ygrid(),data)
+                else:
+                    cont = ax[r,c].scatter(self.xgrid(), self.ygrid(),c=data, s=2)
                 ax[r,c].set_xlabel('x')
                 ax[r,c].set_ylabel('y')
-                ax[r,c].set_title(var)
+            title_str = f"{self.name}"
+            if 'time' in self.core.coords():
+                title_str += f": {self.time(datetime=False)[0]}"
+            ax[r,c].set_title(title_str)
+            cbar = fig.colorbar(cont, ax=ax[r, c])
+            param = self.core.meta_parameter(var)
+            if param is not None:
+                units = param.units()
+            else:
+                units = '?'
+            cbar.set_label(f"{var} [{units}]")
+            if compare is not None:
+                ax[r,c].scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
+                plt.legend()
+                #ax[r,c].scatter(xedge, yedge,c='k',s=1)
+                #ax[r,c].scatter(xedge2, yedge2,c='k',s=1)
             c += 1
             if c > cols-1:
                 c = 0
                 r += 1
+
+
+            
 
 
         plt.show()
