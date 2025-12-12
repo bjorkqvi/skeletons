@@ -294,6 +294,7 @@ class Skeleton:
         else:
             ds_name = None
         name = name or ds_name or f"Created from {filename}"
+
         return cls.from_ds(
             ds, name=name, **kwargs
         )
@@ -394,7 +395,7 @@ class Skeleton:
                 extra_coords=kwargs,
                 verbose=verbose,
             )
-
+        
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
         (
             core_coords_to_ds_coords,
@@ -410,11 +411,10 @@ class Skeleton:
             allowed_misses=list(kwargs.keys()),
             verbose=verbose,
         )
-
+        
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
-
         name = name or ds.attrs.get("name")
         points = cls(**coords, chunks=chunks, name=name)
         # Lengths needed for matching coordinates with wrong name
@@ -540,8 +540,12 @@ class Skeleton:
         e.g. new_skeleton = skeleton.isel(lon=[0,1,2])
 
         Calls the Xarray .isel method on the underlying DataSet"""
+        ds = self.ds().isel(**kwargs)
+        for dim in ['x','y','lon','lat','inds']:
+            if dim not in ds.dims:
+                ds=ds.expand_dims(dim)
         return self.from_ds(
-            self.ds().isel(**kwargs),
+            ds,
             data_vars=self.core.non_coord_objects(),
             keep_ds_names=True,
             name=self.name,
@@ -1258,9 +1262,15 @@ class Skeleton:
             return
 
         if coord in ["x", "y"]:
-            x, y = self.xy(native=native, strict=strict, crs=crs)
+            if self.is_gridded():
+                x, y = self.x(native=native, strict=strict, crs=crs), self.x(native=native, strict=strict, crs=crs)
+            else:
+                x, y = self.xy(native=native, strict=strict, crs=crs)
         else:
-            x, y = self.lonlat(native=native, strict=strict, crs=crs)
+            if self.is_gridded():
+                x, y = self.lon(native=native, strict=strict, crs=crs), self.lat(native=native, strict=strict, crs=crs)
+            else:
+                x, y = self.lonlat(native=native, strict=strict, crs=crs)
 
         if coord in ["x", "lon"]:
             val = x
