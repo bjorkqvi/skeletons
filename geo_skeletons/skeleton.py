@@ -130,7 +130,6 @@ class Skeleton:
                     self.meta.append({'grid_mapping': 'crs'}, coord_name)
                 else:
                     self.meta.append({'grid_mapping': 'wgs84'}, coord_name)
-
         self.meta.append({"name":name})
         self.meta.set({'epsg': 4326}, 'wgs84')
 
@@ -1264,21 +1263,18 @@ class Skeleton:
             return
 
         if coord in ["x", "y"]:
-            if self.is_gridded():
-                x, y = self.x(native=native, strict=strict, crs=crs), self.y(native=native, strict=strict, crs=crs)
-            else:
+            x, y = self.x(native=native, strict=strict, crs=crs), self.y(native=native, strict=strict, crs=crs)
+            if x is None:
                 x, y = self.xy(native=native, strict=strict, crs=crs)
         else:
-            if self.is_gridded():
-                x, y = self.lon(native=native, strict=strict, crs=crs), self.lat(native=native, strict=strict, crs=crs)
-            else:
+            x, y = self.lon(native=native, strict=strict, crs=crs), self.lat(native=native, strict=strict, crs=crs)
+            if x is None:
                 x, y = self.lonlat(native=native, strict=strict, crs=crs)
-
+        
         if coord in ["x", "lon"]:
             val = x
         else:
             val = y
-
         if val is None:
             return (None, None)
 

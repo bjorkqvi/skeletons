@@ -50,9 +50,12 @@ class MetaDataManager:
 
         # Store the metadata
         if name is not None:
-            if 'grid_mapping' in metadata.keys():
-                metadata['grid_mapping'] = 'crs' # This is standard and should not be changed
+            # Once grid mapping is set, we don't want to replace it
+            grid_mapping = self._metadata.get(name,{}).get('grid_mapping', metadata.get('grid_mapping'))
             self._metadata[name] = metadata
+            if grid_mapping is not None:
+                self._metadata[name]['grid_mapping'] = grid_mapping
+
         else:
             self._metadata["_global_"] = metadata
         self.metadata_to_ds(name)
