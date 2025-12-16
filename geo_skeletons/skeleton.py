@@ -1263,7 +1263,7 @@ class Skeleton:
 
         if coord in ["x", "y"]:
             if self.is_gridded():
-                x, y = self.x(native=native, strict=strict, crs=crs), self.x(native=native, strict=strict, crs=crs)
+                x, y = self.x(native=native, strict=strict, crs=crs), self.y(native=native, strict=strict, crs=crs)
             else:
                 x, y = self.xy(native=native, strict=strict, crs=crs)
         else:
