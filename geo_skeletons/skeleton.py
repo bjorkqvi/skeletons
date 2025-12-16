@@ -446,7 +446,7 @@ class Skeleton:
         points.meta.append(metadata)
 
         proj_obj = find_proj(ds)
-        if proj_obj is not None:
+        if proj_obj:
             points.proj.set(proj_obj, silent=not verbose)
         elif points.core.is_cartesian():
             print('Could not decode any projection for the cartesian data!')
