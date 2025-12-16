@@ -5,6 +5,14 @@ from copy import copy
 from geo_skeletons.dask_computations import undask_me
 def data_doesnt_cover_request(x,y, xq,yq):
     return min(xq) < min(x) or max(xq) > max(x) or min(yq) < min(y) or max(yq) > max(y)
+
+def data_close_to_wrapping_180(lon, dlon):
+    if 180-lon[-1] > 5*dlon:
+        return False
+    if lon[0]-(-180) > 5*dlon:
+        return False
+    return True
+
 def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='nearest', drop_nan: bool=False, mask_nan: float=None,**kwargs):
     """Regrids gridded data using RegularGridInterpolator, which is faster than griddata"""
     
@@ -58,15 +66,17 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
     # We also can't drop nan values and still keep data gridded
 
     x_expanded = False
-    if data_doesnt_cover_request(x,y,xq,yq):
-        print("Data doesn't cover requested area. Trying to see if it is a +-180 longitude wrapping issue...")
-        x = np.concatenate(([x[-1]-360], x, [x[0]+360]))
-        x_expanded = True
-        if data_doesnt_cover_request(x,y,xq,yq):
-            print(f"Data ({data.core.x_str}={data.edges(data.core.x_str)}, {data.core.y_str}={data.edges(data.core.y_str)}) doesnt cover new grid ({data.core.x_str}=({min(xq):.4f}, {max(xq):.4f}, {data.core.y_str}=({min(yq):.4f}, {max(yq):.4f})). Redirecting interpolation to {scipy_regrid_point_data}")
-            new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
-            return new_data
+    if data_doesnt_cover_request(x,y,xq,yq) and not data.core.is_cartesian():
+        if data_close_to_wrapping_180(x, data.dlon()):
+            print("Data doesn't cover requested area. Trying to see if it is a +-180 longitude wrapping issue...")
+            x = np.concatenate(([x[-1]-360], x, [x[0]+360]))
+            x_expanded = True
     
+    if data_doesnt_cover_request(x,y,xq,yq):
+        x, y = data.lon(native=True), data.lat(native=True)
+        print(f"Data ({data.core.x_str}={data.edges(data.core.x_str)}, {data.core.y_str}={data.edges(data.core.y_str)}) doesnt cover new grid ({data.core.x_str}=({min(xq):.4f}, {max(xq):.4f}, {data.core.y_str}=({min(yq):.4f}, {max(yq):.4f})). Redirecting interpolation to {scipy_regrid_point_data}")
+        new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
+        return new_data
 
     if verbose:
         if mask_nan is not None:
@@ -78,6 +88,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                 var = data.core.get(var_name)
                 var_coords = data.core.coords(var.coord_group)
                 squeezed_var_coords = data.coord_squeeze(data.core.coords(var.coord_group))
+                time_regridding = False
                 if set(var_coords) != set(squeezed_var_coords):
                     if verbose:
                         print(f"Ignoring coordinates {list(set(var_coords)-set(squeezed_var_coords))} with trivial dimensions...")
@@ -87,6 +98,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                     target_points = (y, x)
                     qp = query_points
                 elif set(spatial_coords + ['time']) == set(squeezed_var_coords) and 'time' in new_data.core.coords():
+                    time_regridding = True
                     if verbose:
                         print(f"'{var_name}' {var_coords}: Regridding over time...")
                     target_points = (t, y, x)
@@ -101,8 +113,12 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                     print('Fixed +-180 longitude wrapping issue and expanding data to match...')
                     first_column = source_values[:, 0:1] 
                     last_column = source_values[:, -1:] 
+                    if time_regridding:
+                        ax = 2
+                    else:
+                        ax = 1
+                    source_values = np.concatenate([last_column, source_values, first_column], axis=ax) 
 
-                source_values = np.concatenate([last_column, source_values, first_column], axis=1) 
                 if mask_nan is not None:
                     source_values = copy(source_values)
                     mask = np.isnan(source_values)
