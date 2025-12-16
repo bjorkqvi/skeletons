@@ -342,7 +342,7 @@ def _map_geo_parameter_to_ds_variable(
                 if verbose:
                     print(f"Match: {param} >> {ds_var}")
                 var_shape = ds.get(ds_var[0]).shape
-                if var_str not in ['lon','lat','time','x','y'] or len(var_shape) == 1:
+                if var_str not in ['lon','lat','time','x','y'] or len(var_shape) < 2:
                     return ds_var[0]
                 else:
                     if verbose:
