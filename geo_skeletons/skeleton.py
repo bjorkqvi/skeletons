@@ -541,7 +541,9 @@ class Skeleton:
 
         Calls the Xarray .isel method on the underlying DataSet"""
         ds = self.ds().isel(**kwargs)
-        for dim in ['x','y','lon','lat','inds']:
+        expandable_dims = ['x','y','lon','lat'] if self.is_gridded() else ['inds']
+        
+        for dim in expandable_dims:
             if dim not in ds.dims:
                 ds=ds.expand_dims(dim)
         return self.from_ds(
