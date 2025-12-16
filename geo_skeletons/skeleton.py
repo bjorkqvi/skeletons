@@ -22,7 +22,7 @@ from .errors import (
     SkeletonError,
     UnknownVariableError,
 )
-
+from collections.abc import Iterable
 from typing import Iterable
 from copy import deepcopy
 from .decorators import (
@@ -482,6 +482,29 @@ class Skeleton:
             time=common_times
         )
 
+    def _determine_slice_inds(self, x_slice, y_slice, x: str, y: str):
+        """Determines the indeces of e.g. a lon-slice for a PointSkeleton"""
+        if x_slice is None and y_slice is None:
+            return None
+        
+        x_not_a_slice = x_slice is not None and not isinstance(x_slice, slice)
+        y_not_a_slice = y_slice is not None and not isinstance(y_slice, slice)
+
+        if x_not_a_slice and y_not_a_slice and len(np.atleast_1d(x_slice)) == len(np.atleast_1d(y_slice)):
+            inds_dict = self.yank_point(**{x: x_slice, y: y_slice})
+            return inds_dict["inds"]
+
+        x_inds = _determine_inds(x_slice, self.get(x))
+        y_inds = _determine_inds(y_slice, self.get(y))
+
+        return np.array(list(set(x_inds).intersection(set(y_inds))))
+        
+    def _determine_var_slice_inds(self, name, var_slice):
+        """Determines the indeces to slice using variable values if variable is 1D"""
+        var_inds = _determine_inds(var_slice, self.get(name))
+        return var_inds
+
+
     def sel(self, **kwargs) -> "Skeleton":
         """Creates a new instance by selecting only some of the wanted variables.
         e.g. new_skeleton = skeleton.sel(lon=slice(10,20))
@@ -507,8 +530,29 @@ class Skeleton:
             if y_slice is not None:
                 del kwargs["y"]
 
-            if slice_inds is not None:
-                return self.sel(inds=slice_inds, **kwargs)
+            var_inds = None
+
+            new_kwargs = {}
+            for key, value in kwargs.items():
+                if key in self.core.non_coord_objects() and len(self.shape(key, squeeze=True)) == 1:
+                    found_inds = self._determine_var_slice_inds(key, value)
+                    if var_inds is None:
+                        var_inds = found_inds
+                    else:
+                        var_inds = np.array(list(set(found_inds).intersection(set(var_inds))))
+                else:
+                    new_kwargs[key] = value
+            
+            if slice_inds is None:
+                inds = self.inds()
+            else:
+                inds = slice_inds
+
+            if var_inds is not None:
+                inds = np.array(list(set(inds).intersection(set(found_inds))))
+            
+            if len(inds) != self.nx():
+                return self.sel(inds=inds, **new_kwargs)
 
         return self.from_ds(
             self.ds().sel(**kwargs),
@@ -516,23 +560,6 @@ class Skeleton:
             keep_ds_names=True,
             name=self.name,
         )
-
-    def _determine_slice_inds(self, x_slice, y_slice, x: str, y: str):
-        """Determines the indeces of e.g. a lon-slice for a PointSkeleton"""
-        if x_slice is None and y_slice is None:
-            return None
-
-        x_not_a_slice = x_slice is not None and not isinstance(x_slice, slice)
-        y_not_a_slice = y_slice is not None and not isinstance(y_slice, slice)
-
-        if x_not_a_slice and y_not_a_slice:
-            inds_dict = self.yank_point(**{x: x_slice, y: y_slice})
-            return inds_dict["inds"]
-        else:
-            x_inds = _determine_inds(x_slice, self.get(x))
-            y_inds = _determine_inds(y_slice, self.get(y))
-
-            return np.array(list(set(x_inds).intersection(set(y_inds))))
 
     def isel(self, **kwargs) -> "Skeleton":
         """Creates a new instance by selecting only some of the wanted variables.
@@ -1627,8 +1654,20 @@ def _modified_name(old_name: str) -> str:
 
 
 def _determine_inds(coord_slice, all_vals):
+       
+
+    if isinstance(coord_slice,(Iterable, int)):
+        coord_slice = np.atleast_1d(coord_slice) 
+        coord_inds = []
+        for val in coord_slice:
+            coord_inds.append(np.where(np.isclose(all_vals, val, atol=1e-8))[0])
+        coord_inds = np.unique(np.concatenate(coord_inds))
+        return coord_inds
+    
     if coord_slice is None:
         start, stop = np.nanmin(all_vals), np.nanmax(all_vals)
+    elif isinstance(coord_slice, int):
+        start, stop = coord_slice, coord_slice
     else:
         if coord_slice.step is not None:
             raise ValueError("PointSkeletons can't be sliced with a step!")
