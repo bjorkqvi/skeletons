@@ -2,11 +2,11 @@ from geo_skeletons.gridded_skeleton import GriddedSkeleton
 from geo_skeletons.distance_funcs import lon_in_km, lat_in_km
 import numpy as np
 import pytest
-
+from geo_skeletons.errors import SkeletonError
 
 def test_nx_ny_cartesian():
     grid = GriddedSkeleton(x=(-2, 2), y=(-3, 3))
-
+    grid.edges('lon')
     grid.set_spacing(nx=5, ny=7)
     assert grid.nx() == 5
     assert grid.ny() == 7
@@ -58,8 +58,8 @@ def test_dlon_dlat_spherical():
 def test_dx_dy_spherical():
     grid = GriddedSkeleton(lon=(4, 5), lat=(60, 61))
     grid.set_spacing(dx=1110, dy=1110)
-    dx = lon_in_km(60.5)
-    dy = lat_in_km(60.5)
+    dx = lon_in_km(lat=60.5, lon=4.5)
+    dy = lat_in_km(lat=60.5, lon=4.5)
     np.testing.assert_array_almost_equal(grid.dlat(), 0.01, decimal=3)
     np.testing.assert_array_almost_equal(grid.dlon(), 0.02, decimal=3)
     np.testing.assert_array_almost_equal(grid.dy() / 1000, grid.dlat() * dy, decimal=1)
@@ -97,7 +97,7 @@ def test_dlon_dlat_spherical_floating():
 def test_dlon_dlat_cartesian_floating():
     grid = GriddedSkeleton(x=(-1, 0.999), y=(-3, 2.999))
     grid.proj.set((33, "W"))
-    with pytest.raises(ValueError):
+    with pytest.raises(SkeletonError):
         grid.set_spacing(dlon=0.5, dlat=1.5, floating_edge=True)
 
 
@@ -113,15 +113,15 @@ def test_dx_dy_cartesian_floating():
 
 def test_dx_dy_spherical_floating():
     grid = GriddedSkeleton(lon=(2, 7), lat=(60, 61))
-    with pytest.raises(ValueError):
+    with pytest.raises(SkeletonError):
         grid.set_spacing(dx=0.5, dy=3, floating_edge=True)
 
 
 def test_dnmi_spherical():
     grid = GriddedSkeleton(lon=(2, 7), lat=(60, 61))
     grid.set_spacing(dnmi=1)
-    dx = lon_in_km(60.5)
-    dy = lat_in_km(60.5)
+    dx = lon_in_km(60.5, 4.5)
+    dy = lat_in_km(60.5, 4.5)
 
     np.testing.assert_array_almost_equal(grid.dlat(), 1 / 60, decimal=3)
     np.testing.assert_array_almost_equal(grid.dlon(), grid.dlat() * dy / dx, decimal=3)
@@ -142,9 +142,9 @@ def test_dnmi_cartesian():
     assert grid.nx() == 150_000 / grid.dx() + 1
     assert grid.ny() == 100_000 / grid.dy() + 1
 
-    __,  lat = grid.lonlat()
-    dx = lon_in_km(np.median(lat))
-    dy = lat_in_km(np.median(lat))
+    lon,  lat = grid.lonlat()
+    dx = lon_in_km(np.median(lat), np.median(lon))
+    dy = lat_in_km(np.median(lat), np.median(lon))
 
     np.testing.assert_array_almost_equal(grid.dlat(), 1 / 120, decimal=4)
     np.testing.assert_array_almost_equal(grid.dlon(), grid.dlat() * dy / dx, decimal=3)
@@ -160,8 +160,8 @@ def test_high_latitudes_lonlat():
 def test_high_latitudes_xy():
     grid = GriddedSkeleton(lon=(0, 10), lat=(60, 85))
     grid.set_spacing(dx=1000, dy=1000)
-    assert len(grid.lon()) == 336
-    assert len(grid.lat()) == 2790
+    assert len(grid.lon()) == 337
+    assert len(grid.lat()) == 2791
     grid.set_spacing(dm=1000)
-    assert len(grid.lon()) == 336
-    assert len(grid.lat()) == 2790
+    assert len(grid.lon()) == 337
+    assert len(grid.lat()) == 2791
