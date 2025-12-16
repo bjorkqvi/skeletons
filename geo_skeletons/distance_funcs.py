@@ -42,15 +42,34 @@ def min_cartesian_distance(
     # # return dx.min(), dx.argmin()
 
 
-def lon_in_km(lat: float) -> float:
-    """Converts one longitude degree to km for a given latitude."""
-    return distance_2points(lat, 0, lat, 1) / 1000
+def lon_in_km(lat: float, lon: float) -> float:
+    """Converts one longitude degree to km for a given latitude and longitude"""
+    return distance_2points(lat, lon, lat, lon+1) / 1000
 
 
-def lat_in_km(lat: float) -> float:
-    """Converts one latitude degree to km for a given latitude."""
-    return distance_2points(lat, 0, lat + 1, 0) / 1000
+def lat_in_km(lat: float, lon: float) -> float:
+    """Converts one latitude degree to km for a given latitude and longitude"""
+    return distance_2points(lat, lon, lat + 1, lon) / 1000
 
+def dx_to_dlon(dx: float, lat: float, lon: float) -> float:
+    """Converts dx [m] to longitude degrees given a latitude and longitude"""
+    one_lon = lon_in_km(lat=lat, lon=lon)*1000 # One latitude degree in metres
+    return float(dx/one_lon)
+
+def dy_to_dlat(dy: float, lat: float, lon: float) -> float:
+    """Converts dy [m] to latittude degrees given a latitude and longitude"""
+    one_lat = lat_in_km(lat=lat, lon=lon)*1000 # One latitude degree in metres
+    return float(dy/one_lat)
+
+def dlon_to_dx(dlon: float, lat: float, lon: float) -> float:
+    """Converts longitude degrees to dx [m] given a latitude and longitude"""
+    one_lon = lon_in_km(lat=lat, lon=lon)*1000 # One latitude degree in metres
+    return float(one_lon*dlon)
+
+def dlat_to_dy(dlat: float, lat: float, lon: float) -> float:
+    """Converts latitude degrees to dy [m] given a latitude and longitude"""
+    one_lat = lat_in_km(lat=lat, lon=lon)*1000 # One latitude degree in metres
+    return float(one_lat*dlat)
 
 def domain_size_in_km(
     lon: tuple[float, float], lat: tuple[float, float]
