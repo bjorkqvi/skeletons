@@ -35,7 +35,8 @@ def test_set_name_from_netcdf_taken_from_ds(ds):
     assert points.name == 'TestName'
     assert points.ds().name == 'TestName'
     if os.path.exists('TestFile.nc'):
-        os.remove('TestFile.nc')
+       os.remove('TestFile.nc')
+
 
 def test_set_name_from_netcdf_no_name_in_ds(ds):
     del ds.attrs['name']

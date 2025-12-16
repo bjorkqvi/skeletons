@@ -13,7 +13,7 @@ def test_class_grid_grid_time():
         lon=(10, 20), lat=(50, 60), time=("2020-01-01 00:00", "2020-01-10 06:00")
     )
     data.set_spacing(nx=11, ny=21)
-
+    
     new_grid = GriddedSkeleton(
         x=data.edges("x"), y=data.edges("y"), crs=data.proj.crs()
     )
