@@ -20,6 +20,7 @@ class ReshapeManager:
         expected_coords: list[str],
     ) -> Union[np.ndarray, da.array]:
         """Reshapes the data by using explicitly given coordinate names for the data and the expected coords."""
+        
         if data is None:
             return None
 
@@ -31,7 +32,7 @@ class ReshapeManager:
         coord_order = [
             data_coords.index(c) for c in expected_coords if c in data_coords
         ]
-
+        
         if len(data.shape) > len(coord_order):
             raise DataWrongDimensionError(data.shape, len(coord_order))
 
@@ -41,7 +42,7 @@ class ReshapeManager:
             print(
                 f"Reshaping data {original_shape} -> {data.shape}: {data_coords} -> {expected_coords}"
             )
-
+        
         return data
 
     def transpose_2d(

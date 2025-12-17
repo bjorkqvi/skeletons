@@ -1,8 +1,9 @@
 from scipy.interpolate import griddata, RegularGridInterpolator
 import numpy as np
-from geo_skeletons.errors import GridError
+from geo_skeletons.errors import GridError, SkeletonError
 from copy import copy
 from geo_skeletons.dask_computations import undask_me
+
 def data_doesnt_cover_request(x,y, xq,yq):
     return min(xq) < min(x) or max(xq) > max(x) or min(yq) < min(y) or max(yq) > max(y)
 
@@ -146,6 +147,8 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
         lon, lat = data.xy(crs=new_data.proj.crs())
     else:
         lon, lat = data.lonlat()
+        if lon is None:
+            raise SkeletonError("Can't resample a cartesian grid without a projection to a spherical grid!")
     all_points = np.array([(lon, lat) for lon, lat in zip(lon, lat)])
 
 
