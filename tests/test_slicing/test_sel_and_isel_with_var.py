@@ -71,3 +71,21 @@ def test_slice_down_to_empty():
     with pytest.raises(GridError):
         pp = points.sel(hs=slice(10,20), lon=[20,22], lat=90)
 
+def test_sel_hs_using_time():
+    points = PointSkeleton.add_time().add_datavar('hs')(lon=(10), lat=(50), time=('2020-01-01 00:00', '2020-01-01 03:00'))
+    points.set_hs([0,1,2,3])
+    pp = points.sel(hs=slice(0.5,2.2))
+    assert str(pp.time(datatime=False)[0]) == '2020-01-01 01:00:00'
+    assert str(pp.time(datatime=False)[1]) == '2020-01-01 02:00:00'
+    assert pp.hs()[0] == 1
+    assert pp.hs()[1] == 2
+
+def test_sel_hs_using_time_and_inds():
+    points = PointSkeleton.add_time().add_datavar('hs')(lon=(10,20), lat=(50,60), time=('2020-01-01 00:00', '2020-01-01 03:00'))
+    points.ind_insert('hs',[0.1,1.1,2.1,3.1], inds=0)
+    points.ind_insert('hs',[0,1,2,3], inds=1)
+    pp = points.sel(lon=20).sel(hs=slice(0.5,2.2))
+    assert str(pp.time(datatime=False)[0]) == '2020-01-01 01:00:00'
+    assert str(pp.time(datatime=False)[1]) == '2020-01-01 02:00:00'
+    assert pp.hs()[0] == 1
+    assert pp.hs()[1] == 2
