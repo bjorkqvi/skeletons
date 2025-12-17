@@ -531,10 +531,13 @@ class Skeleton:
                 del kwargs["y"]
 
             var_inds = None
-
+            all_inds = None
+            slicing_coord = ''
             new_kwargs = {}
             for key, value in kwargs.items():
                 if key in self.core.non_coord_objects() and len(self.shape(key, squeeze=True)) == 1:
+                    all_inds = np.array(range(self.shape(key, squeeze=True)[0]))
+                    slicing_coord = self.coord_squeeze(self.core.coords(self.core.coord_group(key)))
                     found_inds = self._determine_var_slice_inds(key, value)
                     if var_inds is None:
                         var_inds = found_inds
@@ -542,17 +545,21 @@ class Skeleton:
                         var_inds = np.array(list(set(found_inds).intersection(set(var_inds))))
                 else:
                     new_kwargs[key] = value
-            
+
             if slice_inds is None:
-                inds = self.inds()
+                inds = all_inds if all_inds is not None else self.inds()
             else:
                 inds = slice_inds
 
             if var_inds is not None:
-                inds = np.array(list(set(inds).intersection(set(found_inds))))
+                inds = np.array(list(set(inds).intersection(set(var_inds))))
             
-            if len(inds) != self.nx():
-                return self.sel(inds=inds, **new_kwargs)
+            
+            if slicing_coord == ['time']:
+                return self.isel(time=inds, **new_kwargs)
+            else:
+                if len(inds) != self.nx():
+                    return self.sel(inds=inds, **new_kwargs)
 
         return self.from_ds(
             self.ds().sel(**kwargs),
