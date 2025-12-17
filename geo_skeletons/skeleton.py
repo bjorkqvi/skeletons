@@ -452,6 +452,92 @@ class Skeleton:
 
         return points
 
+    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True) -> None:
+        """Quicklook of the data"""
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as e:
+            print(f"Quicklook required matplotlib")
+            raise e
+
+        vars = []
+        
+
+        
+        for var in self.core.data_vars():
+            if self.get(var, strict=True) is not None:
+                vars.append(var)
+        if not vars:
+            if proj is None:
+                x, y = self.xy(native=True)
+            elif proj =='lonlat':
+                x, y = self.lonlat()
+            elif proj == 'xy':
+                x, y = self.xy()
+            plt.scatter(x,y)
+            plt.show()
+            return
+
+        cols = int(np.ceil(len(vars)**0.5))
+        rows = int(np.ceil(len(vars)/cols))
+
+        fig, ax = plt.subplots(rows, cols)
+ 
+        ax = np.atleast_2d(ax)
+        
+        r, c = 0, 0
+        
+        if compare is not None:
+            if proj == 'xy' or proj is None and self.core.is_cartesian():
+                xedge, yedge = compare.xy(crs=self.proj.crs())
+            else:
+                xedge, yedge = compare.lonlat()
+
+        for var in vars:
+            data = self.get(var)
+            if 'time' in self.core.coords():
+                data = data[0,...]
+            
+            ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour) # Implementation varies for GriddedSkeleton and PointSkeleton
+
+            
+            if proj is None:
+                ax[r,c].set_xlabel(self.core.x_str)
+                ax[r,c].set_ylabel(self.core.y_str)
+            elif proj == 'lonlat':
+                ax[r,c].set_xlabel('longitude')
+                ax[r,c].set_ylabel('latitude')
+            elif proj == 'xy':
+                ax[r,c].set_xlabel('x')
+                ax[r,c].set_ylabel('y')
+
+            title_str = f"{self.name}"
+            if 'time' in self.core.coords():
+                title_str += f": {self.time(datetime=False)[0]}"
+            ax[r,c].set_title(title_str)
+            cbar = fig.colorbar(cont, ax=ax[r, c])
+            param = self.core.meta_parameter(var)
+            if param is not None:
+                units = param.units()
+            else:
+                units = '?'
+            cbar.set_label(f"{var} [{units}]")
+            if compare is not None:
+                ax[r,c].scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
+                plt.legend()
+                #ax[r,c].scatter(xedge, yedge,c='k',s=1)
+                #ax[r,c].scatter(xedge2, yedge2,c='k',s=1)
+            c += 1
+            if c > cols-1:
+                c = 0
+                r += 1
+
+
+            
+
+
+        plt.show()
+
     def absorb(self, skeleton_to_absorb: "Skeleton", dim: str) -> "Skeleton":
         """Absorb another object of same type over a centrain dimension.
         For a PointSkeleton the inds-variable reorganized if dim='inds' is given."""

@@ -1,8 +1,17 @@
 from geo_skeletons.classes import WindGrid, Wind
 from geo_skeletons import GriddedSkeleton, PointSkeleton
 import numpy as np
-
+import pytest
 from copy import deepcopy
+
+from geo_skeletons.errors import SkeletonError
+def test_cant_get_lonlat_from_cartesian_without_projection():
+    grid = GriddedSkeleton(x=10, y=20)
+    grid2 = GriddedSkeleton(lon=5, lat=6)
+
+    with pytest.raises(SkeletonError):
+        grid.resample.grid(grid2)
+
 def test_scipy_grid_grid():
     data = WindGrid(
         lon=(10, 20), lat=(50, 60)

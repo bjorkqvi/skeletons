@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import circmean
 from typing import Union, Optional
 from .resample.scipy_regridders import scipy_regridders
+from .resample.ravel import ravel_regridders
 import geo_parameters as gp
 from copy import deepcopy
 def squared_mean(x, *args, **kwargs):
@@ -172,13 +173,13 @@ def init_new_class_to_grid(new_class, new_grid, data):
             new_coords[coord] = data.get(coord)
        
     new_data = new_class(**new_coords)
-    if new_data.core.is_cartesian():
+    if new_grid.proj.crs() is not None:
         new_data.proj.set(new_grid.proj.crs(), silent=True)
     new_data.name = data.name
 
     return new_data
 
-REGRID_ENGINES = {'scipy': scipy_regridders}
+REGRID_ENGINES = {'scipy': scipy_regridders, 'ravel': ravel_regridders}
 
 class ResampleManager:
     def __init__(self, skeleton):
@@ -191,10 +192,10 @@ class ResampleManager:
         print('Engine\t\t\tgrid-to-grid\tpoint-to-grid\tpoint-to-point\tgrid-to-point\tInstallation')
         print('-'*125)
         for key, value in REGRID_ENGINES.items():
-            g2g = 'Yes' if value.get('gridded_to_gridded') is not None else 'No'
-            p2g = 'Yes' if value.get('point_to_gridded') is not None else 'No'
-            p2p = 'Yes' if value.get('point_to_point') is not None else 'No'
-            g2p = 'Yes' if value.get('gridded_to_point') is not None else 'No'
+            g2g = 'Yes' if value.get('gridded_to_gridded') is not None else ' No'
+            p2g = 'Yes' if value.get('point_to_gridded') is not None else ' No'
+            p2p = 'Yes' if value.get('point_to_point') is not None else ' No'
+            g2p = 'Yes' if value.get('gridded_to_point') is not None else ' No'
             
             available = 'Installed' if value.get('available') else 'Not installed'
 
@@ -225,11 +226,11 @@ class ResampleManager:
 
         if verbose:
             if self.skeleton.core.is_cartesian():
-                print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')} CRS {self.skeleton.proj.crs()}")
+                print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')} CRS {str(self.skeleton.proj.crs())[:20]}")
             else:
                 print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
             if new_data.core.is_cartesian():
-                print(f"Target grid has spatial coords {new_data.core.coords('spatial')} CRS {new_data.proj.crs()}")
+                print(f"Target grid has spatial coords {new_data.core.coords('spatial')} CRS {str(new_data.proj.crs())[:20]}")
             else:
                 print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
 
