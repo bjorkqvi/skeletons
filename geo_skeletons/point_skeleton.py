@@ -10,7 +10,7 @@ import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
 from scipy.spatial.distance import cdist
-
+from .managers.resample_manager import find_original_skeleton_in_inheritance_chain
 from .distance_funcs import distance_2points
 inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
 INITIAL_COORDS = [inds_coord]
@@ -50,6 +50,7 @@ class PointSkeleton(Skeleton):
     def from_skeleton(
         cls,
         skeleton: Skeleton,
+        proj: Optional[str] = None,
         mask: Optional[np.ndarray] = None,
     ) -> PointSkeleton:
         """Creates a new PointSkeleton containing only points from another Gridded- or PointSkeleton.
@@ -59,11 +60,20 @@ class PointSkeleton(Skeleton):
         if mask is None:
             mask = np.full(skeleton.size("spatial"), True)
         mask = undask_me(mask)
-        lon, lat = skeleton.lonlat(strict=True, mask=mask)
-        x, y = skeleton.xy(strict=True, mask=mask)
+        
+        if proj is None:
+            lon, lat = skeleton.lonlat(strict=True, mask=mask)
+            x, y = skeleton.xy(strict=True, mask=mask)
+        elif proj == 'lonlat':
+            lon, lat = skeleton.lonlat(mask=mask)
+            x, y = None, None
+        elif proj == 'xy':
+            lon, lat = None, None
+            x, y = skeleton.xy(mask=mask)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        new_skeleton.proj.set(skeleton.proj.crs(), silent=True)
+        if skeleton.proj.crs() is not None:
+            new_skeleton.proj.set(skeleton.proj.crs(), silent=True)
 
         return new_skeleton
 
@@ -87,6 +97,29 @@ class PointSkeleton(Skeleton):
             return INITIAL_SPHERICAL_VARS
         else:
             return INITIAL_CARTESIAN_VARS
+        
+    def ravel(self, proj: str = None) -> "PointSkeleton":
+        cls = find_original_skeleton_in_inheritance_chain(self)
+        points = cls.from_skeleton(self, proj=proj)
+        return self.resample.grid(points, engine='ravel')
+    
+    def _quicklook(self, ax, data, proj, contour):
+        """This is called by the quicklook method of the Skelton class"""
+        
+        if proj is None:
+            x, y = self.xy(native=True)
+        elif proj == 'lonlat':
+            x, y = self.lonlat()
+        elif proj == 'xy':
+            x, y = self.xy()
+
+        if contour:
+            mask = np.logical_not(np.isnan(data))
+            cont = ax.tricontourf(x[mask], y[mask],data[mask])
+        else:
+            cont = ax.scatter(x, y,c=data, s=2)
+        
+        return ax, cont
 
     def xgrid(
         self,
