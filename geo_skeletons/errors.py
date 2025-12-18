@@ -63,3 +63,7 @@ class DirTypeError(SkeletonError):
         super().__init__(
             msg
         )
+
+class MissingDatasetError(SkeletonError):
+    def __init__(self):
+        super().__init__("No underlying dataset found! Either the instance has not been properly initialized, or the data has somehow been removed.")
