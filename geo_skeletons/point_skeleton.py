@@ -115,6 +115,10 @@ class PointSkeleton(Skeleton):
 
         if contour:
             mask = np.logical_not(np.isnan(data))
+            if sum(mask)<3:
+                contour = False
+
+        if contour:
             cont = ax.tricontourf(x[mask], y[mask],data[mask])
         else:
             cont = ax.scatter(x, y,c=data, s=2)
