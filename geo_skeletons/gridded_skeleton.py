@@ -11,7 +11,7 @@ from .variables import Coordinate, DataVar
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
-from .errors import SkeletonError
+from .errors import SkeletonError, MissingDatasetError
 lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
 lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
 x_var = Coordinate(name="x", meta=gp.grid.X, coord_group="spatial", grid_mapping='crs')
@@ -183,7 +183,7 @@ class GriddedSkeleton(Skeleton):
         vec_mask = np.any(mask, axis=0)
 
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if not self.core.is_cartesian() and native:
             return self.lon(**kwargs)
@@ -230,7 +230,7 @@ class GriddedSkeleton(Skeleton):
         vec_mask = np.any(mask, axis=1)
 
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if not self.core.is_cartesian() and native:
             return self.lat(**kwargs)
@@ -274,7 +274,7 @@ class GriddedSkeleton(Skeleton):
         vec_mask = np.any(mask, axis=0)
 
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if self.core.is_cartesian() and native:
             return self.x(crs=crs, **kwargs)
@@ -314,7 +314,7 @@ class GriddedSkeleton(Skeleton):
         vec_mask = np.any(mask, axis=1)
 
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if self.core.is_cartesian() and native:
             return self.y(crs=crs, **kwargs)
