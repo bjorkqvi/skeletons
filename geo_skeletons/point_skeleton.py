@@ -427,8 +427,10 @@ class PointSkeleton(Skeleton):
             )
         return mask
 
-    def dy(self, native: bool = False, strict: bool = False) -> float:
-        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+    def dy(self, native: bool = False, strict: bool = False, array: bool = True) -> float:
+        """Median grid spacing. Conversion made for spherical grids.
+        
+        Note, methods dx() and dy() are same for cartesian grids"""
 
         
         if not self.core.is_cartesian() and strict and (not native):
@@ -446,7 +448,9 @@ class PointSkeleton(Skeleton):
         return float(np.median(dist_point))
     
     def dx(self, native: bool = False, strict: bool = False) -> float:
-        """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+        """Median grid spacing. Conversion made for spherical grids.
+        
+        Note, methods dx() and dy() are same for cartesian grids"""
 
         
         if not self.core.is_cartesian() and strict and (not native):
@@ -467,15 +471,18 @@ class PointSkeleton(Skeleton):
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
-        if not self.core.is_cartesian() and strict and (not native):
+        if self.core.is_cartesian() and strict and (not native):
             return None
-
+        
+        if self.core.is_cartesian():
+            if native:
+                return self.dy()
+            if self.proj.crs() is None:
+                return None
+        
         if self.ny() == 1:
             return 0.0
         
-        if not self.core.is_cartesian() and native:
-            return self.dy()
-            
         # median distance in meter
         dy = self.dy()
 
@@ -490,15 +497,18 @@ class PointSkeleton(Skeleton):
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
-        if not self.core.is_cartesian() and strict and (not native):
+        if self.core.is_cartesian() and strict and (not native):
             return None
+
+        if self.core.is_cartesian():
+            if native:
+                return self.dx()
+            if self.proj.crs() is None:
+                return None
 
         if self.nx() == 1:
             return 0.0
-        
-        if not self.core.is_cartesian() and native:
-            return self.dx()
-            
+
         # median distance in meter
         dx = self.dx()
 
