@@ -4,7 +4,6 @@ import numpy as np
 from .skeleton import Skeleton
 from .managers.coordinate_manager import CoordinateManager
 from .managers.metadata_manager import MetaDataManager
-from .managers.dask_manager import DaskManager
 from .variables import DataVar, Coordinate
 import geo_parameters as gp
 from typing import Optional, Union
@@ -12,6 +11,7 @@ from .dask_computations import undask_me
 from scipy.spatial.distance import cdist
 from .managers.resample_manager import find_original_skeleton_in_inheritance_chain
 from .distance_funcs import distance_2points
+from .errors import MissingDatasetError
 inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
 INITIAL_COORDS = [inds_coord]
 
@@ -209,7 +209,7 @@ class PointSkeleton(Skeleton):
             raise ValueError("Can't set both 'native' and 'strict' to True!")
 
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if not self.core.is_cartesian() and native:
             return self.lon(mask=mask, **kwargs)
@@ -254,7 +254,7 @@ class PointSkeleton(Skeleton):
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if not self.core.is_cartesian() and native:
             return self.lat(mask=mask, **kwargs)
@@ -299,7 +299,7 @@ class PointSkeleton(Skeleton):
             raise ValueError("Can't set both 'native' and 'strict' to True!")
 
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if self.core.is_cartesian() and native:
             return self.x(mask=mask, crs=crs, **kwargs)
@@ -338,7 +338,7 @@ class PointSkeleton(Skeleton):
             raise ValueError("Can't set both 'native' and 'strict' to True!")
 
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if self.core.is_cartesian() and native:
             return self.y(mask=mask, crs=crs, **kwargs)
