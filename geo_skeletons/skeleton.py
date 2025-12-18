@@ -21,6 +21,7 @@ from .errors import (
     DirTypeError,
     SkeletonError,
     UnknownVariableError,
+    MissingDatasetError
 )
 from collections.abc import Iterable
 from typing import Iterable
@@ -759,7 +760,8 @@ class Skeleton:
         silent [True]: Don't output what reshaping is being performed.
 
         """
-
+        if self.ds() is None:
+            raise(MissingDatasetError)
         if not isinstance(name, str) and not gp.is_gp(name):
             raise TypeError(
                 f"'name' must be of type 'str', or 'MetaParameter' not '{type(name).__name__}'!"
@@ -1053,7 +1055,7 @@ class Skeleton:
         dask [None]: Return dask array [True] or numpy array [False]. Default: Use set dask-mode
         """
         if self.ds() is None:
-            return None
+            raise MissingDatasetError
 
         if not isinstance(name, str) and not gp.is_gp(name):
             raise TypeError(
