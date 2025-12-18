@@ -53,13 +53,14 @@ def test_gridded_add_gp_trivial_all():
     assert set(points.coord_squeeze(["x"])) == {"x"}
     assert set(points.coord_squeeze(["y", "x"])) == {"y"}
     assert set(points.coord_squeeze(["y", "x", "z"])) == {"y"}
-
+    assert set(points.coord_squeeze(["x", "z"])) == {"x"}
     points = Expanded(lon=0, lat=4, z=1)
     assert set(points.coord_squeeze(["z"])) == set({"z"})
     assert set(points.coord_squeeze(["lat"])) == {"lat"}
     assert set(points.coord_squeeze(["lon"])) == {"lon"}
     assert set(points.coord_squeeze(["lat", "lon"])) == {"lat"}
     assert set(points.coord_squeeze(["lat", "lon", "z"])) == {"lat"}
+    assert set(points.coord_squeeze(["lon", "z"])) == {"lon"}
 
 
 def test_gridded_add_gp_trivial_x():
@@ -74,6 +75,7 @@ def test_gridded_add_gp_trivial_x():
     assert set(points.coord_squeeze(["x"])) == {"x"}
     assert set(points.coord_squeeze(["y", "x"])) == {"y"}
     assert set(points.coord_squeeze(["y", "x", "z"])) == {"y", "z"}
+
 
     points = Expanded(lon=0, lat=[4, 5], z=[1, 2])
     assert set(points.coord_squeeze(["z"])) == set({"z"})

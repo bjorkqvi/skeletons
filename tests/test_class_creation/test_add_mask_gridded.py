@@ -1,7 +1,5 @@
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
 from geo_skeletons.decorators import add_coord, add_time, add_datavar, add_mask
-from geo_skeletons.errors import StaticSkeletonError
-import pytest
 import numpy as np
 import pandas as pd
 
