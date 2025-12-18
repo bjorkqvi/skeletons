@@ -17,11 +17,19 @@ def test_gridded_cartesian():
 
 def test_point_spherical():
     points = PointSkeleton(lon=(0, 6), lat=(-10, 10))
-    np.testing.assert_almost_equal(distance_2points(0, 0, 0, 6), points.extent("x"))
-    np.testing.assert_almost_equal(distance_2points(-10, 3, 10, 3), points.extent("y"))
+    d1 = distance_2points(-10, 0, -10,6)
+    d2 = distance_2points(10, 0, 10,6)
+    np.testing.assert_almost_equal((d1+d2)/2, points.extent("x"))
+    d1 = distance_2points(-10, 0, 10,0)
+    d2 = distance_2points(-10, 6, 10,6)
+    np.testing.assert_almost_equal((d1+d2)/2, points.extent("y"))
 
 
 def test_gridded_spherical():
     points = GriddedSkeleton(lon=(0, 6), lat=(-10, 10))
-    np.testing.assert_almost_equal(distance_2points(0, 0, 0, 6), points.extent("x"))
-    np.testing.assert_almost_equal(distance_2points(-10, 3, 10, 3), points.extent("y"))
+    d1 = distance_2points(-10, 0, -10,6)
+    d2 = distance_2points(10, 0, 10,6)
+    np.testing.assert_almost_equal((d1+d2)/2, points.extent("x"))
+    d1 = distance_2points(-10, 0, 10,0)
+    d2 = distance_2points(-10, 6, 10,6)
+    np.testing.assert_almost_equal((d1+d2)/2, points.extent("y"))
