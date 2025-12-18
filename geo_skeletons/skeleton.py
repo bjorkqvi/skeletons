@@ -100,7 +100,7 @@ class Skeleton:
         )
         self.core.x_str = x_str
         self.core.y_str = y_str
-
+    
         # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
         self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
         self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
@@ -452,7 +452,7 @@ class Skeleton:
 
         return points
 
-    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True) -> None:
+    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True) -> None:
         """Quicklook of the data"""
         try:
             import matplotlib.pyplot as plt
@@ -463,7 +463,6 @@ class Skeleton:
         vars = []
         
 
-        
         for var in self.core.data_vars():
             if self.get(var, strict=True) is not None:
                 vars.append(var)
@@ -475,7 +474,8 @@ class Skeleton:
             elif proj == 'xy':
                 x, y = self.xy()
             plt.scatter(x,y)
-            plt.show()
+            if show:
+                plt.show()
             return
 
         cols = int(np.ceil(len(vars)**0.5))
@@ -525,18 +525,14 @@ class Skeleton:
             if compare is not None:
                 ax[r,c].scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
                 plt.legend()
-                #ax[r,c].scatter(xedge, yedge,c='k',s=1)
-                #ax[r,c].scatter(xedge2, yedge2,c='k',s=1)
             c += 1
             if c > cols-1:
                 c = 0
                 r += 1
 
 
-            
-
-
-        plt.show()
+        if show:
+            plt.show()
 
     def absorb(self, skeleton_to_absorb: "Skeleton", dim: str) -> "Skeleton":
         """Absorb another object of same type over a centrain dimension.
@@ -702,14 +698,18 @@ class Skeleton:
         coord_group = self.core.coord_group(name)
         dims = self.core.coords(coord_group)
         index_list = list(np.arange(len(dims)))
-
+        
+        wrong_dims = set(kwargs.keys()) - set(dims)
+        if wrong_dims:
+            raise KeyError(f"Variable {name} doesn't depend on coordinates {wrong_dims}")
+        
         for n, dim in enumerate(dims):
             var = self.get(dim)
             if var is None:
                 raise KeyError(f"No coordinate {dim} exists!")
             ind = kwargs.get(dim, slice(len(var)))
             index_list[n] = ind
-
+        
         old_data = self.get(name, squeeze=False).copy()
         N = len(old_data.shape)
         data_str = "old_data["
@@ -810,7 +810,7 @@ class Skeleton:
         )
 
         if dir_type not in ["to", "from", "math", None]:
-            raise ValueError(
+            raise DirTypeError(
                 f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
             )
 
@@ -943,6 +943,8 @@ class Skeleton:
         Data needs to be exactly right shape."""
         obj = self.core.get(name)
         x_component, y_component = obj.x, obj.y
+        if obj.direction is None:
+            raise SkeletonError(f"Cannot set a magnitude '{name}' that has no associated direction! Set componensts '{obj.x}' and '{obj.y}' separatesly, or modify class to have an associated direction.")
         dir_data = self.get(obj.direction.name, dir_type="math", squeeze=False)
 
         s = dask_computations.sin(dir_data)
@@ -1002,10 +1004,6 @@ class Skeleton:
         Data needs to be exactly right shape.
 
         Triggers setting metadata of the variable and possible connected masks."""
-        if dir_type not in ["to", "from", "math", None]:
-            raise ValueError(
-                f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
-            )
         set_dir_type = self.core.get_dir_type(name)
         if dir_type is not None and set_dir_type is None:
             raise DirTypeError
@@ -1082,7 +1080,7 @@ class Skeleton:
             return self.lat(strict=strict, **kwargs)
 
         if dir_type not in ["to", "from", "math", None]:
-            raise ValueError(
+            raise DirTypeError(
                 f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
             )
 
@@ -1332,7 +1330,12 @@ class Skeleton:
         ds = self._ds_manager.ds()
         if compile:
             ds = deepcopy(ds)
-            ds['crs'].attrs = self.proj.crs().to_cf()
+            crs = self.proj.crs()
+            if isinstance(crs, tuple):
+                crs = {'utm_zone': str(crs[0]), 'utm_letter': crs[1]}
+            else:
+                crs = crs.to_cf()
+            ds['crs'].attrs = crs
             for mag in self.core.magnitudes():
                 ds[mag] = self.get(mag, data_array=True)
             for dirs in self.core.directions():
@@ -1379,8 +1382,7 @@ class Skeleton:
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
         if coord not in ["x", "y", "lon", "lat"]:
-            print("coord need to be 'x', 'y', 'lon' or 'lat'.")
-            return
+            raise KeyError("coord need to be 'x', 'y', 'lon' or 'lat'.")
 
         if coord in ["x", "y"]:
             x, y = self.x(native=native, strict=strict, crs=crs), self.y(native=native, strict=strict, crs=crs)
@@ -1403,12 +1405,14 @@ class Skeleton:
     def extent(self, coord: str, strict: bool = False) -> float:
         """Gives the extent in metres in x- or y-direction.
 
-        For spherical grids this might differ from difference of
-        edges in case of gridded data or high latitudes that
-        cause nan in edges."""
-        if coord not in ["x", "y"]:
-            print("coord need to be 'x' or 'y'.")
-            return
+        Cartesian grid: The difference between the edges
+        Spherical grid ['x']: Mean of distance between longitude edges for southern and northern edges
+        Spherical grid ['y']: Mean of distance between latitude edges for western and eastern edges
+
+        Note, that for PointSkeletons the extens is actually a measure of the rectangle covering the points."""
+        if coord not in ["x", "y",'lon','lat']:
+            raise KeyError("coord need to be 'x', 'y', 'lon' or 'lat'.")
+
 
         if not self.core.is_cartesian() and strict:
             return None
@@ -1416,14 +1420,16 @@ class Skeleton:
         if self.core.is_cartesian():
             return np.diff(self.edges(coord))[0]
 
-        if coord == "x":
-            lon1, lon2 = self.edges("lon")
-            lat = np.median(self.lat())
-            return distance_2points(lat1=lat, lon1=lon1, lat2=lat, lon2=lon2)
+        lon1, lon2 = self.edges("lon")
+        lat1, lat2 = self.edges("lat")
+        if coord in ['x','lon']:
+            d_south = distance_2points(lat1=lat1, lon1=lon1, lat2=lat1, lon2=lon2)
+            d_north = distance_2points(lat1=lat2, lon1=lon1, lat2=lat2, lon2=lon2)
+            return (d_south+d_north)/2
         else:
-            lat1, lat2 = self.edges("lat")
-            lon = np.median(self.lon())
-            return distance_2points(lat1=lat1, lon1=lon, lat2=lat2, lon2=lon)
+            d_west = distance_2points(lat1=lat1, lon1=lon1, lat2=lat2, lon2=lon1)
+            d_east = distance_2points(lat1=lat1, lon1=lon2, lat2=lat2, lon2=lon2)
+            return (d_west + d_east)/2
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
@@ -1479,7 +1485,9 @@ class Skeleton:
         
         """
 
-        if all([x is None for x in (x, y, lon, lat)]):
+        xy_given = x is not None and y is not None
+        lonlat_given = lon is not None and lat is not None
+        if not xy_given and not lonlat_given:
             raise ValueError("Give either x-y pair or lon-lat pair!")
 
         if self.core.is_cartesian():
@@ -1689,28 +1697,40 @@ class Skeleton:
             string += "\n" + f"{' Empty data ':-^80}"
 
             if empty_vars:
+                if len(empty_vars) > 3:
+                    empty_vars = [empty_vars[0]] + [f'... (total of {len(empty_vars)}, use .core to view all variables)'] + [empty_vars[-1]]
                 string += "\n" + "Empty variables:"
                 max_len = len(max(empty_vars, key=len))
                 for var in empty_vars:
-                    string += f"\n    {var:{max_len+2}}"
-                    string += string_of_coords(
-                        self.core.coords(self.core.coord_group(var))
-                    )
-                    string += f":  {self.core.default_value(var)}"
-                    meta_parameter = self.core.meta_parameter(var)
-                    if meta_parameter is not None:
-                        string += f" [{meta_parameter.units()}]"
-                        string += f" {meta_parameter.standard_name()}"
+                    if var[0:3] == '...':
+                        string += f"\n    {var:{max_len+2}}"
+                    else:
+                    
+                        string += f"\n    {var:{max_len+2}}"
+                        string += string_of_coords(
+                            self.core.coords(self.core.coord_group(var))
+                        )
+                        string += f":  {self.core.default_value(var)}"
+                        meta_parameter = self.core.meta_parameter(var)
+                        if meta_parameter is not None:
+                            string += f" [{meta_parameter.units()}]"
+                            string += f" {meta_parameter.standard_name()}"
 
             if empty_masks:
+                if len(empty_masks) > 3:
+                    empty_masks = [empty_masks[0]] + [f'... (total of {len(empty_masks)}, use .core to view all masks)'] + [empty_masks[-1]]
                 string += "\n" + "Empty masks:"
                 max_len = len(max(empty_masks, key=len))
                 for mask in empty_masks:
-                    string += f"\n    {mask:{max_len+2}}"
-                    string += string_of_coords(
-                        self.core.coords(self.core.coord_group(mask))
-                    )
-                    string += f":  {bool(self.core.default_value(mask))}"
+                    if mask[0:3] == '...':
+                        string += f"\n    {mask:{max_len+2}}"
+                    else:
+                    
+                        string += f"\n    {mask:{max_len+2}}"
+                        string += string_of_coords(
+                            self.core.coords(self.core.coord_group(mask))
+                        )
+                        string += f":  {bool(self.core.default_value(mask))}"
 
         magnitudes = self.core.magnitudes()
 
@@ -1759,8 +1779,6 @@ def _determine_inds(coord_slice, all_vals):
     
     if coord_slice is None:
         start, stop = np.nanmin(all_vals), np.nanmax(all_vals)
-    elif isinstance(coord_slice, int):
-        start, stop = coord_slice, coord_slice
     else:
         if coord_slice.step is not None:
             raise ValueError("PointSkeletons can't be sliced with a step!")
