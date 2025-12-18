@@ -4,14 +4,6 @@ from typing import Union
 class SkeletonError(Exception):
     pass
 
-
-class StaticSkeletonError(SkeletonError):
-    def __init(self):
-        super().__init__(
-            "Cannot add variable to a static Skeleton! Use @dynamic to change class or set instance core to obj.core.static = False"
-        )
-
-
 class UnknownCoordinateError(SkeletonError):
     pass
 
@@ -66,7 +58,8 @@ class VariableExistsError(SkeletonError):
 
 
 class DirTypeError(SkeletonError):
-    def __init__(self):
+    def __init__(self, msg: str="Cannot use 'dir_type' with a non-directional variable or a magnitude!!!"):
+        
         super().__init__(
-            f"Cannot use 'dir_type' with a non-directional variable or a magnitude!!!"
+            msg
         )
