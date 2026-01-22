@@ -112,19 +112,21 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                 source_values = data.get(var_name)
                 if x_expanded:
                     print('Fixed +-180 longitude wrapping issue and expanding data to match...')
-                    first_column = source_values[:, 0:1] 
-                    last_column = source_values[:, -1:] 
+
                     if time_regridding:
+                        first_column = source_values[:, :,0] 
+                        last_column = source_values[:,:,-1] 
                         ax = 2
                     else:
+                        first_column = source_values[:,0] 
+                        last_column = source_values[:, -1] 
                         ax = 1
-                    source_values = np.concatenate([last_column, source_values, first_column], axis=ax) 
+                    source_values = np.concatenate([np.expand_dims(last_column, axis=-1), source_values, np.expand_dims(first_column, axis=-1)], axis=ax) 
 
                 if mask_nan is not None:
                     source_values = copy(source_values)
                     mask = np.isnan(source_values)
                     source_values[mask] = mask_nan
-
                 interpolator = RegularGridInterpolator(target_points, undask_me(source_values), method=method)
                 interpolated_values = interpolator(qp)
                 
