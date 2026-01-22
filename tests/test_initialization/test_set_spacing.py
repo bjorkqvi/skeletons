@@ -6,12 +6,28 @@ from geo_skeletons.errors import SkeletonError
 
 def test_nx_ny_cartesian():
     grid = GriddedSkeleton(x=(-2, 2), y=(-3, 3))
-    grid.edges('lon')
     grid.set_spacing(nx=5, ny=7)
     assert grid.nx() == 5
     assert grid.ny() == 7
     assert grid.size() == (7, 5)
     np.testing.assert_array_almost_equal(grid.x(), np.array([-2, -1, 0, 1, 2]))
+    np.testing.assert_array_almost_equal(grid.y(), np.array([-3, -2, -1, 0, 1, 2, 3]))
+
+def test_nx_ny_cartesian_only_one():
+    grid = GriddedSkeleton(x=(-2, 2), y=(-3, 3))
+    grid.set_spacing(nx=5)
+    assert grid.nx() == 5
+    assert grid.ny() == 2
+    assert grid.size() == (2, 5)
+    np.testing.assert_array_almost_equal(grid.x(), np.array([-2, -1, 0, 1, 2]))
+    np.testing.assert_array_almost_equal(grid.y(), np.array([-3, 3]))
+
+    grid = GriddedSkeleton(x=(-2, 2), y=(-3, 3))
+    grid.set_spacing(ny=7)
+    assert grid.nx() == 2
+    assert grid.ny() == 7
+    assert grid.size() == (7, 2)
+    np.testing.assert_array_almost_equal(grid.x(), np.array([-2, 2]))
     np.testing.assert_array_almost_equal(grid.y(), np.array([-3, -2, -1, 0, 1, 2, 3]))
 
 def test_nx_ny_spherical():
@@ -32,6 +48,23 @@ def test_dx_dy_cartesian():
     np.testing.assert_array_almost_equal(grid.x(), np.array([-1, -0.5, 0, 0.5, 1]))
     np.testing.assert_array_almost_equal(grid.y(), np.array([-3, 0, 3]))
 
+
+def test_dx_dy_cartesian_only_one():
+    grid = GriddedSkeleton(x=(-1, 1), y=(-3, 3))
+    grid.set_spacing(dx=0.5)
+    assert grid.nx() == 5
+    assert grid.ny() == 2
+    assert grid.size() == (2, 5)
+    np.testing.assert_array_almost_equal(grid.x(), np.array([-1, -0.5, 0, 0.5, 1]))
+    np.testing.assert_array_almost_equal(grid.y(), np.array([-3,  3]))
+
+    grid = GriddedSkeleton(x=(-1, 1), y=(-3, 3))
+    grid.set_spacing(dy=3)
+    assert grid.nx() == 2
+    assert grid.ny() == 3
+    assert grid.size() == (3, 2)
+    np.testing.assert_array_almost_equal(grid.x(), np.array([-1, 1]))
+    np.testing.assert_array_almost_equal(grid.y(), np.array([-3, 0, 3]))
 
 def test_dm_cartesian():
     grid = GriddedSkeleton(x=(-1, 1), y=(-2, 2))
@@ -82,6 +115,13 @@ def test_dlon_dlat_cartesian():
     np.testing.assert_array_almost_equal(
         grid.dx(), 150_000 / (grid.nx() - 1), decimal=0
     )
+
+
+def test_dlon_dlat_cartesian_no_proj():
+    grid = GriddedSkeleton(x=(0, 150_000), y=(6_700_000, 6_800_000))
+    with pytest.raises(SkeletonError):
+        grid.set_spacing(dlon=0.02, dlat=0.01)
+
 
 
 def test_dlon_dlat_spherical_floating():

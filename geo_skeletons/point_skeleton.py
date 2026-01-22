@@ -239,6 +239,7 @@ class PointSkeleton(Skeleton):
         mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         normalize: bool = False,
+        in_meters: bool = False, 
         **kwargs,
     ) -> np.ndarray:
         """Returns the cartesian y-coordinate.
@@ -262,6 +263,9 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and strict:
             return None
 
+        if in_meters:
+            if crs is not None:
+                raise ValueError("Can't both ask ")
 
         if self.core.is_cartesian() and (crs is None or self.proj.crs() == crs):
             y = self._ds_manager.get("y", **kwargs).values.copy()[mask]
