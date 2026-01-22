@@ -417,6 +417,7 @@ class Skeleton:
         )
         name = name or ds.attrs.get("name")
         points = cls(**coords, chunks=chunks, name=name)
+        
         # Lengths needed for matching coordinates with wrong name
         # We do this instead of reading the lengths of the arrays directyl
         # Reason is that we want 'inds' for PointSkeletons etc
@@ -430,7 +431,7 @@ class Skeleton:
         ds_remapped_coords, __ = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
-
+        
         # Set data
         points = set_core_vars_to_skeleton_from_ds(
             points,
@@ -462,7 +463,12 @@ class Skeleton:
             raise e
 
         vars = []
-        
+
+        if compare is not None:
+            if proj == 'xy' or proj is None and self.core.is_cartesian():
+                xedge, yedge = compare.xy(crs=self.proj.crs())
+            else:
+                xedge, yedge = compare.lonlat()
 
         for var in self.core.data_vars():
             if self.get(var, strict=True) is not None:
@@ -475,6 +481,9 @@ class Skeleton:
             elif proj == 'xy':
                 x, y = self.xy()
             plt.scatter(x,y)
+            if compare is not None:
+                plt.scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
+                plt.legend()
             if show:
                 plt.show()
             return
@@ -487,12 +496,6 @@ class Skeleton:
         ax = np.atleast_2d(ax)
         
         r, c = 0, 0
-        
-        if compare is not None:
-            if proj == 'xy' or proj is None and self.core.is_cartesian():
-                xedge, yedge = compare.xy(crs=self.proj.crs())
-            else:
-                xedge, yedge = compare.lonlat()
 
         for var in vars:
             data = self.get(var)
@@ -766,7 +769,7 @@ class Skeleton:
             raise TypeError(
                 f"'name' must be of type 'str', or 'MetaParameter' not '{type(name).__name__}'!"
             )
-
+        
         if gp.is_gp(name):
             names = self.core.find(name)
             if len(names) == 0:
@@ -839,7 +842,7 @@ class Skeleton:
                 data=data,
                 dir_type=dir_type,
             )
-
+        
         if first_set:
             self.meta.metadata_to_ds(name)
             if self.core.get(name).coord_group in ['all', 'spatial', 'grid']:

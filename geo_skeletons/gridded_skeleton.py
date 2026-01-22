@@ -164,6 +164,7 @@ class GriddedSkeleton(Skeleton):
     def x(
         self,
         native: bool = False,
+        strict: bool = False, 
         mask: Optional[np.ndarray] = None,
         normalize: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
@@ -178,7 +179,8 @@ class GriddedSkeleton(Skeleton):
 
         Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
         """
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         mask = self._check_mask_right_shape(mask, self.core.x_str, **kwargs)
         vec_mask = np.any(mask, axis=0)
 
@@ -211,6 +213,7 @@ class GriddedSkeleton(Skeleton):
     def y(
         self,
         native: bool = False,
+        strict: bool = False,
         mask: Optional[np.ndarray] = None,
         normalize: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
@@ -225,7 +228,8 @@ class GriddedSkeleton(Skeleton):
 
         Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
         """
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         mask = self._check_mask_right_shape(mask, self.core.y_str, **kwargs)
         vec_mask = np.any(mask, axis=1)
 
@@ -242,13 +246,6 @@ class GriddedSkeleton(Skeleton):
             y = self._ds_manager.get("y", **kwargs).values.copy()[vec_mask]
         else:
             return None
-        #     lon, lat = self.lon(mask=mask, **kwargs), self.lat(mask=mask, **kwargs)
-        #     median_lon = np.full(len(lat), np.median(lon))
-        #     if not suppress_warning and len(lon) > 1:
-        #         print(
-        #             "Regridding spherical grid to cartesian coordinates will cause a rotation! Use 'x, _ = skeleton.xy()' to get a list of all points."
-        #         )
-        #     y = self.utm._y(lon=median_lon, lat=lat, utm=utm)
 
         if normalize:
             y = y - min(y)
@@ -258,6 +255,7 @@ class GriddedSkeleton(Skeleton):
     def lon(
         self,
         native: bool = False,
+        strict: bool = False,
         mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
@@ -269,7 +267,8 @@ class GriddedSkeleton(Skeleton):
         strict = True gives 'None' if Skeleton is cartesian
         native = True gives UTM x-values if Skeleton is cartesian
         """
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         mask = self._check_mask_right_shape(mask, self.core.x_str, **kwargs)
         vec_mask = np.any(mask, axis=0)
 
@@ -285,20 +284,11 @@ class GriddedSkeleton(Skeleton):
         
         return self._ds_manager.get("lon", **kwargs).values.copy()[vec_mask]
 
-        # x, y = self.x(mask=mask, utm=utm, **kwargs), self.y(
-        #     mask=mask, utm=utm, **kwargs
-        # )
-        # median_y = np.full(len(x), np.median(y))
-
-        # if not suppress_warning and len(y) > 1:
-        #     print(
-        #         "Regridding cartesian grid to spherical coordinates will cause a rotation! Use 'lon, _ = skeleton.lonlat()' to get a list of all points."
-        #     )
-        # return self.utm._lon(x=x, y=median_y, utm=utm)
 
     def lat(
         self,
         native: bool = False,
+        strict: bool = False,
         mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
@@ -310,6 +300,9 @@ class GriddedSkeleton(Skeleton):
         strict = True gives 'None' if Skeleton is cartesian
         native = True gives UTM y-values if Skeleton is cartesian
         """
+
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         mask = self._check_mask_right_shape(mask, self.core.y_str, **kwargs)
         vec_mask = np.any(mask, axis=1)
 
@@ -592,8 +585,69 @@ class GriddedSkeleton(Skeleton):
         self._init_structure(x, y, lon, lat)
         self.meta.set_by_dict(old_metadata)
 
+    def dmx(self,native: bool = False, strict: bool = False) -> float:
+        """The grid distance in metres for the x-direction.
+        
+        For cartesian grids this method is identical to .dx()
+        For grids with non cartesian projectsion (e.g. rotated pole), .dx() will give """
+
+        if (not self.core.is_cartesian() or self.proj.units_are_in_degrees()) and strict and (not native):
+            return None
+        if self.nx() == 1:
+            return 0.0
+
+        if self.core.is_cartesian() and not self.proj.units_are_in_degrees():
+            x = self.edges('x')
+            
+            return float((x[1]-x[0])/(self.nx()-1))
+        else:
+            if native:
+                if self.core.is_cartesian():
+                    return self.dx()
+                else:
+                    return self.dlon()
+            midpoint = np.round(self.ny()/2).astype(int)
+            data_slice = self.isel(y=midpoint)
+            
+            lat = data_slice.edges('lat')
+            lon = data_slice.edges('lon')
+
+            d = distance_2points(lat[0], lon[0], lat[1], lon[1]) 
+            return float(d/(data_slice.nx()-1))
+
+    def dmy(self,native: bool = False, strict: bool = False) -> float:
+        """The grid distance in metres for the y-direction.
+        
+        For cartesian grids this method is identical to .dy()
+        For grids with non cartesian projectsion (e.g. rotated pole), .dy() will give """
+
+        if (not self.core.is_cartesian() or self.proj.units_are_in_degrees()) and strict and (not native):
+            return None
+        
+        if self.ny() == 1:
+            return 0.0
+
+        if self.core.is_cartesian() and not self.proj.units_are_in_degrees():
+            y = self.edges('y')
+            return float((y[1]-y[0])/(self.ny()-1))
+        else:
+            if native:
+                if self.core.is_cartesian():
+                    return self.dy()
+                else:
+                    return self.dlat()
+            midpoint = np.round(self.nx()/2).astype(int)
+            data_slice = self.isel(x=midpoint)
+            
+            lat = data_slice.edges('lat')
+            lon = data_slice.edges('lon')
+            d = distance_2points(lat[0], lon[0], lat[1], lon[1]) 
+            return float(d/(data_slice.ny()-1))
+
+
     def dy(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+        
         if not self.core.is_cartesian() and strict and (not native):
             return None
 
@@ -608,8 +662,9 @@ class GriddedSkeleton(Skeleton):
             if native:
                 return self.dlat()
             lon = self.edges('lon')
-            lat = self.edges('lat')
+            
             lon = (lon[1]+lon[0])/2
+            lat = self.sel(lon=lon).edges('lat')
             d = distance_2points(lat[0], lon, lat[1], lon) 
             return float(d/(self.ny()-1))
 

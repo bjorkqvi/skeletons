@@ -108,7 +108,7 @@ def set_core_vars_to_skeleton_from_ds(
 
     core_vars_to_ds_vars = core_vars_to_ds_vars or {}
     meta_dict = meta_dict or {}
-
+    
     for var, ds_var_x in core_vars_to_ds_vars.items():
         get_metadata_from_ds = True
         if isinstance(ds_var_x, tuple):
@@ -119,7 +119,7 @@ def set_core_vars_to_skeleton_from_ds(
         else:
             data_to_set = ds.get(ds_var_x)
             dir_type = None
-
+        
         if ds_remapped_coords.get(var):
             skeleton.set(
                 var,
@@ -137,7 +137,7 @@ def set_core_vars_to_skeleton_from_ds(
                 skeleton.meta.append(ds.get(ds_var_x).attrs, name=var)
             skeleton.meta.append(old_metadata, name=var)
             skeleton.meta.append(meta_dict.get(var, {}), name=var)
-
+    
     for var in skeleton.core.magnitudes():
         old_metadata = {
             "standard_name": skeleton.meta.get(var).get("standard_name"),
