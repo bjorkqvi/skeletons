@@ -155,9 +155,9 @@ class DatasetManager:
 
     def set(self, data: np.ndarray, name: str) -> None:
         """Adds in new data to the Dataset."""
-        all_metadata = self.get_attrs()
+        
+        all_metadata = self.get_attrs() # Preserve old metadata that might be lost in compilation
         self.data[name] = self.compile_data_array(data, name)
-
         for var, metadata in all_metadata.items():
             if var == "_global_":
                 self.set_attrs(metadata)
@@ -245,7 +245,7 @@ class DatasetManager:
             self.data = self.data.drop_attrs(deep=False)
             self.data = self.data.assign_attrs(**attributes)
         else:
-            self.data[data_array_name] = self.data[data_array_name].drop_attrs()
+            self.data[data_array_name].attrs = {} # self.data[data_array_name].drop_attrs()
             self.data[data_array_name] = self.data.get(data_array_name).assign_attrs(
                 **attributes
             )

@@ -38,6 +38,8 @@ def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
         return None, None, None, None, crs
     
     if isinstance(crs, dict):
+        if set(crs.keys()) == {'proj4'}:
+            return None, crs.get('proj4'), None, None, None
         return None, None, crs, None, None
     
     if isinstance(crs, int):
@@ -112,6 +114,14 @@ class ProjManager:
         if not silent and self._crs is not None:
             print(f"Setting UTM {self._crs}")
 
+    def units_are_in_degrees(self) -> bool:
+        """Determines if the set CRS projection is in degrees. For cartesian projections return False"""
+        if isinstance(self.crs(), tuple):
+            return False
+        if self.crs() is None:
+            return False
+        return self.crs().is_geographic
+    
     def set(self, crs: Union[int, str], silent: bool = True) -> None:
         """Sets the CRS (Coordinate reference system) based on eithern an EPSG code [int] or a proj4 string [str]. A string 'EPSG:4326' will be docoded to 4326."""
 
@@ -147,8 +157,12 @@ class ProjManager:
                     self._meta.set(crs.to_dict(),'crs')
         else:
             raise ValueError(f"{crs} is not a valid coordinate reference system!")
-        self._crs = crs
         
+        self._crs = crs
+        # Set correct units for variables x and y if we are in a rotated grid
+        if self.units_are_in_degrees():
+            self._meta.set({'units': 'degrees'},'x')
+            self._meta.set({'units': 'degrees'},'y')
 
     def to_crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
         """Return a pyproj CRS object for the given crs that can be either EPSG code (int), proj4 string (str) or dict"""
