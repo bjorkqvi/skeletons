@@ -607,7 +607,7 @@ class GriddedSkeleton(Skeleton):
                 else:
                     return self.dlon()
             midpoint = np.round(self.ny()/2).astype(int)
-            data_slice = self.isel(y=midpoint)
+            data_slice = self.isel(**{self.core.y_str:midpoint})
             
             lat = data_slice.edges('lat')
             lon = data_slice.edges('lon')
@@ -637,7 +637,7 @@ class GriddedSkeleton(Skeleton):
                 else:
                     return self.dlat()
             midpoint = np.round(self.nx()/2).astype(int)
-            data_slice = self.isel(x=midpoint)
+            data_slice = self.isel(**{self.core.x_str:midpoint})
             
             lat = data_slice.edges('lat')
             lon = data_slice.edges('lon')
