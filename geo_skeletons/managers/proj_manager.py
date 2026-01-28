@@ -102,9 +102,11 @@ class ProjManager:
             )
         return (zone_number, zone_letter)
 
-    def my_utm(self):
-        """Returns the optimal UTM for the grid is it is defines, otherwise returns None"""
-        if isinstance(self._crs, tuple):
+    def my_utm(self, optimal: bool = False):
+        """Returns the optimal UTM for the grid is it is defines, otherwise returns None
+        
+        optimal [bool]: Gives optimal UTM zone even if other UTM zone is set (defaul: False)"""
+        if isinstance(self._crs, tuple) and not optimal:
             return self._crs
         if self.crs() is None:
             return None
