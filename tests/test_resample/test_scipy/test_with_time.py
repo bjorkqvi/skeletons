@@ -96,11 +96,14 @@ def test_nan_treatment_point_point_to_utm():
     data_high.set_u(u)
     data_high.set_v(v)
 
-    u[:,0] = np.nan
-    v[:,0] = np.nan
+    unan = deepcopy(data.u())
+    vnan= deepcopy(data.v())
 
-    data_nan.set_u(u)
-    data_nan.set_v(v)
+    unan[:,0] = np.nan
+    vnan[:,0] = np.nan
+
+    data_nan.set_u(unan)
+    data_nan.set_v(vnan)
 
     grid = Wind(x=data.edges('x'),y=data.edges('y'), crs=data.proj.crs())
     #grid.set_spacing(nx=10, ny=21)
@@ -130,11 +133,14 @@ def test_nan_treatment_point_point():
     data_high.set_u(u)
     data_high.set_v(v)
 
-    u[:,0] = np.nan
-    v[:,0] = np.nan
+    unan = deepcopy(data.u())
+    vnan= deepcopy(data.v())
 
-    data_nan.set_u(u)
-    data_nan.set_v(v)
+    unan[:,0] = np.nan
+    vnan[:,0] = np.nan
+
+    data_nan.set_u(unan)
+    data_nan.set_v(vnan)
 
     grid = Wind(lon=(10.1,11.1,12.1,20.1), lat=(50.1,50.1,51.1,60.1))
 
@@ -166,11 +172,14 @@ def test_nan_treatment_grid_grid():
     data_high.set_u(u)
     data_high.set_v(v)
 
-    u[:,0] = np.nan
-    v[:,0] = np.nan
+    unan = deepcopy(data.u())
+    vnan= deepcopy(data.v())
 
-    data_nan.set_u(u)
-    data_nan.set_v(v)
+    unan[:,0] = np.nan
+    vnan[:,0] = np.nan
+
+    data_nan.set_u(unan)
+    data_nan.set_v(vnan)
 
     grid = WindGrid(lon=(10.5,19.5),lat=(50.5,59.5))
     grid.set_spacing(nx=10, ny=11)
@@ -202,13 +211,14 @@ def test_nan_treatment_grid_point():
     v[:,0] = 100
     data_high.set_u(u)
     data_high.set_v(v)
+    unan = deepcopy(data.u())
+    vnan= deepcopy(data.v())
 
-    u[:,0] = np.nan
-    v[:,0] = np.nan
+    unan[:,0] = np.nan
+    vnan[:,0] = np.nan
 
-    data_nan.set_u(u)
-    data_nan.set_v(v)
-
+    data_nan.set_u(unan)
+    data_nan.set_v(vnan)
     grid = Wind(lon=(10.1,11.1,12.1,20.1), lat=(50.1,50.1,51.1,60.1))
 
     new_data = data.resample.grid(grid)
@@ -237,11 +247,14 @@ def test_nan_treatment_point_grid():
     data_high.set_u(u)
     data_high.set_v(v)
 
-    u[:,0] = np.nan
-    v[:,0] = np.nan
+    unan = deepcopy(data.u())
+    vnan= deepcopy(data.v())
 
-    data_nan.set_u(u)
-    data_nan.set_v(v)
+    unan[:,0] = np.nan
+    vnan[:,0] = np.nan
+
+    data_nan.set_u(unan)
+    data_nan.set_v(vnan)
 
     grid = WindGrid(lon=(10.5,19.5),lat=(50.5,59.5))
     grid.set_spacing(nx=10, ny=11)
