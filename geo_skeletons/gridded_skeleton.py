@@ -265,11 +265,9 @@ class GriddedSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if self.core.is_cartesian() and native:
-            return self.x(crs=crs, **kwargs)
-
-        
         if self.core.is_cartesian():
+            if native:
+                return self.x(crs=crs, **kwargs)
             return None
         
         return self._ds_manager.get("lon", **kwargs).values.copy()[vec_mask]
@@ -299,24 +297,13 @@ class GriddedSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if self.core.is_cartesian() and native:
-            return self.y(crs=crs, **kwargs)
-
-        if self.core.is_cartesian():
+        if self.core.is_cartesian()
+            if native:
+                return self.y(crs=crs, **kwargs)
             return None
         
         return self._ds_manager.get("lat", **kwargs).values.copy()[vec_mask]
 
-        # x, y = self.x(mask=mask, utm=utm, **kwargs), self.y(
-        #     mask=mask, utm=utm, **kwargs
-        # )
-        # median_x = np.full(len(y), np.median(x))
-        # if not suppress_warning and len(x) > 1:
-        #     print(
-        #         "Regridding cartesian grid to spherical coordinates will cause a rotation! Use '_, lat = skeleton.lonlat()' to get a list of all points."
-        #     )
-
-        # return self.utm._lat(x=median_x, y=y, utm=utm)
 
     def xy(
         self,
