@@ -115,7 +115,7 @@ class Skeleton:
                 chunks = self._chunks
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
-        self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), metadata_manager=self.meta)
+        self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), x=self.edges("x", strict=True),y=self.edges("y", strict=True),metadata_manager=self.meta)
         if crs is None and not self.core.is_cartesian():
             self.proj.reset_utm(silent=True)
         self.resample = ResampleManager(self)
