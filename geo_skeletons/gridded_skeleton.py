@@ -187,24 +187,15 @@ class GriddedSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if not self.core.is_cartesian() and native:
-            return self.lon(**kwargs)
-
         if not self.core.is_cartesian():
+            if native:
+                return self.lon(**kwargs)
             return None
-
-        if self.core.is_cartesian() and (self.proj.crs() == crs or crs is None):
+        
+        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
             x = self._ds_manager.get("x", **kwargs).values.copy()[vec_mask]
         else:
             return None
-        # else:
-        #     lon, lat = self.lon(mask=mask, **kwargs), self.lat(mask=mask, **kwargs)
-        #     median_lat = np.full(len(lon), np.median(lat))
-        #     if not suppress_warning and len(lat) > 1:
-        #         print(
-        #             "Regridding spherical grid to cartesian coordinates will cause a rotation! Use '_, y = skeleton.xy()' to get a list of all points."
-        #         )
-        #     x = self.utm._x(lon=lon, lat=median_lat, utm=utm)
 
         if normalize:
             x = x - min(x)
@@ -236,13 +227,12 @@ class GriddedSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if not self.core.is_cartesian() and native:
-            return self.lat(**kwargs)
-
         if not self.core.is_cartesian():
+            if native:
+                return self.lat(**kwargs)
             return None
 
-        if self.core.is_cartesian() and (self.proj.crs() == crs or crs is None):
+        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
             y = self._ds_manager.get("y", **kwargs).values.copy()[vec_mask]
         else:
             return None
