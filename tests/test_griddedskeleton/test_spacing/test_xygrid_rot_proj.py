@@ -15,7 +15,8 @@ DMX = 4443
 DMY = 4461
 NX = (RLON[1]-RLON[0])/DX +1 
 NY = (RLAT[1]-RLAT[0])/DY +1 
-#DLON = (LON[1]-LON[0])/(NX-1)
+DLON = 0.077
+DLAT = DMY/111_000
 #DLAT = (LAT[1]-LAT[0])/(NY-1)
 PROJ4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
 
@@ -42,8 +43,8 @@ def test_dmx_dmy():
 def test_dlon_dlat():
     data = GriddedSkeleton(x=RLON, y=RLAT, crs=PROJ4)
     data.set_spacing(nx=NX, ny=NY)
-    np.testing.assert_almost_equal(data.dlon(),DLON, decimal=2)
-    np.testing.assert_almost_equal(data.dlat(),DLAT, decimal=2)
+    np.testing.assert_almost_equal(data.dlon(),DLON, decimal=3)
+    np.testing.assert_almost_equal(data.dlat(),DLAT, decimal=3)
     data.dlon(strict=True) is None
     data.dlat(strict=True) is None
     np.testing.assert_almost_equal(data.dlon(native=True),DX)
