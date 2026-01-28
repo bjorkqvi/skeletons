@@ -297,7 +297,7 @@ class GriddedSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if self.core.is_cartesian()
+        if self.core.is_cartesian():
             if native:
                 return self.y(crs=crs, **kwargs)
             return None
