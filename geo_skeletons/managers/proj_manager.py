@@ -61,10 +61,12 @@ def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
 
 class ProjManager:
     def __init__(
-        self,  lat: tuple[float], lon: tuple[float], metadata_manager: MetaDataManager, crs: Optional[Union[int, str]]=None,
+        self,  lat: tuple[float], lon: tuple[float],y: tuple[float], x: tuple[float], metadata_manager: MetaDataManager, crs: Optional[Union[int, str]]=None,
     ):
         self._lat_edges: float = lat
         self._lon_edges: float = lon        
+        self._y_edges: float = y
+        self._x_edges: float = x 
         self._meta: MetaDataManager = metadata_manager
         self._crs = None
         if crs is not None:
@@ -99,6 +101,19 @@ class ProjManager:
                 np.median(lat), np.median(lon)
             )
         return (zone_number, zone_letter)
+
+    def my_utm(self):
+        """Returns the optimal UTM for the grid is it is defines, otherwise returns None"""
+        if isinstance(self._crs, tuple):
+            return self._crs
+        if self.crs() is None:
+            return None
+        
+        if self._lon_edges == (None, None):
+            lon, lat = self._lonlat(self._x_edges, self._y_edges, self.crs())
+        else:
+            lon, lat = self._lon_edges, self._lat_edges
+        return self._optimal_utm(lon, lat)
 
     def reset_utm(self, silent: bool = False) -> None:
         """Resets the UTM-zone based on the lon/lat edges"""
