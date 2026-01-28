@@ -606,7 +606,7 @@ class GriddedSkeleton(Skeleton):
                     return self.dx()
                 else:
                     return self.dlon()
-            midpoint = np.round(self.ny()/2).astype(int)
+            midpoint = np.floor(self.ny()/2).astype(int)
             data_slice = self.isel(**{self.core.y_str:midpoint})
             
             lat = data_slice.edges('lat')
@@ -630,19 +630,20 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_cartesian() and not self.proj.units_are_in_degrees():
             y = self.edges('y')
             return float((y[1]-y[0])/(self.ny()-1))
-        else:
-            if native:
-                if self.core.is_cartesian():
-                    return self.dy()
-                else:
-                    return self.dlat()
-            midpoint = np.round(self.nx()/2).astype(int)
-            data_slice = self.isel(**{self.core.x_str:midpoint})
+
+        if native:
+            if self.core.is_cartesian():
+                return self.dy()
+            else:
+                return self.dlat()
             
-            lat = data_slice.edges('lat')
-            lon = data_slice.edges('lon')
-            d = distance_2points(lat[0], lon[0], lat[1], lon[1]) 
-            return float(d/(data_slice.ny()-1))
+        midpoint = np.floor(self.nx()/2).astype(int)
+        data_slice = self.isel(**{self.core.x_str:midpoint})
+        
+        lat = data_slice.edges('lat')
+        lon = data_slice.edges('lon')
+        d = distance_2points(lat[0], lon[0], lat[1], lon[1]) 
+        return float(d/(data_slice.ny()-1))
 
 
     def dy(self, native: bool = False, strict: bool = False) -> float:
@@ -658,15 +659,25 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_cartesian():
             y = self.edges('y')
             return float((y[1]-y[0])/(self.ny()-1))
-        else:
-            if native:
-                return self.dlat()
-            lon = self.edges('lon')
+
+        if native:
+            return self.dlat()
+        
+        if self.proj.units_are_in_degrees():
+            # Spherical grid with rotated pole (units in degrees, not meter)
+            midpoint = np.floor(self.nx()/2).astype(int)
+            data_slice = self.isel(lon=midpoint)
             
-            lon = (lon[1]+lon[0])/2
-            lat = self.sel(lon=lon).edges('lat')
-            d = distance_2points(lat[0], lon, lat[1], lon) 
-            return float(d/(self.ny()-1))
+            rlat = data_slice.edges('y')
+            return float((rlat[1]-rlat[0])/(self.ny()-1))
+
+        # Spherical grid with cartesian (e.g. UTM) projection
+        midpoint = np.floor(self.nx()/2).astype(int)
+        data_slice = self.isel(lon=midpoint)
+        lon = data_slice.lon()[0]
+        lat = data_slice.edges('lat')
+        d = distance_2points(lat[0], lon, lat[1], lon) 
+        return float(d/(self.ny()-1))
 
 
     def dx(self, native: bool = False, strict: bool = False) -> float:
@@ -681,14 +692,24 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_cartesian():
             x = self.edges('x')
             return float((x[1]-x[0])/(self.nx()-1))
-        else:
-            if native:
-                return self.dlon()
-            lon = self.edges('lon')
-            lat = self.edges('lat')
-            lat = (lat[1]+lat[0])/2
-            d = distance_2points(lat, lon[0], lat, lon[1]) 
-            return float(d/(self.nx()-1))
+
+        if native:
+            return self.dlon()
+            
+        if self.proj.units_are_in_degrees():
+            # Spherical grid with rotated pole (units in degrees, not meter)
+            midpoint = np.floor(self.ny()/2).astype(int)
+            data_slice = self.isel(lat=midpoint)
+            rlon = data_slice.edges('x')
+            return float((rlon[1]-rlon[0])/(self.nx()-1))
+
+        # Spherical grid with cartesian (e.g. UTM) projection
+        midpoint = np.floor(self.ny()/2).astype(int)
+        data_slice = self.isel(lat=midpoint)
+        lon = data_slice.edges('lon')
+        lat = data_slice.lat()[0]
+        d = distance_2points(lat, lon[0], lat, lon[1]) 
+        return float(d/(self.nx()-1))
 
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
@@ -702,19 +723,21 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_cartesian():
             lat = self.edges('lat')
             return float((lat[1]-lat[0])/(self.ny()-1))
+
+        if native:
+            return self.dy()
+        midpoint = np.floor(self.nx()/2).astype(int)
+        data_slice = self.isel(x=midpoint)
+        lon, lat = data_slice.lonlat()
+        lon, lat = np.median(lon), np.median(lat)
+        
+        if self.proj.units_are_in_degrees():
+            # Non-spherical grid with rotated pole (units in degrees, not meter)
+            dmy = data_slice.dmy()
         else:
-            if native:
-                return self.dy()
-            y = self.edges('y')
-            x = self.edges('x')
-            d = abs(y[1]-y[0])
-            dy = d/(self.ny()-1)
-            points = PointSkeleton(x=x, y=y, crs=self.proj.crs())
-            lon, lat = points.lonlat()
-            if lon is None:
-                return None
-            lon, lat = sum(lon)/2, sum(lat)/2
-            return distance_funcs.dy_to_dlat(dy=dy, lat=lat, lon=lon)
+            dmy = self.dmy()
+
+        return distance_funcs.dy_to_dlat(dy=dmy, lat=lat, lon=lon)
 
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
@@ -728,19 +751,23 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_cartesian():
             lon = self.edges('lon')
             return float((lon[1]-lon[0])/(self.nx()-1))
+
+        if native:
+            return self.dx()
+        
+
+        midpoint = np.floor(self.ny()/2).astype(int)
+        data_slice = self.isel(y=midpoint)
+        lon, lat = data_slice.lonlat()
+        lon, lat = np.median(lon), np.median(lat)
+        
+        if self.proj.units_are_in_degrees():
+            # Non-spherical grid with rotated pole (units in degrees, not meter)
+            dmx = data_slice.dmx()
         else:
-            if native:
-                return self.dx()
-            x = self.edges('x')
-            y = self.edges('y')
-            d = abs(x[1]-x[0])
-            dx = d/(self.nx()-1)
-            points = PointSkeleton(x=x, y=y, crs=self.proj.crs())
-            lon, lat = points.lonlat()
-            if lon is None:
-                return None
-            lon, lat = sum(lon)/2, sum(lat)/2
-            return distance_funcs.dx_to_dlon(dx=dx, lat=lat, lon=lon)
+            dmx = self.dmx()
+
+        return distance_funcs.dx_to_dlon(dx=dmx, lat=lat, lon=lon)
 
 
     def _check_mask_right_shape(
