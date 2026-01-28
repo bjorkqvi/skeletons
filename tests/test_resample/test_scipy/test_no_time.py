@@ -245,11 +245,14 @@ def test_nan_treatment_point_grid():
     data_high.set_u(u)
     data_high.set_v(v)
 
-    u[0] = np.nan
-    v[0] = np.nan
+    unan = deepcopy(data.u())
+    vnan= deepcopy(data.v())
 
-    data_nan.set_u(u)
-    data_nan.set_v(v)
+    unan[0] = np.nan
+    vnan[0] = np.nan
+    
+    data_nan.set_u(unan)
+    data_nan.set_v(vnan)
 
     grid = WindGrid(lon=(10.5,19.5),lat=(50.5,59.5))
     grid.set_spacing(nx=10, ny=11)
