@@ -68,7 +68,7 @@ def test_on_class():
 
     points2 = cls(lon=0, lat=0)
     points2.set_hs(3)
-    points2.proj.set(4325)
+    points2.proj.set(4326)
 
     assert points2.ds().hs.grid_mapping == 'wgs84'
     assert points2.ds().lon.grid_mapping == 'wgs84'
