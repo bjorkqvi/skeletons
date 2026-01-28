@@ -729,6 +729,10 @@ class GriddedSkeleton(Skeleton):
         midpoint = np.floor(self.nx()/2).astype(int)
         data_slice = self.isel(x=midpoint)
         lon, lat = data_slice.lonlat()
+
+        if lat is None: # Cartesian grid with no set projection
+            return None
+        
         lon, lat = np.median(lon), np.median(lat)
         
         if self.proj.units_are_in_degrees():
@@ -759,6 +763,10 @@ class GriddedSkeleton(Skeleton):
         midpoint = np.floor(self.ny()/2).astype(int)
         data_slice = self.isel(y=midpoint)
         lon, lat = data_slice.lonlat()
+        
+        if lon is None: # Cartesian grid with no set projection
+            return None
+        
         lon, lat = np.median(lon), np.median(lat)
         
         if self.proj.units_are_in_degrees():
