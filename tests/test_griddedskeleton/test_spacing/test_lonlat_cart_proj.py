@@ -4,15 +4,15 @@ import numpy as np
 from geo_skeletons.distance_funcs import distance_2points
 LON = (20,22)
 LAT = (58,60)
-MEAN_LAT = np.mean(np.array(LAT))
-MEAN_LON = np.mean(np.array(LON))
+MEDIAN_LAT = np.median(np.array(LAT))
+MEDIAN_LON = np.median(np.array(LON))
 #X = (440892.10517494264, 559107.8948250574)
 #Y = (6429147.6117879255, 6651832.7361561125)
 CRS = (34, 'V')
 NX = 11
 NY = 21
-DX = distance_2points(MEAN_LAT, LON[0], MEAN_LAT, LON[1])/(NX-1)
-DY = distance_2points(LAT[0], MEAN_LON, LAT[1], MEAN_LON)/(NY-1)
+DX = distance_2points(MEDIAN_LAT, LON[0], MEDIAN_LAT, LON[1])/(NX-1)
+DY = distance_2points(LAT[0], MEDIAN_LON, LAT[1], MEDIAN_LON)/(NY-1)
 DLON = (LON[1]-LON[0])/(NX-1)
 DLAT = (LAT[1]-LAT[0])/(NY-1)
 
