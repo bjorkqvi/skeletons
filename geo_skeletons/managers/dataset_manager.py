@@ -27,6 +27,11 @@ class DatasetManager:
         self, x: np.ndarray, y: np.ndarray, new_coords: dict[str, np.ndarray]
     ):
         """Create a Dataset containing only the relevant coordinates."""
+        # Check that no extra keywords are provided
+        allowed_coords = set(list(self.coord_manager.coords('nonspatial')) + ['x','y','lon','lat'])
+        extra_coords = set(new_coords.keys()) - allowed_coords
+        if extra_coords:
+            raise TypeError(f'Skeleton got unexpected keywords {list(extra_coords)}')
         existing_coords = {
             c: self.get(c, strict=True) for c in self.coord_manager.coords("nonspatial")
         }
@@ -43,7 +48,7 @@ class DatasetManager:
             x=x, y=y, given_coords=given_coords
         )
         var_dict = self.create_var_dict_from_input(x=x, y=y, coord_dict=coord_dict)
-
+        
         self.check_consistency(coord_dict=coord_dict, var_dict=var_dict)
         var_dict['crs'] = np.int32(0)
         var_dict['wgs84'] = np.int32(0)
