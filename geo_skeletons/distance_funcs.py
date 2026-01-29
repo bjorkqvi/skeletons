@@ -1,6 +1,20 @@
 import geopy.distance
 import numpy as np
+from scipy.spatial.distance import cdist
 
+
+def get_dist_point(x, y):
+    """Calculates the distance to the nearest neaighbour for each point"""
+    if len(x) == 1 and len(y) == 1:
+        return np.array([0.0])
+    points = [(i, j) for i, j in zip(x, y)]
+    dist = cdist(points, points, metric="euclidean")
+    dist_point = []
+    for i in range(dist.shape[0]):
+        sl = dist[i,:]
+        sl[sl<0.0000001] = 99999999
+        dist_point.append(float(np.min(sl)))
+    return dist_point
 
 def min_distance(
     lon: float, lat: float, lon_vec: np.ndarray, lat_vec: np.ndarray, npoints: int = 1
