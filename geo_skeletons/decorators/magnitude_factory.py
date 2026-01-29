@@ -29,7 +29,7 @@ def add_magnitude(
             empty: bool = False,
             data_array: bool = False,
             strict: bool = False,
-            squeeze: bool = False,
+            squeeze: bool = True,
             dask: Optional[bool] = None,
             dir_type: Optional[str] = None,
             **kwargs,
@@ -58,7 +58,7 @@ def add_magnitude(
             empty: bool = False,
             data_array: bool = False,
             strict: bool = False,
-            squeeze: bool = False,
+            squeeze: bool = True,
             dask: Optional[bool] = None,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
