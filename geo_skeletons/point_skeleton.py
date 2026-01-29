@@ -278,7 +278,7 @@ class PointSkeleton(Skeleton):
     def lon(
         self,
         native: bool = False,
-        strict=False,
+        strict: bool = False,
         mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
@@ -288,7 +288,6 @@ class PointSkeleton(Skeleton):
         strict = True gives 'None' if Skeleton is cartesian
         native = True gives UTM x-values if Skeleton is cartesian
         """
-
         mask = self._check_mask_right_shape(mask, **kwargs)
 
         if native and strict:
@@ -317,7 +316,7 @@ class PointSkeleton(Skeleton):
     def lat(
         self,
         native: bool = False,
-        strict=False,
+        strict: bool = False,
         mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
@@ -354,6 +353,7 @@ class PointSkeleton(Skeleton):
 
     def xy(
         self,
+        native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,

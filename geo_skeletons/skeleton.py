@@ -1364,7 +1364,6 @@ class Skeleton:
         coords = self.core.coords(coord_group)
         if squeeze:
             coords = self.coord_squeeze(coords)
-
         return self._ds_manager.coords_to_size(coords, **kwargs)
 
     def shape(self, var, squeeze: bool = False, **kwargs) -> tuple[int]:

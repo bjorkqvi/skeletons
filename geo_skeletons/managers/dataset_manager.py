@@ -221,7 +221,6 @@ class DatasetManager:
 
             coords_dict = {coord: self.get(coord) for coord in coords}
             data = xr.DataArray(data=empty_data, coords=coords_dict)
-
         return self._slice_data(data, **kwargs)
 
     def get_attrs(self) -> dict[str, Any]:
@@ -263,7 +262,8 @@ class DatasetManager:
                 coordinates[key] = value
             else:
                 keywords[key] = value
-
+        if keywords and not coordinates:
+            raise TypeError(f"Method _slice_data got unexpected keywords {list(kwargs.keys())}")
         for key, value in coordinates.items():
             data = data.sel({key: value}, **keywords)
             if key not in data.dims: # Some versions of xarray drops the dimension even with drop=False
