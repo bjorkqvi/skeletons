@@ -1,7 +1,7 @@
 from geo_skeletons import GriddedSkeleton
 from geo_skeletons.decorators import add_datavar, add_coord
 import numpy as np
-
+from geo_skeletons.classes import WindGrid
 
 def test_add_gp_trivial_xy():
     @add_datavar("hs")
@@ -302,3 +302,15 @@ def test_add_g_yz_trivial():
     assert points.size("gridpoint", squeeze=True) == ()
     assert points.shape("hs") == (1, 3, 1)
     assert points.shape("hs", squeeze=True) == (3,)
+
+
+def test_mag_and_dir():
+    wind = WindGrid(lon=(10,20),lat=(50,60))
+    wind.set_u(0)
+    wind.set_v(5)
+    assert wind.u().shape == wind.ff().shape
+    assert wind.u().shape == wind.dd().shape
+
+    wind2 = wind.sel(lon=10)
+    assert wind2.u().shape == wind2.ff().shape
+    assert wind2.u().shape == wind2.dd().shape
