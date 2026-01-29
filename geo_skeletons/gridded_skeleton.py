@@ -5,7 +5,6 @@ from .skeleton import Skeleton
 from .point_skeleton import PointSkeleton
 from . import distance_funcs
 from .managers.coordinate_manager import CoordinateManager
-from .managers.dask_manager import DaskManager
 from .managers.metadata_manager import MetaDataManager
 from .variables import Coordinate, DataVar
 import geo_parameters as gp
