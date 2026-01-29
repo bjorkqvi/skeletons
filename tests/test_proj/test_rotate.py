@@ -6,7 +6,7 @@ from geo_skeletons.managers.metadata_manager import MetaDataManager
 
 def test_ww3_4km():
     proj4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
-    pm = ProjManager(metadata_manager=MetaDataManager(None), crs=proj4, lon=(None, None), lat=(None, None))
+    pm = ProjManager(metadata_manager=MetaDataManager(None), crs=proj4, lon=(None, None), lat=(None, None), x=(None, None), y=(None,None))
     rlon = np.array([5.53, 5.57, 5.61, 5.65, 5.69, 5.73, 5.77, 5.81, 5.85, 5.89])
     rlat = np.array([-14.35]*len(rlon))
     lon = np.array([-31.023573, -30.959545, -30.895535, -30.831545, -30.767574, -30.703623, -30.639692, -30.575779, -30.511889, -30.448015])
@@ -30,7 +30,7 @@ def test_meps():
     "latitude_of_projection_origin": 63.3,
     "earth_radius": 6371000.0,
     }
-    pm = ProjManager(metadata_manager=MetaDataManager(None), crs=crs_metadata, lon=(None, None), lat=(None, None))
+    pm = ProjManager(metadata_manager=MetaDataManager(None), crs=crs_metadata, lon=(None, None), lat=(None, None), x=(None, None), y=(None,None))
 
     x = np.array([-1060084.  , -1057584.  , -1055084.  , -1052584.  , -1050084. , -1047584.06, -1045084.06, -1042584.06, -1040084.06, -1037584.06])
     y = np.array([-1332517.9]*len(x))
@@ -54,7 +54,7 @@ def test_utm():
     lat = np.array([56.5, 58.9,63.9])
     points = PointSkeleton(lon=lon, lat=lat)
     assert points.proj.crs() == (32,'V')
-    pm = ProjManager(metadata_manager=MetaDataManager(None), crs=32632, lon=(None, None), lat=(None, None))
+    pm = ProjManager(metadata_manager=MetaDataManager(None), crs=32632, lon=(None, None), lat=(None, None), x=(None, None), y=(None,None))
     x, y = pm._xy(lon=lon, lat=lat, crs=pm.crs())
     np.testing.assert_array_almost_equal(x, points.x(), decimal=2)
     np.testing.assert_array_almost_equal(y, points.y(), decimal=2)
