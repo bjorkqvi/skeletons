@@ -218,7 +218,7 @@ class ProjManager:
         """Calculates lon coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if crs is None:
-            print("Can't transform x-y without a projection!")
+            #print("Can't transform x-y without a projection!")
             return None
         if isinstance(crs, tuple):
             lon = self._utm_lon(x=x, y=y, utm=crs)
@@ -230,7 +230,7 @@ class ProjManager:
         """Calculates lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if crs is None:
-            print("Can't transform x-y without a projection!")
+            #print("Can't transform x-y without a projection!")
             return None
         if isinstance(crs, tuple):
             lat = self._utm_lat(x=x, y=y, utm=crs)
