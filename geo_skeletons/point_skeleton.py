@@ -8,7 +8,7 @@ from .variables import DataVar, Coordinate
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
-from scipy.spatial.distance import cdist
+
 from .managers.resample_manager import find_original_skeleton_in_inheritance_chain
 from . import distance_funcs
 from .errors import MissingDatasetError
@@ -23,17 +23,7 @@ INITIAL_CARTESIAN_VARS = [x_var, y_var]  #: "inds", "y": "inds"}
 INITIAL_SPHERICAL_VARS = [lon_var, lat_var]  # {"lat": "inds", "lon": "inds"}
 
 
-def get_dist_point(x, y):
-    if len(x) == 1 and len(y) == 1:
-        return np.array([0.0])
-    points = [(i, j) for i, j in zip(x, y)]
-    dist = cdist(points, points, metric="euclidean")
-    dist_point = []
-    for i in range(dist.shape[0]):
-        sl = dist[i,:]
-        sl[sl<0.0000001] = 99999999
-        dist_point.append(float(np.min(sl)))
-    return dist_point
+
 class PointSkeleton(Skeleton):
     """Gives a unstructured structure to the Skeleton.
 
@@ -439,7 +429,7 @@ class PointSkeleton(Skeleton):
         Resolution at a grid point is determined as the distance to nearest neighbour.
         A UTM projection is used to calculate the distances."""
         x, y = self.xy(crs=self.proj.my_utm())
-        return get_dist_point(x, y)
+        return distance_funcs.get_dist_point(x, y)
     
 
     def dy(self, native: bool = False, strict: bool = False, array: bool = True) -> float:
@@ -457,7 +447,12 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and native:
             return self.dlat()
             
-        return float(np.median(self.resolution()))
+        if not self.proj.units_are_in_degrees() and native:
+            return float(np.median(self.resolution()))
+        
+        return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
+
+
     
     def dx(self, native: bool = False, strict: bool = False) -> float:
         """Median grid spacing. Conversion made for spherical grids.
@@ -474,7 +469,10 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and native:
             return self.dlon()
             
-        return float(np.median(self.resolution()))
+        if not self.proj.units_are_in_degrees() and native:
+            return float(np.median(self.resolution()))
+        
+        return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
     
 
     def dmy(self, native: bool = False, strict: bool = False, array: bool = True) -> float:
@@ -483,8 +481,9 @@ class PointSkeleton(Skeleton):
         Note, methods dx() and dy() are same for cartesian grids"""
 
         
-        if not self.core.is_cartesian() and strict and (not native):
+        if (not self.core.is_cartesian() or self.proj.units_are_in_degrees()) and strict and (not native):
             return None
+        
 
         if self.ny() == 1:
             return 0.0
@@ -492,6 +491,9 @@ class PointSkeleton(Skeleton):
         if not self.core.is_cartesian() and native:
             return self.dlat()
             
+        if self.proj.units_are_in_degrees() and native:
+            return self.dy()
+        
         return float(np.median(self.resolution()))
     
     def dmx(self, native: bool = False, strict: bool = False) -> float:
@@ -500,7 +502,7 @@ class PointSkeleton(Skeleton):
         Note, methods dx() and dy() are same for cartesian grids"""
 
         
-        if not self.core.is_cartesian() and strict and (not native):
+        if (not self.core.is_cartesian() or self.proj.units_are_in_degrees()) and strict and (not native):
             return None
 
         if self.nx() == 1:
@@ -508,7 +510,10 @@ class PointSkeleton(Skeleton):
         
         if not self.core.is_cartesian() and native:
             return self.dlon()
-            
+
+        if self.proj.units_are_in_degrees() and native:
+            return self.dx()
+
         return float(np.median(self.resolution()))
     
     def dlat(self, native: bool = False, strict: bool = False) -> float:
