@@ -3,6 +3,8 @@ from typing import Optional, Union
 from pyproj import CRS, Transformer
 import numpy as np
 import utm as utm_module
+from geo_skeletons.errors import ProjectionError
+from geo_parameters.metaparameter import MetaParameter
 VALID_UTM_ZONES = [
     "C",
     "D",
@@ -366,3 +368,7 @@ class ProjManager:
 
         return y
 
+    def _rotate_u_v(self, data, name: str, param: MetaParameter):
+        if param is None:
+            raise ProjectionError(f"No MetaParameter found, so I don't know what the variable {name} is. Cannot rotate!")
+        return data

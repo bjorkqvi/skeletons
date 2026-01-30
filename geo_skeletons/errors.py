@@ -67,3 +67,7 @@ class DirTypeError(SkeletonError):
 class MissingDatasetError(SkeletonError):
     def __init__(self):
         super().__init__("No underlying dataset found! Either the instance has not been properly initialized, or the data has somehow been removed.")
+
+class ProjectionError(SkeletonError):
+    def __init__(self, msg='Cannot perorm projection!'):
+        super().__init__(msg)
