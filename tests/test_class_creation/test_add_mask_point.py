@@ -107,11 +107,11 @@ def test_get_points():
     data.set_hs()
     mask = data.sea_mask()
 
-    lon, lat = data.sea_points(type="xy")
+    lon, lat = data.sea_points(coord="xy")
     np.testing.assert_array_almost_equal(lon, np.array([10, 20, 30]))
     np.testing.assert_array_almost_equal(lat, np.array([30, 40, 50]))
 
-    lon, lat = data.land_points(type="xy")
+    lon, lat = data.land_points(coord="xy")
     np.testing.assert_array_almost_equal(lon, np.array([]))
     np.testing.assert_array_almost_equal(lat, np.array([]))
 
@@ -142,7 +142,7 @@ def test_add_mask_trigger():
     class WaveHeight(PointSkeleton):
         pass
 
-    data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
+    data = WaveHeight(lon=(10, 20), lat=(30, 40))
     data.set_hs([0, 3])
     np.testing.assert_almost_equal(data.sea_mask(), np.array([False, True]))
 
@@ -160,7 +160,7 @@ def test_add_mask_trigger_inf():
     class WaveHeight(PointSkeleton):
         pass
 
-    data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
+    data = WaveHeight(lon=(10, 20), lat=(30, 40))
     data.set_hs([0, 3])
     np.testing.assert_almost_equal(data.sea_mask(), np.array([False, True]))
 
