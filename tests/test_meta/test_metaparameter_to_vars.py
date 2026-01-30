@@ -168,6 +168,7 @@ def test_add_datavar():
     
     meta_dict = gp.wind.XWind.meta_dict()
     meta_dict['grid_mapping'] = 'crs'
+    meta_dict['rotated_according_to'] = 'wgs84'
     assert points.meta.get("u") ==  meta_dict
     assert points.meta.get("u") == points.ds().u.attrs
 
@@ -217,6 +218,7 @@ def test_add_magnitude():
     assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     meta_dict = gp.wind.XWind.meta_dict()
     meta_dict['grid_mapping'] = 'crs'
+    meta_dict['rotated_according_to'] = 'wgs84'
     assert points.meta.get("u") == meta_dict
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
@@ -261,6 +263,7 @@ def test_add_mask():
     assert points.meta.get('crs') == {'utm_zone': 33, 'utm_letter': 'W'}
     meta_dict = gp.wind.XWind.meta_dict()
     meta_dict['grid_mapping'] = 'crs'
+    meta_dict['rotated_according_to'] = 'wgs84'
     assert points.meta.get("u") == meta_dict
     points.meta.append({"new": "global"})
     points.meta.append({"new": "u-specific"}, "u")
