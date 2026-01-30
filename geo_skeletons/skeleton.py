@@ -126,11 +126,15 @@ class Skeleton:
             metavar = self.core.get(coord_name).meta
             if metavar is not None:
                 self.meta.append(metavar.meta_dict(), coord_name)
+                if metavar.i_am() in {'x','y','direction'} or metavar.dir_type() is not None:
+                    self.meta.append({'rotated_according_to': 'wgs84'}, coord_name)
+
             if self.core.get(coord_name).coord_group in ['all', 'spatial', 'grid'] and coord_name not in ['inds', 'time']:
                 if self.core.is_cartesian():
                     self.meta.append({'grid_mapping': 'crs'}, coord_name)
                 else:
                     self.meta.append({'grid_mapping': 'wgs84'}, coord_name)
+
         self.meta.append({"name":name})
         self.meta.set({'epsg': 4326}, 'wgs84')
 
@@ -1384,15 +1388,17 @@ class Skeleton:
         if "x" in present_spatial_coords:
             return ["x"]
 
-    def ds(self, compile: bool = False) -> Union[xr.Dataset, None]:
+    def ds(self, compile: bool = False, rotated: bool = False) -> Union[xr.Dataset, None]:
         """Returns the underlying Xarray Dataset. None if dosen't exist.
 
         compile [default False]: Add magnitudes and directions to the Dataset (performs deepcopy!)
+
+        rotated [default False]: Rotate directions and dircetional variables to the set coordinate reference systen (CRS)
         """
         if not hasattr(self, "_ds_manager"):
             return None
         ds = self._ds_manager.ds()
-        if compile:
+        if compile or rotated:
             ds = deepcopy(ds)
             crs = self.proj.crs()
             if isinstance(crs, tuple):
@@ -1400,10 +1406,22 @@ class Skeleton:
             else:
                 crs = crs.to_cf()
             ds['crs'].attrs = crs
+            if rotated:
+                for var in self.core.data_vars():
+                    param = self.core.meta_parameter(var)
+                    if param is None:
+                        continue
+                    if param.i_am() in ['x', 'y'] or param.dir_type() is not None:
+                        ds[var] = self.get(var, data_array=True, rotated=rotated, squeeze=False)
+                        ds[var] = ds[var].assign_attrs({'rotated_according_to':'crs'})
+                
             for mag in self.core.magnitudes():
-                ds[mag] = self.get(mag, data_array=True)
+                ds[mag] = self.get(mag, data_array=True, squeeze=False)
             for dirs in self.core.directions():
-                ds[dirs] = self.get(dirs, data_array=True)
+                ds[dirs] = self.get(dirs, data_array=True, rotated=rotated, squeeze=False)
+                if rotated:
+                    ds[dirs] = ds[dirs].assign_attrs({'rotated_according_to':'crs'})
+
         return ds
 
     def size(
