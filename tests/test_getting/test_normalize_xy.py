@@ -24,7 +24,7 @@ def test_cartesian_gridded():
     grid = GriddedSkeleton(
         x=[291783, 361180, 430588, 500000],
         y=[5539708, 5650895, 5762100, 5873322],
-        utm=(31, "U"),
+        crs=(31, "U"),
     )
     x, y = grid.x(), grid.y()
     xn, yn = grid.x(normalize=True), grid.y(normalize=True)
@@ -76,7 +76,7 @@ def test_cartesian_point():
     grid = PointSkeleton(
         x=[291783, 361180, 430588, 500000],
         y=[5539708, 5650895, 5762100, 5873322],
-        utm=(31, "U"),
+        crs=(31, "U"),
     )
     x, y = grid.x(), grid.y()
     xn, yn = grid.x(normalize=True), grid.y(normalize=True)
