@@ -1046,6 +1046,7 @@ class Skeleton:
         dir_type: Optional[str] = None,
         squeeze: bool = True,
         dask: Optional[bool] = None,
+        rotated: bool=False,
         **kwargs,
     ) -> Union[np.ndarray, xr.DataArray]:
         """Gets a mask or data variable as an array.
@@ -1056,6 +1057,7 @@ class Skeleton:
         squeeze [True]: Smart squeeze out trivial dimensions, but return at least 1d array.
         boolean_mask [False]: Convert array to a boolean array.
         dask [None]: Return dask array [True] or numpy array [False]. Default: Use set dask-mode
+        rotated [False]: Return values that are rotated to the set CRS projection (e.g. UTM or rotated pole)
         """
         if self.ds() is None:
             raise MissingDatasetError
@@ -1121,6 +1123,7 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
+                rotated=rotated,
                 **kwargs,
             )
             if mask_is_secondary:
@@ -1131,6 +1134,7 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
+                rotated=rotated,
                 **kwargs,
             )
 
@@ -1253,6 +1257,7 @@ class Skeleton:
         strict: bool,
         empty: bool,
         dir_type: str,
+        rotated: bool,
         **kwargs,
     ) -> xr.DataArray:
         data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
@@ -1270,6 +1275,10 @@ class Skeleton:
             raise DirTypeError
         dir_type = dir_type or set_dir_type
         data = dir_conversions.convert(data, in_type=set_dir_type, out_type=dir_type)
+        if rotated:
+            param = self.core.meta_parameter(name)
+            data = self.proj._rotate_u_v(data, name, param)
+
         return data
 
     def _smart_squeeze(self, name: str, data: xr.DataArray) -> xr.DataArray:
