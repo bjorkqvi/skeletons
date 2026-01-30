@@ -126,7 +126,7 @@ class Skeleton:
             metavar = self.core.get(coord_name).meta
             if metavar is not None:
                 self.meta.append(metavar.meta_dict(), coord_name)
-                if metavar.i_am() in {'x','y','direction'} or metavar.dir_type() is not None:
+                if metavar.i_am() in {'x','y','direction'} or (metavar.dir_type() is not None and coord_name not in self.core.coords()):
                     self.meta.append({'rotated_according_to': 'wgs84'}, coord_name)
 
             if self.core.get(coord_name).coord_group in ['all', 'spatial', 'grid'] and coord_name not in ['inds', 'time']:
