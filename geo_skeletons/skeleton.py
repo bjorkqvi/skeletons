@@ -1055,7 +1055,6 @@ class Skeleton:
         empty [False]: Return an array full with default values even if variable is set.
         data_array [False]: Return data as an xarray DataArray.
         squeeze [True]: Smart squeeze out trivial dimensions, but return at least 1d array.
-        boolean_mask [False]: Convert array to a boolean array.
         dask [None]: Return dask array [True] or numpy array [False]. Default: Use set dask-mode
         rotated [False]: Return values that are rotated to the set CRS projection (e.g. UTM or rotated pole)
         """
