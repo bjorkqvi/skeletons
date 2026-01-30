@@ -1142,6 +1142,9 @@ class Skeleton:
                 **kwargs,
             )
             if rotated:
+                if self.core.get_dir_type(name) is not None:
+                    breakpoint()
+
                 twin_name = self.core.find_twin_component(name)
                 twin_data = self._get_data(
                     name=twin_name,
@@ -1152,8 +1155,15 @@ class Skeleton:
                 )
                 my_param = self.core.meta_parameter(name)
                 twin_param = self.core.meta_parameter(twin_name)
+                if twin_param is None:
+                    raise ProjectionError(f"Cannot find orthogonal component to '{name}'!")
                 lon, lat = self.lonlat()
-                data = self.proj._rotate_u_v(data, twin_data, my_param, twin_param, lon=lon, lat=lat)
+                if my_param.i_am() =='x':
+                    data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat)
+                elif my_param.i_am() == 'y':
+                    __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat)
+                else:
+                    raise ProjectionError(f"'{name}' doesn't seem to be a component!")
 
         if not isinstance(data, xr.DataArray):
             return None
@@ -1227,13 +1237,9 @@ class Skeleton:
             x_data = self.dask.undask_me(x_data)
 
         if rotated:
-            x_param = self.core.meta_parameter(x_name)
-            y_param = self.core.meta_parameter(y_name)
             lon, lat = self.lonlat()
-            x_data_rot = self.proj._rotate_u_v(x_data, y_data, x_param, y_param, lon=lon, lat=lat)
-            y_data_rot = self.proj._rotate_u_v(y_data, x_data, y_param, x_param, lon=lon, lat=lat)
-            x_data = x_data_rot
-            y_data = y_data_rot
+            x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat)
+            
 
         dir_type = dir_type or self.core.get(name).dir_type
         data = dir_conversions.compute_math_direction(x_data, y_data)
