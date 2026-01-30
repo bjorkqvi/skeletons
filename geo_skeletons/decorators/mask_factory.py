@@ -42,7 +42,7 @@ def add_mask(
             """
 
             mask = self.get(
-                f"{name_str}_mask", boolean_mask=True, empty=empty, **kwargs
+                f"{name_str}_mask", empty=empty, **kwargs
             )
 
             return mask
@@ -55,7 +55,7 @@ def add_mask(
             **kwargs can be used for slicing data.
             """
             mask = self.get(
-                f"{opposite_name_str}_mask", boolean_mask=True, empty=empty, **kwargs
+                f"{opposite_name_str}_mask", empty=empty, **kwargs
             )
             return mask
 
@@ -64,7 +64,7 @@ def add_mask(
             coord: Optional[str] = None,
             native: bool = False,
             strict: bool = False,
-            utm: Optional[tuple[int, str]] = None,
+            crs: Optional[Union[int, str, dict]] = None,
             **kwargs,
         ):
             mask = get_mask(self, **kwargs)
@@ -75,11 +75,11 @@ def add_mask(
 
             if coord in CARTESIAN_STRINGS:
                 return self.xy(
-                    mask=mask, native=native, strict=strict, utm=utm, **kwargs
+                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
                 )
             elif coord in SPHERICAL_STRINGS:
                 return self.lonlat(
-                    mask=mask, native=native, strict=strict, utm=utm, **kwargs
+                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
                 )
 
         def get_not_points(
@@ -87,7 +87,7 @@ def add_mask(
             coord: Optional[str] = None,
             native: bool = False,
             strict: bool = False,
-            utm: Optional[tuple[int, str]] = None,
+            crs: Optional[Union[int, str, dict]] = None,
             **kwargs,
         ):
             mask = get_not_mask(self, **kwargs)
@@ -98,11 +98,11 @@ def add_mask(
 
             if coord in CARTESIAN_STRINGS:
                 return self.xy(
-                    mask=mask, native=native, strict=strict, utm=utm, **kwargs
+                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
                 )
             elif coord in SPHERICAL_STRINGS:
                 return self.lonlat(
-                    mask=mask, native=native, strict=strict, utm=utm, **kwargs
+                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
                 )
 
         def set_mask(
