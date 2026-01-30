@@ -530,7 +530,7 @@ class CoordinateManager:
         
         if param is None:
             return None
-        
+
         my_type = param.i_am()
         if my_type == 'x':
             twin = self.find(param.my_family('y'))
@@ -546,7 +546,7 @@ class CoordinateManager:
         if not twin:
             return None
         
-        return twin
+        return twin[0]
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:

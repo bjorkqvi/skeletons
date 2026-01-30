@@ -1134,9 +1134,21 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
-                rotated=rotated,
                 **kwargs,
             )
+            if rotated:
+                twin_name = self.core.find_twin_component(name)
+                twin_data = self._get_data(
+                    name=twin_name,
+                    strict=strict,
+                    dir_type=dir_type,
+                    empty=empty,
+                    **kwargs,
+                )
+                my_param = self.core.meta_parameter(name)
+                twin_param = self.core.meta_parameter(twin_name)
+                lon, lat = self.lonlat()
+                data = self.proj._rotate_u_v(data, twin_data, my_param, twin_param, lon=lon, lat=lat)
 
         if not isinstance(data, xr.DataArray):
             return None
@@ -1257,7 +1269,6 @@ class Skeleton:
         strict: bool,
         empty: bool,
         dir_type: str,
-        rotated: bool,
         **kwargs,
     ) -> xr.DataArray:
         data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
@@ -1275,9 +1286,6 @@ class Skeleton:
             raise DirTypeError
         dir_type = dir_type or set_dir_type
         data = dir_conversions.convert(data, in_type=set_dir_type, out_type=dir_type)
-        if rotated:
-            param = self.core.meta_parameter(name)
-            data = self.proj._rotate_u_v(data, name, param)
 
         return data
 
