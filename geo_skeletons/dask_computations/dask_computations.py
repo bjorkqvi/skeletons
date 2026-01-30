@@ -32,6 +32,18 @@ def expand_dims(
     else:
         return np.expand_dims(data, axis=axis)
 
+def deg2rad(data: Union[np.ndarray, da.array]) -> Union[np.ndarray, da.array]:
+    """deg2rad on either dask or numpy array"""
+    if data_is_dask(data):
+        return da.deg2rad(data)
+    else:
+        return np.deg2rad(data)
+def rad2deg(data: Union[np.ndarray, da.array]) -> Union[np.ndarray, da.array]:
+    """rad2deg on either dask or numpy array"""
+    if data_is_dask(data):
+        return da.rad2deg(data)
+    else:
+        return np.rad2deg(data)
 
 def cos(data: Union[np.ndarray, da.array]) -> Union[np.ndarray, da.array]:
     """cos on either dask or numpy array"""
