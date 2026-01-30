@@ -13,10 +13,10 @@ def test_init_spectra():
 
 
 def test_wind_and_wave():
-    wind = Wind(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
-    wave = Wave(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
+    wind = Wind.add_time()(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
+    wave = Wave.add_time()(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
 
 
 def test_wind_and_wave_grid():
-    wind = WindGrid(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
-    wave = WaveGrid(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
+    wind = WindGrid.add_time()(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
+    wave = WaveGrid.add_time()(lon=0, lat=0, time=("2018-01-01", "2018-01-31"))
