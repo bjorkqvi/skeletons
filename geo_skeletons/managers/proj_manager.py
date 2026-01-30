@@ -379,9 +379,10 @@ class ProjManager:
         }
         return CRS.from_dict(proj4)
 
-    def _rotate_u_v(self, data, twin_data, my_param: MetaParameter, twin_param: MetaParameter, lon: np.ndarray, lat: np.ndarray):
-        if data is None or twin_data is None:
-            raise ProjectionError(f"Data for both components {my_param} and {twin_param} not found. Cannot rotate!")
+    def _rotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray):
+        """Rotates x,y component data to the set coordinate reference system (CRS)"""
+        if x_data is None or y_data is None:
+            raise ProjectionError(f"Data for both components not found. Cannot rotate!")
         
         if self.crs() is None:
             raise ProjectionError(f"No projection defined. Cannot rotate!")
@@ -400,16 +401,8 @@ class ProjManager:
             x2, y2 = self._xy(lon=lon, lat=lat+dlat, crs=self.crs())
 
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
-        alpha = np.reshape(alpha, data.shape)
+        alpha = np.reshape(alpha, x_data.shape)
         
-        if my_param.i_am() == 'x':
-            u_new = data * np.cos(alpha) - twin_data * np.sin(alpha)
-            v_new = data * np.sin(alpha) + twin_data * np.cos(alpha)
-            return u_new
-        elif my_param.i_am() == 'y':
-            u_new = twin_data * np.cos(alpha) - data * np.sin(alpha)
-            v_new = twin_data * np.sin(alpha) + data * np.cos(alpha)
-            return v_new
-        
-        # This should never happen
-        raise ProjectionError("Data doesn't seem to be either an x or y component? Cant rotate!")
+        x_rot = x_data * np.cos(alpha) - y_data * np.sin(alpha)
+        y_rot = x_data * np.sin(alpha) + y_data * np.cos(alpha)
+        return x_rot, y_rot
