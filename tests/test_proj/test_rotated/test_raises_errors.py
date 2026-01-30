@@ -23,9 +23,23 @@ def test_no_complement_component_present():
         data.u(rotated=True)
 
 
+def test_mask():
+    data = PointSkeleton.add_mask('land')(lon=1, lat=5)
+    with pytest.raises(ProjectionError):
+        data.land_mask(rotated=True)
+    with pytest.raises(ProjectionError):
+        data.land_points(rotated=True)
+
 def test_no_projection_present():
     data = Wind(x=5, y=6)
     data.set_u(10)
     data.set_v(30)
     with pytest.raises(ProjectionError):
         data.u(rotated=True)
+
+def test_magnitude():
+    data = Wind(lon=5, lat=6)
+    data.set_u(10)
+    data.set_v(30)
+    with pytest.raises(ProjectionError):
+        data.ff(rotated=True)
