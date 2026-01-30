@@ -375,8 +375,8 @@ class PointSkeleton(Skeleton):
 
         # Transforms x-y to lon-lat if necessary
         x, y = self.x(
-            strict=strict, normalize=normalize, crs=crs, mask=mask, **kwargs
-        ), self.y(strict=strict, normalize=normalize, crs=crs, mask=mask, **kwargs)
+            strict=strict, native=native, normalize=normalize, crs=crs, mask=mask, **kwargs
+        ), self.y(strict=strict, native=native, normalize=normalize, crs=crs, mask=mask, **kwargs)
 
         if x is None:
             return None, None
