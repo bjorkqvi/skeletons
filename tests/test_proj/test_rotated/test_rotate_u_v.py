@@ -145,3 +145,29 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20_v():
 
     ind = np.argmax(y)
     np.testing.assert_almost_equal(rot_v[ind],-10)
+
+
+def test_reproj_southerly_winds_rotated_grid_utm_u():
+    wind = WindGrid(lon=(20,20.2), lat=(58,58.1))
+    wind.set_spacing(nx=10, ny=20)
+    wind.set_ff(10)
+    wind.set_dd(180)
+    assert wind.proj.crs() == (34, 'V')
+
+    rot_u = wind.u(rotated=True) 
+    rot_v = wind.v(rotated=True) 
+    # Rotation should be minimal in a small area
+    np.testing.assert_array_almost_equal(wind.u(), rot_u, decimal=1)
+    np.testing.assert_array_almost_equal(wind.v(), rot_v, decimal=3)
+
+    # breakpoint()
+    # import matplotlib.pyplot as plt
+    # #plt.scatter(x,y,c=lon,s=2)
+    # x,y = wind.xy()
+    # plt.scatter(x,y,c=rot_u,s=10, label='u')
+
+    # plt.colorbar()
+    
+
+    # plt.show()
+    # breakpoint()

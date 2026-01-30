@@ -28,6 +28,8 @@ VALID_UTM_ZONES = [
     "X",
 ]
 
+SOUTH_UTM_ZONES = ["C", "D", "E", "F", "G", "H", "J", "K", "L", "M"]
+
 VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
 
 
@@ -368,20 +370,38 @@ class ProjManager:
 
         return y
 
+    def _utm_zone_to_crs(self, utm) -> CRS:
+        proj4 = {
+            'proj': 'utm',
+            'zone': utm[0],
+            'south': utm[1] in SOUTH_UTM_ZONES,  # Use 'south' if in the southern hemisphere
+            'datum': 'WGS84'
+        }
+        return CRS.from_dict(proj4)
+
     def _rotate_u_v(self, data, twin_data, my_param: MetaParameter, twin_param: MetaParameter, lon: np.ndarray, lat: np.ndarray):
         if data is None or twin_data is None:
             raise ProjectionError(f"Data for both components {my_param} and {twin_param} not found. Cannot rotate!")
         
         if self.crs() is None:
             raise ProjectionError(f"No projection defined. Cannot rotate!")
-        
-        x, y = self._xy(lon=lon, lat=lat, crs=self.crs())
-        # Shift slightly towards north
-        dlat = 1e-5
-        x2, y2 = self._xy(lon=lon, lat=lat+dlat, crs=self.crs())
+
+        if isinstance(self.crs(), tuple):
+            x = self._utm_x(lon=lon, lat=lat, utm=self.crs())
+            y = self._utm_y(lon=lon, lat=lat, utm=self.crs())
+            # Shift slightly towards north
+            dlat = 1e-5
+            x2 = self._utm_x(lon=lon, lat=lat+dlat, utm=self.crs())
+            y2 = self._utm_y(lon=lon, lat=lat+dlat, utm=self.crs())
+        else:
+            x, y = self._xy(lon=lon, lat=lat, crs=self.crs())
+            # Shift slightly towards north
+            dlat = 1e-5
+            x2, y2 = self._xy(lon=lon, lat=lat+dlat, crs=self.crs())
 
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
-
+        alpha = np.reshape(alpha, data.shape)
+        
         if my_param.i_am() == 'x':
             u_new = data * np.cos(alpha) - twin_data * np.sin(alpha)
             v_new = data * np.sin(alpha) + twin_data * np.cos(alpha)
