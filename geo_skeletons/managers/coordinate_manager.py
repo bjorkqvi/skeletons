@@ -523,6 +523,30 @@ class CoordinateManager:
                 return clean_names
             return names
 
+    def find_twin_component(self, param) -> str:
+        """Finds the u-component if a v-component is given and vice versa."""
+        if isinstance(param, str):
+            param = self.meta_parameter(param)
+        
+        if param is None:
+            return None
+        
+        my_type = param.i_am()
+        if my_type == 'x':
+            twin = self.find(param.my_family('y'))
+        elif my_type == 'y':
+            twin = self.find(param.my_family('x'))
+        else:
+            return None
+
+        if len(twin) > 1:
+            raise ValueError(f"Found two possible candidates for a second component: {twin}")
+        
+        
+        if not twin:
+            return None
+        
+        return twin
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:
