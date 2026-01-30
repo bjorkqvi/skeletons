@@ -36,7 +36,7 @@ from .decorators import (
     add_coord,
 )
 from .iter import SkeletonIterator
-
+from geo_skeletons.errors import ProjectionError
 from geo_skeletons import dask_computations, dir_conversions
 import itertools
 
@@ -1094,6 +1094,8 @@ class Skeleton:
         if name in self.core.magnitudes():
             if dir_type:
                 raise DirTypeError
+            if rotated:
+                raise ProjectionError('Cannot rotate a magnitude!')
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
@@ -1106,13 +1108,18 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
+                rotated=rotated,
                 **kwargs,
             )
         elif name in self.core.mask_points():
+            if rotated:
+                raise ProjectionError('Cannot rotate mask points!')
             lon, lat = eval(f"self.{name}(strict=strict, **kwargs)")
             return lon, lat
 
         elif name in self.core.masks():
+            if rotated:
+                raise ProjectionError('Cannot rotate a mask!')
             mask_is_secondary = not self.core._mask_is_primary(name)
             if mask_is_secondary:
                 primary_name = self.core._find_primary_mask(name)
@@ -1123,7 +1130,6 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
-                rotated=rotated,
                 **kwargs,
             )
             if mask_is_secondary:
@@ -1191,17 +1197,19 @@ class Skeleton:
         strict: bool,
         empty: bool,
         dir_type: str,
+        rotated: bool,
         **kwargs,
     ) -> xr.DataArray:
-
+        x_name = self.core.get(name).x
+        y_name = self.core.get(name).y
         x_data = self._ds_manager.get(
-            self.core.get(name).x,
+            x_name,
             empty=empty,
             strict=strict,
             **kwargs,
         )
         y_data = self._ds_manager.get(
-            self.core.get(name).y,
+            y_name,
             empty=empty,
             strict=strict,
             **kwargs,
@@ -1218,6 +1226,15 @@ class Skeleton:
             empty or self._ds_manager.get(self.core.get(name).x, strict=True) is None
         ):
             x_data = self.dask.undask_me(x_data)
+
+        if rotated:
+            x_param = self.core.meta_parameter(x_name)
+            y_param = self.core.meta_parameter(y_name)
+            lon, lat = self.lonlat()
+            x_data_rot = self.proj._rotate_u_v(x_data, y_data, x_param, y_param, lon=lon, lat=lat)
+            y_data_rot = self.proj._rotate_u_v(y_data, x_data, y_param, x_param, lon=lon, lat=lat)
+            x_data = x_data_rot
+            y_data = y_data_rot
 
         dir_type = dir_type or self.core.get(name).dir_type
         data = dir_conversions.compute_math_direction(x_data, y_data)
@@ -1245,7 +1262,6 @@ class Skeleton:
             strict=strict,
             **kwargs,
         )
-
         if x_data is None or y_data is None:
             return None
 
