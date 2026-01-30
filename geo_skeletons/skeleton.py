@@ -1133,6 +1133,29 @@ class Skeleton:
             )
             if mask_is_secondary:
                 data = np.logical_not(data).astype(int)
+        elif self.core.get_dir_type(name) is not None: # Directional variable
+            if rotated:
+                data = self._get_data(
+                    name=name,
+                    strict=strict,
+                    dir_type='math',
+                    empty=empty,
+                    **kwargs,
+                )
+                x_data = dask_computations.cos(data)
+                y_data = dask_computations.sin(data)
+                lon, lat = self.lonlat()
+                x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat)
+                math_dir = dir_conversions.compute_math_direction(x_data, y_data)
+                data = dir_conversions.convert_from_math_dir(math_dir, dir_type=dir_type or self.core.get_dir_type(name))
+            else:
+                data = self._get_data(
+                    name=name,
+                    strict=strict,
+                    dir_type=dir_type,
+                    empty=empty,
+                    **kwargs,
+                )
         else:
             data = self._get_data(
                 name=name,
@@ -1141,10 +1164,8 @@ class Skeleton:
                 empty=empty,
                 **kwargs,
             )
-            if rotated:
-                if self.core.get_dir_type(name) is not None:
-                    breakpoint()
 
+            if rotated:
                 twin_name = self.core.find_twin_component(name)
                 twin_data = self._get_data(
                     name=twin_name,
