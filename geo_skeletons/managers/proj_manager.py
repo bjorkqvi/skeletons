@@ -3,6 +3,7 @@ from typing import Optional, Union
 from pyproj import CRS, Transformer
 import numpy as np
 import utm as utm_module
+from copy import deepcopy
 from geo_skeletons.errors import ProjectionError
 from geo_parameters.metaparameter import MetaParameter
 VALID_UTM_ZONES = [
@@ -380,7 +381,7 @@ class ProjManager:
         return CRS.from_dict(proj4)
 
     def _rotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray):
-        """Rotates x,y component data to the set coordinate reference system (CRS)"""
+        """Rotates x,y component data to the set coordinate reference system """
         if x_data is None or y_data is None:
             raise ProjectionError(f"Data for both components not found. Cannot rotate!")
         
@@ -403,6 +404,14 @@ class ProjManager:
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
         alpha = np.reshape(alpha, x_data.shape)
         
-        x_rot = x_data * np.cos(alpha) - y_data * np.sin(alpha)
-        y_rot = x_data * np.sin(alpha) + y_data * np.cos(alpha)
+
+        xr =x_data.data * np.cos(alpha) - y_data.data * np.sin(alpha)
+        yr =x_data.data * np.sin(alpha) + y_data.data * np.cos(alpha)
+
+        # To preserve metadata        
+        x_rot = deepcopy(x_data)
+        y_rot = deepcopy(y_data)
+        y_rot.data = yr
+        x_rot.data = xr
+        
         return x_rot, y_rot
