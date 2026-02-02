@@ -1,5 +1,7 @@
 from geo_skeletons import PointSkeleton
 import geo_parameters as gp
+from geo_skeletons.classes import WindGrid
+
 def test_no_meta():
     points = PointSkeleton(x=0, y=0)
     assert points.meta.get('crs') == {}
@@ -72,3 +74,92 @@ def test_on_class():
 
     assert points2.ds().hs.grid_mapping == 'wgs84'
     assert points2.ds().lon.grid_mapping == 'wgs84'
+
+
+def test_reproj_southerly_winds_rotated_grid_lon0_0_u_da():
+    proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    wind = WindGrid(lat=10, lon=(-180, 180), crs=proj4)
+    wind.set_spacing(nx=181)
+    wind.set_ff(10)
+    wind.set_dd(180)
+
+    assert wind.dd(data_array=True, rotated=True).rotated_according_to =='crs'
+    assert wind.u(data_array=True, rotated=True).rotated_according_to =='crs'
+    assert wind.v(data_array=True, rotated=True).rotated_according_to =='crs'
+
+    assert wind.dd(data_array=True).rotated_according_to =='wgs84'
+    assert wind.u(data_array=True).rotated_according_to =='wgs84'
+    assert wind.v(data_array=True).rotated_according_to =='wgs84'
+
+
+def test_reproj_southerly_winds_rotated_grid_lon0_0_u_ds():
+    proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    wind = WindGrid(lat=10, lon=(-180, 180), crs=proj4)
+    wind.set_spacing(nx=181)
+    wind.set_ff(10)
+    wind.set_dd(180)
+
+    ds_rot = wind.ds(compile=True, rotated=True)
+    
+    ds = wind.ds(compile=True)
+
+
+    assert ds_rot.dd.rotated_according_to =='crs'
+    assert ds_rot.u.rotated_according_to =='crs'
+    assert ds_rot.v.rotated_according_to =='crs'
+
+    assert ds.dd.rotated_according_to =='wgs84'
+    assert ds.u.rotated_according_to =='wgs84'
+    assert ds.v.rotated_according_to =='wgs84'
+
+    assert ds.dd.grid_mapping =='wgs84'
+    assert ds.u.grid_mapping =='wgs84'
+    assert ds.v.grid_mapping =='wgs84'
+
+    assert ds_rot.dd.grid_mapping =='wgs84'
+    assert ds_rot.u.grid_mapping =='wgs84'
+    assert ds_rot.v.grid_mapping =='wgs84'
+
+def test_reproj_from_rotated_da():
+    proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    wind = WindGrid(x=(-8194139, 8194139), y=(-8194139, 8194139), crs=proj4)
+    wind.set_spacing(nx=10, ny=15)
+
+    wind.set_ff(10)
+    wind.set_dd(180)
+
+    assert wind.dd(data_array=True, rotated=True).rotated_according_to =='crs'
+    assert wind.u(data_array=True, rotated=True).rotated_according_to =='crs'
+    assert wind.v(data_array=True, rotated=True).rotated_according_to =='crs'
+
+    assert wind.dd(data_array=True).rotated_according_to =='wgs84'
+    assert wind.u(data_array=True).rotated_according_to =='wgs84'
+    assert wind.v(data_array=True).rotated_according_to =='wgs84'
+
+def test_reproj_from_rotated_ds():
+    proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    wind = WindGrid(x=(-8194139, 8194139), y=(-8194139, 8194139), crs=proj4)
+    wind.set_spacing(nx=10, ny=15)
+
+    wind.set_ff(10)
+    wind.set_dd(180)
+    ds_rot = wind.ds(compile=True, rotated=True)
+    
+    ds = wind.ds(compile=True)
+
+
+    assert ds_rot.dd.rotated_according_to =='crs'
+    assert ds_rot.u.rotated_according_to =='crs'
+    assert ds_rot.v.rotated_according_to =='crs'
+
+    assert ds.dd.rotated_according_to =='wgs84'
+    assert ds.u.rotated_according_to =='wgs84'
+    assert ds.v.rotated_according_to =='wgs84'
+
+    assert ds.dd.grid_mapping =='crs'
+    assert ds.u.grid_mapping =='crs'
+    assert ds.v.grid_mapping =='crs'
+
+    assert ds_rot.dd.grid_mapping =='crs'
+    assert ds_rot.u.grid_mapping =='crs'
+    assert ds_rot.v.grid_mapping =='crs'
