@@ -458,7 +458,7 @@ class Skeleton:
 
         return points
 
-    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True) -> None:
+    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, magdir: bool=False, rotated: bool=False) -> None:
         """Quicklook of the data"""
         try:
             import matplotlib.pyplot as plt
@@ -466,7 +466,8 @@ class Skeleton:
             print(f"Quicklook required matplotlib")
             raise e
 
-        vars = []
+        vars: list[str] = []
+        arrows: dict[str, str] = {}
 
         if compare is not None:
             if proj == 'xy' or proj is None and self.core.is_cartesian():
@@ -474,9 +475,20 @@ class Skeleton:
             else:
                 xedge, yedge = compare.lonlat()
 
-        for var in self.core.data_vars():
-            if self.get(var, strict=True) is not None:
-                vars.append(var)
+        
+        if magdir:
+            for var in self.core.magnitudes():
+                if self.get(var, strict=True) is not None:
+                    vars.append(var)
+                    dirparam = self.core.get(var).direction
+                    if dirparam is not None:
+                        arrows[var] = dirparam.name
+        else:
+            for var in self.core.data_vars():
+                if self.get(var, strict=True) is not None:
+                    vars.append(var)
+
+ 
         if not vars:
             if proj is None:
                 x, y = self.xy(native=True)
@@ -502,11 +514,21 @@ class Skeleton:
         r, c = 0, 0
 
         for var in vars:
-            data = self.get(var)
+            try:
+                data = self.get(var, rotated=rotated)
+            except ProjectionError:
+                data = self.get(var, rotated=False)
+
             if 'time' in self.core.coords():
                 data = data[0,...]
-            
-            ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour) # Implementation varies for GriddedSkeleton and PointSkeleton
+            if arrows.get(var) is not None:
+                arrow_data = self.get(arrows[var], dir_type='math', rotated=rotated)
+                if 'time' in self.core.coords():
+                    arrow_data = arrow_data[0,...]
+            else:
+                arrow_data = None
+
+            ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour, arrow_data) # Implementation varies for GriddedSkeleton and PointSkeleton
 
             
             if proj is None:
@@ -1149,7 +1171,7 @@ class Skeleton:
                 x_data = dask_computations.cos(data)
                 y_data = dask_computations.sin(data)
                 lon, lat = self.lonlat()
-                x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat)
+                x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
                 math_dir = dir_conversions.compute_math_direction(x_data, y_data)
                 data = dir_conversions.convert_from_math_dir(math_dir, dir_type=dir_type or self.core.get_dir_type(name))
             else:
@@ -1184,9 +1206,9 @@ class Skeleton:
                     raise ProjectionError(f"Cannot find orthogonal component to '{name}'!")
                 lon, lat = self.lonlat()
                 if my_param.i_am() =='x':
-                    data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat)
+                    data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
                 elif my_param.i_am() == 'y':
-                    __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat)
+                    __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
                 else:
                     raise ProjectionError(f"'{name}' doesn't seem to be a component!")
 
@@ -1266,7 +1288,7 @@ class Skeleton:
 
         if rotated:
             lon, lat = self.lonlat()
-            x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat)
+            x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
             
 
         dir_type = dir_type or self.core.get(name).dir_type

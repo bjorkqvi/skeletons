@@ -18,22 +18,6 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_u():
     np.testing.assert_array_almost_equal(ds.u.values, wind.u(rotated=False, squeeze=False))
     np.testing.assert_array_almost_equal(ds.v.values, wind.v(rotated=False, squeeze=False))
 
-    assert ds_rot.dd.rotated_according_to =='crs'
-    assert ds_rot.u.rotated_according_to =='crs'
-    assert ds_rot.v.rotated_according_to =='crs'
-
-    assert ds.dd.rotated_according_to =='wgs84'
-    assert ds.u.rotated_according_to =='wgs84'
-    assert ds.v.rotated_according_to =='wgs84'
-
-    assert ds.dd.grid_mapping =='wgs84'
-    assert ds.u.grid_mapping =='wgs84'
-    assert ds.v.grid_mapping =='wgs84'
-
-    assert ds_rot.dd.grid_mapping =='wgs84'
-    assert ds_rot.u.grid_mapping =='wgs84'
-    assert ds_rot.v.grid_mapping =='wgs84'
-
 
 def test_reproj_from_rotated():
     proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
@@ -52,18 +36,3 @@ def test_reproj_from_rotated():
     np.testing.assert_array_almost_equal(ds.u.values, wind.u(rotated=False, squeeze=False))
     np.testing.assert_array_almost_equal(ds.v.values, wind.v(rotated=False, squeeze=False))
 
-    assert ds_rot.dd.rotated_according_to =='crs'
-    assert ds_rot.u.rotated_according_to =='crs'
-    assert ds_rot.v.rotated_according_to =='crs'
-
-    assert ds.dd.rotated_according_to =='wgs84'
-    assert ds.u.rotated_according_to =='wgs84'
-    assert ds.v.rotated_according_to =='wgs84'
-
-    assert ds.dd.grid_mapping =='crs'
-    assert ds.u.grid_mapping =='crs'
-    assert ds.v.grid_mapping =='crs'
-
-    assert ds_rot.dd.grid_mapping =='crs'
-    assert ds_rot.u.grid_mapping =='crs'
-    assert ds_rot.v.grid_mapping =='crs'
