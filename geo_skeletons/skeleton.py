@@ -1222,6 +1222,9 @@ class Skeleton:
             data = data.data
             if name == "time":
                 data = pd.to_datetime(data)
+        else:
+            if rotated:
+                data = data.assign_attrs({'rotated_according_to':'crs'})
 
         return data
 
@@ -1413,14 +1416,11 @@ class Skeleton:
                         continue
                     if param.i_am() in ['x', 'y'] or param.dir_type() is not None:
                         ds[var] = self.get(var, data_array=True, rotated=rotated, squeeze=False)
-                        ds[var] = ds[var].assign_attrs({'rotated_according_to':'crs'})
                 
             for mag in self.core.magnitudes():
                 ds[mag] = self.get(mag, data_array=True, squeeze=False)
             for dirs in self.core.directions():
                 ds[dirs] = self.get(dirs, data_array=True, rotated=rotated, squeeze=False)
-                if rotated:
-                    ds[dirs] = ds[dirs].assign_attrs({'rotated_according_to':'crs'})
 
         return ds
 
