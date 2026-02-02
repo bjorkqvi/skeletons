@@ -91,13 +91,19 @@ class GriddedSkeleton(Skeleton):
 
     def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, arrow_data: np.ndarray):
         """This is called by the quicklook method of the Skelton class"""
+        if len(data.shape) == 1:
+            print(f'Need true 2D-data (not {data.shape}) to use contour. Setting to False.')
+            contour=False
         if proj is None:
             if contour:
                 cont = ax.contourf(self.x(native=True), self.y(native=True),data)
             else:
-                cont = ax.pcolormesh(self.x(native=True), self.y(native=True),data)
+                if len(data.shape) > 1:
+                    cont = ax.pcolormesh(self.x(native=True), self.y(native=True),data)
+                else:
+                    cont = ax.scatter(self.xgrid(native=True), self.ygrid(native=True),c=data, s=2)
             if arrow_data is not None:
-                ax.quiver(self.xgrid(native=True), self.ygrid(native=True), np.cos(arrow_data), np.sin(arrow_data), color='white')
+                ax.quiver(self.xgrid(native=True), self.ygrid(native=True), np.cos(arrow_data), np.sin(arrow_data))
 
         elif proj == 'lonlat':
             if contour:
@@ -106,17 +112,18 @@ class GriddedSkeleton(Skeleton):
                 cont = ax.scatter(self.longrid(), self.latgrid(),c=data, s=2)
 
             if arrow_data is not None:
-                ax.quiver(self.longrid(), self.latgrid(), np.cos(arrow_data), np.sin(arrow_data), color='white')
+                ax.quiver(self.longrid(), self.latgrid(), np.cos(arrow_data), np.sin(arrow_data))
 
 
         elif proj == 'xy':
             if contour:
                 cont = ax.contourf(self.xgrid(), self.ygrid(),data)
             else:
-                cont = ax.scatter(self.xgrid(), self.ygrid(),c=data, s=2)
+                s = 15 if arrow_data is not None else 2
+                cont = ax.scatter(self.xgrid(), self.ygrid(),c=data, s=s)
 
             if arrow_data is not None:
-                ax.quiver(self.xgrid(), self.ygrid(), np.cos(arrow_data), np.sin(arrow_data), color='white')
+                ax.quiver(self.xgrid(), self.ygrid(), np.cos(arrow_data), np.sin(arrow_data))
 
 
         return ax, cont
