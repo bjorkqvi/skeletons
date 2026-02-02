@@ -3,6 +3,7 @@ from typing import Optional, Union
 from pyproj import CRS, Transformer
 import numpy as np
 import utm as utm_module
+import xarray as xr
 from copy import deepcopy
 from geo_skeletons.errors import ProjectionError
 from geo_parameters.metaparameter import MetaParameter
@@ -380,7 +381,7 @@ class ProjManager:
         }
         return CRS.from_dict(proj4)
 
-    def _rotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray):
+    def _rotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
         """Rotates x,y component data to the set coordinate reference system """
         if x_data is None or y_data is None:
             raise ProjectionError(f"Data for both components not found. Cannot rotate!")
@@ -402,16 +403,28 @@ class ProjManager:
             x2, y2 = self._xy(lon=lon, lat=lat+dlat, crs=self.crs())
 
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
-        alpha = np.reshape(alpha, x_data.shape)
         
+        if hasattr(x_data, 'lon'):
+            x_str, y_str = 'lon', 'lat'
+        elif hasattr(x_data, 'x'):
+            x_str, y_str = 'x', 'y'
+        else:
+            x_str, y_str = 'inds', None
 
-        xr =x_data.data * np.cos(alpha) - y_data.data * np.sin(alpha)
-        yr =x_data.data * np.sin(alpha) + y_data.data * np.cos(alpha)
+        alpha = np.reshape(alpha, grid_shape)
+        # Redoing this to a DataArray automatically broadcasts alpha values to different time steps
+        if y_str is not None:
+            alpha = xr.DataArray(data=alpha,dims=[y_str, x_str], coords={x_str: ([x_str], x_data[x_str].values), y_str: ([y_str], y_data[y_str].values)})
+        else:
+            alpha = xr.DataArray(data=alpha,dims=[x_str], coords={x_str: ([x_str], x_data[x_str].values)})
 
-        # To preserve metadata        
-        x_rot = deepcopy(x_data)
-        y_rot = deepcopy(y_data)
-        y_rot.data = yr
-        x_rot.data = xr
+        # To preserve metadata
+        xmeta = x_data.attrs
+        ymeta = y_data.attrs
         
+        x_rot =x_data * np.cos(alpha) - y_data * np.sin(alpha)
+        y_rot =x_data * np.sin(alpha) + y_data * np.cos(alpha)
+
+        x_rot = x_rot.assign_attrs(xmeta)
+        y_rot = y_rot.assign_attrs(ymeta)
         return x_rot, y_rot
