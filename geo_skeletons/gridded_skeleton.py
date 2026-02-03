@@ -89,45 +89,77 @@ class GriddedSkeleton(Skeleton):
         points = PointSkeleton.from_skeleton(self, proj=proj)
         return self.resample.grid(points, engine='ravel')
 
-    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, arrow_data: np.ndarray):
+    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float]):
         """This is called by the quicklook method of the Skelton class"""
+        vmin, vmax = vlim
+        if vmin is not None:
+            levels = 36
+        else:
+            levels = (np.ceil(np.max(data)) - np.floor(np.min(data))).astype(int)
         if len(data.shape) == 1:
             print(f'Need true 2D-data (not {data.shape}) to use contour. Setting to False.')
             contour=False
         if proj is None:
             if contour:
-                cont = ax.contourf(self.x(native=True), self.y(native=True),data)
+                cont = ax.contourf(self.x(native=True), self.y(native=True),data, cmap=cmap, vmin=vmin, vmax=vmax, levels=levels)
             else:
                 if len(data.shape) > 1:
-                    cont = ax.pcolormesh(self.x(native=True), self.y(native=True),data)
+                    cont = ax.pcolormesh(self.x(native=True), self.y(native=True),data, cmap=cmap, vmin=vmin, vmax=vmax)
                 else:
-                    cont = ax.scatter(self.xgrid(native=True), self.ygrid(native=True),c=data, s=2)
-            if arrow_data is not None:
-                ax.quiver(self.xgrid(native=True), self.ygrid(native=True), np.cos(arrow_data), np.sin(arrow_data))
+                    cont = ax.scatter(self.xgrid(native=True), self.ygrid(native=True),c=data, s=10, cmap=cmap, vmin=vmin, vmax=vmax)
 
         elif proj == 'lonlat':
             if contour:
-                cont = ax.contourf(self.longrid(), self.latgrid(),data)
+                cont = ax.contourf(self.longrid(), self.latgrid(),data, cmap=cmap, vmin=vmin, vmax=vmax)
             else:
-                cont = ax.scatter(self.longrid(), self.latgrid(),c=data, s=2)
-
-            if arrow_data is not None:
-                ax.quiver(self.longrid(), self.latgrid(), np.cos(arrow_data), np.sin(arrow_data))
+                cont = ax.scatter(self.longrid(), self.latgrid(),c=data, s=2, cmap=cmap, vmin=vmin, vmax=vmax)
 
 
         elif proj == 'xy':
             if contour:
-                cont = ax.contourf(self.xgrid(), self.ygrid(),data)
+                cont = ax.contourf(self.xgrid(), self.ygrid(),data, cmap=cmap, vmin=vmin, vmax=vmax)
             else:
-                s = 15 if arrow_data is not None else 2
-                cont = ax.scatter(self.xgrid(), self.ygrid(),c=data, s=s)
-
-            if arrow_data is not None:
-                ax.quiver(self.xgrid(), self.ygrid(), np.cos(arrow_data), np.sin(arrow_data))
+                cont = ax.scatter(self.xgrid(), self.ygrid(),c=data, s=10, cmap=cmap, vmin=vmin, vmax=vmax)
 
 
         return ax, cont
 
+    def _quicklook_quiver(self, ax, arrow_data: np.ndarray, proj:str, var:str, wrt: str, sparse):
+        """This is called by the quicklook method of the Skelton class"""
+        if proj is None:
+            xgrid, ygrid = self.xgrid(native=True), self.ygrid(native=True)
+        elif proj == 'lonlat':
+            xgrid, ygrid = self.longrid(), self.latgrid()
+        elif proj == 'xy':
+                xgrid, ygrid = self.xgrid(), self.ygrid()
+        
+        
+        if sparse:
+            if isinstance(sparse, bool):
+                nr_of_points = 25
+            else:
+                nr_of_points = sparse
+            if len(arrow_data.shape) == 1:
+                step = np.floor(len(arrow_data)/nr_of_points).astype(int)
+                step = np.maximum(step, 1)
+                arrow_data = arrow_data[::step]
+                xgrid = xgrid[::step]
+                ygrid = ygrid[::step]
+            else:
+                xstep = np.floor(arrow_data.shape[1]/nr_of_points).astype(int)
+                ystep = np.floor(arrow_data.shape[0]/nr_of_points).astype(int)
+                xstep = np.maximum(xstep, 1)
+                ystep = np.maximum(ystep, 1)
+                arrow_data = arrow_data[::ystep, ::xstep]
+
+                xgrid = xgrid[::ystep, ::xstep]
+                ygrid = ygrid[::ystep, ::xstep]
+
+        ax.quiver(xgrid, ygrid, np.cos(arrow_data), np.sin(arrow_data), label=f"{var}{wrt}")
+
+
+        return ax
+    
     def xgrid(
         self, native: bool = False, strict: bool = False, normalize: bool = False
     ) -> np.ndarray:
