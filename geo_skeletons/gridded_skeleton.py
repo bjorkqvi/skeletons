@@ -10,7 +10,7 @@ from .variables import Coordinate, DataVar
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
-from .errors import SkeletonError, MissingDatasetError
+from .errors import SkeletonError, MissingDatasetError, ProjectionError
 lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
 lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
 x_var = Coordinate(name="x", meta=gp.grid.X, coord_group="spatial", grid_mapping='crs')
@@ -160,6 +160,31 @@ class GriddedSkeleton(Skeleton):
 
         return ax
     
+    def proj_grid(self, **kwargs) -> "GriddedSkeleton":
+        """Creates a new instance of the class that is based on the projected CRS is the original instance is spherical, and vice versa.
+        
+        The new grid minimally covers the old grid"""
+        coord_dict = self.coord_dict()
+        if self.core.is_cartesian():
+            del coord_dict['x']
+            del coord_dict['y']
+            coord_dict['lon'] = self.edges('lon')
+            coord_dict['lat'] = self.edges('lat')
+
+        else:
+            coord_dict['x'] = self.edges('x')
+            coord_dict['y'] = self.edges('y')
+            del coord_dict['lon']
+            del coord_dict['lat']
+
+        new_grid = self.__class__(**coord_dict)
+        if kwargs:
+            new_grid.set_spacing(**kwargs)
+        else:
+            new_grid.set_spacing(dmx=self.dmx(), dmy=self.dmy())
+        new_grid.proj.set(self.proj.crs())
+        return new_grid
+
     def xgrid(
         self, native: bool = False, strict: bool = False, normalize: bool = False
     ) -> np.ndarray:
@@ -465,6 +490,8 @@ class GriddedSkeleton(Skeleton):
         dlat: float = 0.0,
         dx: float = 0.0,
         dy: float = 0.0,
+        dmx: float = 0.0,
+        dmy: float = 0.0,
         dm: float = 0.0,
         dnmi: float = 0.0,
         nx: int = 0,
@@ -493,7 +520,7 @@ class GriddedSkeleton(Skeleton):
 
         """
 
-        def determine_nx(x_type: str, nx: int, dx: float, dlon: float, dnmi: float, floating_edge: bool) -> tuple[int, float]:
+        def determine_nx(x_type: str, nx: int, dx: float, dmx: float, dlon: float, dnmi: float, floating_edge: bool) -> tuple[int, float]:
             """Determines how many points is needed to get the desired resolution in one dimension
             x_type is 'x' or 'y', determining if we are in x/lon or y/lat direction.
             
@@ -520,7 +547,10 @@ class GriddedSkeleton(Skeleton):
 
             if dnmi:
                 if self.core.is_cartesian():
-                    dx = dnmi * 1850.0
+                    if not self.proj.units_are_in_degrees():
+                        dmx = dnmi * 1850.0
+                    else:
+                        raise ProjectionError(f"Can't use spacing in nautical miles for grids with units in rotated degrees! Use d{x_type} or n{x_type} instead.")
                 else:
                     dlon = dnmi / 60.0
                     if x_type == 'x':
@@ -532,9 +562,17 @@ class GriddedSkeleton(Skeleton):
             
             # Convert dx/dlon to the native spacing for the grid
             if self.core.is_cartesian():
-                if dx: 
+                if dmx:
+                    if not self.proj.units_are_in_degrees():
+                        spacing = dmx
+                    else:
+                        raise ProjectionError(f"Can't use spacing in meters for grids with units in rotated degrees! Use d{x_type} or n{x_type} instead.")
+                elif dx:
                     spacing = dx
                 else:
+                    if self.proj.units_are_in_degrees():
+                        raise ProjectionError(f"Can't use spacing in dlon/dlat for grids with units in rotated degrees! Use d{x_type} or n{x_type} instead.")                        
+
                     if floating_edge:
                         raise SkeletonError(
                             "Grid is cartesian, so cant set exact dlon/dlat using floating_edge!"
@@ -546,7 +584,7 @@ class GriddedSkeleton(Skeleton):
                     points = PointSkeleton(x=x, y=y, crs=self.proj.crs())
                     lon, lat = points.lonlat()
                     if lon is None:
-                        raise SkeletonError("Can't set spacing with dlon/dlat since there is not projection information for the grid!")
+                        raise ProjectionError("Can't set spacing with dlon/dlat since there is not projection information for the grid!")
                     lon, lat = sum(lon)/2, sum(lat)/2
                     if x_type == 'x':
                         spacing = distance_funcs.dlon_to_dx(dlon, lat=lat, lon=lon)
@@ -555,7 +593,13 @@ class GriddedSkeleton(Skeleton):
             elif not self.core.is_cartesian():
                 if dlon:
                     spacing = dlon
-                else:
+                elif dx:
+                    if self.proj.units_are_in_degrees():
+                        raise ProjectionError(f"Can't use spacing in d{x_type} for grids spherical grids with a projection with units in rotated degrees! Use dm{x_type}, n{x_type} or dlon/dlat instead.")                        
+                    else:
+                        dmx = dx
+                
+                if dmx:                    
                     if floating_edge:
                         raise SkeletonError(
                             "Grid is spherical, so cant set exact dx/dy using floating_edge!"
@@ -565,9 +609,9 @@ class GriddedSkeleton(Skeleton):
                     lat = self.edges('lat')
                     lon, lat = sum(lon)/2, sum(lat)/2
                     if x_type == 'x':
-                        spacing = distance_funcs.dx_to_dlon(dx, lat=lat, lon=lon)
+                        spacing = distance_funcs.dx_to_dlon(dmx, lat=lat, lon=lon)
                     else:
-                        spacing = distance_funcs.dy_to_dlat(dx, lat=lat, lon=lon)
+                        spacing = distance_funcs.dy_to_dlat(dmx, lat=lat, lon=lon)
 
              
             nx = (
@@ -576,18 +620,18 @@ class GriddedSkeleton(Skeleton):
             )
             if floating_edge:
                 x_end = self.edges(x_type, native=True)[0] + (nx - 1) * spacing
-
+ 
             return nx.astype(int), x_end
         
         if dm:
-            dx, dy = dm, dm
+            dmx, dmy = dm, dm
 
-        if any([nx, dx, dlon, dnmi]):
-            nx, native_x_end = determine_nx("x", nx, dx, dlon, dnmi, floating_edge)
+        if any([nx, dx, dmx, dlon, dnmi]):
+            nx, native_x_end = determine_nx("x", nx, dx, dmx, dlon, dnmi, floating_edge)
         else:
             nx, native_x_end = len(self.x(native=True)), self.edges('x', native=True)[-1]
-        if any([ny, dy, dlat, dnmi]):
-            ny, native_y_end = determine_nx("y", ny, dy, dlat, dnmi, floating_edge)
+        if any([ny, dy, dmy, dlat, dnmi]):
+            ny, native_y_end = determine_nx("y", ny, dy, dmy, dlat, dnmi, floating_edge)
         else:
             ny, native_y_end = len(self.y(native=True)), self.edges('y', native=True)[-1]
 
@@ -636,8 +680,11 @@ class GriddedSkeleton(Skeleton):
             
             lat = data_slice.edges('lat')
             lon = data_slice.edges('lon')
-
-            d = distance_2points(lat[0], lon[0], lat[1], lon[1]) 
+            d = distance_funcs.lon_in_km(lat[0], lon[0])*1000*(lon[1]-lon[0])
+            # if np.sign(lon[0]) == np.sign(lon[1]):
+            #     d = distance_2points(lat[0], lon[0], lat[1], lon[1]) 
+            # else:
+            #     d = distance_2points(lat[0], lon[0], lat[1], 0) +  distance_2points(lat[0], 0, lat[1], lon[1])
             return float(d/(data_slice.nx()-1))
 
     def dmy(self,native: bool = False, strict: bool = False) -> float:
@@ -697,12 +744,13 @@ class GriddedSkeleton(Skeleton):
             return float((rlat[1]-rlat[0])/(self.ny()-1))
 
         # Spherical grid with cartesian (e.g. UTM) projection
-        midpoint = np.floor(self.nx()/2).astype(int)
-        data_slice = self.isel(lon=midpoint)
-        lon = data_slice.lon()[0]
-        lat = data_slice.edges('lat')
-        d = distance_2points(lat[0], lon, lat[1], lon) 
-        return float(d/(self.ny()-1))
+        return self.dmy(native=native, strict=strict)
+        # midpoint = np.floor(self.nx()/2).astype(int)
+        # data_slice = self.isel(lon=midpoint)
+        # lon = data_slice.lon()[0]
+        # lat = data_slice.edges('lat')
+        # d = distance_2points(lat[0], lon, lat[1], lon) 
+        # return float(d/(self.ny()-1))
 
 
     def dx(self, native: bool = False, strict: bool = False) -> float:
@@ -729,12 +777,13 @@ class GriddedSkeleton(Skeleton):
             return float((rlon[1]-rlon[0])/(self.nx()-1))
 
         # Spherical grid with cartesian (e.g. UTM) projection
-        midpoint = np.floor(self.ny()/2).astype(int)
-        data_slice = self.isel(lat=midpoint)
-        lon = data_slice.edges('lon')
-        lat = data_slice.lat()[0]
-        d = distance_2points(lat, lon[0], lat, lon[1]) 
-        return float(d/(self.nx()-1))
+        return self.dmx(native=native, strict=strict)
+        # midpoint = np.floor(self.ny()/2).astype(int)
+        # data_slice = self.isel(lat=midpoint)
+        # lon = data_slice.edges('lon')
+        # lat = data_slice.lat()[0]
+        # d = distance_2points(lat, lon[0], lat, lon[1]) 
+        # return float(d/(self.nx()-1))
 
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
