@@ -419,6 +419,31 @@ class Skeleton:
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
+
+        resubmit = False
+        if cls.is_gridded():
+            for key in ['lat', 'lon', 'x','y']:
+                val = coords.get(key)
+                if val is not None and val[0]> val[-1]:
+                    print(f'Variable {core_coords_to_ds_coords.get(key)} is not monotonically increasing. Flipping!')
+                    ds = ds.isel(**{core_coords_to_ds_coords.get(key):slice(None, None, -1)})
+                    resubmit = True
+
+            if resubmit:
+                return cls.from_ds(ds=ds, chunks=chunks, only_vars = only_vars, ignore_vars = ignore_vars, 
+                                    keep_ds_names= keep_ds_names,
+                                    decode_cf = decode_cf, 
+                                    core_aliases=core_aliases,
+                                    ds_aliases = ds_aliases,
+                                    dynamic = dynamic,
+                                    verbose=verbose,
+                                    meta_dict=meta_dict,
+                                    name=name, 
+                                    **kwargs)
+
+            
+
+            
         name = name or ds.attrs.get("name")
         points = cls(**coords, chunks=chunks, name=name)
         
@@ -458,7 +483,47 @@ class Skeleton:
 
         return points
 
-    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, magdir: bool=False, rotated: bool=False) -> None:
+    def _determine_quicklook_variables(self, mag: bool, dir: bool, arrows: bool) -> dict[str, dict]:
+        """Determines which variables to plot and how to plot them (arrows etc)
+        
+        If mag = dir = arrows = False:
+        Plot only normal data variables (components in case of e.g. wind)
+
+        If mag = True:
+        Plot only magnitudes
+            If arrows = True:
+                Plot quiver plot of direction on top of magnitude
+        If dir = True:
+        Plot directions as magnitudes with circular colormap
+
+        If arrows = True:
+        Plot quiver plots of directions
+        """
+        vars: dict[str, dict] = {}
+        if dir and arrows:
+            mag = True
+        if mag or dir or arrows:
+            for var in self.core.magnitudes(): # Every direction is connected to a magnitude
+                if self.get(var, strict=True) is not None:
+                    if mag:
+                        vars[var] = {}
+                    dirparam = self.core.get(var).direction
+                    if dirparam is not None:
+                        if dir:
+                            vars[dirparam.name] = {'cmap': 'twilight'}
+                        if arrows and mag:
+                            vars[var] = {'arrow_data': dirparam.name}
+                        elif arrows:
+                            vars[dirparam.name] = {'is_arrow': True}
+            return vars
+    
+        for var in self.core.data_vars():
+            if self.get(var, strict=True) is not None:
+                vars[var] = {}
+
+        return vars
+    
+    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, mag: bool=False, dir: bool=False, arrows: bool=False, rotated: bool=False, sparse: bool=True) -> None:
         """Quicklook of the data"""
         try:
             import matplotlib.pyplot as plt
@@ -466,8 +531,6 @@ class Skeleton:
             print(f"Quicklook required matplotlib")
             raise e
 
-        vars: list[str] = []
-        arrows: dict[str, str] = {}
 
         if compare is not None:
             if proj == 'xy' or proj is None and self.core.is_cartesian():
@@ -475,20 +538,9 @@ class Skeleton:
             else:
                 xedge, yedge = compare.lonlat()
 
-        
-        if magdir:
-            for var in self.core.magnitudes():
-                if self.get(var, strict=True) is not None:
-                    vars.append(var)
-                    dirparam = self.core.get(var).direction
-                    if dirparam is not None:
-                        arrows[var] = dirparam.name
-        else:
-            for var in self.core.data_vars():
-                if self.get(var, strict=True) is not None:
-                    vars.append(var)
+        vars = self._determine_quicklook_variables(mag, dir, arrows)
 
- 
+        # No data to plot: only plot points
         if not vars:
             if proj is None:
                 x, y = self.xy(native=True)
@@ -512,24 +564,48 @@ class Skeleton:
         ax = np.atleast_2d(ax)
         
         r, c = 0, 0
-
-        for var in vars:
+        for var, var_dict in vars.items():
             try:
                 data = self.get(var, rotated=rotated)
+                wrt = ' with respect to CRS' if rotated else ''
             except ProjectionError:
                 data = self.get(var, rotated=False)
+                wrt = ''
+            if not var_dict.get('is_arrow', False):
+                if 'time' in self.core.coords():
+                    data = data[0,...]
+                        
+                # Set possible limits if plotting direction as magnitude
+                cmap = var_dict.get('cmap','viridis') 
+                if cmap == 'twilight':
+                    if self.core.meta_parameter(var).dir_type() in  ['to', 'from']:
+                        vlim = (0, 360)
+                    else:
+                        vlim = (-np.pi, np.pi)
+                else:
+                    vlim = (None, None)
 
-            if 'time' in self.core.coords():
-                data = data[0,...]
-            if arrows.get(var) is not None:
-                arrow_data = self.get(arrows[var], dir_type='math', rotated=rotated)
+                ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour, cmap, vlim=vlim) # Implementation varies for GriddedSkeleton and PointSkeleton
+
+                arrow_var = var_dict.get('arrow_data', '')
+                if arrow_var:
+                    wrt = ' with respect to CRS' if rotated else ''
+                    arrow_data = self.get(arrow_var, dir_type='math', rotated=rotated)
+                    if 'time' in self.core.coords():
+                        arrow_data = arrow_data[0,...]
+                    ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, arrow_var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
+                    ax[r,c].legend(loc='upper right')
+                    wrt = ''
+            else:
+                arrow_data = self.get(var, dir_type='math', rotated=rotated)
+                wrt = ' with respect to CRS' if rotated else ''
                 if 'time' in self.core.coords():
                     arrow_data = arrow_data[0,...]
-            else:
-                arrow_data = None
-
-            ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour, arrow_data) # Implementation varies for GriddedSkeleton and PointSkeleton
-
+                ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
+                cont = None
+                ax[r,c].legend(loc='upper right')
+                wrt = ''
+            
             
             if proj is None:
                 ax[r,c].set_xlabel(self.core.x_str)
@@ -544,14 +620,20 @@ class Skeleton:
             title_str = f"{self.name}"
             if 'time' in self.core.coords():
                 title_str += f": {self.time(datetime=False)[0]}"
+            
             ax[r,c].set_title(title_str)
-            cbar = fig.colorbar(cont, ax=ax[r, c])
-            param = self.core.meta_parameter(var)
-            if param is not None:
-                units = param.units()
-            else:
-                units = '?'
-            cbar.set_label(f"{var} [{units}]")
+            if cont is not None:
+                cbar = fig.colorbar(cont, ax=ax[r, c])
+                param = self.core.meta_parameter(var)
+                if param is not None:
+                    units = param.units()
+                    if param.dir_type() == 'to':
+                        units += ' to'
+                    elif param.dir_type() == 'from':
+                        units += ' from'
+                else:
+                    units = '?'
+                cbar.set_label(f"{var} [{units}]{wrt}")
             if compare is not None:
                 ax[r,c].scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
                 plt.legend()
