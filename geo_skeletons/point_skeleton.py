@@ -95,9 +95,13 @@ class PointSkeleton(Skeleton):
         points = cls.from_skeleton(self, proj=proj)
         return self.resample.grid(points, engine='ravel')
     
-    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, arrow_data: np.ndarray):
+    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float]):
         """This is called by the quicklook method of the Skelton class"""
-        
+        vmin, vmax = vlim
+        if vmin is not None:
+            levels = 36
+        else:
+            levels = (np.ceil(np.max(data)) - np.floor(np.min(data))).astype(int)
         if proj is None:
             x, y = self.xy(native=True)
         elif proj == 'lonlat':
@@ -111,19 +115,35 @@ class PointSkeleton(Skeleton):
                 contour = False
 
         if contour:
-            cont = ax.tricontourf(x[mask], y[mask],data[mask])
+            cont = ax.tricontourf(x[mask], y[mask],data[mask], levels=levels, vmin=vmin, vmax=vmax, cmap=cmap)
         else:
-            cont = ax.scatter(x, y,c=data, s=2)
+            cont = ax.scatter(x, y,c=data, s=2, vmin=vmin, vmax=vmax, cmap=cmap)
         
-        if arrow_data is not None:
-            if proj is None:
-                ax.quiver(self.xgrid(native=True), self.ygrid(native=True), np.cos(arrow_data), np.sin(arrow_data), color='white')
-            elif proj ==  'lonlat':
-                ax.quiver(self.longrid(), self.latgrid(), np.cos(arrow_data), np.sin(arrow_data), color='white')
-            elif proj == 'xy':
-                ax.quiver(self.xgrid(), self.ygrid(), np.cos(arrow_data), np.sin(arrow_data), color='white')
 
         return ax, cont
+
+
+    def _quicklook_quiver(self, ax, arrow_data: np.ndarray, proj:str, var:str, wrt: str, sparse):
+        """This is called by the quicklook method of the Skelton class"""
+        if proj is None:
+            xgrid, ygrid = self.xgrid(native=True), self.ygrid(native=True)
+        elif proj == 'lonlat':
+            xgrid, ygrid = self.longrid(), self.latgrid()
+        elif proj == 'xy':
+                xgrid, ygrid = self.xgrid(), self.ygrid()
+        if sparse:
+            if isinstance(sparse, bool):
+                nr_of_points = 500
+            else:
+                nr_of_points = sparse
+            if len(arrow_data.shape) == 1:
+                step = np.floor(len(arrow_data)/nr_of_points).astype(int)
+                step = np.maximum(step, 1)
+                arrow_data = arrow_data[::step]
+                xgrid = xgrid[::step]
+                ygrid = ygrid[::step]
+        ax.quiver(xgrid, ygrid, np.cos(arrow_data), np.sin(arrow_data), label=f"{var}{wrt}")
+        return ax
 
     def xgrid(
         self,
