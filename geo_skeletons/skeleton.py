@@ -424,7 +424,8 @@ class Skeleton:
         if cls.is_gridded():
             for key in ['lat', 'lon', 'x','y']:
                 val = coords.get(key)
-                if val is not None and val[0]> val[-1]:
+                val = np.atleast_1d(val)
+                if val is not None and len(val) > 1 and val[0]> val[-1]:
                     print(f'Variable {core_coords_to_ds_coords.get(key)} is not monotonically increasing. Flipping!')
                     ds = ds.isel(**{core_coords_to_ds_coords.get(key):slice(None, None, -1)})
                     resubmit = True
@@ -1586,7 +1587,7 @@ class Skeleton:
             return (None, None)
 
         return float(np.min(val)), float(np.max(val))
-
+    
     def extent(self, coord: str, strict: bool = False) -> float:
         """Gives the extent in metres in x- or y-direction.
 
