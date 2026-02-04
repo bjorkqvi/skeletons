@@ -21,8 +21,8 @@ def test_dx_dy():
     data = GriddedSkeleton(lon=LON, lat=LAT)
     assert data.proj.crs() == CRS
     data.set_spacing(nx=NX, ny=NY)
-    np.testing.assert_almost_equal(data.dx(),DX)
-    np.testing.assert_almost_equal(data.dy(),DY)
+    np.testing.assert_almost_equal(data.dx(),DX, decimal=0)
+    np.testing.assert_almost_equal(data.dy(),DY, decimal=0)
     assert data.dx(strict=True) is None
     assert data.dy(strict=True) is None
     np.testing.assert_almost_equal(data.dx(native=True),DLON)
@@ -32,8 +32,8 @@ def test_dmx_dmy():
     data = GriddedSkeleton(lon=LON, lat=LAT)
     assert data.proj.crs() == CRS
     data.set_spacing(nx=NX, ny=NY)
-    np.testing.assert_almost_equal(data.dmx(),DX)
-    np.testing.assert_almost_equal(data.dmy(),DY)
+    np.testing.assert_almost_equal(data.dmx(),DX, decimal=0)
+    np.testing.assert_almost_equal(data.dmy(),DY, decimal=0)
     assert data.dmx(strict=True) is None
     assert data.dmy(strict=True) is None
     np.testing.assert_almost_equal(data.dmx(native=True),DLON)

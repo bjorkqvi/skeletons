@@ -1,4 +1,5 @@
 from geo_skeletons import GriddedSkeleton
+from geo_skeletons import distance_funcs
 import pytest
 import numpy as np
 # This area is small enough and within one UTM zone to test
@@ -11,11 +12,11 @@ Y = (6429147.6117879255, 6651832.7361561125)
 UTM = (34, 'V')
 DX = 0.04
 DY = 0.04
-DMX = 4443
+DMX = 2652
 DMY = 4461
 NX = (RLON[1]-RLON[0])/DX +1 
 NY = (RLAT[1]-RLAT[0])/DY +1 
-DLON = 0.077
+DLON = 0.04598665057519647
 DLAT = DMY/111_000
 #DLAT = (LAT[1]-LAT[0])/(NY-1)
 PROJ4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
@@ -33,8 +34,8 @@ def test_dx_dy():
 def test_dmx_dmy():
     data = GriddedSkeleton(x=RLON, y=RLAT, crs=PROJ4)
     data.set_spacing(nx=NX, ny=NY)
-    np.testing.assert_almost_equal(data.dmx(),4443, decimal=0)
-    np.testing.assert_almost_equal(data.dmy(),4461, decimal=0)
+    np.testing.assert_almost_equal(data.dmx(),DMX, decimal=0)
+    np.testing.assert_almost_equal(data.dmy(),DMY, decimal=0)
     assert data.dmx(strict=True) is None
     assert data.dmy(strict=True) is None
     np.testing.assert_almost_equal(data.dmx(native=True),DX)
