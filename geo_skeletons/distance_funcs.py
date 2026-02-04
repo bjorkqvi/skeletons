@@ -99,6 +99,11 @@ def domain_size_in_km(
     return km_x, km_y
 
 
-def distance_2points(lat1, lon1, lat2, lon2) -> float:
+def distance_2points(lat1, lon1, lat2, lon2, geodesic: bool=True) -> float:
     """Calculate distance between two points in m"""
-    return geopy.distance.geodesic((lat1, lon1), (lat2, lon2)).m
+    if geodesic:
+        return geopy.distance.geodesic((lat1, lon1), (lat2, lon2)).m
+    else:
+        dx = lon_in_km((lat2+lat1)/2, (lon2+lon1)/2)*1000*(lon2-lon1)
+        dy = lat_in_km((lat2+lat1)/2, (lon2+lon1)/2)*1000*(lat2-lat1)
+        return (dx**2+dy**2)**0.5

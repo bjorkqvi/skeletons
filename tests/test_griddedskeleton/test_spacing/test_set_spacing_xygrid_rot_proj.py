@@ -21,22 +21,17 @@ CRS = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_def
 
 def test_dx_dy():
    data = GriddedSkeleton(x=RLON, y=RLAT, crs=CRS)
-   data.set_spacing(dx=DX, dy=DY)
-   np.testing.assert_almost_equal(DX, data.dx())
-   np.testing.assert_almost_equal(DY, data.dy())
+   data.set_spacing(dx=0.1, dy=0.1)
+   np.testing.assert_almost_equal(0.1, data.dx(),decimal=2)
+   np.testing.assert_almost_equal(0.1, data.dy(),decimal=2)
 
 
 def test_dmx_dmy():
    data = GriddedSkeleton(x=RLON, y=RLAT, crs=CRS)
-   data.set_spacing(dmx=DX, dmy=DY)
-   np.testing.assert_almost_equal(DX, data.dmx())
-   np.testing.assert_almost_equal(DY, data.dmy())
-
-def test_dmx_dmy():
-   data = GriddedSkeleton(x=RLON, y=RLAT, crs=CRS)
-   data.set_spacing(dm=DX)
-   np.testing.assert_almost_equal(DX, data.dmx())
-   np.testing.assert_almost_equal((Y[1]-Y[0])/(19), data.dmy())
+   data.set_spacing(dmx=1000, dmy=2000)
+   np.testing.assert_almost_equal(999, data.dmx(), decimal=0)
+   np.testing.assert_almost_equal(1982, data.dmy(), decimal=0)
+   
 
 def test_dlon_dlat():
    data = GriddedSkeleton(x=RLON, y=RLAT, crs=CRS)
@@ -48,3 +43,12 @@ def test_dlon_dlat():
    np.testing.assert_almost_equal(dx, data.dmx(), decimal=0)
    np.testing.assert_almost_equal(0.1, data.dlon(), decimal=1)
    np.testing.assert_almost_equal(0.1, data.dlat(), decimal=1)
+
+def test_dnmi():
+   data = GriddedSkeleton(x=RLON, y=RLAT, crs=CRS)
+   data.set_spacing(dnmi=1)
+   np.testing.assert_almost_equal(1846, data.dmy(), decimal=0)
+   np.testing.assert_almost_equal(1/60, data.dlat(),decimal=4)
+   np.testing.assert_almost_equal(1867, data.dmx(), decimal=0)
+   
+   np.testing.assert_almost_equal(1/60*2, data.dlon(),decimal=2)
