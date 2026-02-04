@@ -10,6 +10,8 @@ from .variables import Coordinate, DataVar
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 from .errors import SkeletonError, MissingDatasetError, ProjectionError
 lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
 lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
@@ -96,9 +98,9 @@ class GriddedSkeleton(Skeleton):
         """This is called by the quicklook method of the Skelton class"""
         vmin, vmax = vlim
         if vmin is not None:
-            levels = 36
+            levels = np.arange(0,370,10)
         else:
-            levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),1)
+            levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))+1),1)
             min_levels = 10
             if len(levels) == 0:
                 levels = 1
@@ -106,10 +108,10 @@ class GriddedSkeleton(Skeleton):
                 mul = np.ceil(min_levels/len(levels))
                 if mul > 1:
                     spacing = 1/2**(mul-1)
-                    levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),spacing)
+                    levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data)))+spacing,spacing)
 
         levels = np.atleast_1d(levels)
-        
+
         if len(levels) < 2 and contour:
             print(f'Need at least two levels to use contour. Setting to False.')
             contour = False
@@ -118,25 +120,44 @@ class GriddedSkeleton(Skeleton):
             contour=False
         if proj is None:
             if contour:
-                cont = ax.contourf(self.x(native=True), self.y(native=True),data, cmap=cmap, vmin=vmin, vmax=vmax, levels=levels)
+                cont = ax.contourf(self.x(native=True), self.y(native=True),data, cmap=cmap, levels=levels)
             else:
-                if len(data.shape) > 1:
-                    cont = ax.pcolormesh(self.x(native=True), self.y(native=True),data, cmap=cmap, vmin=vmin, vmax=vmax)
+                if cmap == 'viridis':
+                    cmap = plt.cm.viridis
                 else:
-                    cont = ax.scatter(self.xgrid(native=True), self.ygrid(native=True),c=data, s=10, cmap=cmap, vmin=vmin, vmax=vmax)
+                    cmap = plt.cm.twilight
+
+                norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
+                if len(data.shape) > 1:
+                
+                    cont = ax.pcolormesh(self.x(native=True), self.y(native=True),data, cmap=cmap,norm=norm)
+                else:
+                    cont = ax.scatter(self.xgrid(native=True), self.ygrid(native=True),c=data, s=10, cmap=cmap, norm=norm)
 
         elif proj == 'lonlat':
             if contour:
-                cont = ax.contourf(self.longrid(), self.latgrid(),data, cmap=cmap, vmin=vmin, vmax=vmax)
+                cont = ax.contourf(self.longrid(), self.latgrid(),data, cmap=cmap,levels=levels)
             else:
-                cont = ax.scatter(self.longrid(), self.latgrid(),c=data, s=2, cmap=cmap, vmin=vmin, vmax=vmax)
+                if cmap == 'viridis':
+                    cmap = plt.cm.viridis
+                else:
+                    cmap = plt.cm.twilight
+                norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
+                cont = ax.pcolormesh(self.longrid(), self.latgrid(),data, cmap=cmap, norm=norm)
+                #cont = ax.scatter(self.longrid(), self.latgrid(),c=data, s=2, cmap=cmap, norm=norm)
 
 
         elif proj == 'xy':
             if contour:
-                cont = ax.contourf(self.xgrid(), self.ygrid(),data, cmap=cmap, vmin=vmin, vmax=vmax)
+                cont = ax.contourf(self.xgrid(), self.ygrid(),data, cmap=cmap, levels=levels)
             else:
-                cont = ax.scatter(self.xgrid(), self.ygrid(),c=data, s=10, cmap=cmap, vmin=vmin, vmax=vmax)
+                if cmap == 'viridis':
+                    cmap = plt.cm.viridis
+                else:
+                    cmap = plt.cm.twilight
+                norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
+                cont = ax.pcolormesh(self.xgrid(), self.ygrid(),data, cmap=cmap, norm=norm)
+                #cont = ax.scatter(self.xgrid(), self.ygrid(),c=data, s=10, cmap=cmap, norm=norm)
 
 
         return ax, cont
