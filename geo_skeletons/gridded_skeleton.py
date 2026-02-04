@@ -96,7 +96,11 @@ class GriddedSkeleton(Skeleton):
             levels = 36
         else:
             levels = (np.ceil(np.max(data)) - np.floor(np.min(data))).astype(int)
-        if len(data.shape) == 1:
+        levels = np.atleast_1d(levels)
+        if len(levels) < 2 and contour:
+            print(f'Need at least two levels to use contour. Setting to False.')
+            contour = False
+        if len(data.shape) == 1 and contour:
             print(f'Need true 2D-data (not {data.shape}) to use contour. Setting to False.')
             contour=False
         if proj is None:
@@ -160,29 +164,115 @@ class GriddedSkeleton(Skeleton):
 
         return ax
     
-    def proj_grid(self, **kwargs) -> "GriddedSkeleton":
+    def proj_grid(self, area: str = 'outer', **kwargs) -> "GriddedSkeleton":
         """Creates a new instance of the class that is based on the projected CRS is the original instance is spherical, and vice versa.
         
         The new grid minimally covers the old grid"""
+        def interval_covers(edges, edges2):
+            if edges[0] < edges2[0]:
+                return False
+            if edges[1] > edges2[1]:
+                return False
+            return True
+            
+        def create_new_grid(coord_dict, crs,**kwargs):
+            new_grid = self.__class__(**coord_dict, crs=crs)
+            if kwargs:
+                new_grid.set_spacing(**kwargs)
+            else:
+                new_grid.set_spacing(dmx=self.dmx(), dmy=self.dmy())
+            return new_grid
+
         coord_dict = self.coord_dict()
         if self.core.is_cartesian():
-            del coord_dict['x']
-            del coord_dict['y']
-            coord_dict['lon'] = self.edges('lon')
-            coord_dict['lat'] = self.edges('lat')
+            x_str, y_str = 'lon', 'lat'
+            not_x_str, not_y_str = 'x','y'
+            dx, dy = self.dlon(), self.dlat()
+        else:
+            x_str, y_str = 'x','y'
+            not_x_str, not_y_str = 'lon', 'lat'
+            dx, dy = self.dx(), self.dy()
+
+        del coord_dict[not_x_str]
+        del coord_dict[not_y_str]
+        
+        if area == 'inner':
+            mean_x = sum(self.edges(x_str))/2
+            mean_y = sum(self.edges(y_str))/2
+            coord_dict[x_str] = (mean_x-dx, mean_x+dx)
+            coord_dict[y_str] = (mean_y-dy, mean_y+dy)
+
+
+            new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+        
+            x_too_small, y_too_small = True, True
+            xstep = 10
+            ystep = 10
+            if self.dmx() >= self.dmy():
+                xstep = 10
+                ystep = int(np.round(self.dmx()/self.dmy()))*xstep
+            else:
+                ystep = 10
+                xstep = int(np.round(self.dmy()/self.dmx()))*ystep
+            expansions = []
+            print('Iterating to find a grid fitting inside projected parent grid...')
+            while x_too_small or y_too_small:
+                #print(new_grid.edges('lon'))
+                #print(new_grid.edges('lat'))
+                # Add a little bit of tolerance
+                # Otherwise we might run into problems at -180 180 border in polar projections
+                x_edge = self.edges(not_x_str)
+                x_edge = (x_edge[0] - self.dlon(native=True), x_edge[1] + self.dlon(native=True))
+
+                if x_too_small and not interval_covers(new_grid.edges(not_x_str), x_edge):
+                    x_too_small = False
+                if y_too_small and (not interval_covers(new_grid.edges(not_y_str), self.edges(not_y_str))):
+                    y_too_small = False
+                if not y_too_small and not interval_covers(new_grid.edges(not_x_str), self.edges(not_y_str)):
+                    x_too_small = False
+
+                if x_too_small:
+                    expansions.append('x')
+                    coord_dict[x_str] = (coord_dict[x_str][0]-xstep*new_grid.dx(native=True), coord_dict[x_str][1]+xstep*new_grid.dx(native=True))
+                        
+                if y_too_small:
+                    expansions.append('y')
+                    coord_dict[y_str] = (coord_dict[y_str][0]-ystep*new_grid.dy(native=True), coord_dict[y_str][1]+ystep*new_grid.dy(native=True))
+
+                # We might get stuck in a infinite loop because of the expansion
+
+                new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+                #self.quicklook(proj='xy', compare=new_grid)
+                #breakpoint()
+            # Undo last expansion since it put us outside the grid
+            if 'y' in expansions[-2:]:
+                coord_dict[y_str] = (coord_dict[y_str][0]+ystep*new_grid.dy(native=True), coord_dict[y_str][1]-ystep*new_grid.dy(native=True))
+            if 'x' in expansions[-2:]:
+                coord_dict[x_str] = (coord_dict[x_str][0]+xstep*new_grid.dx(native=True), coord_dict[x_str][1]-xstep*new_grid.dx(native=True))
+            new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+            #print('----')
+            #print(xstep)
+            #print(ystep)
+            #breakpoint()
+            #print(new_grid.edges('lon'))
+            #print(new_grid.edges('lat'))
+        elif area == 'outer':
+            coord_dict[x_str] = self.edges(x_str)
+            coord_dict[y_str] = self.edges(y_str)
+            new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+        #     while not covered_by_grid(new_grid.edges(not_x_str), new_grid.edges(not_y_str), self.edges(not_x_str), self.edges(not_y_str)):
+        #         print(new_grid.edges(not_x_str))
+        #         print(new_grid.edges(not_y_str))
+        #         coord_dict[x_str] = (coord_dict[x_str][0]+100*new_grid.dx(native=True), coord_dict[x_str][1]-100*new_grid.dx(native=True))
+        #         coord_dict[y_str] = (coord_dict[y_str][0]+100*new_grid.dy(native=True), coord_dict[y_str][1]-100*new_grid.dy(native=True))
+        #         new_grid = create_new_grid(coord_dict, **kwargs)
+        # breakpoint()
 
         else:
-            coord_dict['x'] = self.edges('x')
-            coord_dict['y'] = self.edges('y')
-            del coord_dict['lon']
-            del coord_dict['lat']
+            raise ValueError(f"'area' needs to be 'inner' or 'outer', not {area}!")
+        # new_grid = self.__class__(**coord_dict)
 
-        new_grid = self.__class__(**coord_dict)
-        if kwargs:
-            new_grid.set_spacing(**kwargs)
-        else:
-            new_grid.set_spacing(dmx=self.dmx(), dmy=self.dmy())
-        new_grid.proj.set(self.proj.crs())
+        # new_grid.proj.set(self.proj.crs())
         return new_grid
 
     def xgrid(
