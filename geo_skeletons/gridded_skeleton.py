@@ -85,8 +85,11 @@ class GriddedSkeleton(Skeleton):
         """
         return INITIAL_VARS
 
-    def ravel(self, proj: str = None) -> "PointSkeleton":
+    def ravel(self, proj: str = None, crs: str = None) -> "PointSkeleton":
         points = PointSkeleton.from_skeleton(self, proj=proj)
+        if crs is not None:
+            x, y = points.xy(crs=crs)
+            points = PointSkeleton(x=x, y=y, crs=crs)
         return self.resample.grid(points, engine='ravel')
 
     def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float]):
@@ -95,8 +98,15 @@ class GriddedSkeleton(Skeleton):
         if vmin is not None:
             levels = 36
         else:
-            levels = (np.ceil(np.max(data)) - np.floor(np.min(data))).astype(int)
+            levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),1)
+            min_levels = 10
+            mul = np.ceil(min_levels/len(levels))
+            if mul > 1:
+                spacing = 1/2**(mul-1)
+                levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),spacing)
+
         levels = np.atleast_1d(levels)
+        
         if len(levels) < 2 and contour:
             print(f'Need at least two levels to use contour. Setting to False.')
             contour = False
