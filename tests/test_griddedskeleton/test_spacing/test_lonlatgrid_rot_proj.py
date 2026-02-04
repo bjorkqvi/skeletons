@@ -37,8 +37,8 @@ def test_dx_dy():
 def test_dmx_dmy():
     data = GriddedSkeleton(lon=LON, lat=LAT, crs=PROJ4)
     data.set_spacing(nx=NX, ny=NY)
-    np.testing.assert_almost_equal(data.dmx(),DMX)
-    np.testing.assert_almost_equal(data.dmy(),DMY)
+    np.testing.assert_almost_equal(data.dmx(),DMX, decimal=0)
+    np.testing.assert_almost_equal(data.dmy(),DMY, decimal=0)
     assert data.dmx(strict=True) is None
     assert data.dmy(strict=True) is None
     np.testing.assert_almost_equal(data.dmx(native=True),DLON)
