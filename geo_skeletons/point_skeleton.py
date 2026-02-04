@@ -462,16 +462,24 @@ class PointSkeleton(Skeleton):
             )
         return mask
 
-    def resolution(self) -> np.ndarray:
+    def resolution(self, full: bool=False) -> np.ndarray:
         """Returns an array with the resolution (in metres).
         
         Resolution at a grid point is determined as the distance to nearest neighbour.
-        A UTM projection is used to calculate the distances."""
+        A UTM projection is used to calculate the distances.
+        
+        The resolution is based on a random sample of 10,000 points
+        
+        set full = True to use all points."""
         x, y = self.xy(crs=self.proj.my_utm())
+        if not full and len(x) > 10_000:
+            x = np.random.choice(x,10_000, replace=False)
+            y = np.random.choice(y,10_000, replace=False)
+
         return distance_funcs.get_dist_point(x, y)
     
 
-    def dy(self, native: bool = False, strict: bool = False, array: bool = True) -> float:
+    def dy(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -487,13 +495,13 @@ class PointSkeleton(Skeleton):
             return self.dlat()
             
         if not self.proj.units_are_in_degrees() and native:
-            return float(np.median(self.resolution()))
+            return float(np.median(self.resolution(full=full)))
         
         return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
 
 
     
-    def dx(self, native: bool = False, strict: bool = False) -> float:
+    def dx(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -509,12 +517,12 @@ class PointSkeleton(Skeleton):
             return self.dlon()
             
         if not self.proj.units_are_in_degrees() and native:
-            return float(np.median(self.resolution()))
+            return float(np.median(self.resolution(full=full)))
         
         return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
     
 
-    def dmy(self, native: bool = False, strict: bool = False, array: bool = True) -> float:
+    def dmy(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -533,9 +541,9 @@ class PointSkeleton(Skeleton):
         if self.proj.units_are_in_degrees() and native:
             return self.dy()
         
-        return float(np.median(self.resolution()))
+        return float(np.median(self.resolution(full=full)))
     
-    def dmx(self, native: bool = False, strict: bool = False) -> float:
+    def dmx(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -553,9 +561,9 @@ class PointSkeleton(Skeleton):
         if self.proj.units_are_in_degrees() and native:
             return self.dx()
 
-        return float(np.median(self.resolution()))
+        return float(np.median(self.resolution(full=full)))
     
-    def dlat(self, native: bool = False, strict: bool = False) -> float:
+    def dlat(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
@@ -571,14 +579,14 @@ class PointSkeleton(Skeleton):
         if self.ny() == 1:
             return 0.0
         
-        resolution = self.resolution()
+        resolution = self.resolution(full=full)
         lon, lat = self.lonlat()
         
         dlats = np.array([distance_funcs.dy_to_dlat(dy=dy, lat=la, lon=lo) for dy, lo, la in zip(resolution, lon, lat)])
         return float(np.median(dlats))
 
     
-    def dlon(self, native: bool = False, strict: bool = False) -> float:
+    def dlon(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
@@ -594,7 +602,7 @@ class PointSkeleton(Skeleton):
         if self.nx() == 1:
             return 0.0
 
-        resolution = self.resolution()
+        resolution = self.resolution(full=full)
         lon, lat = self.lonlat()
         
         dlons = np.array([distance_funcs.dx_to_dlon(dx=dx, lat=la, lon=lo) for dx, lo, la in zip(resolution, lon, lat)])
