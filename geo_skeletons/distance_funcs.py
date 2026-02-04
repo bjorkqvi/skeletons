@@ -63,7 +63,9 @@ def lon_in_km(lat: float, lon: float) -> float:
 
 def lat_in_km(lat: float, lon: float) -> float:
     """Converts one latitude degree to km for a given latitude and longitude"""
-    return distance_2points(lat, lon, lat + 1, lon) / 1000
+    if lat +1 < 90:
+        return distance_2points(lat, lon, lat + 1, lon) / 1000
+    return distance_2points(lat-1, lon, lat, lon) / 1000
 
 def dx_to_dlon(dx: float, lat: float, lon: float) -> float:
     """Converts dx [m] to longitude degrees given a latitude and longitude"""
