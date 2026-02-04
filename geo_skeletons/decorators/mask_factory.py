@@ -183,9 +183,9 @@ def add_mask(
             range_inclusive=range_inclusive,
         )
 
-        c.core.add_mask(grid_mask)
+        c.core._add_mask(grid_mask)
         if opposite_grid_mask is not None:
-            c.core.add_mask(opposite_grid_mask)
+            c.core._add_mask(opposite_grid_mask)
 
         exec(f"c.{name_str}_mask = get_mask")
         exec(f"c.{name_str}_points = get_masked_points")
