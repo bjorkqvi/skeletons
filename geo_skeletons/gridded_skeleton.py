@@ -793,6 +793,7 @@ class GriddedSkeleton(Skeleton):
                     else:
                         spacing = distance_funcs.dy_to_dlat(dmx, lat=lat, lon=lon)
 
+
              
             nx = (
                 np.round((self.edges(lon_type, native=True)[1] - self.edges(lon_type, native=True)[0]) / spacing)
@@ -915,7 +916,7 @@ class GriddedSkeleton(Skeleton):
         if native:
             return self.dlat()
         
-        if self.core.is_rotated():
+        if self.proj.units_are_in_degrees():
             # Spherical grid with rotated pole (units in degrees, not meter)
             midpoint = np.floor(self.nx()/2).astype(int)
             data_slice = self.isel(lon=midpoint)
@@ -949,7 +950,7 @@ class GriddedSkeleton(Skeleton):
         if native:
             return self.dlon()
             
-        if self.core.is_rotated():
+        if self.proj.units_are_in_degrees():
             # Spherical grid with rotated pole (units in degrees, not meter)
             midpoint = np.floor(self.ny()/2).astype(int)
             data_slice = self.isel(lat=midpoint)
