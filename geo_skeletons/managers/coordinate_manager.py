@@ -64,7 +64,7 @@ class CoordinateManager:
     
     def is_cartesian(self) -> bool:
         """Checks if the grid is natively in a cartesian projection"""
-        return not self.proj.units_are_in_degrees()
+        return self.is_projected() and not self.proj.units_are_in_degrees()
 
     def is_rotated(self) -> bool:
         """Checks if the grid is natively in a rotated coordinates"""

@@ -1699,7 +1699,7 @@ class Skeleton:
         if not xy_given and not lonlat_given:
             raise ValueError("Give either x-y pair or lon-lat pair!")
 
-        if self.core.is_projected():
+        if self.core.is_cartesian():
             fast = True
 
         x = sanitize.force_to_iterable(x)
@@ -1759,11 +1759,11 @@ class Skeleton:
         self, lon: np.ndarray, lat: np.ndarray, fast: bool, npoints: int
     ) -> tuple[np.ndarray, np.ndarray]:
         """Finds the indeces of nearest points and distances if lon,lat coordinates are provided"""
-        if self.core.is_projected():
+        if self.core.is_cartesian():
             crs_to_use = self.proj.crs()
         else:
             crs_to_use = self.proj._optimal_utm(lon=lon, lat=lat)
-
+        
         if crs_to_use is not None:
             x = self.proj._x(lon=lon, lat=lat, crs=crs_to_use)
             y = self.proj._y(lon=lon, lat=lat, crs=crs_to_use)
