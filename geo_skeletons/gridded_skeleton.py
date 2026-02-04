@@ -109,8 +109,9 @@ class GriddedSkeleton(Skeleton):
                 if mul > 1:
                     spacing = 1/2**(mul-1)
                     levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data)))+spacing,spacing)
+            if len(levels) == 1:
+                levels = np.arange(int(np.round(levels[0]))-1, int(np.round(levels[0]))+2,1)
 
-        levels = np.atleast_1d(levels)
 
         if len(levels) < 2 and contour:
             print(f'Need at least two levels to use contour. Setting to False.')
