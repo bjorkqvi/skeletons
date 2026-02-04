@@ -116,9 +116,11 @@ class Skeleton:
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
         self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), x=self.edges("x", strict=True),y=self.edges("y", strict=True),metadata_manager=self.meta)
-        if crs is None and not self.core.is_cartesian():
+        self.core.proj = self.proj
+        if crs is None and not self.core.is_projected():
             self.proj.reset_utm(silent=True)
         self.resample = ResampleManager(self)
+        
 
     def _init_metadata(self, name: str) -> None:
         """Initialized the metadata by using availabe metadata in the GeoParameters"""
@@ -130,7 +132,7 @@ class Skeleton:
                     self.meta.append({'rotated_according_to': 'wgs84'}, coord_name)
 
             if self.core.get(coord_name).coord_group in ['all', 'spatial', 'grid'] and coord_name not in ['inds', 'time']:
-                if self.core.is_cartesian():
+                if self.core.is_projected():
                     self.meta.append({'grid_mapping': 'crs'}, coord_name)
                 else:
                     self.meta.append({'grid_mapping': 'wgs84'}, coord_name)
@@ -479,7 +481,7 @@ class Skeleton:
         proj_obj = find_proj(ds)
         if proj_obj:
             points.proj.set(proj_obj, silent=not verbose)
-        elif points.core.is_cartesian():
+        elif points.core.is_projected():
             print('Could not decode any projection for the cartesian data!')
 
         return points
@@ -538,7 +540,7 @@ class Skeleton:
 
 
         if compare is not None:
-            if proj == 'xy' or proj is None and self.core.is_cartesian():
+            if proj == 'xy' or proj is None and self.core.is_projected():
                 xedge, yedge = compare.xy(crs=self.proj.crs())
             else:
                 xedge, yedge = compare.lonlat()
@@ -574,7 +576,7 @@ class Skeleton:
                 rotated = True
             elif proj == 'lonlat':
                 rotated = False
-            elif self.core.is_cartesian():
+            elif self.core.is_projected():
                 rotated = True
             else:
                 rotated = False
@@ -970,7 +972,7 @@ class Skeleton:
         if first_set:
             self.meta.metadata_to_ds(name)
             if self.core.get(name).coord_group in ['all', 'spatial', 'grid']:
-                if self.core.is_cartesian():
+                if self.core.is_projected():
                     self.meta.append({'grid_mapping': 'crs'}, name)
                 else:
                     self.meta.append({'grid_mapping': 'wgs84'}, name)
@@ -1621,10 +1623,10 @@ class Skeleton:
             raise KeyError("coord need to be 'x', 'y', 'lon' or 'lat'.")
 
 
-        if not self.core.is_cartesian() and strict:
+        if not self.core.is_projected() and strict:
             return None
 
-        if self.core.is_cartesian():
+        if self.core.is_projected():
             return np.diff(self.edges(coord))[0]
 
         lon1, lon2 = self.edges("lon")
@@ -1697,7 +1699,7 @@ class Skeleton:
         if not xy_given and not lonlat_given:
             raise ValueError("Give either x-y pair or lon-lat pair!")
 
-        if self.core.is_cartesian():
+        if self.core.is_projected():
             fast = True
 
         x = sanitize.force_to_iterable(x)
@@ -1757,7 +1759,7 @@ class Skeleton:
         self, lon: np.ndarray, lat: np.ndarray, fast: bool, npoints: int
     ) -> tuple[np.ndarray, np.ndarray]:
         """Finds the indeces of nearest points and distances if lon,lat coordinates are provided"""
-        if self.core.is_cartesian():
+        if self.core.is_projected():
             crs_to_use = self.proj.crs()
         else:
             crs_to_use = self.proj._optimal_utm(lon=lon, lat=lat)
