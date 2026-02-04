@@ -103,7 +103,7 @@ def add_datavar(
 
         # Temporarily cahnge core to dynamic if being set by decorator
 
-        c.core.add_var(data_var)
+        c.core._add_var(data_var)
 
         exec(f"c.{name_str} = get_var")
         exec(f"c.set_{name_str} = set_var")

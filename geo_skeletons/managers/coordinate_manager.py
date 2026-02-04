@@ -29,11 +29,11 @@ class CoordinateManager:
         self._added_masks = {}
         self._added_mask_points = {}
 
-        self._set_initial_coords = [c.name for c in initial_coords]
-        self._set_initial_vars = [v.name for v in initial_vars]
+        self._list_of_initial_coords = [c.name for c in initial_coords]
+        self._list_of_initial_vars = [v.name for v in initial_vars]
 
-        self.set_initial_coords(initial_coords)
-        self.set_initial_vars(initial_vars)
+        self._set_initial_coords(initial_coords)
+        self._set_initial_vars(initial_vars)
 
         self.meta = metadata_manager
         self.proj = None
@@ -44,8 +44,8 @@ class CoordinateManager:
 
     def _is_altered(self) -> bool:
         """Check if the coordinate structure has been altered"""
-        p1 = set(self.coords("all")) == set(self._set_initial_coords)
-        p2 = set(self.data_vars("all")) == set(self._set_initial_vars)
+        p1 = set(self.coords("all")) == set(self._list_of_initial_coords)
+        p2 = set(self.data_vars("all")) == set(self._list_of_initial_vars)
         p3 = self._added_magnitudes == {}
         p4 = self._added_directions == {}
         p5 = self._added_masks == {}
@@ -70,7 +70,7 @@ class CoordinateManager:
         """Checks if the grid is natively in a rotated coordinates"""
         return self.is_projected () and not self.is_cartesian()
 
-    def add_var(self, data_var: DataVar) -> None:
+    def _add_var(self, data_var: DataVar) -> None:
         """Adds a data variable to the structure"""
         if self.get(data_var.name) is not None:
             raise VariableExistsError(data_var.name)
@@ -80,7 +80,7 @@ class CoordinateManager:
         if data_var.meta is not None:
             self.meta.append(data_var.meta.meta_dict(), data_var.name)
 
-    def add_mask(self, grid_mask: GridMask) -> None:
+    def _add_mask(self, grid_mask: GridMask) -> None:
         """Adds a mask to the structure"""
         if self.get(grid_mask.name) is not None:
             raise VariableExistsError(grid_mask.name)
@@ -100,13 +100,13 @@ class CoordinateManager:
         if grid_mask.meta is not None:
             self.meta.append(grid_mask.meta.meta_dict(), grid_mask.name)
 
-    def triggers(self, name: str) -> list[str]:
+    def _triggers(self, name: str) -> list[str]:
         """Returns the masks that are triggered by a specific variable"""
         return [
             mask for mask in self._added_masks.values() if mask.triggered_by == name
         ]
 
-    def add_coord(self, coord: Coordinate) -> str:
+    def _add_coord(self, coord: Coordinate) -> str:
         """Adds a coordinate to the structure"""
         if self.get(coord.name) is not None:
             raise VariableExistsError(coord.name)
@@ -116,7 +116,7 @@ class CoordinateManager:
         if coord.meta is not None:
             self.meta.append(coord.meta.meta_dict(), coord.name)
 
-    def add_magnitude(self, magnitude: Magnitude) -> None:
+    def _add_magnitude(self, magnitude: Magnitude) -> None:
         """Adds a magnitude to the structure"""
         if self.get(magnitude.name) is not None:
             raise VariableExistsError(magnitude.name)
@@ -126,7 +126,7 @@ class CoordinateManager:
         if magnitude.meta is not None:
             self.meta.append(magnitude.meta.meta_dict(), magnitude.name)
 
-    def add_direction(self, direction: Direction) -> None:
+    def _add_direction(self, direction: Direction) -> None:
         """Adds a direction to the structure"""
         if self.get(direction.name) is not None:
             raise VariableExistsError(direction.name)
@@ -136,7 +136,7 @@ class CoordinateManager:
         if direction.meta is not None:
             self.meta.append(direction.meta.meta_dict(), direction.name)
 
-    def set_initial_vars(self, initial_vars: list) -> None:
+    def _set_initial_vars(self, initial_vars: list) -> None:
         """Set dictionary containing the initial variables of the Skeleton"""
         if not isinstance(initial_vars, list):
             raise ValueError("initial_vars needs to be a dict of DataVar's!")
@@ -147,7 +147,7 @@ class CoordinateManager:
         for var in initial_vars:
             self._added_vars[var.name] = var
 
-    def set_initial_coords(self, initial_coords: list) -> None:
+    def _set_initial_coords(self, initial_coords: list) -> None:
         """Set dictionary containing the initial coordinates of the Skeleton"""
         if not isinstance(initial_coords, list):
             raise ValueError("initial_coords needs to be a list of strings!")

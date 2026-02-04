@@ -103,8 +103,8 @@ class Skeleton:
         self.core.y_str = y_str
     
         # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
-        self.core.set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
-        self.core.set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
+        self.core._set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
+        self.core._set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
 
         self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
@@ -1148,7 +1148,7 @@ class Skeleton:
     def _trigger_masks(self, name: str, data: Union[np.ndarray, xr.DataArray]) -> None:
         """Set any masks that are triggered by setting a specific data variable
         E.g. Set new 'land_mask' when 'topo' is set."""
-        for mask in self.core.triggers(name):
+        for mask in self.core._triggers(name):
 
             if mask.range_inclusive[0]:
                 low_mask = data >= mask.valid_range[0]

@@ -55,7 +55,7 @@ def coord_decorator(name, grid_coord, c, stash_get=False):
             meta=meta,
             coord_group=coord_group,
         )
-    c.core.add_coord(coord_var)
+    c.core._add_coord(coord_var)
 
     if stash_get:
         exec(f"c._{name_str} = get_coord")
@@ -159,7 +159,7 @@ def add_time(grid_coord: bool = True):
             coord_group=coord_group,
         )
 
-        c.core.add_coord(coord_var)
+        c.core._add_coord(coord_var)
 
         c.time = get_time
         c.hours = hours
@@ -203,7 +203,7 @@ def add_frequency(name: Union[str, MetaParameter] = Freq, grid_coord: bool = Fal
                 meta=meta,
                 coord_group=coord_group,
             )
-        c.core.add_coord(coord_var)
+        c.core._add_coord(coord_var)
         exec(f"c.{name_str} = get_freq")
         c.df = df
 
@@ -247,7 +247,7 @@ def add_direction(
                 meta=meta,
                 coord_group=coord_group,
             )
-        c.core.add_coord(coord_var)
+        c.core._add_coord(coord_var)
         exec(f"c.{name_str} = get_dirs")
         c.dd = ddir
         return c
