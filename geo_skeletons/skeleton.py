@@ -484,7 +484,7 @@ class Skeleton:
 
         return points
 
-    def _determine_quicklook_variables(self, mag: bool, dir: bool, arrows: bool) -> dict[str, dict]:
+    def _determine_quicklook_variables(self, mag: bool, dir: bool, arrows: bool, arrow_vars: dict[str, str]) -> dict[str, dict]:
         """Determines which variables to plot and how to plot them (arrows etc)
         
         If mag = dir = arrows = False:
@@ -516,15 +516,19 @@ class Skeleton:
                             vars[var] = {'arrow_data': dirparam.name}
                         elif arrows:
                             vars[dirparam.name] = {'is_arrow': True}
+
             return vars
     
         for var in self.core.data_vars():
             if self.get(var, strict=True) is not None:
                 vars[var] = {}
-
+                if self.core.get(var).dir_type is not None:
+                    vars[var] = {'cmap': 'twilight'}
+                if arrow_vars.get(var) is not None:
+                    vars[var] = {'arrow_data': arrow_vars.get(var)}
         return vars
     
-    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, mag: bool=False, dir: bool=False, arrows: bool=False, rotated: bool=False, sparse: bool=True) -> None:
+    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None,rotated: bool=False, sparse: bool=True) -> None:
         """Quicklook of the data"""
         try:
             import matplotlib.pyplot as plt
@@ -539,7 +543,8 @@ class Skeleton:
             else:
                 xedge, yedge = compare.lonlat()
 
-        vars = self._determine_quicklook_variables(mag, dir, arrows)
+        arrow_vars = arrow_vars or {}
+        vars = self._determine_quicklook_variables(mag, dir, arrows,arrow_vars)
 
         # No data to plot: only plot points
         if not vars:
