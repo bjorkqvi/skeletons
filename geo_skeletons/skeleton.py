@@ -528,7 +528,7 @@ class Skeleton:
                     vars[var] = {'arrow_data': arrow_vars.get(var)}
         return vars
     
-    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None,rotated: bool=False, sparse: bool=True) -> None:
+    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None,rotated: Optional[bool]=None, sparse: bool=True) -> None:
         """Quicklook of the data"""
         try:
             import matplotlib.pyplot as plt
@@ -569,6 +569,16 @@ class Skeleton:
  
         ax = np.atleast_2d(ax)
         
+        if rotated is None:
+            if proj == 'xy':
+                rotated = True
+            elif proj == 'lonlat':
+                rotated = False
+            elif self.core.is_cartesian():
+                rotated = True
+            else:
+                rotated = False
+
         r, c = 0, 0
         for var, var_dict in vars.items():
             try:
