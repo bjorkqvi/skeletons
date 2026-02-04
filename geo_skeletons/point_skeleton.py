@@ -252,13 +252,13 @@ class PointSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if not self.core.is_cartesian() and native:
+        if not self.core.is_projected() and native:
             return self.lon(mask=mask, **kwargs)
 
-        if not self.core.is_cartesian() and strict:
+        if not self.core.is_projected() and strict:
             return None
 
-        if self.core.is_cartesian() and (crs is None or self.proj.crs() == crs):
+        if self.core.is_projected() and (crs is None or self.proj.crs() == crs):
             x = self._ds_manager.get("x", **kwargs).values.copy()[mask]
         else:
             x = self.proj._x(
@@ -298,17 +298,17 @@ class PointSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if not self.core.is_cartesian() and native:
+        if not self.core.is_projected() and native:
             return self.lat(mask=mask, **kwargs)
 
-        if not self.core.is_cartesian() and strict:
+        if not self.core.is_projected() and strict:
             return None
 
         if in_meters:
             if crs is not None:
                 raise ValueError("Can't both ask ")
 
-        if self.core.is_cartesian() and (crs is None or self.proj.crs() == crs):
+        if self.core.is_projected() and (crs is None or self.proj.crs() == crs):
             y = self._ds_manager.get("y", **kwargs).values.copy()[mask]
         else:
             y = self.proj._y(
@@ -345,13 +345,13 @@ class PointSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if self.core.is_cartesian() and native:
+        if self.core.is_projected() and native:
             return self.x(mask=mask, crs=crs, **kwargs)
 
-        if self.core.is_cartesian() and strict:
+        if self.core.is_projected() and strict:
             return None
 
-        if not self.core.is_cartesian():
+        if not self.core.is_projected():
             return self._ds_manager.get("lon", **kwargs).values.copy()[mask]
 
         
@@ -384,13 +384,13 @@ class PointSkeleton(Skeleton):
         if self.ds() is None:
             raise MissingDatasetError
 
-        if self.core.is_cartesian() and native:
+        if self.core.is_projected() and native:
             return self.y(mask=mask, crs=crs, **kwargs)
 
-        if self.core.is_cartesian() and strict:
+        if self.core.is_projected() and strict:
             return None
 
-        if not self.core.is_cartesian():
+        if not self.core.is_projected():
             return self._ds_manager.get("lat", **kwargs).values.copy()[mask]
 
         return self.proj._lat(
@@ -495,16 +495,16 @@ class PointSkeleton(Skeleton):
         Note, methods dx() and dy() are same for cartesian grids"""
 
         
-        if not self.core.is_cartesian() and strict and (not native):
+        if not self.core.is_projected() and strict and (not native):
             return None
 
         if self.ny() == 1:
             return 0.0
         
-        if not self.core.is_cartesian() and native:
+        if not self.core.is_projected() and native:
             return self.dlat()
             
-        if not self.proj.units_are_in_degrees() and native:
+        if self.core.is_cartesian() and native:
             return float(np.median(self.resolution(full=full)))
         
         return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
@@ -517,16 +517,16 @@ class PointSkeleton(Skeleton):
         Note, methods dx() and dy() are same for cartesian grids"""
 
         
-        if not self.core.is_cartesian() and strict and (not native):
+        if not self.core.is_projected() and strict and (not native):
             return None
 
         if self.nx() == 1:
             return 0.0
         
-        if not self.core.is_cartesian() and native:
+        if not self.core.is_projected() and native:
             return self.dlon()
             
-        if not self.proj.units_are_in_degrees() and native:
+        if self.core.is_cartesian() and native:
             return float(np.median(self.resolution(full=full)))
         
         return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
@@ -538,17 +538,17 @@ class PointSkeleton(Skeleton):
         Note, methods dx() and dy() are same for cartesian grids"""
 
         
-        if (not self.core.is_cartesian() or self.proj.units_are_in_degrees()) and strict and (not native):
+        if (not self.core.is_cartesian()) and strict and (not native):
             return None
         
 
         if self.ny() == 1:
             return 0.0
         
-        if not self.core.is_cartesian() and native:
+        if not self.core.is_projected() and native:
             return self.dlat()
             
-        if self.proj.units_are_in_degrees() and native:
+        if self.core.is_rotated() and native:
             return self.dy()
         
         return float(np.median(self.resolution(full=full)))
@@ -559,16 +559,16 @@ class PointSkeleton(Skeleton):
         Note, methods dx() and dy() are same for cartesian grids"""
 
         
-        if (not self.core.is_cartesian() or self.proj.units_are_in_degrees()) and strict and (not native):
+        if (not self.core.is_projected() or self.proj.units_are_in_degrees()) and strict and (not native):
             return None
 
         if self.nx() == 1:
             return 0.0
         
-        if not self.core.is_cartesian() and native:
+        if not self.core.is_projected() and native:
             return self.dlon()
 
-        if self.proj.units_are_in_degrees() and native:
+        if self.core.is_rotated() and native:
             return self.dx()
 
         return float(np.median(self.resolution(full=full)))
@@ -577,10 +577,10 @@ class PointSkeleton(Skeleton):
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
-        if self.core.is_cartesian() and strict and (not native):
+        if self.core.is_projected() and strict and (not native):
             return None
         
-        if self.core.is_cartesian():
+        if self.core.is_projected():
             if native:
                 return self.dy()
             if self.proj.crs() is None:
@@ -600,10 +600,10 @@ class PointSkeleton(Skeleton):
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
-        if self.core.is_cartesian() and strict and (not native):
+        if self.core.is_projected() and strict and (not native):
             return None
 
-        if self.core.is_cartesian():
+        if self.core.is_projected():
             if native:
                 return self.dx()
             if self.proj.crs() is None:

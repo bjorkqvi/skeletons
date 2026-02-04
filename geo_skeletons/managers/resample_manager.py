@@ -225,11 +225,11 @@ class ResampleManager:
         new_data = init_new_class_to_grid(new_class, new_grid, self.skeleton)
 
         if verbose:
-            if self.skeleton.core.is_cartesian():
+            if self.skeleton.core.is_projected():
                 print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')} CRS {str(self.skeleton.proj.crs())[:20]}")
             else:
                 print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
-            if new_data.core.is_cartesian():
+            if new_data.core.is_projected():
                 print(f"Target grid has spatial coords {new_data.core.coords('spatial')} CRS {str(new_data.proj.crs())[:20]}")
             else:
                 print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
