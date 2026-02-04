@@ -144,7 +144,7 @@ def add_magnitude(
             )
             mag_obj.direction = dir_obj
 
-            c.core.add_direction(dir_obj)
+            c.core._add_direction(dir_obj)
 
             exec(f"c.{dir_str} = get_direction")
             exec(f"c.set_{dir_str} = set_direction")
@@ -154,7 +154,7 @@ def add_magnitude(
         exec(f"c.{name_str} = get_magnitude")
         exec(f"c.set_{name_str} = set_magnitude")
 
-        c.core.add_magnitude(mag_obj)
+        c.core._add_magnitude(mag_obj)
 
         return c
 
