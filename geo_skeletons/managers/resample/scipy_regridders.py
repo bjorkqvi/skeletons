@@ -48,7 +48,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
         Y, X = np.meshgrid(yq, xq, indexing="ij")  # Use "ij" indexing for (t, y, x) order
         query_points = np.column_stack([Y.ravel(), X.ravel()])  
     else: # We need to get the query points in the native coordinates of the original data, which will make is non-gridded
-        if data.core.is_cartesian():
+        if data.core.is_projected():
             xq, yq = new_data.xy(crs=data.proj.crs())
         else:
             xq, yq = new_data.lonlat()
@@ -67,7 +67,7 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
     # We also can't drop nan values and still keep data gridded
 
     x_expanded = False
-    if data_doesnt_cover_request(x,y,xq,yq) and not data.core.is_cartesian():
+    if data_doesnt_cover_request(x,y,xq,yq) and not data.core.is_projected():
         if data_close_to_wrapping_180(x, data.dlon()):
             print("Data doesn't cover requested area. Trying to see if it is a +-180 longitude wrapping issue...")
             x = np.concatenate(([x[-1]-360], x, [x[0]+360]))
@@ -145,7 +145,7 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
         target_lon, target_lat = new_grid.longrid(native=True), new_grid.latgrid(native=True)
     else:
         target_lon, target_lat = new_grid.lonlat(native=True)
-    if new_data.core.is_cartesian():
+    if new_data.core.is_projected():
         lon, lat = data.xy(crs=new_data.proj.crs())
     else:
         lon, lat = data.lonlat()
