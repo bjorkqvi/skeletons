@@ -102,11 +102,15 @@ class PointSkeleton(Skeleton):
             levels = 36
         else:
             levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),1)
-            min_levels = 10
-            mul = np.ceil(min_levels/len(levels))
-            if mul > 1:
-                spacing = 1/2**(mul-1)
-                levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),spacing)
+            if len(levels) == 0:
+                levels = 1
+            else:
+                
+                min_levels = 10
+                mul = np.ceil(min_levels/len(levels))
+                if mul > 1:
+                    spacing = 1/2**(mul-1)
+                    levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),spacing)
 
         levels = np.atleast_1d(levels)
         
