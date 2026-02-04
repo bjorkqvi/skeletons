@@ -8,7 +8,8 @@ from .variables import DataVar, Coordinate
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
-
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 from .managers.resample_manager import find_original_skeleton_in_inheritance_chain
 from . import distance_funcs
 from .errors import MissingDatasetError
@@ -99,9 +100,9 @@ class PointSkeleton(Skeleton):
         """This is called by the quicklook method of the Skelton class"""
         vmin, vmax = vlim
         if vmin is not None:
-            levels = 36
+            levels = np.arange(0,370,10)
         else:
-            levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),1)
+            levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))+1),1)
             if len(levels) == 0:
                 levels = 1
             else:
@@ -110,7 +111,7 @@ class PointSkeleton(Skeleton):
                 mul = np.ceil(min_levels/len(levels))
                 if mul > 1:
                     spacing = 1/2**(mul-1)
-                    levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))),spacing)
+                    levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data)))+spacing,spacing)
 
         levels = np.atleast_1d(levels)
         
@@ -130,9 +131,14 @@ class PointSkeleton(Skeleton):
                 contour = False
 
         if contour:
-            cont = ax.tricontourf(x[mask], y[mask],data[mask], levels=levels, vmin=vmin, vmax=vmax, cmap=cmap)
+            cont = ax.tricontourf(x[mask], y[mask],data[mask], levels=levels, cmap=cmap)
         else:
-            cont = ax.scatter(x, y,c=data, s=2, vmin=vmin, vmax=vmax, cmap=cmap)
+            if cmap == 'viridis':
+                cmap = plt.cm.viridis
+            else:
+                cmap = plt.cm.twilight
+            norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
+            cont = ax.scatter(x, y,c=data, s=2,  cmap=cmap, norm=norm)
         
 
         return ax, cont
