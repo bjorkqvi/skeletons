@@ -1565,6 +1565,7 @@ class Skeleton:
         native: bool = False,
         strict: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
+        expansion_factor: Optional[float] = None,
     ) -> tuple[float, float]:
         """Min and max values of x. Conversion made for sperical grids."""
         if coord not in ["x", "y", "lon", "lat"]:
@@ -1586,7 +1587,12 @@ class Skeleton:
         if val is None:
             return (None, None)
 
-        return float(np.min(val)), float(np.max(val))
+        if expansion_factor:
+            length = float(np.max(val))-float(np.min(val))
+            pad = length*(expansion_factor-1)/2
+            return  (float(np.min(val))-pad, float(np.max(val)+pad))
+
+        return  (float(np.min(val)), float(np.max(val)))
     
     def extent(self, coord: str, strict: bool = False) -> float:
         """Gives the extent in metres in x- or y-direction.
