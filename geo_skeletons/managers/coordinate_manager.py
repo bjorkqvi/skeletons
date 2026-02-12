@@ -426,13 +426,31 @@ class CoordinateManager:
         return move_time_and_spatial_to_front([var.name for var in vars if var.name])
 
     def magnitudes(self, coord_group: str = "all") -> list[str]:
-        """Returns list of magnitudes that have been added to a specific coord group.
+        """Returns a list of magnitudes that have been added to a specific coordinate group.
 
-        'all': All added coordinates
-        'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        This method retrieves the names of magnitude variables associated with a specified 
+        coordinate group. If no `coord_group` is provided, it returns all added magnitudes.
+
+        Args:
+            coord_group (Optional[str], optional): The coordinate group to retrieve magnitudes for. 
+                Must be one of:
+                - `all`: Returns all added magnitudes (default behavior).
+                - `'spatial'`: Returns magnitudes associated with spatial coordinates (e.g., `inds`, `lat/lon`).
+                - `'nonspatial'`: Returns magnitudes not associated with spatial coordinates (e.g., `time`, `frequency`).
+                - `'grid'`: Returns magnitudes associated with grid coordinates (e.g., `time`, `z`) and spatial coordinates.
+                - `'gridpoint'`: Returns magnitudes associated with grid point coordinates 
+                (e.g., `frequency`, `direction`).
+
+        Returns:
+            list[str]: A list of magnitude variable names in the specified coordinate group.
+
+        Raises:
+            ValueError: If the provided `coord_group` is not one of the valid options.
+
+        Notes:
+            - If `coord_group=None`, all magnitudes are returned regardless of their association.
+            - Magnitudes are variables that represent scalar quantities, such as wave heights 
+            or intensities, tied to their respective coordinates.
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
             print(
@@ -464,13 +482,31 @@ class CoordinateManager:
         return [var.name for var in vars]
 
     def directions(self, coord_group: str = "all") -> list[str]:
-        """Returns list of directions that have been added to a specific coord group.
+        """Returns a list of directions that have been added to a specific coordinate group.
 
-        'all': All added coordinates
-        'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        This method retrieves the names of direction variables associated with a specified 
+        coordinate group. If no `coord_group` is provided, it returns all added directions.
+
+        Args:
+            coord_group (Optional[str], optional): The coordinate group to retrieve directions for. 
+                Must be one of:
+                - `all`: Returns all added directions (default behavior).
+                - `'spatial'`: Returns directions associated with spatial coordinates (e.g., `inds`, `lat/lon`).
+                - `'nonspatial'`: Returns directions not associated with spatial coordinates (e.g., `time`, `frequency`).
+                - `'grid'`: Returns directions associated with grid coordinates (e.g., `time`, `z`) and spatial coordinates.
+                - `'gridpoint'`: Returns directions associated with grid point coordinates 
+                (e.g., `frequency`, `direction`).
+
+        Returns:
+            list[str]: A list of direction variable names in the specified coordinate group.
+
+        Raises:
+            ValueError: If the provided `coord_group` is not one of the valid options.
+
+        Notes:
+            - If `coord_group=None`, all directions are returned regardless of their association.
+            - Directions are variables that represent angular quantities or orientations 
+            tied to their respective coordinates, such as wind or wave directions.
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
             print(
