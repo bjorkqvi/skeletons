@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from geo_skeletons import Skeleton
+
 import pandas as pd
 import geo_parameters as gp
 import numpy as np
@@ -7,6 +13,7 @@ from .resample.scipy_regridders import scipy_regridders
 from .resample.ravel import ravel_regridders
 import geo_parameters as gp
 from copy import deepcopy
+
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
     return np.sqrt(np.mean(x**2, *args, **kwargs))
@@ -187,7 +194,50 @@ class ResampleManager:
 
 
     def engines(self):
-        """Lists engines that are available for regridding"""
+        """Lists the available regridding engines and their supported regridding types.
+
+        This method prints a detailed table of regridding engines, their availability, 
+        supported regridding types, and installation requirements. It also lists the options 
+        available for each engine.
+
+        Supported regridding types include:
+            - `grid-to-grid`: Regridding data from one grid to another.
+            - `point-to-grid`: Regridding point data onto a grid.
+            - `point-to-point`: Regridding or transforming point data to other points.
+            - `grid-to-point`: Regridding grid data to point data.
+
+        The information for each engine includes:
+            - The engine name.
+            - Whether it supports each regridding type.
+            - Whether the engine is installed or available.
+            - Installation instructions for unavailable engines.
+            - Additional options supported by the engine.
+
+        Args:
+            None
+
+        Returns:
+            None: This method prints a table to the console.
+
+        Notes:
+            - The availability of engines is determined by the `REGRID_ENGINES` configuration.
+            - Each engine may have specific installation requirements, which are also listed.
+            - Use this method to assess which engines are installed and which regridding 
+            types are supported for your use case.
+
+        Example Output:
+            -----------------------------------------------------------------------------------------------------------------------------
+            Engine                  grid-to-grid    point-to-grid   point-to-point  grid-to-point   Installation
+            -----------------------------------------------------------------------------------------------------------------------------
+            'scipy' (Installed)          Yes              Yes             Yes            Yes        Native (default)
+            'ravel' (Installed)           No               No             Yes            Yes        Native
+            -----------------------------------------------------------------------------------------------------------------------------
+            Engine          Options
+            -----------------------------------------------------------------------------------------------------------------------------
+            'scipy'         drop_nan: bool, mask_nan: float
+            'ravel'         N/A
+            -----------------------------------------------------------------------------------------------------------------------------
+        """
         print('-'*125)
         print('Engine\t\t\tgrid-to-grid\tpoint-to-grid\tpoint-to-point\tgrid-to-point\tInstallation')
         print('-'*125)
@@ -208,8 +258,49 @@ class ResampleManager:
             print(f"'{key}'\t\t{value.get('options')}")
         print('-'*125)
 
-    def grid(self, new_grid, target_class = None, engine: str='scipy', verbose: bool=True, **kwargs):
-        """Regrids the data of the skeleton to a new grid"""
+    def grid(self, new_grid: Skeleton, target_class: Optional[Skeleton] = None, engine: str='scipy', verbose: bool=True, **kwargs) -> Skeleton:
+        """Regrids the data of the Skeleton onto a new grid.
+
+        This method regrids the data from the current Skeleton to a specified new grid using 
+        the chosen regridding engine. The method will support multiple regridding engines and types 
+        of regridding, and it can adapt to specific target classes if provided. The resulting 
+        data is aligned with the new grid.
+
+        Args:
+            new_grid (Skeleton): The target grid to which the Skeleton data will be regridded. 
+                This can be a grid-like object compatible with the regridding engine.
+            target_class (Optional[Skeleton], optional): The target class for the regridded Skeleton. 
+                If not provided, a new class is created automatically based on the new grid. 
+                Defaults to `None`.
+            engine (str, optional): The regridding engine to use. Must be one of the supported 
+                engines in. Defaults to `'scipy'`. 
+            verbose (bool, optional): If `True`, prints detailed information about the original 
+                and target grids, as well as the regridding process. Defaults to `True`.
+            **kwargs: Additional keyword arguments passed to the regridding engine.
+
+        Returns:
+            Skeleton: A new Skeleton instance regridded to the specified `new_grid`.
+
+        Raises:
+            ValueError: If the specified `engine` is not in the supported `REGRID_ENGINES`.
+            NotImplementedError: If the specified regridding type is not available for the 
+                chosen engine.
+
+        Notes:
+            - The method determines the type of regridding required (e.g., `'nearest'`, `'linear'`) 
+            based on the original Skeleton and the new grid.
+            - See .resample.engines() for allowed values of `engine` 
+            - If `target_class` is not provided, a new class is automatically created to 
+            match the structure of the new grid.
+
+        Examples:
+            Regrid the data to a new grid using the default `scipy` engine:
+            >>> new_grid = create_new_grid(lon=(0, 10), lat=(45, 55))
+            >>> regridded_data = skeleton.grid(new_grid)
+
+            Regrid the data to a new grid using a specific target class:
+            >>> regridded_data = skeleton.grid(new_grid, target_class=CustomSkeletonClass)
+        """
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
 
@@ -248,34 +339,58 @@ class ResampleManager:
         mode: str = "left",
         skipna: bool = False,
         all_times: bool = False,
-    ):
+    ) -> Skeleton:
         """Resamples the data of the Skeleton in time.
 
-        dt is new time step: '30min', '3h', pd.Timedelta(hours=6)
-        dropna [default False]: Drop NaN values
-        mode ('start' [default], 'end', or 'centered'): Type of average being calculated
-        skipna [default False]: skips NaN values in the original data when calculating the mean values
-        all_times [default False]: Create NaN values for miossing time stamps
+        This method resamples the data based on the specified time step (`dt`) and calculates 
+        averages or aggregates based on the type of variable. It supports handling NaN values 
+        and provides options for missing time stamps and different averaging modes.
 
-        - Significant wave height (geo_parameters.wave.Hs) will be averaged using np.sqrt(np.mean(hs**2))
-        - Circular variables (those having a dir_type) will be averaged using scipy.stats.circmean
-        - Wave periods will be averaged through the frequency: np.mean(Tp**-1.0)**-1.0
-        - For Skeleton Magnitude and direction, the resampled components will be determined using the resampled of magnitude and direction
-        - Max-paramters (e.g. geo_parameters.wave.Hmax and EtaMax) will be resampled as np.max
+        Args:
+            dt (Union[str, pd.Timedelta]): The new time step for resampling. Examples:
+                - A string, such as `'30min'` or `'3h'`.
+                - A `pandas.Timedelta` object, such as `pd.Timedelta(hours=6)`.
+            dropna (bool, optional): If `True`, drops rows with NaN values after resampling. 
+                Defaults to `False`.
+            mode (str, optional): Specifies the type of averaging to perform. Must be one of:
+                - `'left'` (default): Averages values aligned to the start of the time window.
+                - `'right'`: Averages values aligned to the end of the time window.
+                - `'centered'`: Averages values centered within the time window.
+            skipna (bool, optional): If `True`, skips NaN values in the original data when 
+                calculating averages. Defaults to `False`.
+            all_times (bool, optional): If `True`, includes NaN values for missing time stamps 
+                in the resampled data. Defaults to `False`.
 
-        Example: 10min values 2020-01-01 00:00 to 2020-01-01 01:00, val = [0,1,2,3,4,5,6]
+        Returns:
+            Skeleton: A new Skeleton instance with resampled time data.
 
-        Ex1: resample.time(dt="30min")
+        Notes:
+            - Significant wave height (`geo_parameters.wave.Hs`) is averaged using the formula:
+            `np.sqrt(np.mean(hs**2))`.
+            - Circular variables (those with a `dir_type`) are averaged using `scipy.stats.circmean`.
+            - Wave periods are averaged through their frequency: `np.mean(Tp**-1.0)**-1.0`.
+            - For Skeleton magnitudes and directions, the resampled components are determined 
+            using the resampled magnitude and direction.
+            - Max-parameters (e.g., `geo_parameters.wave.Hmax` and `EtaMax`) are resampled 
+            using the maximum value: `np.max`.
+
+        Examples:
+            Resample 10-minute data from 2020-01-01 00:00 to 2020-01-01 01:00 with values `[0, 1, 2, 3, 4, 5, 6]`:
+
+            Example 1: Resample with 30-minute intervals (`mode='left'`, default):
+            >>> resample.time(dt="30min")
             times: ['2020-01-01 00:00', '2020-01-01 00:30', '2020-01-01 01:00']
-            values: [1,4,6]
+            values: [1, 4, 6]
 
-        Ex2: resample.time(dt="30min", mode='right')
+            Example 2: Resample with 30-minute intervals and `mode='right'`:
+            >>> resample.time(dt="30min", mode='right')
             times: ['2020-01-01 00:00', '2020-01-01 00:30', '2020-01-01 01:00']
-            values: [0,2,5]
+            values: [0, 2, 5]
 
-        Ex2: resample.time(dt="30min", mode='centered')
+            Example 3: Resample with 30-minute intervals and `mode='centered'`:
+            >>> resample.time(dt="30min", mode='centered')
             times: ['2020-01-01 00:00', '2020-01-01 00:30', '2020-01-01 01:00']
-            values: [0.5,3,5.5]
+            values: [0.5, 3, 5.5]
         """
         coord_dict = self.skeleton.coord_dict()
         if "time" not in coord_dict.keys():
