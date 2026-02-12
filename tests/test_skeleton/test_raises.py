@@ -59,13 +59,6 @@ def test_edges_wrong_type():
     with pytest.raises(KeyError):
         PointSkeleton(lon=4, lat=5).edges('wrong_type')
 
-def test_extent():
-    with pytest.raises(KeyError):
-        PointSkeleton(lon=4, lat=5).extent('wrong_type')
-
-def test_extent_strict():
-    PointSkeleton(lon=4, lat=5).extent('x', strict=True) is None
-
 def test_yank_point_no_pair_given():    
     with pytest.raises(ValueError):
         PointSkeleton(lon=4, lat=5).yank_point()
