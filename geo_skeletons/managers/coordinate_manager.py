@@ -754,7 +754,23 @@ class CoordinateManager:
         return [var.name for var in vars]
 
     def all_objects(self, coord_group: str = "all") -> list[str]:
-        """Returns a list of all objects for the given coord_group"""
+        """Returns a list of all objects in the specified coordinate group.
+
+        This method retrieves the names of all objects (e.g., data variables, coordinates, 
+        magnitudes, directions, masks) associated with the specified coordinate group.
+
+        Args:
+            coord_group (str, optional): The coordinate group to retrieve objects for. 
+                Must be one of:
+                - `'all'`: Returns all objects (default behaviour).
+                - `'spatial'`: Returns objects associated with spatial coordinates.
+                - `'nonspatial'`: Returns objects not associated with spatial coordinates.
+                - `'grid'`: Returns objects associated with grid coordinates.
+                - `'gridpoint'`: Returns objects associated with grid points.
+
+        Returns:
+            list[str]: A list of names of all objects in the specified coordinate group.
+        """
         list_of_objects = (
             self.data_vars(coord_group)
             + self.coords(coord_group)
@@ -765,15 +781,46 @@ class CoordinateManager:
         return list_of_objects
 
     def non_coord_objects(self, coord_group: str = "all") -> list[str]:
-        """Returns a list of all objects for given coord_group that are not coords or spatial data_vars (e.g. 'x' in PointSkeleton)"""
+        """Returns a list of all non-coordinate objects in the specified coordinate group.
+
+        This method retrieves the names of all objects in the given coordinate group, excluding 
+        coordinates and spatial data variables (e.g., `x` and `y` in a `PointSkeleton`).
+
+        Args:
+            coord_group (str, optional): The coordinate group to retrieve objects for. 
+                Must be one of:
+                - `'all'`: Returns all non-coordinate objects (default behaviour).
+                - `'spatial'`: Returns non-coordinate objects associated with spatial coordinates.
+                - `'nonspatial'`: Returns non-coordinate objects not associated with spatial coordinates.
+                - `'grid'`: Returns non-coordinate objects associated with grid coordinates.
+                - `'gridpoint'`: Returns non-coordinate objects associated with grid points.
+
+        Returns:
+            list[str]: A list of names of all non-coordinate objects in the specified coordinate group.
+        """
         not_accepted = set(self.coords("all") + self.data_vars("spatial"))
         all_objects = set(self.all_objects(coord_group))
         accepted = all_objects - not_accepted
         return list(accepted)
 
     def coord_group(self, var: str) -> str:
-        """Returns the coordinate group that a variable/mask is defined over.
-        The coordinates can then be retrived using the group by the method .coords()"""
+        """Returns the coordinate group that a variable or mask is defined over.
+
+        This method identifies the coordinate group (e.g., `'spatial'`, `'grid'`, etc.) 
+        associated with a given variable, mask, magnitude, or direction.
+
+        Args:
+            var (str): The name of the variable or mask to check.
+
+        Returns:
+            str: The coordinate group the variable or mask is associated with.
+
+        Raises:
+            KeyError: If the variable or mask is not found.
+
+        Notes:
+            - The coordinates for the returned group can be retrieved using the `.coords()` method.
+        """
         coords = [v for v in self._added_coords.values() if v.name == var]
         vars = [v for v in self._added_vars.values() if v.name == var]
         masks = [v for v in self._added_masks.values() if v.name == var]
@@ -787,8 +834,19 @@ class CoordinateManager:
 
     def get(
         self, var: str
-    ) -> Union[Coordinate, DataVar, Magnitude, Direction, GridMask]:
-        """Returns a Coordinate, data variabel, magnitude, direction of mask with a given name"""
+    ) -> Union[Coordinate, DataVar, Magnitude, Direction, GridMask, None]:
+        """Returns the object associated with a given name.
+
+        This method retrieves a coordinate, data variable, magnitude, direction, 
+        or mask by its name.
+
+        Args:
+            var (str): The name of the object to retrieve.
+
+        Returns:
+            Union[Coordinate, DataVar, Magnitude, Direction, GridMask, None]: The object 
+            associated with the given name, or `None` if not found.
+        """
         return (
             self._added_coords.get(var)
             or self._added_vars.get(var)
@@ -798,14 +856,36 @@ class CoordinateManager:
         )
 
     def meta_parameter(self, var: str) -> Union[MetaParameter, None]:
-        """Returns a metaparameter for a given parameter"""
+        """Returns the meta parameter for a given variable.
+
+        This method retrieves the meta parameter associated with a given variable, 
+        if available.
+
+        Args:
+            var (str): The name of the variable to retrieve the meta parameter for.
+
+        Returns:
+            Union[MetaParameter, None]: The meta parameter associated with the variable, 
+            or `None` if no meta parameter is available.
+        """
         param = self.get(var)
         if param is None:
             return None
         return param.meta
 
     def default_value(self, var: str) -> Union[int, float, None]:
-        """Returns default value for a given parameter"""
+        """Returns the default value for a given parameter.
+
+        This method retrieves the default value associated with a given parameter, 
+        if available.
+
+        Args:
+            var (str): The name of the parameter to retrieve the default value for.
+
+        Returns:
+            Union[int, float, None]: The default value of the parameter, or `None` if 
+            no default value is set or the parameter does not exist.
+        """
         param = self.get(var)
         if param is None:
             return None
@@ -813,8 +893,19 @@ class CoordinateManager:
             return None
         return param.default_value
 
-    def get_dir_type(self, name: str) -> str:
-        """Get the dir_type of a variable if possible"""
+    def get_dir_type(self, name: str) -> Union[str, None]:
+        """Gets the `dir_type` of a variable, if applicable.
+
+        This method retrieves the `dir_type` (e.g., `'from'`, `'to'`, or `'math'`) 
+        of a variable, if the variable has a directional type.
+
+        Args:
+            name (str): The name of the variable to retrieve the `dir_type` for.
+
+        Returns:
+            Union[str, None]: The `dir_type` of the variable, or `None` if the variable 
+            does not have a `dir_type`.
+        """
         obj = self.get(name)
         if obj is None:
             return None
@@ -823,7 +914,17 @@ class CoordinateManager:
         return obj.dir_type
 
     def find_cf(self, standard_name: str) -> list[str]:
-        """Finds the variable names that have the given standard name"""
+        """Finds variable names with a given CF standard name.
+
+        This method searches for variables that have the specified CF (Climate and 
+        Forecast) standard name or its alias.
+
+        Args:
+            standard_name (str): The CF standard name to search for.
+
+        Returns:
+            list[str]: A list of variable names that have the specified standard name.
+        """
         names = []
 
         for name in self.all_objects():
@@ -839,9 +940,17 @@ class CoordinateManager:
         return names
 
     def find(self, param: Union[MetaParameter, str]) -> list[str]:
-        """Finds the name of a parameter based on the standard name or a MetaParameter
+        """Finds the names of parameters based on a CF standard name or MetaParameter.
 
-        If several matches exist and a MetaParameter is provided, a name match is attempted.
+        This method searches for parameters in the Skeleton that match a given CF 
+        standard name or `MetaParameter`. If multiple matches exist and a `MetaParameter` 
+        is provided, a name match is attempted.
+
+        Args:
+            param (Union[MetaParameter, str]): The standard name or `MetaParameter` to search for.
+
+        Returns:
+            list[str]: A list of parameter names that match the given standard name or `MetaParameter`.
         """
         if gp.is_gp(param):
             std_name = param.standard_name()
@@ -858,8 +967,21 @@ class CoordinateManager:
                 return clean_names
             return names
 
-    def find_twin_component(self, param) -> str:
-        """Finds the u-component if a v-component is given and vice versa."""
+    def find_twin_component(self, param: Union[MetaParameter, str]) -> Union[str, None]:
+        """Finds the twin component of a given parameter.
+
+        This method identifies the complementary component (e.g., `u` for `v` and vice versa) 
+        of a specified parameter.
+
+        Args:
+            param (Union[MetaParameter, str]): The parameter or its name to find the twin component for.
+
+        Returns:
+            Union[str, None]: The name of the twin component, or `None` if no twin component is found.
+
+        Raises:
+            ValueError: If multiple candidates for the twin component are found.
+        """
         if isinstance(param, str):
             param = self.meta_parameter(param)
         
@@ -882,6 +1004,7 @@ class CoordinateManager:
             return None
         
         return twin[0]
+    
     def __repr__(self):
         def string_of_coords(list_of_coords) -> str:
             if not list_of_coords:
