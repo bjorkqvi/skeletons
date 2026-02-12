@@ -11,7 +11,7 @@ from ..errors import (
     CoordinateWrongLengthError,
     GridError,
 )
-from typing import Any
+from typing import Any, Optional
 
 import dask
 
@@ -238,7 +238,7 @@ class DatasetManager:
         return meta_dict
 
     def set_attrs(
-        self, attributes: dict[str, Any], data_array_name: str = None
+        self, attributes: dict[str, Any], data_array_name: Optional[str] = None
     ) -> None:
         """Sets attributes to DataArray da_name.
 
@@ -246,7 +246,7 @@ class DatasetManager:
         """
 
         if data_array_name is None or data_array_name == "_global_":
-            self.data = self.data.drop_attrs(deep=False)
+            self.data.attrs = {} # = self.data.drop_attrs(deep=False)
             self.data = self.data.assign_attrs(**attributes)
         else:
             self.data[data_array_name].attrs = {} # self.data[data_array_name].drop_attrs()
