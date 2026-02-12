@@ -42,8 +42,8 @@ def test_set_name_from_netcdf_no_name_in_ds(ds):
     del ds.attrs['name']
     ds.to_netcdf('TestFile.nc')
     points = PointSkeleton.from_netcdf('TestFile.nc')
-    assert points.name == 'Created from TestFile.nc'
-    assert points.ds().name == 'Created from TestFile.nc'
+    assert points.name == 'created_from_TestFile.nc'
+    assert points.ds().name == 'created_from_TestFile.nc'
     if os.path.exists('TestFile.nc'):
         os.remove('TestFile.nc')
 
