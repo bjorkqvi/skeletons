@@ -2057,12 +2057,57 @@ class Skeleton:
         return data
 
     def coord_squeeze(self, coords: list[str]) -> list[str]:
-        """Smart squeezes a list of coordinates according to the following rules:
+        """Smartly squeezes a list of coordinates by removing trivial dimensions.
 
-        1) Empty list return empty
-        2) Trivial one coordinate list returns itself
-        3) All coordinates that are of trivial length are removed and returned if not empty
-        4) If 3) resulted in an empty list, then ['inds'], ['lat']/['y'] or ['lon']/['x'] is returned
+        This method processes a list of coordinates and applies the following rules 
+        to "squeeze" the list based on the lengths of the associated data dimensions:
+
+        Rules:
+            1) If the input coordinate list is empty, an empty list is returned.
+            2) If the input list contains only one coordinate, it is returned as-is.
+            3) Coordinates corresponding to trivial dimensions (length 1) are removed.
+            If this results in a non-empty list, the remaining coordinates are returned.
+            4) If all coordinates are trivial and the resulting list would be empty, the 
+            method returns a single default spatial coordinate, based on these priorities:
+                - `'inds'`
+                - `'lat'` or `'y'` (latitude or y-coordinate)
+                - `'lon'` or `'x'` (longitude or x-coordinate)
+
+        Args:
+            coords (list[str]): A list of coordinate names to be squeezed.
+
+        Returns:
+            list[str]: A squeezed list of coordinates, based on the rules above.
+
+        Notes:
+            - A "trivial" coordinate is defined as a coordinate whose associated data 
+            has a length of 1.
+            - If the list contains spatial coordinates (`inds`, `lat`, `y`, `lon`, or `x`), 
+            the method ensures that at least one spatial coordinate is returned, even 
+            if all are trivial.
+            - The method prioritizes spatial coordinates in the following order:
+            `'inds' > 'lat' > 'y' > 'lon' > 'x'`.
+
+        Examples:
+            Input list is empty:
+            >>> skeleton.coord_squeeze([])
+            []
+
+            Input list contains one coordinate:
+            >>> skeleton.coord_squeeze(['time'])
+            ['time']
+
+            Input list contains trivial coordinates:
+            >>> skeleton.coord_squeeze(['time', 'lat', 'lon'])
+            ['lat', 'lon']  # Removes 'time' if it is trivial.
+
+            Input list contains only trivial coordinates:
+            >>> skeleton.coord_squeeze(['time', 'inds'])
+            ['inds']  # Returns 'inds' as the default spatial coordinate.
+
+            Input list contains only spatial coordinates:
+            >>> skeleton.coord_squeeze(['x', 'y'])
+            ['y']  # Returns 'y' as the primary spatial coordinate.
         """
         if not coords or len(coords) == 1:
             return coords
@@ -2088,11 +2133,41 @@ class Skeleton:
             return ["x"]
 
     def ds(self, compile: bool = False, rotated: bool = False) -> Union[xr.Dataset, None]:
-        """Returns the underlying Xarray Dataset. None if dosen't exist.
+        """Returns the underlying xarray Dataset for the Skeleton.
 
-        compile [default False]: Add magnitudes and directions to the Dataset (performs deepcopy!)
+        This method provides access to the underlying xarray Dataset associated with 
+        the Skeleton. It can optionally add computed magnitudes and directions or 
+        rotate directional data to align with the set coordinate reference system (CRS).
 
-        rotated [default False]: Rotate directions and dircetional variables to the set coordinate reference systen (CRS)
+        Args:
+            compile (bool, optional): If `True`, adds computed magnitudes and directional 
+                variables to the Dataset. Note that this operation performs a deep copy 
+                of the data and may be computationally expensive. Defaults to False.
+            rotated (bool, optional): If `True`, rotates directional variables to align 
+                with the set CRS (e.g., UTM or rotated pole). Defaults to False.
+
+        Returns:
+            Union[xr.Dataset, None]: The underlying xarray Dataset. Returns `None` if 
+            the Dataset does not exist.
+
+        Notes:
+            - If `compile=True`, the method computes and adds magnitudes and directions 
+            to the Dataset.
+            - If `rotated=True`, the method applies rotation to directional variables 
+            (e.g., wind directions) based on the set CRS.
+
+        Examples:
+            Retrieving the underlying Dataset:
+            >>> dataset = skeleton.ds()
+
+            Retrieving the Dataset with computed magnitudes and directions:
+            >>> compiled_dataset = skeleton.ds(compile=True)
+
+            Retrieving the Dataset with rotated directions:
+            >>> rotated_dataset = skeleton.ds(rotated=True)
+
+            Combining both options:
+            >>> compiled_and_rotated_dataset = skeleton.ds(compile=True, rotated=True)
         """
         if not hasattr(self, "_ds_manager"):
             return None
@@ -2123,12 +2198,62 @@ class Skeleton:
     def size(
         self, coord_group: str = "all", squeeze: bool = False, **kwargs
     ) -> tuple[int]:
-        """Returns the size of the Skeleton.
+        """Returns the size of the Skeleton for a specified coordinate group.
 
-        'all' [default]: size of entire Skeleton
-        'spatial': size over coordinates from the Skeleton (x, y, lon, lat, inds)
-        'grid': size over coordinates for the grid (e.g. z, time) and the spatial coordinates
-        'gridpoint': size over coordinates for a grid point (e.g. frequency, direcion or time)
+        This method computes the size (number of elements) of the Skeleton across 
+        different groups of coordinates, such as all coordinates, spatial coordinates, 
+        grid coordinates, or grid point coordinates. The size is returned as a tuple 
+        of integers representing the size of each dimension in the specified group.
+
+        Args:
+            coord_group (str, optional): The coordinate group for which to calculate the size. 
+                Must be one of:
+                - `'all'` (default): Returns the size of the entire Skeleton.
+                - `'spatial'`: Returns the size over spatial coordinates (`x`, `y`, `lon`, `lat`, `inds`).
+                - `'grid'`: Returns the size over grid coordinates (e.g., `z`, `time`) combined with spatial coordinates.
+                - `'gridpoint'`: Returns the size over grid point coordinates (e.g., `frequency`, `direction`, or `time`).
+            squeeze (bool, optional): If `True`, removes trivial dimensions (size 1) from the result. 
+                Defaults to `False`.
+            **kwargs: Can be used to slice data before calculating the size.
+
+        Returns:
+            tuple[int]: A tuple of integers representing the size of each dimension in the 
+            specified coordinate group.
+
+        Raises:
+            KeyError: If `coord_group` is not one of `'all'`, `'spatial'`, `'grid'`, or `'gridpoint'`.
+
+        Notes:
+            - If `squeeze=True`, trivial dimensions are removed from the size computation.
+            - Use `coord_group='all'` to get the size of the entire Skeleton, or specify 
+            other groups to focus on specific subsets of the coordinates.
+
+        Examples:
+            The skeleton is defined over coordinats ['time','lon','lat','freq','dir']
+            Of these 'time' is added as a grid coord
+            'freq' and 'dir' are added as gridpoint coords
+
+            The size of the data is (1,100,50,25,36)
+
+            Get the size of the entire Skeleton:
+            >>> skeleton.size()
+            (1,100,50,25,36)
+
+            Get the size over spatial coordinates only:
+            >>> skeleton.size(coord_group='spatial')
+            (100, 50)
+
+            Get the size over grid coordinates (includes spatial coordinates) `time`, `lon` and `lat`:
+            >>> skeleton.size(coord_group='grid')
+            (1, 100, 50)
+
+            Get the size over grid point coordinates `freq`, `dir`:
+            >>> skeleton.size(coord_group='gridpoint')
+            (25, 36)
+
+            Get the size of the entire Skeleton with trivial dimensions removed:
+            >>> skeleton.size(coord_group='all', squeeze=True)
+            (100,50,25,36)
         """
         if coord_group not in ["all", "spatial", "grid", "gridpoint"]:
             raise KeyError(
@@ -2140,14 +2265,55 @@ class Skeleton:
         return self._ds_manager.coords_to_size(coords, **kwargs)
 
     def shape(self, var, squeeze: bool = False, **kwargs) -> tuple[int]:
-        """Returns the size of one specific data variable."""
+        """Returns the shape of a specific data variable in the Skeleton.
+
+        This method computes the shape (size of each dimension) of a specific data 
+        variable within the Skeleton. If the variable is a coordinate, its shape 
+        is retrieved directly. Otherwise, the method calculates the shape based on 
+        the coordinate group associated with the variable.
+
+        Args:
+            var (str): The name of the data variable for which to compute the shape.
+            squeeze (bool, optional): If `True`, removes trivial dimensions (size 1) 
+                from the result. Defaults to `False`.
+            **kwargs: Can be used to slice data before calculating the size.
+
+        Returns:
+            tuple[int]: A tuple of integers representing the shape of the specified 
+            data variable.
+
+        Notes:
+            - If the variable is a coordinate, its shape is retrieved directly.
+            - If `squeeze=True`, trivial dimensions are removed from the shape computation.
+
+        Examples:
+            The skeleton is defined over coordinats ['time','lon','lat','freq','dir']
+            The variable 'spec' is defined over all coordinates
+            The variable 'reference_spec' is defined over 'freq', 'dir'
+
+            The size of the data is (1,100,50,25,36)
+
+            Get the shape of the 'spec' variable:
+            >>> skeleton.shape('spec')
+            (1,100,50)
+
+            Get the squeezed shape of the 'spec' variable:
+            >>> skeleton.shape('spec', squeeze=True)
+            (100,50)
+
+            Get the shape of the 'reference_spec' variable:
+            >>> skeleton.size('reference_spec')
+            (25, 36)
+        """
         if var in self.core.coords("all"):
             return self.get(var, squeeze=False).shape
         coord_group = self.core.coord_group(var)
         return self.size(coord_group=coord_group, squeeze=squeeze, **kwargs)
 
-    def inds(self, **kwargs) -> np.ndarray:
-        """Returns the index variable for PointSkeletons. Defaults to None for GriddedSkeletons."""
+    def inds(self, **kwargs) -> Union[np.ndarray, None]:
+        """Returns the index variable for PointSkeletons. Defaults to None for GriddedSkeletons.
+        
+        **kwargs can be used for slicing"""
         return self.get("inds", **kwargs)
 
     def edges(
@@ -2155,10 +2321,76 @@ class Skeleton:
         coord: str,
         native: bool = False,
         strict: bool = False,
-        crs: Optional[Union[int, str, dict]] = None,
+        crs: Optional[CRSValue] = None,
         expansion_factor: Optional[float] = None,
     ) -> tuple[float, float]:
-        """Min and max values of x. Conversion made for sperical grids."""
+        """Returns the minimum and maximum values (edges) of a specified coordinate.
+
+        This method calculates the minimum and maximum values for a specified coordinate 
+        (e.g., `x`, `y`, `lon`, `lat`) within the Skeleton. For spherical grids, it handles 
+        conversions and projections if needed. An optional expansion factor can be applied 
+        to expand the edges beyond their original range.
+
+        Args:
+            coord (str): The coordinate for which to calculate the edges. Must be one of:
+                - `'x'`: Cartesian x-coordinate.
+                - `'y'`: Cartesian y-coordinate.
+                - `'lon'`: Longitude.
+                - `'lat'`: Latitude.
+            native (bool, optional): If `True`, returns the edges in the native coordinate 
+                reference system (CRS) without any transformations. Defaults to `False`.
+            strict (bool, optional): If `True`, returns None if edges required in non-native system. 
+                Defaults to `False`.
+            crs (Optional[CRSValue], optional): The coordinate reference system 
+                to use for transformations. Can be specified as an EPSG code (e.g., `4326`), 
+                a CRS string, UTM Zone (e.g. (33, 'W')) or a dictionary. If `None`, defaults to the Skeleton's CRS. 
+                Defaults to `None`.
+            expansion_factor (Optional[float], optional): A factor to expand the edges 
+                beyond their original range. For example, an `expansion_factor=1.1` expands 
+                the edges by 10% on either side. If `None`, no expansion is applied. 
+                Defaults to `None`.
+
+        Returns:
+            tuple[float, float]: A tuple representing the minimum and maximum values of the 
+            specified coordinate. If the coordinate cannot be determined, returns `(None, None)`.
+
+        Raises:
+            KeyError: If the provided `coord` is not one of `'x'`, `'y'`, `'lon'`, or `'lat'`.
+
+        Notes:
+            - For Cartesian coordinates (`x`, `y`), the method retrieves the values using 
+            the Skeleton's `x` and `y` methods. If these are unavailable, it falls back 
+            to the `xy` method.
+            - If `native=True`, the edges are returned in the native CRS without conversion.
+            - If `expansion_factor` is provided, the edges are expanded symmetrically based 
+            on the range of the coordinate values.
+
+        Examples:
+            Get the edges of longitude:
+            >>> data = GriddedSkeleton(lon=(10, 20), lat=(50, 60)) # Best estimate UTM-zone (32, 'U') set automatically
+            >>> data.edges('lon')
+            (10.0, 20.0)
+
+            Get the edges of the x-coordinate (Cartesian projection):
+            >>> data.edges('x')
+            (555776.2667518167, 1287473.8976382306)
+
+            Get the edges of latitude with a 10% expansion factor:
+            >>> data.edges('lat', expansion_factor=1.1)
+            (49.5, 60.5)
+
+            Attempt to get the edges of the y-coordinate, enforcing strict mode:
+            >>> data.edges('y', strict=True)
+            (None, None)  # Returns None because the y-coordinate is estimated, not native.
+
+            Get the edges of the x-coordinate in the native CRS, i.e. lon-lat WGS84:
+            >>> data.edges('x', native=True)
+            (10.0, 20.0)
+
+            Get edges in another projection
+            >>> data.edges('x', crs=(33,'W'))
+            (141743.63163730752, 858256.3683626924)
+        """
         if coord not in ["x", "y", "lon", "lat"]:
             raise KeyError("coord need to be 'x', 'y', 'lon' or 'lat'.")
 
@@ -2185,34 +2417,34 @@ class Skeleton:
 
         return  (float(np.min(val)), float(np.max(val)))
     
-    def extent(self, coord: str, strict: bool = False) -> float:
-        """Gives the extent in metres in x- or y-direction.
+    # def extent(self, coord: str, strict: bool = False) -> float:
+    #     """Gives the extent in metres in x- or y-direction.
 
-        Cartesian grid: The difference between the edges
-        Spherical grid ['x']: Mean of distance between longitude edges for southern and northern edges
-        Spherical grid ['y']: Mean of distance between latitude edges for western and eastern edges
+    #     Cartesian grid: The difference between the edges
+    #     Spherical grid ['x']: Mean of distance between longitude edges for southern and northern edges
+    #     Spherical grid ['y']: Mean of distance between latitude edges for western and eastern edges
 
-        Note, that for PointSkeletons the extens is actually a measure of the rectangle covering the points."""
-        if coord not in ["x", "y",'lon','lat']:
-            raise KeyError("coord need to be 'x', 'y', 'lon' or 'lat'.")
+    #     Note, that for PointSkeletons the extens is actually a measure of the rectangle covering the points."""
+    #     if coord not in ["x", "y",'lon','lat']:
+    #         raise KeyError("coord need to be 'x', 'y', 'lon' or 'lat'.")
 
 
-        if not self.core.is_projected() and strict:
-            return None
+    #     if not self.core.is_projected() and strict:
+    #         return None
 
-        if self.core.is_projected():
-            return np.diff(self.edges(coord))[0]
+    #     if self.core.is_projected():
+    #         return np.diff(self.edges(coord))[0]
 
-        lon1, lon2 = self.edges("lon")
-        lat1, lat2 = self.edges("lat")
-        if coord in ['x','lon']:
-            d_south = distance_2points(lat1=lat1, lon1=lon1, lat2=lat1, lon2=lon2)
-            d_north = distance_2points(lat1=lat2, lon1=lon1, lat2=lat2, lon2=lon2)
-            return (d_south+d_north)/2
-        else:
-            d_west = distance_2points(lat1=lat1, lon1=lon1, lat2=lat2, lon2=lon1)
-            d_east = distance_2points(lat1=lat1, lon1=lon2, lat2=lat2, lon2=lon2)
-            return (d_west + d_east)/2
+    #     lon1, lon2 = self.edges("lon")
+    #     lat1, lat2 = self.edges("lat")
+    #     if coord in ['x','lon']:
+    #         d_south = distance_2points(lat1=lat1, lon1=lon1, lat2=lat1, lon2=lon2)
+    #         d_north = distance_2points(lat1=lat2, lon1=lon1, lat2=lat2, lon2=lon2)
+    #         return (d_south+d_north)/2
+    #     else:
+    #         d_west = distance_2points(lat1=lat1, lon1=lon1, lat2=lat2, lon2=lon1)
+    #         d_east = distance_2points(lat1=lat1, lon1=lon2, lat2=lat2, lon2=lon2)
+    #         return (d_west + d_east)/2
 
     def nx(self) -> int:
         """Length of x/lon-vector."""
@@ -2233,39 +2465,86 @@ class Skeleton:
 
     def yank_point(
         self,
-        lon: Union[float, Iterable[float]] = None,
-        lat: Union[float, Iterable[float]] = None,
-        x: Union[float, Iterable[float]] = None,
-        y: Union[float, Iterable[float]] = None,
+        lon: Optional[CoordinateValue] = None,
+        lat: Optional[CoordinateValue] = None,
+        x: Optional[CoordinateValue] = None,
+        y: Optional[CoordinateValue] = None,
         unique: bool = False,
         fast: bool = True,
         npoints: int = 1,
         gridded_shape: Optional[tuple[int]] = None,
     ) -> dict[str, np.ndarray]:
-        """Finds points nearest to the x-y, lon-lat points provided and returns dict of corresponding indeces.
+        """Finds the nearest points to specified coordinates and returns their indices.
 
-        All Skeletons: key 'dx' (distance to nearest point in meters)
+        This method identifies the points in the Skeleton that are closest to the given 
+        `x-y` or `lon-lat` coordinates and returns a dictionary containing the indices 
+        of the nearest points, as well as the distance to those points. The method supports 
+        both `PointSkeleton` and `GriddedSkeleton` and provides flexible options for handling 
+        unique points, search speed, and grid structures.
 
-        PointSkelton: keys 'inds'
-        GriddedSkeleton: keys 'inds_x' and 'inds_y'
+        Args:
+            lon (CoordinateValue, optional): Longitude(s) of the point(s) to search for. 
+                Defaults to None.
+            lat (CoordinateValue, optional): Latitude(s) of the point(s) to search for. 
+                Defaults to None.
+            x (CoordinateValue, optional): Cartesian x-coordinate(s) of the point(s) 
+                to search for. Defaults to None.
+            y (CoordinateValue, optional): Cartesian y-coordinate(s) of the point(s) 
+                to search for. Defaults to None.
+            unique (bool, optional): If `True`, ensures that only unique points are returned 
+                (removes duplicates). Defaults to False.
+            fast (bool, optional): If `True`, uses UTM Cartesian search for faster computations, 
+                particularly at low latitudes.
+                Defaults to True, but for points outside valid UTM range falls back to False. 
+            npoints (int, optional): The number of nearest points to find. Defaults to 1.
+            gridded_shape (Optional[tuple[int]], optional): The shape of the grid (e.g., `(ny, nx)`) 
+                to compute `inds_x` and `inds_y` when working with a raveled 2D matrix. 
+                This is useful for converting raveled indices back to grid-based indices. Defaults to None.
 
-        Set unique=True to remove any repeated points.
-        Set fast=True to use UTM cartesian search for low latitudes.
-        npoints can be used to find N nearest points.
-        
-        Use gridded_shape to get the inds_x and inds_y in case you have ravelled a 2d matrix, e.g.:
+        Returns:
+            dict[str, np.ndarray]: A dictionary containing the indices and distances of the nearest points:
+                - `'dx'`: The distance(s) to the nearest point(s) in meters.
+                - For `PointSkeleton`: The dictionary includes the key `'inds'` (indices of the closest points).
+                - For `GriddedSkeleton`: The dictionary includes the keys `'inds_x'` and `'inds_y'` 
+                (grid-based indices of the closest points).
 
-        grid = GriddedSkeleton(lon=(10, 11), lat=(0, 1))
-        grid.set_spacing(nx=10, ny=5)
+        Notes:
+            - Setting `unique=True` removes repeated points from the result, ensuring each returned point is unique.
+                Else, the number of returned points match the number of query points, but can have duplicates.
+            - Using `fast=True` enables a faster UTM Cartesian search, which is available at lower latitudes.
+            - The `gridded_shape` argument is essential when working with raveled grids, as it allows the method 
+            to compute the grid-based indices (`inds_x`, `inds_y`) from the raveled indices.
 
-        ind_dict_gridded = grid.yank_point(lon=10.09, lat=0.51)
-        lon, lat = grid.lonlat()
-        points = PointSkeleton(lon=lon, lat=lat)
-        ind_dict = points.yank_point(lon=10.09, lat=0.51, gridded_shape=grid.size())
+        Examples:
+            Example with a `GriddedSkeleton`:
+            >>> grid = GriddedSkeleton(lon=(10, 11), lat=(0, 1))
+            >>> grid.set_spacing(nx=10, ny=5)
+            >>> ind_dict_gridded = grid.yank_point(lon=10.09, lat=0.51)
+            >>> print(ind_dict_gridded)
+            {'inds_x': array([1]), 'inds_y': array([2]), 'dx': array([2596.57832039])}
 
-        assert ind_dict_gridded["inds_y"][0] == ind_dict["inds_y"][0]
-        assert ind_dict_gridded["inds_x"][0] == ind_dict["inds_x"][0]
-        
+            Example with a `PointSkeleton`:
+            >>> lon, lat = grid.lonlat() # Ravels points from previous example
+            >>> points = PointSkeleton(lon=lon, lat=lat)
+            >>> ind_dict = points.yank_point(lon=10.09, lat=0.51)
+            >>> print(ind_dict)
+            {'inds': array([21]), 'dx': array([2596.57832039])}
+            >>> ind_dict = points.yank_point(lon=10.09, lat=0.51, gridded_shape=grid.size())
+            >>> print(ind_dict)
+            {'inds': array([21]), 'dx': array([2596.57832039]), 'inds_x': array([1]), 'inds_y': array([2])}
+
+            Example finding multiple nearest points:
+            >>> ind_dict = grid.yank_point(lon=10.09, lat=0.51, npoints=3)
+            >>> print(ind_dict)
+            {'inds_x': array([1, 0, 2]), 'inds_y': array([2, 2, 2]), 'dx': array([ 2596.57832039, 10076.86077525, 14756.94307178])}
+
+            Example yanking several points:
+            >>> ind_dict = grid.yank_point(lon=(10.09,10.11,10.5), lat=(0.51,0.49,0.8))
+             >>> print(ind_dict)
+            {'inds_x': array([1, 1, 4]), 'inds_y': array([2, 2, 3]), 'dx': array([2596.57832039, 1112.40474332, 8294.42706169])}
+            >>> ind_dict = grid.yank_point(lon=(10.09,10.11,10.5), lat=(0.51,0.49,0.8), unique=True)
+             >>> print(ind_dict)
+            {'inds_x': array([1, 4]), 'inds_y': array([2, 3]), 'dx': array([2596.57832039, 8294.42706169])}        
         """
 
         xy_given = x is not None and y is not None
@@ -2287,7 +2566,9 @@ class Skeleton:
             inds, dx = self._yank_using_xy(x, y, fast, npoints)
 
         if unique:
-            inds = np.unique(inds)
+            inds, ii = np.unique(inds, return_index=True)
+            dx = np.array(dx)
+            dx=dx[ii]
 
         if self.is_gridded():
             inds_x = []
