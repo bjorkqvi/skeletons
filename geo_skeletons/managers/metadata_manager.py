@@ -58,9 +58,9 @@ class MetaDataManager:
 
         else:
             self._metadata["_global_"] = metadata
-        self.metadata_to_ds(name)
+        self._metadata_to_ds(name)
 
-    def metadata_to_ds(self, name: Optional[str]) -> None:
+    def _metadata_to_ds(self, name: Optional[str]) -> None:
         """Sets the stored metadata the the underlying dataset if possible"""
         if self._ds_set_possible(name):
             metadata = self.get(name)
