@@ -1468,7 +1468,7 @@ class Skeleton:
             )
         
         if first_set:
-            self.meta.metadata_to_ds(name)
+            self.meta._metadata_to_ds(name)
             if self.core.get(name).coord_group in ['all', 'spatial', 'grid']:
                 if self.core.is_projected():
                     self.meta.append({'grid_mapping': 'crs'}, name)
@@ -1638,7 +1638,7 @@ class Skeleton:
         dir_type = dir_type or set_dir_type
         data = dir_conversions.convert(data, in_type=dir_type, out_type=set_dir_type)
         self._ds_manager.set(data=data, name=name)
-        self.meta.metadata_to_ds(name)
+        self.meta._metadata_to_ds(name)
         self._trigger_masks(name, data)
 
     def _trigger_masks(self, name: str, data: Union[np.ndarray, xr.DataArray]) -> None:
