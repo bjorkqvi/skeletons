@@ -4,7 +4,6 @@ from pyproj import CRS, Transformer
 import numpy as np
 import utm as utm_module
 import xarray as xr
-from copy import deepcopy
 from geo_skeletons.errors import ProjectionError
 from geo_parameters.metaparameter import MetaParameter
 VALID_UTM_ZONES = [
@@ -254,7 +253,29 @@ class ProjManager:
             self._meta.set({'units': 'degrees'},'y')
 
     def to_crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
-        """Return a pyproj CRS object for the given crs that can be either EPSG code (int), proj4 string (str) or dict"""
+        """Converts the given CRS into a pyproj CRS object or UTM tuple.
+
+        This method takes a CRS in various formats (e.g., EPSG code, proj4 string, or CF-compliant dictionary) 
+        and returns it as a pyproj CRS object or UTM zone tuple. If the input CRS is invalid or not provided, 
+        `None` is returned.
+
+        Args:
+            crs (Optional[Union[str, int, dict]], optional): The CRS to convert. Accepted formats include:
+                - EPSG code (e.g., `4326` or `"EPSG:4326"`).
+                - Proj4 string (e.g., `"+proj=longlat +datum=WGS84 +no_defs"`).
+                - CF-compliant dictionary (e.g., `{'grid_mapping_name': 'latitude_longitude'}`).
+                - If `None`, returns `None`. Defaults to `None`.
+
+        Returns:
+            Union[CRS, tuple[int, str], None]: 
+                - A pyproj CRS object representing the CRS if successfully converted.
+                - A tuple representing the UTM zone (e.g., `(33, 'N')`) if applicable.
+                - `None` if the CRS cannot be determined or is invalid.
+
+        Notes:
+            - A UTM tuple is returned if the CRS represents a UTM zone.
+            - If the provided CRS is already a valid pyproj CRS object, it is returned as-is.
+        """
         epsg, proj4, cf_dict, utm, crs = decode_crs(crs)
 
         if crs is not None:
@@ -271,7 +292,20 @@ class ProjManager:
             return None
         
     def crs(self) -> Union[CRS, tuple[int, str], None]:
-        """Returns the pyproj CRS object or UTM tuple representing the set projection """
+        """Returns the current CRS as a pyproj CRS object or UTM tuple.
+
+        This method retrieves the currently set Coordinate Reference System (CRS) for the object, 
+        returning it as a pyproj CRS object or UTM tuple. If no CRS is set, it returns `None`.
+
+        Returns:
+            Union[CRS, tuple[int, str], None]: 
+                - A pyproj CRS object representing the current CRS.
+                - A tuple representing the UTM zone (e.g., `(33, 'N')`) if applicable.
+                - `None` if no CRS is set.
+
+        Notes:
+            - The UTM zone is returned as a tuple if the current CRS represents a UTM projection.
+        """
         return self.to_crs(self._crs)
 
 
