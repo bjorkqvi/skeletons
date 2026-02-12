@@ -298,13 +298,67 @@ class CoordinateManager:
         return move_time_and_spatial_to_front(coords)
 
     def masks(self, coord_group: str = "all") -> list[str]:
-        """Returns list of masks that have been added to a specific coord group.
+        """Returns a list of masks added to a specific coordinate group.
 
-        'all': All added coordinates
-        'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        This method retrieves the names of masks that have been added to the Skeleton 
+        and are associated with the specified coordinate group.
+
+        Args:
+            coord_group (str, optional): The coordinate group to retrieve masks for. Must be one of:
+                - `'all'`: Returns all added masks (default behaviour).
+                - `'spatial'`: Returns masks associated with spatial coordinates (e.g., `inds`, `lat/lon`).
+                - `'nonspatial'`: Returns masks not associated with spatial coordinates.
+                - `'grid'`: Returns masks associated with grid coordinates (e.g., `z`, `time`) and spatial coordinates.
+                - `'gridpoint'`: Returns masks associated with grid points (e.g., `frequency`, `direction`).
+
+        Returns:
+            list[str]: A list of mask names in the specified coordinate group.
+
+        Notes:
+            - Query for coord_group 'grid' accepts also purely spatial variables
+
+        Examples:
+            Create a PointSkeleton with masks:
+            >>> PointSpectrum = PointSkeleton.add_time().add_frequency().add_direction()
+                .add_mask('land', coord_group='spatial')
+                .add_mask('swell', coord_group='gridpoint')
+                .add_mask('missing', coord_group='grid')
+
+            Inspect the coordinate groups and masks:
+            >>> PointSpectrum.core
+            ------------------------------ Coordinate groups -------------------------------
+            Spatial:    (inds)
+            Grid:       (time, inds)
+            Gridpoint:  (freq, dirs)
+            All:        (time, inds, freq, dirs)
+            ------------------------------------- Data -------------------------------------
+            Variables:
+                *empty*
+            Masks:
+                land_mask     (inds):  False
+                swell_mask    (freq, dirs):  False
+                missing_mask  (time, inds):  False
+            Magnitudes:
+                *empty*
+            Directions:
+                *empty*
+            --------------------------------------------------------------------------------
+
+            Get all masks:
+            >>> PointSpectrum.core.masks('all')
+            ['land_mask', 'swell_mask', 'missing_mask']
+
+            Get spatial masks:
+            >>> PointSpectrum.core.masks('spatial')
+            ['land_mask']
+
+            Get grid masks:
+            >>> PointSpectrum.core.masks('grid')
+            ['land_mask','missing_mask']
+
+            Get gridpoint masks:
+            >>> PointSpectrum.core.masks('gridpoint')
+            ['swell_mask']
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
             print(
@@ -336,13 +390,67 @@ class CoordinateManager:
         return [mask.name for mask in masks]
 
     def mask_points(self, coord_group: str = "all") -> list[str]:
-        """Returns list of mask_points that have been added to a specific coord group.
+        """Returns a list of mask points added to a specific coordinate group.
 
-        'all': All added coordinates
-        'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        This method retrieves the names of mask points that have been added to the Skeleton 
+        and are associated with the specified coordinate group.
+
+        Args:
+            coord_group (str, optional): The coordinate group to retrieve mask points for. Must be one of:
+                - `'all'`: Returns all added mask points (default behaviour).
+                - `'spatial'`: Returns mask points associated with spatial coordinates (e.g., `inds`, `lat/lon`).
+                - `'nonspatial'`: Returns mask points not associated with spatial coordinates.
+                - `'grid'`: Returns mask points associated with grid coordinates (e.g., `z`, `time`) and spatial coordinates.
+                - `'gridpoint'`: Returns mask points associated with grid points (e.g., `frequency`, `direction`).
+
+        Returns:
+            list[str]: A list of mask point names in the specified coordinate group.
+
+        Notes:
+            - Query for coord_group 'grid' accepts also purely spatial variables
+
+        Examples:
+            Create a PointSkeleton with mask points:
+            >>> PointSpectrum = PointSkeleton.add_time().add_frequency().add_direction()
+                .add_mask('land', coord_group='spatial')
+                .add_mask('swell', coord_group='gridpoint')
+                .add_mask('missing', coord_group='grid')
+
+            Inspect the coordinate groups and mask points:
+            >>> PointSpectrum.core
+            ------------------------------ Coordinate groups -------------------------------
+            Spatial:    (inds)
+            Grid:       (time, inds)
+            Gridpoint:  (freq, dirs)
+            All:        (time, inds, freq, dirs)
+            ------------------------------------- Data -------------------------------------
+            Variables:
+                *empty*
+            Masks:
+                land_mask     (inds):  False
+                swell_mask    (freq, dirs):  False
+                missing_mask  (time, inds):  False
+            Magnitudes:
+                *empty*
+            Directions:
+                *empty*
+            --------------------------------------------------------------------------------
+
+            Get all mask points:
+            >>> PointSpectrum.core.mask_points('all')
+            ['land_points', 'swell_points', 'missing_points']
+
+            Get spatial mask points:
+            >>> PointSpectrum.core.mask_points('spatial')
+            ['land_points']
+
+            Get grid mask points:
+            >>> PointSpectrum.core.mask_points('grid')
+            ['land_points','missing_points']
+
+            Get gridpoint mask points:
+            >>> PointSpectrum.core.mask_points('gridpoint')
+            ['swell_points']
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
             print(
@@ -390,13 +498,121 @@ class CoordinateManager:
         return None
 
     def data_vars(self, coord_group: str = "nonspatial") -> list[str]:
-        """Returns list of variables that have been added to a specific coord group.
+        """Returns a list of data variables added to a specific coordinate group.
 
-        'all': All added coordinates
-        'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        This method retrieves the names of data variables that have been added to the Skeleton 
+        and are associated with a specified coordinate group. If no `coord_group` is provided, 
+        it returns all added data variables.
+
+        Args:
+            coord_group (Optional[str], optional): The coordinate group to retrieve data variables for. 
+                Must be one of:
+                - `all`: Returns all added data variables.
+                - `'spatial'`: Returns data variables associated with spatial coordinates (e.g., `inds`, `x`, `y`).
+                - `'nonspatial'`: Returns data variables not associated with spatial coordinates (default behaviour).
+                - `'grid'`: Returns data variables associated with grid coordinates (e.g., `time`, `z`) and spatial coordinates.
+                - `'gridpoint'`: Returns data variables associated with grid point coordinates 
+                (e.g., `frequency`, `direction`).
+
+        Returns:
+            list[str]: A list of data variable names in the specified coordinate group.
+
+        Raises:
+            ValueError: If an invalid value is provided for `coord_group`.
+
+        Notes:
+            - Query for coord_group 'grid' accepts also purely spatial variables
+            - For `PointSkeleton`, spatial data variables such as `x` and `y` are included in the `'spatial'` group.
+            - For `GriddedSkeleton`, spatial data variables are tied to grid coordinates (e.g., `y`, `x`).
+
+        Examples:
+            Example with a GriddedSkeleton:
+            >>> Wave = GriddedSkeleton.add_time()
+                .add_datavar('hs', coord_group='grid')
+                .add_datavar('tp')
+                .add_datavar('depth', coord_group='spatial')
+
+            Inspect the coordinate groups and data variables:
+            >>> Wave.core
+            ------------------------------ Coordinate groups -------------------------------
+            Spatial:    (y, x)
+            Grid:       (time, y, x)
+            Gridpoint:  *empty*
+            All:        (time, y, x)
+            ------------------------------------- Data -------------------------------------
+            Variables:
+                hs     (time, y, x):  0.0
+                tp     (time, y, x):  0.0
+                depth  (y, x):  0.0
+            Masks:
+                *empty*
+            Magnitudes:
+                *empty*
+            Directions:
+                *empty*
+            --------------------------------------------------------------------------------
+
+            Get all data variables:
+            >>> Wave.core.data_vars()
+            ['hs', 'tp']
+
+            Get spatial data variables:
+            >>> Wave.core.data_vars('spatial')
+            ['depth']
+
+            Get grid data variables:
+            >>> Wave.core.data_vars('grid')
+            ['hs', 'depth']
+
+            Get gridpoint data variables:
+            >>> Wave.core.data_vars('gridpoint')
+            []
+
+            Example with a PointSkeleton:
+            >>> Wave = PointSkeleton.add_time()
+                .add_datavar('hs', coord_group='grid')
+                .add_datavar('tp')
+                .add_datavar('depth', coord_group='spatial')
+
+            Inspect the coordinate groups and data variables:
+            >>> Wave.core
+            ------------------------------ Coordinate groups -------------------------------
+            Spatial:    (inds)
+            Grid:       (time, inds)
+            Gridpoint:  *empty*
+            All:        (time, inds)
+            ------------------------------------- Data -------------------------------------
+            Variables:
+                y      (inds):  0 [m] distance_in_y_direction
+                x      (inds):  0 [m] distance_in_x_direction
+                hs     (time, inds):  0.0
+                tp     (time, inds):  0.0
+                depth  (inds):  0.0
+            Masks:
+                *empty*
+            Magnitudes:
+                *empty*
+            Directions:
+                *empty*
+            --------------------------------------------------------------------------------
+
+            Get all data variables:
+            >>> Wave.core.data_vars()
+            ['hs', 'tp']
+
+            Get spatial data variables:
+            >>> Wave.core.data_vars('spatial')
+            ['depth', 'x', 'y']
+
+            Get grid data variables:
+            >>> Wave.core.data_vars('grid')
+            ['hs', 'depth','x','y']
+
+            Get gridpoint data variables:
+            >>> Wave.core.data_vars('gridpoint')
+            []
+            
+        
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
             print(
