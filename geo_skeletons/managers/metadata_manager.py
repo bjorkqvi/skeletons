@@ -166,7 +166,7 @@ class MetaDataManager:
                 - Values are metadata dictionaries (dict).
 
         Notes:
-            - The metadata dictionary is a direct reference to the internal storage. Use the 
-            `get` method to retrieve a deep copy for safe access.
+            - The returned dictionary is a deep copy of the stored metadata to prevent 
+            unintended modifications.
         """
-        return self._metadata
+        return deepcopy(self._metadata)
