@@ -34,6 +34,7 @@ SOUTH_UTM_ZONES = ["C", "D", "E", "F", "G", "H", "J", "K", "L", "M"]
 
 VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
 
+CRSValue = Union[int, str, tuple[int, str], dict, CRS]
 
 def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
     """Decodes the give crs hat can be either EPSG code (int) or roj4 string (str) to an EPSG code and proj4 string (and None)"""
@@ -108,10 +109,22 @@ class ProjManager:
             )
         return (zone_number, zone_letter)
 
-    def my_utm(self, optimal: bool = False):
-        """Returns the optimal UTM for the grid is it is defines, otherwise returns None
-        
-        optimal [bool]: Gives optimal UTM zone even if other UTM zone is set (defaul: False)"""
+    def my_utm(self, optimal: bool = False) -> Union[tuple[int, str], None]:
+        """Returns the UTM (Universal Transverse Mercator) zone for the grid.
+
+        1) If the UTM zone is already set and `optimal=False`, it returns the currently set UTM zone. 
+        2) If UTM is not set or `optimal=True` it calculates and returns the optimal UTM zone based on the grid's 
+        longitude and latitude edges. 
+        3) If no UTM zone is set and the grid is undefined, it returns `None`.
+
+        Args:
+            optimal (bool, optional): If `True`, calculates the optimal UTM zone even if 
+                another UTM zone is already set. Defaults to `False`.
+
+        Returns:
+            Optional[tuple]: The UTM zone as a tuple (e.g., `(33, 'N')`) if determined, 
+            or `None` if no UTM zone can be calculated.
+        """
         if isinstance(self._crs, tuple) and not optimal:
             return self._crs
         if self.crs() is None:
@@ -124,7 +137,18 @@ class ProjManager:
         return self._optimal_utm(lon, lat)
 
     def reset_utm(self, silent: bool = False) -> None:
-        """Resets the UTM-zone based on the lon/lat edges"""
+        """Resets the UTM zone based on the grid's longitude and latitude edges.
+
+        This method recalculates the UTM zone using the current longitude and latitude 
+        edges of the grid. The latitude edges are capped to above -80° and below 84°).
+
+        Args:
+            silent (bool, optional): If `True`, suppresses the print statement that displays 
+                the new UTM zone after resetting. Defaults to `False`.
+
+        Returns:
+            None: This method modifies the object's UTM zone in place.
+        """
 
         if self._lat_edges[0] is None:
             self._crs = None
@@ -138,16 +162,58 @@ class ProjManager:
             print(f"Setting UTM {self._crs}")
 
     def units_are_in_degrees(self) -> bool:
-        """Determines if the set CRS projection is in degrees. For cartesian projections return False"""
+        """Determines whether the current CRS projection is in degrees.
+
+        This method checks if the current coordinate reference system (CRS) is geographic 
+        (i.e., the units are in degrees). 
+        
+        For Cartesian projections (e.g., UTM), it returns `False`.
+
+        Notes:
+            - Both regular lon-lat and e.g. rotated poles are in degrees and will return `True`
+            - If no projection is set in an x-y grid it is assumed to be cartesian and will return `False`
+
+        Returns:
+            bool: `True` if the CRS is geographic (units in degrees), `False` otherwise.
+        """
         if isinstance(self.crs(), tuple):
             return False
         if self.crs() is None:
             return False
         return self.crs().is_geographic
     
-    def set(self, crs: Union[int, str], silent: bool = True) -> None:
-        """Sets the CRS (Coordinate reference system) based on eithern an EPSG code [int] or a proj4 string [str]. A string 'EPSG:4326' will be docoded to 4326."""
+    def set(self, crs: CRSValue, silent: bool = True) -> None:
+        """Sets the Coordinate Reference System (CRS) for the object.
 
+        This method sets the CRS based on various input formats, such as an EPSG code, 
+        a proj4 string, a CF-compliant dictionary, a UTM zone, or a CRS object. The method 
+        also updates the object's metadata and adjusts units for `x` and `y` variables if 
+        the CRS is geographic (i.e., units are in degrees).
+
+        Args:
+            crs (CRSValue): The CRS to set. Accepted formats include:
+                - EPSG code (e.g., `4326` or `"EPSG:4326"`).
+                - Proj4 string (e.g., `"+proj=longlat +datum=WGS84 +no_defs"`).
+                - CF-compliant dictionary (e.g., `{'grid_mapping_name': 'latitude_longitude'}`).
+                - UTM zone as a tuple (e.g., `(33, 'N')`).
+                - CRS object (e.g., `pyproj.CRS` instance).
+            silent (bool, optional): If `True`, suppresses print statements that indicate 
+                the CRS being set. Defaults to `True`.
+
+        Returns:
+            None: This method modifies the object's CRS in place.
+
+        Raises:
+            ValueError: If the provided CRS is not valid or cannot be decoded.
+
+        Notes:
+            - If the CRS is set using an EPSG code, proj4 string, or CF-compliant dictionary, 
+            the metadata is updated to reflect the CRS.
+            - For UTM zones, the metadata is updated with the `utm_zone` and `utm_letter`.
+            - If the CRS is geographic (units in degrees), the units of the `x` and `y` 
+            variables are updated to `'degrees'`.
+
+        """
         epsg, proj4, cf_dict, utm, crs_obj = decode_crs(crs)
         
         if epsg is not None:
