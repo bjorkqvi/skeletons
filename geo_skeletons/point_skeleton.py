@@ -24,7 +24,7 @@ INITIAL_CARTESIAN_VARS = [x_var, y_var]  #: "inds", "y": "inds"}
 INITIAL_SPHERICAL_VARS = [lon_var, lat_var]  # {"lat": "inds", "lon": "inds"}
 
 
-
+CRSValue = Union[int, str, tuple[int, str], dict]
 class PointSkeleton(Skeleton):
     """Gives a unstructured structure to the Skeleton.
 
@@ -44,6 +44,7 @@ class PointSkeleton(Skeleton):
         cls,
         skeleton: Skeleton,
         proj: Optional[str] = None,
+        crs: Optional[CRSValue] = None,
         mask: Optional[np.ndarray] = None,
     ) -> PointSkeleton:
         """Creates a new PointSkeleton containing only points from another Gridded- or PointSkeleton.
@@ -65,8 +66,10 @@ class PointSkeleton(Skeleton):
             x, y = skeleton.xy(mask=mask)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        if skeleton.proj.crs() is not None:
-            new_skeleton.proj.set(skeleton.proj.crs(), silent=True)
+        
+        crs = crs or skeleton.proj.crs()
+        if crs is not None:
+            new_skeleton.proj.set(crs, silent=True)
 
         return new_skeleton
 
@@ -91,9 +94,9 @@ class PointSkeleton(Skeleton):
         else:
             return INITIAL_CARTESIAN_VARS
         
-    def ravel(self, proj: str = None) -> "PointSkeleton":
+    def ravel(self, proj: Optional[str] = None, crs: Optional[CRSValue] = None) -> "PointSkeleton":
         cls = find_original_skeleton_in_inheritance_chain(self)
-        points = cls.from_skeleton(self, proj=proj)
+        points = cls.from_skeleton(self, proj=proj, crs=crs)
         return self.resample.grid(points, engine='ravel')
     
     def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float]):
@@ -172,13 +175,23 @@ class PointSkeleton(Skeleton):
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
         normalize: bool = False,
-    ) -> np.ndarray:
-        """Gives a meshgrid of UTM x-values.
+    ) -> Union[np.ndarray, None]:
+        """Returns a meshgrid of projected x-values.
 
-        NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
+        This is equivalent to `.x()` since a `PointSkeleton` is not gridded.
 
-        strict = True gives 'None' if Skeleton is spherical
-        native = True gives longitude values if Skeleton is spherical"""
+        Args:
+            native (bool, optional): If `True`, returns longitude values if the Skeleton 
+                if spherical. Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
+                Defaults to `False`.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            normalize (bool, optional): If `True`, normalizes the x-values by subtracting the minimum value. 
+                Defaults to `False`.
+
+        Returns:
+            np.ndarray: A meshgrid of projected x-values.
+        """
         x, _ = self.xy(native=native, strict=strict, normalize=normalize, mask=mask)
         return x
 
@@ -188,13 +201,23 @@ class PointSkeleton(Skeleton):
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
         normalize: bool = False,
-    ) -> np.ndarray:
-        """Gives a meshgrid of UTM x-values.
+    ) -> Union[np.ndarray, None]:
+        """Returns a meshgrid of projected y-values.
 
-        NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
+        This is equivalent to `.y()` since a `PointSkeleton` is not gridded.
 
-        strict = True gives 'None' if Skeleton is spherical
-        native = True gives longitude values if Skeleton is spherical"""
+        Args:
+            native (bool, optional): If `True`, returns latitude values if the Skeleton 
+                if spherical. Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
+                Defaults to `False`.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            normalize (bool, optional): If `True`, normalizes the y-values by subtracting the minimum value. 
+                Defaults to `False`.
+
+        Returns:
+            np.ndarray: A meshgrid of projected y-values.
+        """
         _, y = self.xy(native=native, strict=strict, normalize=normalize, mask=mask)
         return y
 
@@ -203,13 +226,21 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
-        """Gives a meshgrid of longitude values. 'None' for cartesian grids that have no UTM-zone.
+    ) -> Union[np.ndarray, None]:
+        """Returns a meshgrid of longitude values. For an x-y grids without a projection, returns `None`.
 
-        NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
+        This is equivalent to `.lon()` since a `PointSkeleton` is not gridded.
 
-        strict = True gives 'None' if Skeleton is cartesian
-        native = True gives UTM x-values if Skeleton is cartesian"""
+        Args:
+            native (bool, optional): If `True`, returns projected x-values if the Skeleton is cartesian. 
+                Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
+                Defaults to `False`.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+
+        Returns:
+            np.ndarray: A meshgrid of longitude values.
+        """
         lon, _ = self.lonlat(native=native, strict=strict, mask=mask)
         return lon
 
@@ -218,13 +249,22 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
-        """Gives a meshgrid of latitude values. 'None' for cartesian grids that have no UTM-zone.
+    ) -> Union[np.ndarray, None]:
+        """Returns a meshgrid of latitude values. For an x-y grids without a projection, returns `None`.
 
-        NB! Identical to Skeleton.lat() since PointSkeletons are not gridded!
+        This is equivalent to `.lat()` since a `PointSkeleton` is not gridded.
 
-        strict = True gives 'None' if Skeleton is cartesian
-        native = True gives UTM y-values if Skeleton is cartesian"""
+        
+        Args:
+            native (bool, optional): If `True`, returns projected y-values if the Skeleton is cartesian. 
+                Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
+                Defaults to `False`.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+
+        Returns:
+            np.ndarray: A meshgrid of latitude values.
+        """
         _, lat = self.lonlat(native=native, strict=strict, mask=mask)
         return lat
 
@@ -232,17 +272,27 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        crs: Optional[Union[int, str, dict]] = None,
+        crs: Optional[CRSValue] = None,
         mask: Optional[np.ndarray] = None,
         normalize: bool = False,
         **kwargs,
-    ) -> np.ndarray:
-        """Returns the cartesian x-coordinate.
+    ) -> Union[np.ndarray, None]:
+        """Returns the projected x-coordinate.
 
-        strict = True gives 'None' if Skeleton is spherical
-        native = True gives longitude values if Skeleton is spherical
+        Args:
+            native (bool, optional): If `True`, returns longitude values if the Skeleton 
+                is spherical. Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
+                Defaults to `False`.
+            crs (Optional[CRSValue]], optional): Specifies the CRS to use for retrieving 
+                the x-coordinate. Defaults to the current grid CRS.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            normalize (bool, optional): If `True`, normalizes the x-values by subtracting the minimum value. 
+                Defaults to `False`.
+            **kwargs: Additional arguments passed to internal methods.
 
-        Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
+        Returns:
+            np.ndarray: The x-coordinate values.
         """
 
         mask = self._check_mask_right_shape(mask, **kwargs)
@@ -278,17 +328,28 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        crs: Optional[Union[int, str, dict]] = None,
+        crs: Optional[CRSValue] = None,
         normalize: bool = False,
         in_meters: bool = False, 
         **kwargs,
-    ) -> np.ndarray:
-        """Returns the cartesian y-coordinate.
+    ) -> Union[np.ndarray, None]:
+        """Returns the projected y-coordinate.
 
-        strict = True gives 'None' if Skeleton is spherical
-        native = True gives latitude values if Skeleton is spherical
+        Args:
+            native (bool, optional): If `True`, returns latitude values if the Skeleton 
+                is spherical. Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
+                Defaults to `False`.
+            crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
+                the y-coordinate. Defaults to the current grid CRS.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            normalize (bool, optional): If `True`, normalizes the y-values by subtracting the minimum value. 
+                Defaults to `False`.
+            in_meters (bool, optional): If `True`, calculates the y-coordinate in meters. Defaults to `False`.
+            **kwargs: Additional arguments passed to internal methods.
 
-        Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
+        Returns:
+            np.ndarray: The y-coordinate values.
         """
 
         mask = self._check_mask_right_shape(mask, **kwargs)
@@ -329,13 +390,23 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        crs: Optional[Union[int, str, dict]] = None,
+        crs: Optional[CRSValue] = None,
         **kwargs,
-    ) -> np.ndarray:
-        """Returns the spherical lon-coordinate. 'None' for cartesian grids that have no UTM-zone.
+    ) -> Union[np.ndarray, None]:
+        """Returns the spherical longitude coordinate. For an x-y grid without a projection, returns `None`.
 
-        strict = True gives 'None' if Skeleton is cartesian
-        native = True gives UTM x-values if Skeleton is cartesian
+        Args:
+            native (bool, optional): If `True`, returns projected x-values if the Skeleton is cartesian. 
+                Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
+                Defaults to `False`.
+            crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
+                the longitude. Defaults to the current grid CRS.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            **kwargs: Additional arguments passed to internal methods.
+
+        Returns:
+            np.ndarray: The longitude values.
         """
         mask = self._check_mask_right_shape(mask, **kwargs)
 
@@ -367,15 +438,24 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        crs: Optional[Union[int, str, dict]] = None,
+        crs: Optional[CRSValue] = None,
         **kwargs,
-    ) -> np.ndarray:
-        """Returns the spherical lat-coordinate. 'None' for cartesian grids that have no UTM-zone.
+    ) -> Union[np.ndarray, None]:
+        """Returns the spherical latitude coordinate. For an x-y grid without a projection, returns `None`.
 
-        strict = True gives 'None' if Skeleton is cartesian
-        native = True gives UTM x-values if Skeleton is cartesian
+        Args:
+            native (bool, optional): If `True`, returns projected y-values if the Skeleton is cartesian. 
+                Defaults to `False`.
+            strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
+                Defaults to `False`.
+            crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
+                the longitude. Defaults to the current grid CRS.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            **kwargs: Additional arguments passed to internal methods.
+
+        Returns:
+            np.ndarray: The latitude values.
         """
-
         mask = self._check_mask_right_shape(mask, **kwargs)
 
         if native and strict:
@@ -405,21 +485,27 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        crs: Optional[Union[int, str, dict]] = None,
+        crs: Optional[CRSValue] = None,
         normalize: bool = False,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:           
-        """Returns a tuple of UTM x- and y-coordinates of all points.
+        """Returns a tuple of projected x- and y-coordinates for all points.
 
-        strict = True gives '(None, None)' if Skeleton is spherical
-        native = True gives UTM longitude,latitude-values if Skeleton is spherical
+        Args:
+            native (bool, optional): If `True`, returns longitude and latitude values if the Skeleton 
+                is spherical. Defaults to `False`.
+            strict (bool, optional): If `True`, returns `(None, None)` if the Skeleton is spherical. 
+                Defaults to `False`.
+            crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
+                the coordinates. Defaults to the current grid CRS.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            normalize (bool, optional): If `True`, normalizes the x- and y-values by subtracting 
+                the minimum value. Defaults to `False`.
+            **kwargs: Additional arguments passed to internal methods.
 
-        Give 'utm' to get cartesian coordinates in specific UTM-zone. Otherwise defaults to the one set for the grid.
-
-        Identical to (.x(), .y()) (with no mask)
-        mask is a boolean array (default True for all points)
+        Returns:
+            tuple[np.ndarray, np.ndarray]: A tuple of x- and y-coordinates.
         """
-
         mask = self._check_mask_right_shape(mask, **kwargs)
 
         # Transforms x-y to lon-lat if necessary
@@ -437,16 +523,23 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         mask: Optional[np.ndarray] = None,
-        crs: Optional[Union[int, str, dict]] = None,
+        crs: Optional[CRSValue] = None,
         **kwargs,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Returns a tuple of longitude and latitude of all points.
+        ) -> tuple[np.ndarray, np.ndarray]:
+        """Returns a tuple of longitude and latitude for all points.
 
-        strict = True gives '(None, None)' if Skeleton is cartesian
-        native = True gives UTM x,y-values if Skeleton is cartesian
+        Args:
+            native (bool, optional): If `True`, returns projected x- and y-values if the Skeleton 
+                is cartesian. Defaults to `False`.
+            strict (bool, optional): If `True`, returns `(None, None)` if the Skeleton is cartesian. 
+                Defaults to `False`.
+            crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
+                the coordinates. Defaults to the current grid CRS.
+            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
+            **kwargs: Additional arguments passed to internal methods.
 
-        Identical to (.lon(), .lat()) (with no mask)
-        mask is a boolean array (default True for all points)
+        Returns:
+            tuple[np.ndarray, np.ndarray]: A tuple of longitude and latitude values.
         """
 
         mask = self._check_mask_right_shape(mask)
