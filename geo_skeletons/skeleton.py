@@ -1759,18 +1759,29 @@ class Skeleton:
         self, lon: np.ndarray, lat: np.ndarray, fast: bool, npoints: int
     ) -> tuple[np.ndarray, np.ndarray]:
         """Finds the indeces of nearest points and distances if lon,lat coordinates are provided"""
-        if self.core.is_cartesian():
-            crs_to_use = self.proj.crs()
-        else:
-            crs_to_use = self.proj._optimal_utm(lon=lon, lat=lat)
+        inds = [None] * len(lon)
+        dx = [None] * len(lon)
         
-        if crs_to_use is not None:
-            x = self.proj._x(lon=lon, lat=lat, crs=crs_to_use)
-            y = self.proj._y(lon=lon, lat=lat, crs=crs_to_use)
-        else:
-            x, y = None, None
-        inds, dx = self._yank_inds(x, y, lon, lat, crs_to_use, fast, npoints)
-        return inds, dx
+        for n, (lo, la) in enumerate(zip(lon, lat)):
+            lo, la = np.array([lo]), np.array([la])
+            if self.core.is_cartesian():
+                crs_to_use = self.proj.crs()
+            else:
+                crs_to_use = self.proj._optimal_utm(lon=lo, lat=la)
+            
+            if crs_to_use is not None:
+                x = self.proj._x(lon=lo, lat=la, crs=crs_to_use)
+                y = self.proj._y(lon=lo, lat=la, crs=crs_to_use)
+            else:
+                x, y = None, None
+
+            ii, dxx = self._yank_inds(x, y, lo, la, crs_to_use, fast, npoints)
+            inds[n] = ii
+            dx[n] = dxx
+
+        return list(itertools.chain.from_iterable(inds)), list(
+            itertools.chain.from_iterable(dx)
+        )
 
     def _yank_inds(
         self,
