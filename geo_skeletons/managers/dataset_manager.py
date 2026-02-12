@@ -25,7 +25,7 @@ class DatasetManager:
 
     def create_structure(
         self, x: np.ndarray, y: np.ndarray, new_coords: dict[str, np.ndarray]
-    ):
+    ) -> None:
         """Create a Dataset containing only the relevant coordinates."""
         # Check that no extra keywords are provided
         allowed_coords = set(list(self.coord_manager.coords('nonspatial')) + ['x','y','lon','lat'])
@@ -296,7 +296,7 @@ class DatasetManager:
         return daa
 
     def force_compile_data_array(
-        self, data: np.ndarray, coord_dict: dict
+        self, data: np.ndarray, coord_dict: dict[str, np.ndarray]
     ) -> xr.DataArray:
         """Compiles a DataArray without any regards to structure. This is useful if slicing has
         produced a shapeless DataArray that needs to be recompiles."""
