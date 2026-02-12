@@ -39,7 +39,7 @@ from .iter import SkeletonIterator
 from geo_skeletons.errors import ProjectionError
 from geo_skeletons import dask_computations, dir_conversions
 import itertools
-
+import dask.array as da
 import geo_parameters as gp
 from geo_parameters.metaparameter import MetaParameter
 
@@ -48,6 +48,8 @@ import pandas as pd
 from copy import deepcopy
 
 
+CoordinateValue = Union[Iterable[float], Iterable[int], float, int]
+CRSValue = Union[int, str, tuple[int, str], dict]
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
     makes possible conversions between them.
@@ -59,20 +61,20 @@ class Skeleton:
 
     def __init__(
         self,
-        x: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
-        y: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
-        lon: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
-        lat: Optional[Union[Iterable[float], Iterable[int], float, int]] = None,
+        x: Optional[CoordinateValue] = None,
+        y: Optional[CoordinateValue] = None,
+        lon: Optional[CoordinateValue] = None,
+        lat: Optional[CoordinateValue] = None,
         name: str = "LonelySkeleton",
-        crs: Optional[Union[int, str, dict]] = None,
-        chunks: Union[tuple[int], str] = None,
+        crs: Optional[CRSValue] = None,
+        chunks: Optional[Union[tuple[int], str]] = None,
         **kwargs,
     ) -> None:
         self._init_structure(x, y, lon, lat, **kwargs)
         self._init_managers(crs=crs, chunks=chunks)
         self._init_metadata(name=name)
 
-    def _init_structure(self, x=None, y=None, lon=None, lat=None, **kwargs) -> None:
+    def _init_structure(self, x: Optional[CoordinateValue] = None, y: Optional[CoordinateValue] = None, lon: Optional[CoordinateValue] = None, lat: Optional[CoordinateValue] = None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
         and initializes the Xarray dataset within the DatasetManager.
 
@@ -108,7 +110,7 @@ class Skeleton:
 
         self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
-    def _init_managers(self, crs: Union[int, str, dict], chunks: tuple[int]) -> None:
+    def _init_managers(self, crs: CRSValue, chunks: Union[tuple[int], str]) -> None:
         """Initialized a DirTypeManager, UTMManager and DaskManager, and sets a UTM-zone"""
         if chunks is None:
             if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
@@ -141,28 +143,47 @@ class Skeleton:
         self.meta.set({'epsg': 4326}, 'wgs84')
 
     @classmethod
-    def add_time(cls, grid_coord: bool = True):
-        """Creates a new class with a time variable added. Equivalent to using:
+    def add_time(cls, grid_coord: bool = True) -> "Skeleton":
+        """Creates a new class with a time variable added.
 
-        from geo_skeletons.decorators import add_time
+        Args:
+            grid_coord (bool, optional): Whether to add the time variable as a grid coordinate. Defaults to True.
 
-        @add_time()
-        class NewClass(OldClass):
-            pass"""
+        Returns:
+            Skeleton: A new class with the time variable added.
+
+        Examples:
+            Equivalent to using:
+
+            >>> from geo_skeletons.decorators import add_time
+            >>> @add_time()
+            >>> class NewClass(OldClass):
+            >>>     pass
+        """
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_time(grid_coord=grid_coord)(new_cls)
 
     @classmethod
     def add_frequency(
         cls, name: Union[str, MetaParameter] = gp.wave.Freq, grid_coord: bool = False
-    ):
-        """Creates a new class with a frequency variable added. Equivalent to using:
+    ) -> "Skeleton":
+        """Creates a new class with a frequency variable added.
 
-        from geo_skeletons.decorators import add_frequency
+        Args:
+            name (Union[str, MetaParameter], optional): Name of the frequency variable. Defaults to `gp.wave.Freq`.
+            grid_coord (bool, optional): Whether to add the frequency variable as a grid coordinate. Defaults to False.
 
-        @add_frequency()
-        class NewClass(OldClass):
-            pass"""
+        Returns:
+            Skeleton: A new class with the frequency variable added.
+
+        Examples:
+            Equivalent to using:
+
+            >>> from geo_skeletons.decorators import add_frequency
+            >>> @add_frequency()
+            >>> class NewClass(OldClass):
+            >>>     pass
+        """
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_frequency(name=name, grid_coord=grid_coord)(new_cls)
 
@@ -172,14 +193,25 @@ class Skeleton:
         name: Union[str, MetaParameter] = gp.wave.Dirs,
         grid_coord: bool = False,
         dir_type: Optional[bool] = None,
-    ):
-        """Creates a new class with a direction variable added. Equivalent to using:
+    ) -> "Skeleton":
+        """Creates a new class with a direction variable added.
 
-        from geo_skeletons.decorators import add_direction
+        Args:
+            name (Union[str, MetaParameter], optional): Name of the direction variable. Defaults to `gp.wave.Dirs`.
+            grid_coord (bool, optional): Whether to add the direction variable as a grid coordinate. Defaults to False.
+            dir_type (Optional[bool], optional): Type of the direction variable, if applicable. Defaults to None.
 
-        @add_direction()
-        class NewClass(OldClass):
-            pass"""
+        Returns:
+            Skeleton: A new class with the direction variable added.
+
+        Examples:
+            Equivalent to using:
+
+            >>> from geo_skeletons.decorators import add_direction
+            >>> @add_direction()
+            >>> class NewClass(OldClass):
+            >>>     pass
+        """
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_direction(name=name, grid_coord=grid_coord, dir_type=dir_type)(
             new_cls
@@ -190,14 +222,24 @@ class Skeleton:
         cls,
         name: Union[str, MetaParameter] = "dummy",
         grid_coord: bool = False,
-    ):
-        """Creates a new class with a coordinate added. Equivalent to using:
+    ) -> "Skeleton":
+        """Creates a new class with a coordinate added.
 
-        from geo_skeletons.decorators import add_coord
+        Args:
+            name (Union[str, MetaParameter], optional): Name of the coordinate to add. Defaults to "dummy".
+            grid_coord (bool, optional): Whether to add the coordinate as a grid coordinate. Defaults to False.
 
-        @add_coord('new_coord')
-        class NewClass(OldClass):
-            pass"""
+        Returns:
+            Skeleton: A new class with the coordinate added.
+
+        Examples:
+            Equivalent to using:
+
+            >>> from geo_skeletons.decorators import add_coord
+            >>> @add_coord('new_coord')
+            >>> class NewClass(OldClass):
+            >>>     pass
+        """
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_coord(name=name, grid_coord=grid_coord)(new_cls)
 
@@ -207,21 +249,25 @@ class Skeleton:
         name: Union[str, MetaParameter],
         coord_group: str = "all",
         default_value: float = 0.0,
-    ) -> None:
+    ) -> "Skeleton":
         """Creates a new class with a data variable added.
 
-        name: name of variable
-        coord_group: 'all', 'spatial', 'grid' or 'gridpoint'
-        default_value: float
-        dir_type (for directional parameters): 'from', 'to' or 'math' (Autimatically parsed if name is a MetaParameter)
+        Args:
+            name (Union[str, MetaParameter]): Name of the data variable.
+            coord_group (str, optional): Coordinate group for the variable. Must be one of 'all', 'spatial', 'grid', or 'gridpoint'. Defaults to "all".
+            default_value (float, optional): Default value for the data variable. Defaults to 0.0.
 
-        Equivalent to using:
+        Returns:
+            Skeleton: A new class with the data variable added.
 
-        from geo_skeletons.decorators import add_coord
+        Examples:
+            Equivalent to using:
 
-        @add_datavar('new_var')
-        class NewClass(OldClass):
-            pass"""
+            >>> from geo_skeletons.decorators import add_datavar
+            >>> @add_datavar('new_var')
+            >>> class NewClass(OldClass):
+            >>>     pass
+        """
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_datavar(
             name=name, coord_group=coord_group, default_value=default_value
@@ -235,16 +281,37 @@ class Skeleton:
         y: str,
         direction: Optional[Union[str, MetaParameter]] = None,
         dir_type: Optional[str] = None,
-    ) -> None:
-        """Adds a magnitude to an instance of a (non-static) Skeleton.
+    ) -> "Skeleton":
+        """Creates a new class with a data variable for magnitude added.
 
-        Similar to using @add_magnitude on a class, but only affects an instance.
+        Args:
+            name (Union[str, MetaParameter]): Name of the magnitude.
+            x (str): Name of an already set variable to be used as the x-component.
+            y (str): Name of an already set variable to be used as the y-component.
+            direction (Optional[Union[str, MetaParameter]], optional): 
+                Name of the direction associated with the magnitude. Defaults to None.
+            dir_type (Optional[str], optional): Type of the directional parameter. 
+                Must be one of 'from', 'to', or 'math'. Automatically parsed 
+                if `name` is a `MetaParameter`. Defaults to None.
 
-        name: name of variable
-        x [str]: name of already set variable that will be used as x-component
-        y [str]: name of already set variable that will be used as y-component
-        direction: name of the direction of the magnitude being set
-        dir_type: 'from', 'to' or 'math'"""
+        Returns:
+            Skeleton: A new class with the specified magnitude and direction added.
+
+        Examples:
+            If `OldClass` has data variables 'u' and 'v', the following:
+
+            >>> NewClass = OldClass.add_magnitude(
+            >>>     name='mag', x='u', y='v', direction='dir', dir_type='from'
+            >>> )
+
+            Is equivalent to using:
+
+            >>> from geo_skeletons.decorators import add_magnitude
+            >>> @add_magnitude(name='mag', x='u', y='v', direction='dir', dir_type='from')
+            >>> class NewClass(OldClass):
+            >>>     pass
+        """
+
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
         return add_magnitude(
             name=name, x=x, y=y, direction=direction, dir_type=dir_type
@@ -260,17 +327,39 @@ class Skeleton:
         triggered_by: Optional[str] = None,
         valid_range: tuple[float] = (0.0, None),
         range_inclusive: bool = True,
-    ):
-        """Adds a mask t an instans of a (non-static) Skeleton.
+    ) -> "Skeleton":
+        """Creates a new class with a mask added.
 
-        Similar to using @add_mask on a class, but only affects an instance.
+        Args:
+            name (Union[str, MetaParameter]): Name of the mask.
+            default_value (int, optional): Default value for the mask. 
+                Can be 0 or 1 (False or True). Defaults to 0.
+            coord_group (str, optional): Coordinate group for the mask. 
+                Must be one of 'all', 'spatial', 'grid', or 'gridpoint'. 
+                Defaults to 'grid'.
+            opposite_name (Optional[Union[str, MetaParameter]], optional): 
+                The name of the opposite mask, if applicable (e.g., 'land' 
+                when `name` is 'sea'). Defaults to None.
+            triggered_by (Optional[str], optional): Name of the variable 
+                that triggers the mask (e.g., 'land_mask' might be triggered 
+                by setting the variable 'hs'). Defaults to None.
+            valid_range (tuple[float], optional): Range of values for the 
+                triggered variable that define the mask. Use `None` to 
+                indicate infinity. Defaults to (0.0, None).
+            range_inclusive (bool, optional): If `True`, the `valid_range` 
+                includes boundary values (e.g., `(0.0, None)` includes all 
+                non-negative values). Defaults to True.
 
-        default_value = 0 or 1 (False or True)
-        coord_group = 'all', 'spatial', 'grid' or 'gridpoint'
-        opposite_name: E.g. 'land' is name = 'sea'
-        triggered_by: E.g. land_mask might be triggered by setting variable 'hs'
-        valid_range: Range that mask is set by the triggered variable. None is infiniate.
-        range_inclusive (default_true): E.g. valid_range (0.0, None) includes all non-negative values.
+        Returns:
+            Skeleton: A new class with the specified mask added.
+
+        Examples:
+            Equivalent to using:
+
+            >>> from geo_skeletons.decorators import add_mask
+            >>> @add_mask(name='land')
+            >>> class NewClass(OldClass):
+            >>>     pass
         """
 
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
@@ -285,24 +374,89 @@ class Skeleton:
         )(new_cls)
 
     @classmethod
-    def from_coord_dict(cls, coord_dict):
+    def from_coord_dict(cls, coord_dict: dict) -> "Skeleton":
         """Creates an empty version of the class from a dictionary containing the coordinates"""
         return cls(**coord_dict)
 
     @classmethod
-    def from_netcdf(cls, filename: str, name: Optional[str]=None, **kwargs) -> "Skeleton":
-        """Generates a instance of the Skeleton class from a netcdf.
+    def from_netcdf(
+        cls, 
+        filename: str,         
+        chunks: Optional[Union[tuple[int], str]] = None,
+        only_vars: Optional[list[str]] = None,
+        ignore_vars: Optional[list[str]] = None,
+        keep_ds_names: bool = False,
+        decode_cf: bool = True,
+        core_aliases: dict[Union[MetaParameter, str], str] = None,
+        ds_aliases: dict[str, Union[MetaParameter, str]] = None,
+        dynamic: bool = False,
+        verbose: bool = False,
+        meta_dict: dict = None,
+        name: Optional[str] = None, **kwargs) -> "Skeleton":
+        """Generates an instance of the Skeleton class from a NetCDF file.
 
-        For information about the keywords, see the from_ds-method"""
+        This method reads a NetCDF file into an xarray Dataset and uses the `from_ds` method 
+        to create the Skeleton instance. The `name` attribute for the Skeleton is set based 
+        on the following priority:
+        1. The `name` argument passed to this method.
+        2. The `name` attribute of the xarray Dataset (if available).
+        3. A default name indicating the file it was created from (`"created_from_<filename>"`).
+
+        Args:
+            filename (str): Path to the NetCDF file to read.
+            chunks (Optional[Union[tuple[int], str]], optional): Chunk size for the Dataset. Can be a tuple of integers or a string. Defaults to None.
+            only_vars (Optional[list[str]], optional): List of variable names in the NetCDF file to include. If `None`, all variables are read. Defaults to None.
+            ignore_vars (Optional[list[str]], optional): List of variable names in the NetCDF file to exclude. Defaults to None.
+            keep_ds_names (bool, optional): If `True`, uses the NetCDF variable names instead of the Skeleton's default short names. Defaults to False.
+            decode_cf (bool, optional): Whether to allow decoding of CF (Climate and Forecast) standard names. Defaults to True.
+            core_aliases (dict[Union[MetaParameter, str], str], optional): A dictionary mapping existing Skeleton variables to variables in the NetCDF file. Defaults to None.
+            ds_aliases (dict[str, Union[MetaParameter, str]], optional): A dictionary describing NetCDF variables in terms of geo-parameters or strings. Defaults to None.
+            dynamic (bool, optional): If `True`, allows the creation of new data variables. Otherwise, limits operations to existing variables. Defaults to False.
+            verbose (bool, optional): If `True`, provides detailed output during the process. Defaults to False.
+            meta_dict (dict, optional): Metadata dictionary to provide additional information. Defaults to None.
+            name (Optional[str], optional): Name to give to the Skeleton instance. If not provided, the name is determined from the Dataset or the filename. Defaults to None.
+            **kwargs: Additional keyword arguments, such as missing coordinates, passed to the `from_ds` method.
+
+        Returns:
+            Skeleton: A new Skeleton instance generated from the NetCDF file.
+
+        Notes:
+            This method is a wrapper around the `from_ds` method. For detailed information on 
+            the parameters and functionality, refer to the documentation for `from_ds`.
+
+        Examples:
+            Basic usage:
+            >>> new_instance = SkeletonClass.from_netcdf("example.nc")
+
+            Specifying additional options:
+            >>> new_instance = SkeletonClass.from_netcdf(
+            >>>     "example.nc",
+            >>>     only_vars=["temperature", "salinity"],
+            >>>     core_aliases={"temp": "temperature"},
+            >>>     name="Ocean Data",
+            >>> )
+        """
         ds = xr.open_dataset(filename)
         if hasattr(ds, 'name'):
             ds_name = ds.name
         else:
             ds_name = None
-        name = name or ds_name or f"Created from {filename}"
+        name = name or ds_name or f"created_from_{filename}"
 
         return cls.from_ds(
-            ds, name=name, **kwargs
+            ds=ds,
+            chunks=chunks,
+            only_vars=only_vars,
+            ignore_vars=ignore_vars,
+            keep_ds_names=keep_ds_names,
+            decode_cf=decode_cf,
+            core_aliases=core_aliases,
+            ds_aliases=ds_aliases,
+            dynamic=dynamic,
+            verbose=verbose,
+            meta_dict=meta_dict,
+            name=name,
+            **kwargs
         )
 
     @classmethod
@@ -322,65 +476,79 @@ class Skeleton:
         name: Optional[str] = None,
         **kwargs,
     ) -> "Skeleton":
-        """Generats an instance of a Skeleton from an xarray Dataset.
+        """Generates an instance of a Skeleton from an xarray Dataset.
 
-        only_vars [default [], i.e. read all]: list of ds-variable names that will be read
-        ignore_vars [default []]: list of ds-variables to ignore. [Default None]
+        Args:
+            ds (xr.Dataset): The xarray Dataset from which the Skeleton instance is created.
+            chunks (Optional[Union[tuple[int], str]], optional): Chunk size for the Dataset. Can be a tuple of integers or a string.
+            only_vars (Optional[list[str]], optional): List of variable names in the Dataset to read. If `None`, all variables are read. Defaults to None.
+            ignore_vars (Optional[list[str]], optional): List of variable names in the Dataset to ignore. Defaults to None.
+            keep_ds_names (bool, optional): If `True`, uses the Dataset variable names instead of the Skeleton's default short names. Defaults to False.
+            decode_cf (bool, optional): Whether to allow decoding of CF standard names. Defaults to True.
+            core_aliases (dict[Union[MetaParameter, str], str], optional): A dictionary mapping existing Skeleton variables to variables in the Dataset. Defaults to None.
+            ds_aliases (dict[str, Union[MetaParameter, str]], optional): A dictionary describing Dataset variables in terms of geo-parameters or strings. Defaults to None.
+            dynamic (bool, optional): If `True`, allows the creation of new data variables. Otherwise, limits operations to existing variables. Defaults to False.
+            verbose (bool, optional): If `True`, provides detailed output during the process. Defaults to False.
+            meta_dict (dict, optional): Dictionary to set metadata to the Skeleton. Defaults to None.
+            name (Optional[str], optional): Name to give to the Skeleton instance. Defaults to None.
+            **kwargs: Additional keyword arguments, such as missing coordinates.
 
-        keep_ds_names [default False]: Uses the Dataset variable names instead of the geo-parameter default short names
-        decode_cf [default True]: Allow decoding of cf standard names
+        Returns:
+            Skeleton: A new Skeleton instance generated from the provided Dataset.
 
-        core_aliases [default {}]: dict mapping the existing variables in the Skeleton to a variable name in the Dataset
-        ds_aliases [default {}]: dict describing the ds-variables in terms of geo-parameters or strings
+        Notes:
+            **only_vars and ignore_vars**:
+            - `only_vars` specifies the variables to include from the Dataset. Defaults to `[]` (all variables are read).
+            - `ignore_vars` specifies the variables to exclude from the Dataset. Defaults to `[]`.
 
-        dynamic [default: False] Allows creation of new data variables. Otherwise limited to existing variables.
+            **keep_ds_names**:
+            - This is used in combination with `dynamic = True` to create variables.
+            - If `True`, the variable names in the Dataset are preserved in the Skeleton.
+            - If `False`, the Skeleton uses default short names for the variables.
 
-        Core aliases
-        ------------------------------------------------------------------------
-        Ex1: core_aliases = {'hs': 'Hm0'}
-            Reads the Dataset variable 'Hm0' and sets the Skeleton variable 'hs'
-        Ex2: core_aliases = {gp.wave.Hs: 'Hm0'}
-            Reads the Dataset variable 'Hm0' and set the Skeleton variable that matches the gp.wave.Hs geo-parameter (if unambiguous)
+            **core_aliases**:
+            Maps existing Skeleton variables to Dataset variables. Example mappings:
+            - `{'hs': 'Hm0'}`: Reads the Dataset variable 'Hm0' and maps it to the Skeleton variable 'hs'.
+            - `{gp.wave.Hs: 'Hm0'}`: Reads the Dataset variable 'Hm0' and maps it to the geo-parameter `gp.wave.Hs` in the Skeleton.
 
+            **ds_aliases**:
+            Describes Dataset variables in terms of geo-parameters or strings. 
+            Generally preferrable to using `core_aliases`, especially with geo-parameters, since they add a generic descrition of the xr.Dataset that can be used with many classe.
+            Example mappings:
+            - `{'Hm0': 'hs'}`: Reads the Dataset variable 'Hm0' and sets it as the Skeleton variable 'hs'.
+            - `{'Hm0': gp.wave.Hs}`: Reads the Dataset variable 'Hm0' and creates a Skeleton variable using metadata from `gp.wave.Hs`.
+            - `{'Hm0': gp.wave.Hs('hsig')}`: Reads the Dataset variable 'Hm0' and creates (if dynamic) a Skeleton variable 'hsig' using metadata from `gp.wave.Hs`.
 
-        Dataset aliases
-        ------------------------------------------------------------------------
-        Ex1: ds_aliases = {'Hm0', 'hs'}
-            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable 'hs'
-        Ex2: core_aliases = {'Hm0': gp.wave.Hs}
-            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable with the default name 'hs' using metadata from gp.wave.Hs
-        Ex3: core_aliases = {'Hm0': gp.wave.Hs('hsig')}
-            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable 'hsig' using metadata from gp.wave.Hs
-        Ex4: core_aliases = {'Hm0': gp.wave.Hs}, keep_ds_names = True
-            Reads the Dataset variable 'Hm0', creates and sets a Skeleton variable with the name 'Hm0' using metadata from gp.wave.Hs
+            **Known Relationships in geo-parameters**:
+            This method uses internal relationships defined in the geo-parameters module. For example:
+            - `gp.wave.Tp` can be read using `gp.wave.Fp` in the Dataset (known inverse relationship).
+            - `gp.wind.WindDir` can be read using `gp.wind.WindDirTo` (known opposite direction).
+            - `gp.wind.WindDir` can also be read using `gp.wind.XWind` and `gp.wind.YWind` (known components).
 
+            **Known Aliases**:
+            The method uses an internal set of known aliases for parameters. However, relying on these mappings is not recommended, as they are not exhaustive. It's better to use the `ds_aliases` argument to explicitly define mappings for each variable. Examples of known aliases:
+            - `'lon' <-> 'longitude' <-> gp.grid.Lon`
+            - `'hs' <-> 'swh' <-> 'hm0' <-> 'hsig' <-> 'h13' <-> 'vhm0' <-> gp.wave.Hs`
+            - `'xwnd' <-> gp.wind.XWind`
+            - `'Pdir'` is not mapped due to ambiguity (to/from direction).
+            - `'Tm'` is not mapped due to ambiguity between `gp.wave.Tm01` and `gp.wave.Tm_10`.
 
-        NB! Method uses internal relationships defined inside the geo-parameters module (see e.g. gp.wind.WindDir.my_family())
-        ------------------------------------------------------------------------
-        Ex1: gp.wave.Tp defined in class -> can be read using gp.wave.Fp in the Dataset (known inverse)
-        Ex2: gp.wind.WindDir defined in class -> can be read using gp.wind.WindDirTo in the Dataset (known opposite direction)
-        Ex3: gp.wind.WindDir defined in class -> can be read using gp.wind.XWind and gp.wind.YWind in the Dataset (known components)
+            **Providing Missing Coordinates**:
+            Missing coordinates can be provided using `**kwargs`. For example:
+            - If the 'z' coordinate is missing from the Dataset:
+            >>> new_instance = SkeletonClass.from_ds(ds, z=[1, 2, 3])
 
+        Examples:
+            Basic usage:
+            >>> new_instance = SkeletonClass.from_ds(ds)
 
-        NB! Method uses an internal set of known aliases for some parameters
-        ------------------------------------------------------------------------
-        It is NOT RECOMMENDED to RELY on these mappings, since they are in no way exhaustive.
-        If no metadata is present, it is better to use the ds_aliases keyword to assign a geo-parameter for each variable.
-
-        Ex1: 'lon' <-> 'longitude' <-> gp.grid.Lon
-        Ex2: 'hs' <-> 'swh' <-> 'hm0' <-> 'hsig' <-> 'h13' <-> 'vhm0' <-> gp.wave.Hs
-        Ex3: 'xwnd' <-> 'xwnd' <-> gp.wind.XWind
-        Ex4: 'Pdir' not mapped to anything, since directional variables have to/from ambiguity without any metadata
-        Ex5: 'Tm' not mapped to anything, since it can be used interchangeably for gp.wave.Tm01 and gp.wave.Tm_10
-
-
-
-
-        **kwargs: Can be used to provide missing coordinates
-        ------------------------------------------------------------------------
-        Ex: The z-variable doesn't exist in the DataSet:
-            new_instance = SkeletonClass.from_ds(ds, z=[1,2,3])
-        """
+            Using `core_aliases` and `ds_aliases`:
+            >>> new_instance = SkeletonClass.from_ds(
+            >>>     ds,
+            >>>     core_aliases={'hs': 'Hm0'},
+            >>>     ds_aliases={'Hm0': gp.wave.Hs}
+            >>> )
+    """
 
         meta_dict = meta_dict or {}
         core_aliases = core_aliases or {}
@@ -530,8 +698,64 @@ class Skeleton:
                     vars[var] = {'arrow_data': arrow_vars.get(var)}
         return vars
     
-    def quicklook(self, compare: "Skeleton" = None, proj: str = None, contour: bool = True, show: bool=True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None,rotated: Optional[bool]=None, sparse: bool=True) -> None:
-        """Quicklook of the data"""
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None, rotated: Optional[bool]=None, sparse: bool=True, show: bool=True,) -> None:
+        """Generates a quick visualization of the data in the Skeleton instance.
+
+        If a time variable is present, the first time instance is displayed. This method 
+        provides options for plotting projections, magnitudes, directions, arrows, and 
+        comparisons with another Skeleton instance.
+
+        Args:
+            proj (str, optional): Projection for the plot. Can be one of:
+                - `'lonlat'`: Longitude-latitude projection.
+                - `'xy'`: Cartesian or rotated projection.
+                If `None`, uses the default projection of the data. Defaults to None.
+            compare ("Skeleton", optional): Another Skeleton instance to compare with. 
+                The points of the comparison Skeleton are plotted in the same projection 
+                to visualize geographical placement. Defaults to None.
+            contour (bool, optional): If `True`, uses contour-type plots. If `False`, 
+                uses scatter-type plots. Defaults to True.
+            mag (bool, optional): If `True`, plots magnitudes instead of components. 
+                Defaults to False.
+            dir (bool, optional): If `True`, plots directions instead of components. 
+                Defaults to False.
+            arrows (bool, optional): If `True`, overlays arrows on top of the magnitudes 
+                to show direction. Defaults to False.
+            arrow_vars (dict[str, str], optional): A dictionary defining which directional 
+                variable to use for plotting arrows on top of a data variable. For example:
+                - `{'hs': 'dirp'}`: Plots peak wave direction (`dirp`) on top of significant 
+                wave height (`hs`).
+                If `None`, no specific arrow variables are defined. Defaults to None.
+            rotated (Optional[bool], optional): If `True`, rotates directions and arrows 
+                to align with the projection set by the CRS. If `None`, follows the behavior 
+                defined by the `proj` argument. Defaults to None.
+            sparse (bool, optional): If `True`, plots only a sparse set of arrows (e.g., 
+                25 arrows in each direction) instead of plotting arrows at every grid point. 
+                Defaults to True.
+            show (bool, optional): If `True`, displays the plot immediately. If `False`, 
+                the plot is generated but not displayed. Defaults to True.
+
+        Returns:
+            None: This method does not return anything. It generates and optionally displays 
+            a plot of the data.
+
+        Examples:
+            Basic usage:
+            >>> skeleton.quicklook()
+
+            Forcing a longitude-latitude projection:
+            >>> skeleton.quicklook(proj='lonlat')
+
+            Comparing with another Skeleton instance:
+            >>> skeleton.quicklook(compare=other_skeleton)
+
+            Plotting magnitudes with directional arrows:
+            >>> skeleton.quicklook(mag=True, arrows=True, arrow_vars={'hs': 'dirp'})
+
+            Plotting directional arrows from the `dirp` variable (has to have a `dir_type` e.g. from a geo-parameter) on top of the `hs` variable:
+            >>> skeleton.quicklook(arrow_vars={'hs': 'dirp'})
+
+        """
         try:
             import matplotlib.pyplot as plt
         except ImportError as e:
@@ -665,8 +889,38 @@ class Skeleton:
             plt.show()
 
     def absorb(self, skeleton_to_absorb: "Skeleton", dim: str) -> "Skeleton":
-        """Absorb another object of same type over a centrain dimension.
-        For a PointSkeleton the inds-variable reorganized if dim='inds' is given."""
+        """Absorbs another Skeleton object along a specified dimension.
+
+        This method combines the data from the current Skeleton instance with the 
+        data from another Skeleton instance (`skeleton_to_absorb`) along the specified 
+        dimension (`dim`). For `PointSkeleton` instances, if `dim='inds'` is provided, 
+        the `inds` variable is reorganized to account for the absorbed data.
+
+        Args:
+            skeleton_to_absorb ("Skeleton"): The Skeleton instance to be absorbed into the current instance.
+            dim (str): The dimension along which the absorption will take place. 
+                - For `PointSkeleton`, if `dim='inds'`, the `inds` variable of the 
+                absorbed Skeleton is adjusted to align with the existing `inds`.
+
+        Returns:
+            Skeleton: A new Skeleton instance that combines the data from both Skeletons 
+            along the specified dimension.
+
+        Notes:
+            - The method uses `xarray.concat` to combine the datasets of both Skeletons 
+            along the given dimension, ensuring that data variables are minimally 
+            concatenated (`data_vars="minimal"`).
+            - The resulting Skeleton is sorted by the specified dimension for consistency.
+            - If the Skeleton is not gridded and `dim='inds'`, the `inds` variable of 
+            `skeleton_to_absorb` is reorganized by appending the indices to match the existing `inds` of the current Skeleton.
+
+        Examples:
+            Absorbing one Skeleton into another along the 'time' dimension:
+            >>> new_skeleton = skeleton.absorb(other_skeleton, dim='time')
+
+            For a `PointSkeleton`, reorganizing the `inds` dimension:
+            >>> new_skeleton = skeleton.absorb(other_skeleton, dim='inds')
+        """
         if not self.is_gridded() and dim == "inds":
             inds = skeleton_to_absorb.inds() + len(self.inds())
             skeleton_to_absorb.ds()["inds"] = inds
@@ -678,10 +932,40 @@ class Skeleton:
         )
         return new_skeleton
 
-    def cut_to_common_times(self, skeleton_to_compare_with: "Skeleton") -> "Skeleton":
-        """Cuts the skeletons to cover only the coinciding times in the two skeletons.
+    def cut_to_common_times(self, skeleton_to_compare_with: "Skeleton") -> tuple["Skeleton", "Skeleton"]:
+        """Restricts the Skeletons to their common time values.
 
-        Returns a tuple of skeletons that have identical times."""
+        This method trims the current Skeleton and a provided Skeleton (`skeleton_to_compare_with`) 
+        so that both cover only the time instances that are present in both Skeletons. It ensures 
+        that the resulting Skeletons have identical time dimensions.
+
+        Args:
+            skeleton_to_compare_with ("Skeleton"): The Skeleton instance to compare with. 
+                This Skeleton is trimmed to the common time values shared with the current Skeleton.
+
+        Returns:
+            tuple["Skeleton", "Skeleton"]: A tuple containing two Skeleton instances:
+                - The first is the trimmed version of the current Skeleton.
+                - The second is the trimmed version of `skeleton_to_compare_with`.
+            Both Skeletons will have identical time dimensions.
+
+        Raises:
+            SkeletonError: If either the current Skeleton or `skeleton_to_compare_with` 
+            does not have a time dimension.
+
+        Notes:
+            - The method ensures that both Skeletons are restricted to the intersection 
+            of their respective time dimensions.
+            - The comparison is performed using the `time` coordinate of the Skeletons.
+
+        Examples:
+            Cutting two Skeletons to their common time values:
+            >>> skeleton1, skeleton2 = skeleton1.cut_to_common_times(skeleton2)
+
+            After this operation, both `skeleton1` and `skeleton2` will have identical 
+            times, allowing for direct comparisons or further operations.
+
+        """
         if not "time" in skeleton_to_compare_with.core.coords():
             raise SkeletonError("Provided Skeleton does not have a time dimension!")
         if not "time" in self.core.coords():
@@ -718,11 +1002,67 @@ class Skeleton:
 
 
     def sel(self, **kwargs) -> "Skeleton":
-        """Creates a new instance by selecting only some of the wanted variables.
-        e.g. new_skeleton = skeleton.sel(lon=slice(10,20))
+        """Creates a new Skeleton instance by selecting subsets of the data based on specified criteria.
 
-        Calls the Xarray .sel method on the underlying DataSet"""
+        This method enables slicing and subsetting of the Skeleton's data using coordinates 
+        or variables. It internally calls the xarray `.sel` or `.isel` method to perform the selection on 
+        the underlying xarray Dataset. Additionally, it supports slicing using variables with 
+        only one non-trivial dimension, making it more flexible for datasets with non-standard 
+        coordinates. 
+        
+        Especially it allows for slicing with lon/lat in unstructured data that is defined over and `inds` coordinate.
 
+        Args:
+            **kwargs: Keyword arguments specifying the selection criteria. These can include:
+                - Coordinate-based slicing (e.g., `lon=slice(10, 20)` selects longitudes between 10 and 20).
+                - Variable-based slicing for variables with only one non-trivial dimension.
+                For example, if a variable `temperature` has only one dimension (`time`), 
+                you can slice it directly (e.g., `temperature=slice(300, 310)`).
+
+        Returns:
+            Skeleton: A new Skeleton instance containing only the selected subset of data.
+
+        Notes:
+            - If the Skeleton is not gridded, slicing for longitude (`lon`), latitude (`lat`), 
+            x-coordinates (`x`), or y-coordinates (`y`) is handled by determining the corresponding 
+            indices (`inds`) first.
+            - The method supports variable-based slicing for variables that have only one 
+            non-trivial dimension. In such cases:
+                - The method determines the intersection of the slicing indices for all 
+                specified variables.
+                - The resulting subset is based on the shared indices of those variables.
+            - If a `time` coordinate is being sliced, the method internally switches to 
+            `.isel()` to handle the selection by indices.
+            - The method ensures that the resulting subset is returned as a new Skeleton instance.
+
+        Examples:
+            Selecting by coordinate ranges:
+            >>> new_skeleton = skeleton.sel(lon=slice(10, 20), lat=slice(-5, 5))
+
+            Selecting by a variable with one dimension (e.g., `temperature` based on `time`):
+            >>> new_skeleton = skeleton.sel(temperature=slice(300, 310))
+
+            Combining coordinate and variable-based slicing:
+            >>> new_skeleton = skeleton.sel(lon=slice(10, 20), temperature=slice(300, 310))
+
+            Selecting by indices for non-gridded Skeletons:
+            >>> new_skeleton = skeleton.sel(inds=[1, 2, 3])
+
+        Raises:
+            - If a variable specified in the selection criteria has more than one non-trivial dimension, 
+            it will not be sliced, as such slicing is not supported by this method.
+
+        Implementation Details:
+            - For non-gridded Skeletons, slicing coordinates like `lon` or `lat` involves 
+            computing the corresponding `inds` (indices) using `_determine_slice_inds`.
+            - Variable-based slicing is handled by identifying the intersection of indices 
+            where the slicing condition is met.
+            - For variables with a single non-trivial dimension, the method ensures that the 
+            selection works seamlessly by restricting the data to the shared indices.
+            - If the selection involves the `time` coordinate, the method switches to using 
+            `.isel()` with the computed indices for efficiency and compatibility with xarray's methods.
+
+        """
         # Xarray cant slice longitude and latitude if defined over inds
         lon_slice = kwargs.get("lon")
         lat_slice = kwargs.get("lat")
@@ -781,10 +1121,48 @@ class Skeleton:
         )
 
     def isel(self, **kwargs) -> "Skeleton":
-        """Creates a new instance by selecting only some of the wanted variables.
-        e.g. new_skeleton = skeleton.isel(lon=[0,1,2])
+        """Creates a new Skeleton instance by selecting subsets of the data using indices.
 
-        Calls the Xarray .isel method on the underlying DataSet"""
+        This method enables subsetting of the Skeleton's data by specifying indices for 
+        the desired dimensions or variables. It internally calls the xarray `.isel` 
+        method on the underlying xarray Dataset to perform the selection. Additionally, 
+        it supports slicing using variables with only one non-trivial dimension, based 
+        on their indices.
+
+        Args:
+            **kwargs: Keyword arguments specifying the selection criteria. These can include:
+                - Index-based slicing for dimensions (e.g., `time=[0, 1, 2]` to select the 
+                first three time steps).
+                - Variable-based slicing for variables with only one non-trivial dimension 
+                (e.g., `temperature=[0, 4, 7]` to select specific indices of the variable 
+                `temperature`).
+
+        Returns:
+            Skeleton: A new Skeleton instance containing only the selected subset of data.
+
+        Notes:
+            - Just like the `sel` method, this method supports variable-based slicing for 
+            variables with only one non-trivial dimension. When multiple variables are 
+            specified, their indices are combined by taking the intersection of indices 
+            where the slicing criteria are met.
+            - For non-gridded Skeletons, the method can handle slicing for dimensions like 
+            `inds` by determining the appropriate indices first.
+            - The method ensures that the resulting subset is returned as a new Skeleton 
+            instance, preserving the structure and metadata of the original Skeleton.
+
+        Examples:
+            Selecting by indices for a specific dimension:
+            >>> new_skeleton = skeleton.isel(time=[0, 1, 2])
+
+            Selecting by indices for a variable with one dimension:
+            >>> new_skeleton = skeleton.isel(temperature=[0, 4, 7])
+
+            Combining index-based slicing for coordinates and variables:
+            >>> new_skeleton = skeleton.isel(time=[0, 1, 2], temperature=[0, 4, 7])
+
+            Selecting specific indices for non-gridded Skeletons:
+            >>> new_skeleton = skeleton.isel(inds=[0, 3, 5])
+        """
         ds = self.ds().isel(**kwargs)
         expandable_dims = ['x','y','lon','lat'] if self.is_gridded() else ['inds']
         
@@ -801,10 +1179,43 @@ class Skeleton:
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
         """Inserts a slice of data into the Skeleton.
 
-        If data named 'geodata' has shape dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then
-        data_slice having the threshold=0.4 and time='2023-11-08 12:00:00' having shape=(10,) can be inserted by using the values:
+        This method allows you to insert a subset of data into an existing variable in the Skeleton 
+        based on the specified coordinate values. The data being inserted must match the shape of 
+        the remaining dimensions of the target variable after slicing along the specified coordinates.
 
-        skeleton.insert(name='geodata', data=data_slice, time='2023-11-08 12:00:00', threshold=0.4)
+        Args:
+            name (str): The name of the variable in the Skeleton where the data will be inserted.
+            data (np.ndarray): The data slice to insert. The (non-trivial) shape of this data must match the 
+                dimensions of the target variable determined by coordinate values (`**kwargs`).
+            **kwargs: Keyword arguments specifying the coordinate values for the data slice. 
+                These coordinate values are used to determine where in the variable the data 
+                should be inserted. For example, for a variable with dimensions 
+                (`time`, `inds`, `threshold`), you can specify values for `time` and `threshold`.
+
+        Returns:
+            None: This method modifies the Skeleton in place by inserting the data slice 
+            into the specified variable.
+
+        Notes:
+            - The `**kwargs` must include coordinate values that uniquely identify the slice 
+            in the target variable where the data will be inserted.
+            - If a coordinate value is provided, its index within the corresponding dimension 
+            is determined using `np.where`.
+            - The method internally calls `ind_insert` to perform the actual insertion.
+
+        Examples:
+            Inserting a data slice into a variable with dimensions ('time', 'inds', 'threshold'):
+
+            If a variable named `geodata` has dimensions ('time', 'inds', 'threshold') with shape (57, 10, 3), 
+            and you have a data slice with `threshold=0.4` and `time='2023-11-08 12:00:00'`, having shape (10,), 
+            you can insert this slice as follows:
+
+            >>> skeleton.insert(
+            >>>     name='geodata',
+            >>>     data=data_slice,
+            >>>     time='2023-11-08 12:00:00',
+            >>>     threshold=0.4
+            >>> )
         """
         coord_group = self.core.coord_group(name)
         dims = self.core.coords(coord_group)
@@ -818,12 +1229,48 @@ class Skeleton:
         self.ind_insert(name=name, data=data, **index_kwargs)
 
     def ind_insert(self, name: str, data: np.ndarray, **kwargs) -> None:
-        """Inserts a slice of data into the Skeleton.
+        """Inserts a slice of data into the Skeleton using index-based coordinates.
 
-        If data named 'geodata' has dimension ('time', 'inds', 'threshold') and shape (57, 10, 3), then
-        data_slice having the first threshold and first time can be inserted by using the index values:
+        This method allows you to insert a subset of data into an existing variable in the Skeleton 
+        using indices to specify the target location. The data being inserted must match the shape of 
+        the remaining dimensions of the target variable after slicing along the specified indices.
 
-        skeleton.ind_insert(name='geodata', data=data_slice, time=0, threshold=0)"""
+        Args:
+            name (str): The name of the variable in the Skeleton where the data will be inserted.
+            data (np.ndarray): The data slice to insert. The (non-trivial) shape of this data must match the 
+                dimensions of the target variable determined by coordinate values (`**kwargs`).
+            **kwargs: Keyword arguments specifying the index values for the relevant dimensions 
+                of the variable. For example, for a variable with dimensions 
+                (`time`, `inds`, `threshold`), you can specify index values for `time` and `threshold`.
+
+        Returns:
+            None: This method modifies the Skeleton in place by inserting the data slice 
+            into the specified variable.
+
+        Notes:
+            - The target variable (`name`) must already exist in the Skeleton.
+            - The `**kwargs` must include index values (e.g., integers) that uniquely identify 
+            the slice in the target variable where the data will be inserted.
+            - This method assumes that the provided indices are valid and within the bounds of 
+            the target variable's dimensions.
+            - Unlike `insert`, this method uses direct indices instead of coordinate values.
+
+        Examples:
+            Inserting a data slice into a variable with dimensions ('time', 'inds', 'threshold'):
+
+            If a variable named `geodata` has dimensions ('time', 'inds', 'threshold') with shape (57, 10, 3), 
+            and you have a data slice for the first `threshold` and the first `time` (e.g., shape (10,)), 
+            you can insert this slice as follows:
+
+            >>> skeleton.ind_insert(
+            >>>     name='geodata',
+            >>>     data=data_slice,
+            >>>     time=0,
+            >>>     threshold=0
+            >>> )
+
+            Here, `time=0` and `threshold=0` specify the indices for the dimensions `time` and `threshold`.
+        """
 
         coord_group = self.core.coord_group(name)
         dims = self.core.coords(coord_group)
@@ -854,7 +1301,7 @@ class Skeleton:
     def set(
         self,
         name: Union[str, MetaParameter],
-        data: Optional[Union[np.ndarray, xr.DataArray]] = None,
+        data: Optional[Union[np.ndarray, xr.DataArray, da.Array]] = None,
         dir_type: Optional[str] = None,
         allow_reshape: bool = True,
         allow_transpose: bool = False,
@@ -863,31 +1310,82 @@ class Skeleton:
         silent: bool = True,
         chunks: Optional[Union[tuple, str]] = None,
     ) -> None:
-        """Sets the data using the following logic:
+        """Sets or updates the data for a variable in the Skeleton.
 
-        data [None]: numpy/dask array. If None [Default], an empty array is set.
+        This method allows you to set or update the data for a variable in the Skeleton 
+        with flexible handling of reshaping, transposing, and directional conventions. 
+        It supports data provided as NumPy arrays, xarray DataArrays, or dask arrays, 
+        and offers options to reshape or adjust the data to fit the variable's dimensions.
 
-        Any numpy array is converted to a dask-array if dask-mode is set with .dask.activate().
-        If keyword 'chunks' is set, then conversion to dask is always done.
+        Args:
+            name (Union[str, MetaParameter]): The name of the variable to set or update.
+            data (Optional[Union[np.ndarray, xr.DataArray, da.Array]], optional): The data to set for the variable. 
+                - If `None`, an empty array is set. Defaults to None.
+            dir_type (Optional[str], optional): Defines the directional convention of the data when setting 
+                a directional variable. Can be one of:
+                - `'from'`: Directions are interpreted as coming from the specified angle in degrees.
+                - `'to'`: Directions are interpreted as pointing to the specified angle in degrees.
+                - `'math'`: Directions follow standard mathematical conventions using radians.
+                If `None`, it assumes the convention already associated with the variable's `dir_type`. 
+                Defaults to None.
+            allow_reshape (bool, optional): If `True`, allows reshaping of data by squeezing or expanding 
+                trivial dimensions. For example:
+                - `(10, 1, 10)` → `(10, 10)`
+                - `(100,)` → `(100, 1)`
+                Defaults to True.
+            allow_transpose (bool, optional): If `True`, allows transposing of exactly two non-trivial 
+                dimensions, if required. For example:
+                - `(8, 3)` → `(3, 8)`
+                - `(5, 1, 10)` → `(10, 1, 5)`
+                Defaults to False.
+            fit_to_data (bool, optional): If `True`, reshapes the data to fit the variable's dimensions 
+                automatically. For example:
+                - `(100,)` → `(10, 10)`
+                Defaults to False.
+            coords (Optional[list[str]], optional): A list of coordinate names (e.g., `['freq', 'inds']`) 
+                specifying the order of the dimensions in the provided data. If provided, the data will 
+                be reshaped accordingly. If `None`, the method attempts to infer the coordinates automatically. 
+                Only non-trivial dimensions need to be identified.
+                Defaults to None. 
+            silent (bool, optional): If `True`, suppresses output messages about any reshaping or adjustments 
+                performed. Defaults to True.
+            chunks (Optional[Union[tuple, str]], optional): If specified, the data is converted to a dask array 
+                with the given chunking strategy. If `dask-mode` is activated using `.dask.activate()`, any 
+                NumPy array is automatically converted to a dask array. Defaults to None.
 
-        If given data is a dask array, then it is never rechunked, but used as is.
+        Returns:
+            None: This method modifies the Skeleton in place by setting the data for the specified variable.
 
-        allow_reshape [True]: Allow squeezing out trivial dimensions.
-        allow_transpose [False]: Allow trying to transpose exactly two non-trivial dimensions
-        fit_to_data [False]: Reshape the data the dimensions of the variable
+        Notes:
+            - **Directional Convention (`dir_type`)**:
+            When setting directional variables, the `dir_type` argument allows you to specify the 
+            convention of the provided data. For example, if a variable `dirp` has a `dir_type='from'`, 
+            the following are equivalent:
+            1. `skeleton.set('dirp', 0)`
+            2. `skeleton.set('dirp', 0, dir_type='from')`
+            3. `skeleton.set('dirp', 180, dir_type='to')`
+            - **Reshaping Logic**:
+            1. If `coords` is provided, the data is reshaped assuming the dimensions are ordered as specified 
+                in `coords`. Only non-trivial dimensions need to be identified, as othersa are squeezed/expanded.
+            2. If `data` is a DataArray, the coordinates are inferred automatically.
+            3. Trivial dimensions (e.g., dimensions of size 1) are automatically squeezed.
+            4. If any trivial dimensions are missing from the data, they are expanded.
+            - **Dask Handling**:
+            - If `chunks` is specified, any NumPy array is converted to a dask array with the specified chunking.
+            - If the provided data is already a dask array, it is used as-is without rechunking.
 
-        Otherwise, data is assumed to be in the right dimension, but can also be reshaped:
+        Examples:
+            Setting data for a variable with size (10,10) with reshaping:
+            >>> skeleton.set('temperature', data=np.random.rand(10, 1, 10))
 
-        1) If 'coords' (e.g. ['freq',' inds']) is given, then data is reshaped assuming data is in that order.
-        2) If data is a DataArray, then 'coords' is set using the information in the DataArray.
-        3) If data has any trivial dimensions, then those are squeezed.
-        4) If data is missing any trivial dimension, then those are expanded.
-        5) If data along non-trivial dimensions is two-dimensional, then a transpose is attemted.
+            Setting data for a directional variable with a specific convention:
+            >>> skeleton.set('dirp', data=0, dir_type='from')
 
-        NB! For 1), only non-trivial dimensions need to be identified
+            Automatically reshaping data to fit variable variable with size (10,10):
+            >>> skeleton.set('geodata', data=np.random.rand(100), fit_to_data=True)
 
-        silent [True]: Don't output what reshaping is being performed.
-
+            Reshaping data based on specified coordinates if data in skeleton is size (10,10) but defined over ['inds', 'freq']:
+            >>> skeleton.set('geodata', data=np.random.rand(10, 10), coords=['freq', 'inds'])
         """
         if self.ds() is None:
             raise(MissingDatasetError)
@@ -998,8 +1496,6 @@ class Skeleton:
         1) If 'coords' (e.g. ['freq',' inds']) is given, then data is reshaped assuming data is in that order.
         2) If data is a DataArray, then 'coords' is set using the information in the DataArray.
         3) If data has any trivial dimensions, then those are squeezed.
-        4) If data is missing any trivial dimension, then those are expanded.
-        5) If data along non-trivial dimensions is two-dimensional, then a transpose is attemted.
 
         NB! For 1), only non-trivial dimensions need to be identified
 
@@ -1174,15 +1670,93 @@ class Skeleton:
         dask: Optional[bool] = None,
         rotated: bool=False,
         **kwargs,
-    ) -> Union[np.ndarray, xr.DataArray]:
-        """Gets a mask or data variable as an array.
+    ) -> Union[np.ndarray, xr.DataArray, da.Array]:
+        """Retrieves a mask or data variable as an array.
 
-        strict [False]: Return 'None' if data not set. Otherwise returns empty array.
-        empty [False]: Return an array full with default values even if variable is set.
-        data_array [False]: Return data as an xarray DataArray.
-        squeeze [True]: Smart squeeze out trivial dimensions, but return at least 1d array.
-        dask [None]: Return dask array [True] or numpy array [False]. Default: Use set dask-mode
-        rotated [False]: Return values that are rotated to the set CRS projection (e.g. UTM or rotated pole)
+        This method retrieves the data for a specified variable from the Skeleton instance, 
+        with options to control the data format, dimensionality, and projection. The returned 
+        data can be a NumPy array, xarray DataArray, or dask array, depending on the input 
+        arguments.
+
+        Args:
+            name (str): The name of the variable to retrieve.
+            strict (bool, optional): If `True`, returns `None` if the data is not set. 
+                If `False`, returns an empty array (i.e. filled with default values) if the variable is unset. 
+                Defaults to False.
+            empty (bool, optional): If `True`, returns an array filled with default values, 
+                even if the variable is already set. Defaults to False.
+            data_array (bool, optional): If `True`, returns the data as an xarray DataArray. 
+                If `False`, returns the data as a NumPy or dask array. Defaults to False.
+            dir_type (Optional[str], optional): Defines the directional convention of the 
+                returned data if the variable is directional. Can be one of:
+                - `'from'`: Directions are interpreted as coming from the specified angle in degrees.
+                - `'to'`: Directions are interpreted as pointing to the specified angle in degrees.
+                - `'math'`: Directions follow standard mathematical conventions in readians.
+                If `None`, it gives data in the convention already associated with the variable's `dir_type`. 
+                Defaults to None.
+            squeeze (bool, optional): If `True`, removes trivial dimensions (e.g., dimensions 
+                of size 1) but ensures that the result is at least a 1D array. Defaults to True.
+            dask (Optional[bool], optional): Determines the type of array to return:
+                - `True`: Returns a dask array.
+                - `False`: Returns a NumPy array.
+                - `None`: Uses the Skeleton's current dask mode. Defaults to None.
+            rotated (bool, optional): If `True`, rotates the data to align with the set CRS 
+                projection (e.g., UTM or rotated pole). Defaults to False.
+            **kwargs: Additional arguments for filtering or subsetting the data.
+
+        Returns:
+            Union[np.ndarray, xr.DataArray]: The requested variable as either a NumPy array, 
+            dask array, or xarray DataArray, depending on the input arguments.
+
+        Notes:
+            - **Directional Convention (`dir_type`)**: When retrieving directional variables, 
+            the `dir_type` argument allows you to specify the desired convention of the 
+            returned data. For example:
+            1. If a variable `dirp` has a `dir_type='from'`, and a value of 0:
+                - `skeleton.get('dirp', dir_type='from')` → Returns 0 degrees.
+                - `skeleton.get('dirp', dir_type='to')` → Returns 180 degrees.
+            - **Squeezing Dimensions**: If `squeeze=True`, trivial dimensions (size 1) are removed, 
+            but the result will always be at least 1D. Spatial coordinates (e.g., `lon/lat` or `x/y`) 
+            are never squeezed away unless a non-trivial coordinate is present.
+
+            Examples:
+                - If `data` has shape `(10, 10, 1)`, the result is `(10, 10)`.
+                - If `data` is gridded has shape `[1, 2, 1]`, the result is `(2,)` (non-trivial spatial coordinate preserved).
+                - If `data` is gridded on one point and has shape `(1, 1)`, the result is `(1, 1)` 
+                (spatial coordinates are preserved).
+                - If `data` is not gridded on one point and has shape `(1,)`, the result is `(1,)`.
+                - If `data` is gridded on one point with a `time` dimension having two time stamps 
+                (e.g., `time` and `lon/lat`), and the data has shape `(2, 1, 1)`, the result is `(2,)` (no spatial coordinate preserved).
+                - If `data` is not gridded on one point with a `time` dimension having two time 
+                stamps (e.g., `time` only), and the data has shape `(2, 1)`, the result is `(2,)` (no spatial coordinate preserved).
+            - **Handling Unset Variables**:
+            - If `strict=True` and the variable is unset, the method returns `None`.
+            - If `strict=False` and the variable is unset, an empty array is returned.
+            - **Dask Mode**:
+            - If `dask=True`, the method ensures the returned data is a dask array.
+            - If `dask=False`, the method ensures the returned data is a NumPy array.
+            - If `dask=None`, the method uses the Skeleton's current dask mode.
+
+        Examples:
+            Retrieving a variable as a NumPy array:
+            >>> data = skeleton.get('temperature')
+
+            Retrieving a variable as an xarray DataArray:
+            >>> data = skeleton.get('temperature', data_array=True)
+
+            Retrieving a directional variable with a specific convention:
+            >>> dir_data = skeleton.get('dirp', dir_type='to')
+
+            Retrieving data with trivial dimensions squeezed are not squeezed:
+            >>> data = skeleton.get('temperature', squeeze=False)
+
+            Retrieving rotated data:
+            >>> rotated_data = skeleton.get('wind', rotated=True)
+
+            Handling unset variables:
+            >>> data = skeleton.get('unknown_var', strict=True)  # Returns None if not set
+            >>> data = skeleton.get('unknown_var', strict=False)  # Returns an array filled with default values
+
         """
         if self.ds() is None:
             raise MissingDatasetError
