@@ -2210,6 +2210,7 @@ class Skeleton:
                 Must be one of:
                 - `'all'` (default): Returns the size of the entire Skeleton.
                 - `'spatial'`: Returns the size over spatial coordinates (`x`, `y`, `lon`, `lat`, `inds`).
+                - `'nonspatial'`: Returns the size over all coordinates that are not spatial.
                 - `'grid'`: Returns the size over grid coordinates (e.g., `z`, `time`) combined with spatial coordinates.
                 - `'gridpoint'`: Returns the size over grid point coordinates (e.g., `frequency`, `direction`, or `time`).
             squeeze (bool, optional): If `True`, removes trivial dimensions (size 1) from the result. 
@@ -2221,7 +2222,7 @@ class Skeleton:
             specified coordinate group.
 
         Raises:
-            KeyError: If `coord_group` is not one of `'all'`, `'spatial'`, `'grid'`, or `'gridpoint'`.
+            KeyError: If `coord_group` is not one of `'all'`, `'spatial'`, `'grid'`, `'gridpoint'` or `'nonspatial'`.
 
         Notes:
             - If `squeeze=True`, trivial dimensions are removed from the size computation.
@@ -2255,9 +2256,9 @@ class Skeleton:
             >>> skeleton.size(coord_group='all', squeeze=True)
             (100,50,25,36)
         """
-        if coord_group not in ["all", "spatial", "grid", "gridpoint"]:
+        if coord_group not in ["all", "spatial", "grid", "gridpoint", 'nonspatial']:
             raise KeyError(
-                f"coords should be 'all', 'spatial', 'grid' or 'gridpoint', not {coord_group}!"
+                f"coords should be 'all', 'spatial', 'grid', 'gridpoint' or 'nonspatial', not {coord_group}!"
             )
         coords = self.core.coords(coord_group)
         if squeeze:
