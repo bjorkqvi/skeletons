@@ -159,15 +159,92 @@ class CoordinateManager:
             self._added_coords[coord.name] = coord
 
     def coords(self, coord_group: str = "all", cartesian: bool = None) -> list[str]:
-        """Returns list of coordinats that have been added to a specific coord group.
+        """Returns a list of coordinates belonging to a specific coordinate group.
 
-        'all': All added coordinates
-        'spatial': spatial coords (e.g. inds, or lat/lon)
-        'nonspatial': All EXCEPT spatial coords (e.g. inds, or lat/lon, x/y)
-        'init': coordinates needed to initialize Skeleton: All coords (including lat/lon, x/y in PointSkeleton) but without 'inds'
-            Provide cartesian = True/False to only get x/y or lon/lat
-        'grid': coordinates for the grid (e.g. z, time)
-        'gridpoint': coordinates for a grid point (e.g. frequency, direcion or time)
+        This method retrieves the coordinates that have been added to a specific group 
+        (e.g., spatial, grid, gridpoint) within the Skeleton. The method can also provide coordinates
+        needed to initialize a new version of a projected or spherical skeleton.
+
+        Args:
+            coord_group (str, optional): The coordinate group to retrieve. Must be one of:
+                - `'all'`: Returns all added coordinates.
+                - `'spatial'`: Returns spatial coordinates (e.g., `inds`, `lat`, `lon`, `x`, `y`).
+                - `'nonspatial'`: Returns all coordinates except spatial ones (e.g., `time`, `freq`, `dirs`).
+                - `'init'`: Returns the coordinates required for initializing the Skeleton, 
+                including all non-spatial coordinates, and spatial coordinates (`lat/lon`, `x/y`), 
+                but excluding `'inds'`.
+                    * If `cartesian=True`, only `x/y` coordinates are returned.
+                    * If `cartesian=False`, only `lon/lat` coordinates are returned.
+                - `'grid'`: Returns grid coordinates (e.g., `z`, `time`) along with spatial coordinates.
+                - `'gridpoint'`: Returns grid point coordinates (e.g., `freq`, `dirs`).
+            cartesian (bool, optional): When `coord_group='init'`, this specifies whether to filter 
+                for cartesian (`x/y`) or spherical (`lon/lat`) coordinates:
+                - `True`: Returns only cartesian coordinates (`x`, `y`).
+                - `False`: Returns only spherical coordinates (`lon`, `lat`).
+                - If `None`, includes both. Defaults to None.
+
+        Returns:
+            list[str]: A list of coordinate names belonging to the specified group.
+
+        Examples:
+            Create a GriddedSkeleton with various coordinate groups:
+            >>> Spectrum = GriddedSkeleton.add_time().add_frequency().add_direction()
+            >>> Spectrum.core
+            ------------------------------ Coordinate groups -------------------------------
+            Spatial:    (y, x)
+            Grid:       (time, y, x)
+            Gridpoint:  (freq, dirs)
+            All:        (time, y, x, freq, dirs)
+
+            Get spatial coordinates:
+            >>> Spectrum.core.coords('spatial')
+            ['y', 'x']
+
+            Get grid point coordinates:
+            >>> Spectrum.core.coords('gridpoint')
+            ['freq', 'dirs']
+
+            Get grid coordinates (including spatial):
+            >>> Spectrum.core.coords('grid')
+            ['time', 'y', 'x']
+
+            Get non-spatial coordinates:
+            >>> Spectrum.core.coords('nonspatial')
+            ['time', 'freq', 'dirs']
+
+            Get all coordinates:
+            >>> Spectrum.core.coords('all')
+            ['time', 'y', 'x', 'freq', 'dirs']
+
+            Get initialization coordinates (both cartesian and spherical):
+            >>> Spectrum.core.coords('init')
+            ['time', 'lat', 'lon', 'y', 'x', 'dirs', 'freq']
+
+            Get initialization coordinates filtered for cartesian:
+            >>> Spectrum.core.coords('init', cartesian=True)
+            ['time', 'y', 'x', 'dirs', 'freq']
+
+            Get initialization coordinates filtered for spherical:
+            >>> Spectrum.core.coords('init', cartesian=False)
+            ['time', 'lat', 'lon', 'dirs', 'freq']
+
+
+            Create a PointSkeleton with various coordinate groups:
+            >>> PointSpectrum = PointSkeleton.add_time().add_frequency().add_direction()
+            >>> PointSpectrum.core
+            ------------------------------ Coordinate groups -------------------------------
+            Spatial:    (inds)
+            Grid:       (time, inds)
+            Gridpoint:  (freq, dirs)
+            All:        (time, inds, freq, dirs)
+
+            Get all spatial coordinates
+            >>> PointSpectrum.core.coords('spatial')
+            ['inds']
+            
+            Get all coordinates needed to initialize skeleton (don via 'lon'/'lat', not 'inds')
+            >>> PointSpectrum.core.coords('init', cartesian=False)
+            ['time', 'lat', 'lon', 'dirs', 'freq']
         """
         if coord_group not in [
             "all",
