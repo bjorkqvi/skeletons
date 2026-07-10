@@ -3,17 +3,7 @@ Welcome to skeletons's documentation!
 
 **Geo-skeletons** is an easy extendable way to build python classes to represent gridded and non-gridded geophysical data. It provides the basic structure to work with spherical and cartesian coordinates, and can be extended to data-specific objects by adding coordinates, data variables and logical masks. It also integrates with the geo-parameters module to provide easy access to metadata.
 
-Quick Installation
-=============================================
-To get started with geo-skeletons, you can install it with pip or conda:
 
-.. code-block:: shell
-
-   $ pip install geo-skeletons
-
-.. code-block:: shell
-
-   $ conda install -c conda-forge geo-skeletons
 
 Using PointSkeletons
 =============================================
@@ -1240,3 +1230,18 @@ Skeletons don't have any plotting functionality built in, but since it wraps aro
 .. image:: example_wind_plot.png
 
 Here, the ``data_array=True`` tells the method to return the xarray data array instead of a numpy array of the values.
+
+Contents
+===============
+
+.. toctree::
+   :maxdepth: 3
+   :glob:
+
+   install
+   basic_example
+   grid
+   interest_points
+   importing_data
+   rest
+   technical_info

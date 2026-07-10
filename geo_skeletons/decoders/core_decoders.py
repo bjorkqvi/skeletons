@@ -314,16 +314,14 @@ def _map_geo_parameter_to_ds_variable(
     else:
         directional_ambiguity = True
 
-    if not directional_ambiguity:
-        ds_match = _match_ds_aliases_to_parameter(var_str, ds_aliases)
-        if ds_match is not None:
-            if verbose:
-                print(f"Dataset Alias: {var_str} >> {ds_match}")
-            return ds_match
+    ds_match = _match_ds_aliases_to_parameter(var_str, ds_aliases, directional_ambiguity)
+    if ds_match is not None:
+        if verbose:
+            print(f"Dataset Alias: {var_str} >> {ds_match}")
+        return ds_match
 
     if param is not None:
-        ds_match = _match_ds_aliases_to_parameter(param, ds_aliases)
-
+        ds_match = _match_ds_aliases_to_parameter(param, ds_aliases, directional_ambiguity)
         if ds_match is not None:
             if verbose:
                 print(f"Dataset Alias: {param} >> {ds_match}")
@@ -400,7 +398,7 @@ def _map_geo_parameter_to_ds_variable(
                         print(f"Intenal str-alias map: {var_str} >> {alias_var}")
                     return ds_vars[alias_var]
 
-                ds_match = _match_ds_aliases_to_parameter(alias_var, ds_aliases)
+                ds_match = _match_ds_aliases_to_parameter(alias_var, ds_aliases, directional_ambiguity=False)
                 if ds_match in ds.coords or ds_match in ds.data_vars:
                     if verbose:
                         print(
@@ -412,7 +410,7 @@ def _map_geo_parameter_to_ds_variable(
 
 
 def _match_ds_aliases_to_parameter(
-    var: Union[MetaParameter, str], ds_aliases: dict[str, Union[MetaParameter, str]]
+    var: Union[MetaParameter, str], ds_aliases: dict[str, Union[MetaParameter, str]], directional_ambiguity: bool
 ) -> Union[str, None]:
     """Goes through ds_aliases and see if there is defined ds-parameter that matches the give parameter
 
@@ -427,12 +425,15 @@ def _match_ds_aliases_to_parameter(
     var_str, param = gp.decode(var)
     for key, value in ds_aliases.items():
         ds_var_str, ds_meta = gp.decode(value)
-        if ds_var_str == var_str:
-            matching_ds_keys.append(key)
-        elif param is not None and ds_meta is not None:
+        
+        
+        
+        if param is not None and ds_meta is not None:
             if ds_meta.is_same(param):
                 matching_ds_keys.append(key)
-
+        elif ds_var_str == var_str and not directional_ambiguity:
+            matching_ds_keys.append(key)
+            
     if len(matching_ds_keys) == 1:
         return matching_ds_keys[0]
     else:
@@ -528,7 +529,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ignore_dir_ambiguity=True,
             verbose=verbose,
         )
-        transform_function = lambda x, y: x
+        transform_function = lambda x, y: x # dir_type takes care of the conversion, so lambda can be trivial
         dir_type = var.my_family("opposite_direction").dir_type()
     elif var.i_am() == "opposite_direction":
         ds_var = _map_geo_parameter_to_ds_variable(
@@ -541,7 +542,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
             ignore_dir_ambiguity=True,
             verbose=verbose,
         )
-        transform_function = lambda x, y: x
+        transform_function = lambda x, y: x # dir_type takes care of the conversion, so lambda can be trivial
         dir_type = var.my_family("direction").dir_type()
     else:
         return None, None, None
