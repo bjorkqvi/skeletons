@@ -42,7 +42,7 @@ import itertools
 import dask.array as da
 import geo_parameters as gp
 from geo_parameters.metaparameter import MetaParameter
-
+from geo_parameters.model_aliases import WAM
 from .distance_funcs import distance_2points
 import pandas as pd
 from copy import deepcopy
@@ -553,6 +553,9 @@ class Skeleton:
         meta_dict = meta_dict or {}
         core_aliases = core_aliases or {}
         ds_aliases = ds_aliases or {}
+        if isinstance(ds_aliases, str):
+            if ds_aliases.lower() == 'wam':
+                ds_aliases = WAM 
         only_vars = only_vars or []
         ignore_vars = ignore_vars or []
 
@@ -698,7 +701,7 @@ class Skeleton:
                     vars[var] = {'arrow_data': arrow_vars.get(var)}
         return vars
     
-    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None, rotated: Optional[bool]=None, sparse: bool=True, show: bool=True,) -> None:
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None, rotated: Optional[bool]=None, sparse: bool=True, show: bool=True, coastline: bool=False) -> None:
         """Generates a quick visualization of the data in the Skeleton instance.
 
         If a time variable is present, the first time instance is displayed. This method 
@@ -773,6 +776,7 @@ class Skeleton:
         vars = self._determine_quicklook_variables(mag, dir, arrows,arrow_vars)
 
         # No data to plot: only plot points
+        
         if not vars:
             if proj is None:
                 x, y = self.xy(native=True)
@@ -791,8 +795,34 @@ class Skeleton:
         cols = int(np.ceil(len(vars)**0.5))
         rows = int(np.ceil(len(vars)/cols))
 
-        fig, ax = plt.subplots(rows, cols)
- 
+
+        if coastline:
+            try:
+                from cartopy import feature as cfeature
+                from cartopy import crs as ccrs
+            except ImportError as e:
+                print(f"Coastlines require cartopy")
+                raise e
+            if proj == 'lonlat':
+                plot_proj = ccrs.PlateCarree()
+            elif proj == 'xy':
+                if isinstance(self.proj.crs(), tuple):
+                    plot_proj = ccrs.UTM(self.proj.crs()[0])
+                else:
+                    raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
+            else:
+                if not self.core.is_projected():
+                    plot_proj = ccrs.PlateCarree()
+                else:
+                    if isinstance(self.proj.crs(), tuple):
+                        plot_proj = ccrs.UTM(self.proj.crs()[0])
+                    else:
+                        raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
+            fig, ax = plt.subplots(rows, cols,subplot_kw={"projection": plot_proj})
+        else:
+            fig, ax = plt.subplots(rows, cols)
+        
+        
         ax = np.atleast_2d(ax)
         
         if rotated is None:
@@ -879,6 +909,14 @@ class Skeleton:
             if compare is not None:
                 ax[r,c].scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
                 plt.legend()
+            
+            if coastline:
+                ax[r,c].add_feature(
+                    cfeature.NaturalEarthFeature(
+                "physical", "coastline", "10m", facecolor="none", edgecolor="black"
+                )
+                )
+
             c += 1
             if c > cols-1:
                 c = 0
