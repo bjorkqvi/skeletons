@@ -17,8 +17,8 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'data-skeletons'
-copyright = '2023, Jan-Victor Björkqvist (janvb@met.no)'
+project = 'geo-skeletons'
+copyright = '2026, Jan-Victor Björkqvist (janvb@met.no)'
 author = 'Jan-Victor Björkqvist' 
 
 # The full version, including alpha/beta/rc tags
