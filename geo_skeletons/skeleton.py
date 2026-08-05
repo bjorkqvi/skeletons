@@ -1708,6 +1708,7 @@ class Skeleton:
         squeeze: bool = True,
         dask: Optional[bool] = None,
         rotated: bool=False,
+        verbose: bool=False,
         **kwargs,
     ) -> Union[np.ndarray, xr.DataArray, da.Array]:
         """Retrieves a mask or data variable as an array.
@@ -1806,16 +1807,24 @@ class Skeleton:
             )
 
         if gp.is_gp(name):
+            if verbose:
+                print(f"Requested geo-parameter {name}")
+            
             if name.dir_type() is None:
                 names = self.core.find(name)
+
             else:
                 # Allows getting with e.g. gp.wave.DirpTo when skeleton has gp.wave.Dirp
                 for key, var in name.my_family().items():
                     if key in {'direction', 'opposite_direction'}:
                         names = self.core.find(var)
                         if len(names) > 0:
+                            if verbose:
+                                print(f"Found directional geo-parameter {var} in dataset")
                             if dir_type is None:
                                 dir_type = name.dir_type()
+                                if verbose:
+                                    print(f"'dir_type' not specified, setting to '{dir_type}'")
                             break
             
             
@@ -1826,6 +1835,8 @@ class Skeleton:
                     f"Found several variables ({names}) matching {name}!"
                 )
             name = names[0]
+            if verbose:
+                print(f"Reading variable '{name}'")
 
         if name == "x":
             return self.x(strict=strict, **kwargs)
