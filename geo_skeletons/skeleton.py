@@ -689,7 +689,6 @@ class Skeleton:
                             vars[var] = {'arrow_data': dirparam.name}
                         elif arrows:
                             vars[dirparam.name] = {'is_arrow': True}
-
             return vars
     
         for var in self.core.data_vars():
@@ -699,6 +698,8 @@ class Skeleton:
                     vars[var] = {'cmap': 'twilight'}
                 if arrow_vars.get(var) is not None:
                     vars[var] = {'arrow_data': arrow_vars.get(var)}
+        
+       
         return vars
     
     def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None, rotated: Optional[bool]=None, sparse: bool=True, show: bool=True, coastline: bool=False) -> None:
@@ -1805,7 +1806,19 @@ class Skeleton:
             )
 
         if gp.is_gp(name):
-            names = self.core.find(name)
+            if name.dir_type() is None:
+                names = self.core.find(name)
+            else:
+                # Allows getting with e.g. gp.wave.DirpTo when skeleton has gp.wave.Dirp
+                for key, var in name.my_family().items():
+                    if key in {'direction', 'opposite_direction'}:
+                        names = self.core.find(var)
+                        if len(names) > 0:
+                            if dir_type is None:
+                                dir_type = name.dir_type()
+                            break
+            
+            
             if len(names) == 0:
                 raise UnknownVariableError(f"Variable matching {name} not found!")
             if len(names) > 1:
