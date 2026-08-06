@@ -246,16 +246,16 @@ class Skeleton:
     @classmethod
     def add_datavar(
         cls,
-        name: Union[str, MetaParameter],
-        coord_group: str = "all",
-        default_value: float = 0.0,
+        name: Union[Union[str, MetaParameter], list[Union[str, MetaParameter]]],
+        coord_group: Union[str, list[str]] = "all",
+        default_value: Union[float, list[float]] = 0.0,
     ) -> "Skeleton":
         """Creates a new class with a data variable added.
 
         Args:
-            name (Union[str, MetaParameter]): Name of the data variable.
-            coord_group (str, optional): Coordinate group for the variable. Must be one of 'all', 'spatial', 'grid', or 'gridpoint'. Defaults to "all".
-            default_value (float, optional): Default value for the data variable. Defaults to 0.0.
+            name (Union[Union[str, MetaParameter], list[Union[str, MetaParameter]]]): Name of the data variable.
+            coord_group (Union[str, list[str]], optional): Coordinate group for the variable. Must be one of 'all', 'spatial', 'grid', or 'gridpoint'. Defaults to "all".
+            default_value (Union[float, list[float]], optional): Default value for the data variable. Defaults to 0.0.
 
         Returns:
             Skeleton: A new class with the data variable added.
