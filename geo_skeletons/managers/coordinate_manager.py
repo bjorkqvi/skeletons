@@ -642,7 +642,7 @@ class CoordinateManager:
 
         return_vars = move_time_and_spatial_to_front([var.name for var in vars if var.name])
         if coord_group == 'noncoordinate':
-            return_vars = list(set(return_vars) - {'x','y','lon','lat'})
+            return_vars = [var for var in return_vars if var not in {'x', 'y', 'lon', 'lat'}]
         return return_vars
     
     def magnitudes(self, coord_group: str = "all") -> list[str]:
