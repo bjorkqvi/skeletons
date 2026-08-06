@@ -20,14 +20,16 @@ def test_mask_points():
 
 def test_data_vars():
     Wave = GriddedSkeleton.add_time().add_datavar('hs', coord_group='grid').add_datavar('tp').add_datavar('depth', coord_group='spatial')
-    assert set(Wave.core.data_vars()) == {'hs','tp'}
+    assert set(Wave.core.data_vars()) == {'hs','tp', 'depth'}
+    assert set(Wave.core.data_vars('nonspatial')) == {'hs','tp'}
     assert set(Wave.core.data_vars('spatial')) == {'depth'}
     assert set(Wave.core.data_vars('grid')) == {'hs', 'depth'}
     assert set(Wave.core.data_vars('gridpoint')) == set({})
 
 def test_data_vars_point():
     Wave =PointSkeleton.add_time().add_datavar('hs', coord_group='grid').add_datavar('tp').add_datavar('depth', coord_group='spatial')
-    assert set(Wave.core.data_vars()) == {'hs','tp'}
+    assert set(Wave.core.data_vars()) == {'hs','tp', 'depth'}
+    assert set(Wave.core.data_vars('nonspatial')) == {'hs','tp'}
     assert set(Wave.core.data_vars('spatial')) == {'depth','x','y'}
     assert set(Wave.core.data_vars('grid')) == {'hs', 'depth','x','y'}
     assert set(Wave.core.data_vars('gridpoint')) == set({})
