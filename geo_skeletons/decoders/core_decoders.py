@@ -96,9 +96,8 @@ def identify_core_in_ds(
         if ds_coord is not None:
             core_coords_to_ds_coords[coord] = ds_coord
 
-    for var in core.data_vars() + core.masks():
+    for var in core.data_vars('nonspatial') + core.masks():
         search_param = core.meta_parameter(var) or var
-
         # Find the parameter straight up
         ds_var_x = _map_geo_parameter_to_ds_variable(
             search_param,
@@ -284,7 +283,6 @@ def _map_geo_parameter_to_ds_variable(
     3) Try to find 'lon' directly in eiher ds.data_vars or ds.coords
     4) Go through known aliases of 'lon' (e.g. 'longitude') and try to find the alias 'longitude' in eiher ds.data_vars or ds.coords
     """
-
     var_str, param = gp.decode(param, init=True)
     # 1) Use aliases mapping if exists
     if aliases.get(var_str) is not None:
@@ -571,26 +569,29 @@ def _map_geo_parameter_to_components_in_ds(
         return None, None, None, None
 
     if var.i_am() in ["magnitude", "direction", "opposite_direction"]:
-        ds_var_x = _map_geo_parameter_to_ds_variable(
-            var.my_family("x"),
-            ds,
-            aliases=aliases,
-            ds_aliases=ds_aliases,
-            ignore_vars=ignore_vars,
-            only_vars=only_vars,
-            ignore_dir_ambiguity=False,
-            verbose=verbose,
-        )
-        ds_var_y = _map_geo_parameter_to_ds_variable(
-            var.my_family("y"),
-            ds,
-            aliases=aliases,
-            ds_aliases=ds_aliases,
-            ignore_vars=ignore_vars,
-            only_vars=only_vars,
-            ignore_dir_ambiguity=False,
-            verbose=verbose,
-        )
+        if var.my_family("x") is not None and var.my_family("y") is not None:
+            ds_var_x = _map_geo_parameter_to_ds_variable(
+                var.my_family("x"),
+                ds,
+                aliases=aliases,
+                ds_aliases=ds_aliases,
+                ignore_vars=ignore_vars,
+                only_vars=only_vars,
+                ignore_dir_ambiguity=False,
+                verbose=verbose,
+            )
+            ds_var_y = _map_geo_parameter_to_ds_variable(
+                var.my_family("y"),
+                ds,
+                aliases=aliases,
+                ds_aliases=ds_aliases,
+                ignore_vars=ignore_vars,
+                only_vars=only_vars,
+                ignore_dir_ambiguity=False,
+                verbose=verbose,
+            )
+        else:
+             return None, None, None, None
     else:
         return None, None, None, None
 
