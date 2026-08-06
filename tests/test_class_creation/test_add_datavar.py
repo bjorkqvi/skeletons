@@ -1,7 +1,8 @@
 from geo_skeletons import PointSkeleton
 from geo_skeletons.decorators import add_datavar, add_coord
 import numpy as np
-
+import pytest
+import geo_parameters as gp
 
 def test_add_datavar():
     points = PointSkeleton.add_datavar("hs")(x=0, y=4)
@@ -38,3 +39,26 @@ def test_add_datavar_on_top():
 
     assert "hs" in Expanded.core.data_vars()
     assert "tp" not in Expanded.core.data_vars()
+
+def test_add_datavar_direction():
+    @add_datavar(gp.wave.Dirp)
+    class Expanded(PointSkeleton):
+        pass
+
+    assert Expanded.core.get_dir_type(gp.wave.Dirp.name) == 'from'
+
+def test_add_datavar_direction_to():
+    @add_datavar(gp.wave.DirpTo)
+    class Expanded(PointSkeleton):
+        pass
+
+    assert Expanded.core.get_dir_type(gp.wave.Dirp.name) == 'to'
+
+def test_add_datavar_direction_raise_consisteny_warning():
+    with pytest.warns(Warning):
+        @add_datavar(gp.wave.Dirp, dir_type='to')
+        class Expanded(PointSkeleton):
+            pass    
+
+    # You are allowed to shoot yourself in the foot
+    assert Expanded.core.get_dir_type(gp.wave.Dirp.name) == 'to'
