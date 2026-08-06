@@ -144,19 +144,25 @@ def test_point_added_coord_and_var():
     assert Expanded.core.coords() == ["inds", "z", "w"]
     assert Expanded.core.coords("grid") == ["inds", "z"]
     assert Expanded.core.coords("gridpoint") == ["w"]
-    assert Expanded.core.data_vars() == [
+    assert Expanded.core.data_vars('nonspatial') == [
         "eta_all",
         "eta_grid",
         "eta_gridpoint",
     ]
-
+    assert Expanded.core.data_vars() == [
+        "eta_all",
+        "eta_grid",
+        "eta_gridpoint",
+        "eta_spatial"
+    ]
     points = Expanded(x=[1, 2], y=[2, 3], z=[1, 2, 3, 4], w=[6, 7, 8, 9, 10])
     assert points.core.coords("spatial") == ["inds"]
     assert points.core.data_vars("spatial") == ["y", "x", "eta_spatial"]
     assert points.core.coords("nonspatial") == ["z", "w"]
     assert points.core.coords("grid") == ["inds", "z"]
     assert points.core.coords("gridpoint") == ["w"]
-    assert points.core.data_vars() == ["eta_all", "eta_grid", "eta_gridpoint"]
+    assert points.core.data_vars('nonspatial') == ["eta_all", "eta_grid", "eta_gridpoint"]
+    assert points.core.data_vars() == ["eta_all", "eta_grid", "eta_gridpoint", "eta_spatial"]
 
     assert points.eta_all(empty=True).shape == (2, 4, 5)
     assert points.eta_grid(empty=True).shape == (2, 4)
@@ -169,10 +175,16 @@ def test_point_added_coord_and_var():
     assert points2.core.coords() == ["inds", "z", "w"]
     assert points2.core.coords("grid") == ["inds", "z"]
     assert points2.core.coords("gridpoint") == ["w"]
+    assert points2.core.data_vars('nonspatial') == [
+        "eta_all",
+        "eta_grid",
+        "eta_gridpoint",
+    ]
     assert points2.core.data_vars() == [
         "eta_all",
         "eta_grid",
         "eta_gridpoint",
+        "eta_spatial"
     ]
     assert points2.core.data_vars("spatial") == ["lat", "lon", "eta_spatial"]
 
@@ -194,18 +206,30 @@ def test_point_added_coord_and_var():
     assert Expanded.core.coords("nonspatial") == ["z", "w"]
     assert Expanded.core.coords("grid") == ["inds", "z"]
     assert Expanded.core.coords("gridpoint") == ["w"]
+    assert Expanded.core.data_vars('nonspatial') == [
+        "eta_all",
+        "eta_grid",
+        "eta_gridpoint",
+    ]
     assert Expanded.core.data_vars() == [
         "eta_all",
         "eta_grid",
         "eta_gridpoint",
+        "eta_spatial"
     ]
     assert points.core.coords("spatial") == ["inds"]
     assert points.core.data_vars("spatial") == ["y", "x", "eta_spatial"]
     assert points.core.coords() == ["inds", "z", "w"]
     assert points.core.coords("grid") == ["inds", "z"]
     assert points.core.coords("gridpoint") == ["w"]
+    assert points.core.data_vars('nonspatial') == [
+        "eta_all",
+        "eta_grid",
+        "eta_gridpoint",
+    ]
     assert points.core.data_vars() == [
         "eta_all",
         "eta_grid",
         "eta_gridpoint",
+        "eta_spatial"
     ]

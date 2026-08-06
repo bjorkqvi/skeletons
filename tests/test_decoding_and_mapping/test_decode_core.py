@@ -121,6 +121,7 @@ def test_core_with_gp(wave_no_std, wave_std):
 
 
 def test_core_with_gp2(wave_no_std, wave_std, wave2_std):
+   
     with pytest.raises(GridError):
         core_coords, core_vars, coords_needed = identify_core_in_ds(
             wave2_std.core, ds=wave_no_std.ds()
