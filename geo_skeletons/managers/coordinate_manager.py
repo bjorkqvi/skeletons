@@ -644,6 +644,7 @@ class CoordinateManager:
         if coord_group == 'noncoordinate':
             return_vars = list(set(return_vars) - {'x','y','lon','lat'})
         return return_vars
+    
     def magnitudes(self, coord_group: str = "all") -> list[str]:
         """Returns a list of magnitudes that have been added to a specific coordinate group.
 
