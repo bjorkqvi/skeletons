@@ -2,7 +2,7 @@ from geo_skeletons import GriddedSkeleton, PointSkeleton
 from geo_skeletons.decorators import add_datavar, add_magnitude
 import numpy as np
 import geo_parameters as gp
-
+import pytest 
 def test_magnitude_point():
 
     @add_magnitude(name="wind", x="u", y="v", direction="wdir", dir_type="from")
@@ -485,3 +485,36 @@ def test_set_magnitude_with_gp_decode_components_and_disable_direction():
     assert Magnitude.core.magnitudes() == [gp.wind.Wind.name]
     assert Magnitude.core.directions() == []
     assert set(Magnitude.core.data_vars()) == {gp.wind.YWind.name, gp.wind.XWind.name}
+
+
+def test_warn_if_x_xomponent_is_not_consistent():
+    with pytest.warns(Warning):
+        @add_magnitude(name=gp.wind.Wind, x=gp.ocean.XCurrent)
+        @add_datavar(gp.ocean.XCurrent)
+        @add_datavar(gp.wind.YWind)
+        class Magnitude(GriddedSkeleton):
+            pass
+
+def test_warn_if_y_xomponent_is_not_consistent():
+    with pytest.warns(Warning):
+        @add_magnitude(name=gp.wind.Wind, y=gp.ocean.YCurrent)
+        @add_datavar(gp.ocean.YCurrent)
+        @add_datavar(gp.wind.XWind)
+        class Magnitude(GriddedSkeleton):
+            pass
+
+def test_warn_if_direction_is_not_consistent():
+    with pytest.warns(Warning):
+        @add_magnitude(name=gp.wind.Wind, direction=gp.ocean.CurrentDir)
+        @add_datavar(gp.wind.XWind)
+        @add_datavar(gp.wind.YWind)
+        class Magnitude(GriddedSkeleton):
+            pass
+
+def test_warn_if_dirtype_is_not_consistent():
+    with pytest.warns(Warning):
+        @add_magnitude(name=gp.wind.Wind, dir_type='to')
+        @add_datavar(gp.wind.XWind)
+        @add_datavar(gp.wind.YWind)
+        class Magnitude(GriddedSkeleton):
+            pass

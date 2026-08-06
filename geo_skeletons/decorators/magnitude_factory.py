@@ -8,38 +8,10 @@ from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from geo_skeletons.variables import Magnitude, Direction
 from geo_skeletons.errors import UnknownVariableError
+import warnings
 
 
-def figure_out_components(cls, name: Union[str, MetaParameter], x: Union[str, MetaParameter], y: Union[str, MetaParameter]) -> tuple[str, str]:
-    if gp.is_gp(name) and x is None:
-        x = name.my_family().get('x')
 
-    if gp.is_gp(name) and y is None:
-        y = name.my_family().get('y')
-
-    if gp.is_gp(x):
-        xstr = cls.core.find(x)
-
-        if len(xstr) == 0:
-            raise UnknownVariableError(f"Cannot find a data variable matching parameter {x}!")
-        if len(xstr) > 1:
-            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {x}! (found {xstr})")
-        xstr = xstr[0]
-    else:
-        xstr = x
-
-    if gp.is_gp(y):
-        ystr = cls.core.find(y)
-
-        if len(ystr) == 0:
-            raise UnknownVariableError(f"Cannot find a data variable matching parameter {y}!")
-        if len(ystr) > 1:
-            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {y}! (found {ystr})")
-        ystr = ystr[0]
-    else:
-        ystr = y
-
-    return xstr, ystr
 
 def add_magnitude(
     name: Union[str, MetaParameter],
@@ -195,6 +167,8 @@ def add_magnitude(
         else:
             dir_str = None
 
+        consistency_check_of_set_parameters(meta, x, y, direction, dir_type)
+
         exec(f"c.{name_str} = get_magnitude")
         exec(f"c.set_{name_str} = set_magnitude")
 
@@ -223,3 +197,56 @@ def add_magnitude(
         )
 
     return magnitude_decorator
+
+
+def figure_out_components(cls, name: Union[str, MetaParameter], x: Union[str, MetaParameter], y: Union[str, MetaParameter]) -> tuple[str, str]:
+    if gp.is_gp(name) and x is None:
+        x = name.my_family().get('x')
+
+    if gp.is_gp(name) and y is None:
+        y = name.my_family().get('y')
+
+    if gp.is_gp(x):
+        xstr = cls.core.find(x)
+
+        if len(xstr) == 0:
+            raise UnknownVariableError(f"Cannot find a data variable matching parameter {x}!")
+        if len(xstr) > 1:
+            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {x}! (found {xstr})")
+        xstr = xstr[0]
+    else:
+        xstr = x
+
+    if gp.is_gp(y):
+        ystr = cls.core.find(y)
+
+        if len(ystr) == 0:
+            raise UnknownVariableError(f"Cannot find a data variable matching parameter {y}!")
+        if len(ystr) > 1:
+            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {y}! (found {ystr})")
+        ystr = ystr[0]
+    else:
+        ystr = y
+
+    return xstr, ystr
+
+def consistency_check_of_set_parameters(meta, x, y, direction, dir_type):
+    """Warn if all the parameters are not consistent with what is expected based on the metaparameters"""
+    if gp.is_gp(direction):
+        if direction.dir_type() != dir_type:
+            warnings.warn(f"The directional parameter {direction} has a directional type '{direction.dir_type()}', but the provided 'dir_type' is '{dir_type}'! It is highly recommended to keep the classes consistent.", Warning)
+        if not direction.find_me_in([meta.my_family().get('direction'), meta.my_family().get('opposite_direction')]):
+                warnings.warn(f"The parameter {direction} is not the known direction ({meta.my_family().get('direction')}) or opposite_direction ({meta.my_family().get('opposite_direction')}) of the parameter {meta}", Warning)
+    
+    if meta is None:
+        return
+
+    if gp.is_gp(x):
+        if not x.find_me_in([meta.my_family().get('x')]):
+            warnings.warn(f"The parameter {x} is not the known x-component ({meta.my_family().get('x')}) of the parameter {meta}!", Warning)
+
+    if gp.is_gp(y):
+        if not y.find_me_in([meta.my_family().get('y')]):
+            warnings.warn(f"The parameter {y} is not the known y-component ({meta.my_family().get('y')}) of the parameter {meta}!", Warning)
+
+    
