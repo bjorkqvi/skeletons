@@ -44,7 +44,7 @@ def test_cf():
 
 
 def test_cf_several():
-    @add_magnitude(name=gp.wind.Wind("wind2"), x="u", y="v")
+    @add_magnitude(name=gp.wind.Wind("wind2"), x="u", y="v", disable_direction=True)
     @add_magnitude(name=gp.wind.Wind, x="u", y="v", direction=gp.wind.WindDir)
     @add_datavar(gp.wind.Wind("umag"), default_value=1)
     @add_datavar(gp.wind.YWind("vmodel"), default_value=1)

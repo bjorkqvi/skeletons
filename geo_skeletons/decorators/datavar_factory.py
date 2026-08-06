@@ -7,7 +7,7 @@ import geo_parameters as gp
 import dask.array as da
 import xarray as xr
 from geo_skeletons.variables import DataVar
-
+import warnings
 
 def add_datavar(
     name: Union[str, MetaParameter],
@@ -78,9 +78,10 @@ def add_datavar(
         if isinstance(name, DataVar):
             data_var = name
             name_str = data_var.name
+            consistency_check_of_set_parameters(data_var.meta, dir_type)
         else:
             name_str, meta = gp.decode(name)
-
+            consistency_check_of_set_parameters(meta, dir_type)
             data_var = DataVar(
                 name=name_str,
                 meta=meta,
@@ -88,7 +89,7 @@ def add_datavar(
                 default_value=default_value,
                 dir_type=dir_type,
         )
-
+        
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
         c.meta = c.core.meta
 
@@ -121,3 +122,10 @@ def add_datavar(
         default_value = np.nan
 
     return datavar_decorator
+
+
+def consistency_check_of_set_parameters(meta, dir_type):
+    """Warn if all the parameters are not consistent with what is expected based on the metaparameters"""
+    if gp.is_gp(meta):
+        if meta.dir_type() != dir_type:
+            warnings.warn(f"The directional parameter {meta} has a directional type '{meta.dir_type()}', but the provided 'dir_type' is '{dir_type}'! It is highly recommended to keep the classes consistent.", Warning)
