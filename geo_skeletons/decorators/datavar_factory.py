@@ -12,12 +12,12 @@ from geo_skeletons.variables import DataVar
 def add_datavar(
     name: Union[str, MetaParameter],
     coord_group: str = "all",
-    default_value: float = 0.0,
+    default_value: Optional[float] = None,
     dir_type: Optional[bool] = None,
 ):
     """name: name of variable
     coord_group: 'all', 'spatial', 'grid' or 'gridpoint'
-    default_value: float
+    default_value Optional[float]: is np.nan for normal variables and 1.0e-16 for x- and y-components (so that they can be scaled when a direction is set)
     dir_type (for directional parameters): 'from', 'to' or 'math' (Autimatically parsed if name is a MetaParameter)
 
     """
@@ -81,20 +81,11 @@ def add_datavar(
         else:
             name_str, meta = gp.decode(name)
 
-            if (
-                meta is not None
-                and meta.i_am() in ["x", "y"]
-                and np.isclose(default_value, 0)
-            ):
-                def_val = 0.1
-            else:
-                def_val = default_value
-
             data_var = DataVar(
                 name=name_str,
                 meta=meta,
                 coord_group=coord_group,
-                default_value=def_val,
+                default_value=default_value,
                 dir_type=dir_type,
         )
 
@@ -120,5 +111,13 @@ def add_datavar(
 
     if dir_type is None and gp.is_gp(name):
         dir_type = name.dir_type()
+
+
+    if gp.is_gp(name) and name.i_am() in ['x', 'y']:
+        # Can't allow components to have a 0 default value because they are not scalable and loose directional information
+        if default_value is None or np.isclose(default_value, 0):
+            default_value = 1.0e-16
+    elif default_value is None:
+        default_value = np.nan
 
     return datavar_decorator

@@ -1,7 +1,7 @@
 from geo_skeletons import GriddedSkeleton, PointSkeleton
 from geo_skeletons.decorators import add_datavar, add_magnitude
 import numpy as np
-
+import geo_parameters as gp
 
 def test_magnitude_point():
 
@@ -412,3 +412,76 @@ def test_turn_direction():
     np.testing.assert_almost_equal(points.wdir(), ud - 180)
     np.testing.assert_almost_equal(points.u(), -ux)
     np.testing.assert_almost_equal(points.v(), -uy)
+
+def test_set_magnitude_with_gp():
+    @add_magnitude(name=gp.wind.Wind, x=gp.wind.XWind, y=gp.wind.YWind, direction=gp.wind.WindDir)
+    @add_datavar(gp.wind.XWind)
+    @add_datavar(gp.wind.YWind)
+    class Magnitude(GriddedSkeleton):
+        pass
+    
+    assert Magnitude.core.magnitudes() == [gp.wind.Wind.name]
+    assert Magnitude.core.directions() == [gp.wind.WindDir.name]
+    assert Magnitude.core.get_dir_type(gp.wind.WindDir.name) =='from'
+    assert set(Magnitude.core.data_vars()) == {gp.wind.YWind.name, gp.wind.XWind.name}
+
+
+def test_set_magnitude_with_gp_decode_dir():
+    @add_magnitude(name=gp.wind.Wind, x=gp.wind.XWind, y=gp.wind.YWind)
+    @add_datavar(gp.wind.XWind)
+    @add_datavar(gp.wind.YWind)
+    class Magnitude(GriddedSkeleton):
+        pass
+    
+    assert Magnitude.core.magnitudes() == [gp.wind.Wind.name]
+    assert Magnitude.core.directions() == [gp.wind.WindDir.name]
+    assert Magnitude.core.get_dir_type(gp.wind.WindDir.name) =='from'
+    assert set(Magnitude.core.data_vars()) == {gp.wind.YWind.name, gp.wind.XWind.name}
+
+
+def test_set_magnitude_with_gp_decode_components():
+    @add_magnitude(name=gp.wind.Wind, direction=gp.wind.WindDir)
+    @add_datavar(gp.wind.XWind)
+    @add_datavar(gp.wind.YWind)
+    class Magnitude(GriddedSkeleton):
+        pass
+    
+    assert Magnitude.core.magnitudes() == [gp.wind.Wind.name]
+    assert Magnitude.core.directions() == [gp.wind.WindDir.name]
+    assert Magnitude.core.get_dir_type(gp.wind.WindDir.name) =='from'
+    assert set(Magnitude.core.data_vars()) == {gp.wind.YWind.name, gp.wind.XWind.name}
+
+def test_set_magnitude_with_gp_decode_components_and_dir():
+    @add_magnitude(name=gp.wind.Wind)
+    @add_datavar(gp.wind.XWind)
+    @add_datavar(gp.wind.YWind)
+    class Magnitude(GriddedSkeleton):
+        pass
+    
+    assert Magnitude.core.magnitudes() == [gp.wind.Wind.name]
+    assert Magnitude.core.directions() == [gp.wind.WindDir.name]
+    assert Magnitude.core.get_dir_type(gp.wind.WindDir.name) =='from'
+    assert set(Magnitude.core.data_vars()) == {gp.wind.YWind.name, gp.wind.XWind.name}
+
+def test_set_magnitude_with_gp_decode_components_set_opposite_dir():
+    @add_magnitude(name=gp.wind.Wind, direction=gp.wind.WindDirTo)
+    @add_datavar(gp.wind.XWind)
+    @add_datavar(gp.wind.YWind)
+    class Magnitude(GriddedSkeleton):
+        pass
+    
+    assert Magnitude.core.magnitudes() == [gp.wind.Wind.name]
+    assert Magnitude.core.directions() == [gp.wind.WindDir.name]
+    assert Magnitude.core.get_dir_type(gp.wind.WindDir.name) =='to'
+    assert set(Magnitude.core.data_vars()) == {gp.wind.YWind.name, gp.wind.XWind.name}
+
+def test_set_magnitude_with_gp_decode_components_and_disable_direction():
+    @add_magnitude(name=gp.wind.Wind, disable_direction=True)
+    @add_datavar(gp.wind.XWind)
+    @add_datavar(gp.wind.YWind)
+    class Magnitude(GriddedSkeleton):
+        pass
+    
+    assert Magnitude.core.magnitudes() == [gp.wind.Wind.name]
+    assert Magnitude.core.directions() == []
+    assert set(Magnitude.core.data_vars()) == {gp.wind.YWind.name, gp.wind.XWind.name}
