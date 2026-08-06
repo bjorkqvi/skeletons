@@ -269,10 +269,21 @@ class Skeleton:
             >>>     pass
         """
         new_cls = type(_modified_name(cls.__name__), (cls,), {})
-        return add_datavar(
-            name=name, coord_group=coord_group, default_value=default_value
-        )(new_cls)
+        if not isinstance(name, list):
+            name = [name]
 
+        if not isinstance(coord_group, list):
+            coord_group = [coord_group] * len(name)
+        if not isinstance(default_value, list):
+            default_value = [default_value] * len(name)
+        
+        for na, cg, dv in zip(name, coord_group, default_value):
+            new_cls = add_datavar(
+                name=na, coord_group=cg, default_value=dv
+            )(new_cls)
+        
+        return new_cls
+    
     @classmethod
     def add_magnitude(
         cls,
