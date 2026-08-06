@@ -117,6 +117,7 @@ def test_freq_dir_time():
         "long_name": "wave_direction",
         "standard_name": "wave_direction",
         "units": "deg",
+        'rotated_according_to': 'wgs84',
     }
     assert points.meta.get("time") == {}
     assert points.meta.get("freq") == points.ds().freq.attrs
@@ -135,6 +136,7 @@ def test_dirto():
         "long_name": "wave_direction",
         "standard_name": "wave_to_direction",
         "units": "deg",
+        'rotated_according_to': 'wgs84'
     }
 
     assert points.meta.get("dirs") == points.ds().dirs.attrs
