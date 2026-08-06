@@ -149,11 +149,19 @@ def test_gridded_added_coord_and_var():
     assert points.core.coords("all") == ["y", "x", "z", "w"]
     assert points.core.coords("grid") == ["y", "x", "z"]
     assert points.core.coords("gridpoint") == ["w"]
-    assert points.core.data_vars() == [
+
+    assert points.core.data_vars('nonspatial') == [
         "eta_all",
         "eta_grid",
         "eta_gridpoint",
     ]
+    assert points.core.data_vars() == [
+        'eta_all', 
+        'eta_grid', 
+        'eta_gridpoint', 
+        'eta_spatial'
+    ]
+
     assert points.eta_all(empty=True).shape == (3, 2, 4, 5)
     assert points.eta_grid(empty=True).shape == (3, 2, 4)
     assert points.eta_gridpoint(empty=True).shape == (5,)
@@ -166,10 +174,16 @@ def test_gridded_added_coord_and_var():
     assert points2.core.coords("all") == ["lat", "lon", "z", "w"]
     assert points2.core.coords("grid") == ["lat", "lon", "z"]
     assert points2.core.coords("gridpoint") == ["w"]
-    assert points2.core.data_vars() == [
+    assert points2.core.data_vars('nonspatial') == [
         "eta_all",
         "eta_grid",
         "eta_gridpoint",
+    ]
+    assert points2.core.data_vars() == [
+        'eta_all', 
+        'eta_grid', 
+        'eta_gridpoint', 
+        'eta_spatial'
     ]
 
     assert points2.shape("eta_all") == (3, 2, 4, 5)
@@ -191,10 +205,18 @@ def test_gridded_added_coord_and_var():
     assert Expanded.core.coords("all") == ["y", "x", "z", "w"]
     assert Expanded.core.coords("grid") == ["y", "x", "z"]
     assert Expanded.core.coords("gridpoint") == ["w"]
+
+    assert Expanded.core.data_vars('nonspatial') == [
+        "eta_all",
+        "eta_grid",
+        "eta_gridpoint",
+    ]
+
     assert Expanded.core.data_vars() == [
         "eta_all",
         "eta_grid",
         "eta_gridpoint",
+        "eta_spatial"
     ]
     assert points.core.coords("spatial") == ["y", "x"]
     assert points.core.data_vars("spatial") == ["eta_spatial"]
