@@ -497,7 +497,7 @@ class CoordinateManager:
                     return mask
         return None
 
-    def data_vars(self, coord_group: str = "nonspatial") -> list[str]:
+    def data_vars(self, coord_group: str = "noncoordinate") -> list[str]:
         """Returns a list of data variables added to a specific coordinate group.
 
         This method retrieves the names of data variables that have been added to the Skeleton 
@@ -509,10 +509,11 @@ class CoordinateManager:
                 Must be one of:
                 - `all`: Returns all added data variables.
                 - `'spatial'`: Returns data variables associated with spatial coordinates (e.g., `inds`, `x`, `y`).
-                - `'nonspatial'`: Returns data variables not associated with spatial coordinates (default behaviour).
+                - `'nonspatial'`: Returns data variables not associated with spatial coordinates.
                 - `'grid'`: Returns data variables associated with grid coordinates (e.g., `time`, `z`) and spatial coordinates.
                 - `'gridpoint'`: Returns data variables associated with grid point coordinates 
                 (e.g., `frequency`, `direction`).
+                - `noncoordinate` (default): Returns all added data variables that are not coordinates (e.g. lon/lat). Equivalent to `all` for GriddedSkeletons.
 
         Returns:
             list[str]: A list of data variable names in the specified coordinate group.
@@ -614,13 +615,13 @@ class CoordinateManager:
             
         
         """
-        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
+        if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint","noncoordinate"]:
             print(
-                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
+                "Coord group needs to be 'all', 'spatial', 'nonspatial','grid', 'gridpoint' or 'noncoordinate'."
             )
             return None
 
-        if coord_group == "all":
+        if coord_group in ["all", "noncoordinate"]:
             vars = self._added_vars.values()
         elif coord_group == "nonspatial":
             vars = [
@@ -639,8 +640,10 @@ class CoordinateManager:
                 if var.coord_group == coord_group
             ]
 
-        return move_time_and_spatial_to_front([var.name for var in vars if var.name])
-
+        return_vars = move_time_and_spatial_to_front([var.name for var in vars if var.name])
+        if coord_group == 'noncoordinate':
+            return_vars = list(set(return_vars) - {'x','y','lon','lat'})
+        return return_vars
     def magnitudes(self, coord_group: str = "all") -> list[str]:
         """Returns a list of magnitudes that have been added to a specific coordinate group.
 
