@@ -1045,8 +1045,8 @@ class Skeleton:
             inds_dict = self.yank_point(**{x: x_slice, y: y_slice})
             return inds_dict["inds"]
 
-        x_inds = _determine_inds(x_slice, self.get(x))
-        y_inds = _determine_inds(y_slice, self.get(y))
+        x_inds = _determine_inds(x_slice, self.get(x, strict=False))
+        y_inds = _determine_inds(y_slice, self.get(y, strict=False))
 
         return np.array(list(set(x_inds).intersection(set(y_inds))))
         
@@ -1342,7 +1342,7 @@ class Skeleton:
             ind = kwargs.get(dim, slice(len(var)))
             index_list[n] = ind
         
-        old_data = self.get(name, squeeze=False).copy()
+        old_data = self.get(name, squeeze=False, strict=False).copy()
         N = len(old_data.shape)
         data_str = "old_data["
         for n in range(N):
