@@ -33,7 +33,7 @@ def add_mask(
     """
 
     def mask_decorator(c):
-        def get_mask(self, empty: bool = False, **kwargs) -> np.ndarray:
+        def get_mask(self, strict: bool = False, empty: bool = False, **kwargs) -> np.ndarray:
             """Returns bool array of the mask.
 
             Set empty=True to get an empty mask (even if it doesn't exist)
@@ -42,12 +42,12 @@ def add_mask(
             """
 
             mask = self.get(
-                f"{name_str}_mask", empty=empty, **kwargs
+                f"{name_str}_mask", strict=strict,empty=empty, **kwargs
             )
 
             return mask
 
-        def get_not_mask(self, empty: bool = False, **kwargs):
+        def get_not_mask(self, strict: bool = False, empty: bool = False, **kwargs):
             """Returns bool array of the opposite mask.
 
             Set empty=True to get an empty mask (even if it doesn't exist)
@@ -55,7 +55,7 @@ def add_mask(
             **kwargs can be used for slicing data.
             """
             mask = self.get(
-                f"{opposite_name_str}_mask", empty=empty, **kwargs
+                f"{opposite_name_str}_mask", strict=strict, empty=empty, **kwargs
             )
             return mask
 
@@ -67,9 +67,9 @@ def add_mask(
             crs: Optional[Union[int, str, dict]] = None,
             **kwargs,
         ):
-            mask = get_mask(self, **kwargs)
+            mask = get_mask(self, strict=strict, **kwargs)
             if mask is None:
-                mask = get_mask(self, empty=True, **kwargs)
+                return None
 
             coord = coord or self.core.x_str
 
@@ -90,9 +90,9 @@ def add_mask(
             crs: Optional[Union[int, str, dict]] = None,
             **kwargs,
         ):
-            mask = get_not_mask(self, **kwargs)
+            mask = get_not_mask(self, strict=strict, **kwargs)
             if mask is None:
-                mask = get_not_mask(self, empty=True, **kwargs)
+                return None
 
             coord = coord or self.core.x_str
 
