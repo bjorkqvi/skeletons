@@ -126,8 +126,16 @@ def test_get_points():
 
     data = WaveHeight(lon=(10, 30), lat=(30, 50))
     data.set_spacing(nx=3, ny=3)
+    assert data.sea_mask(strict=True) is None
+    assert data.sea_points(strict=True) is None
+    assert data.land_mask(strict=True) is None
+    assert data.land_points(strict=True) is None
+
+
     mask = data.sea_mask(empty=True)
 
+
+    
     lon, lat = data.sea_points()
     lon_all, lat_all = data.lonlat()
     np.testing.assert_array_almost_equal(lon, lon_all)
