@@ -203,7 +203,7 @@ class DatasetManager:
 
         data = ds.get(name)
         if data is None:
-            if strict:
+            if strict and not empty:
                 return None
             else:
                 empty = True

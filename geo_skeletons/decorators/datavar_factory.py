@@ -26,7 +26,7 @@ def add_datavar(
         def get_var(
             self,
             empty: bool = False,
-            strict: bool = False,
+            strict: bool = True,
             dir_type: Optional[str] = None,
             data_array: bool = False,
             squeeze: bool = True,

@@ -31,6 +31,7 @@ def test_add_datavar_on_top():
 
     points.set_hs()
     points.set_tp()
+    
     assert "hs" in list(points.ds().keys())
     assert "tp" in list(points.ds().keys())
     np.testing.assert_almost_equal(np.mean(points.tp()), 5.0)

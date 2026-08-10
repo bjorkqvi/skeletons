@@ -1712,7 +1712,7 @@ class Skeleton:
     def get(
         self,
         name: str,
-        strict: bool = False,
+        strict: bool = True,
         empty: bool = False,
         data_array: bool = False,
         dir_type: Optional[str] = None,
@@ -1733,7 +1733,7 @@ class Skeleton:
             name (str): The name of the variable to retrieve.
             strict (bool, optional): If `True`, returns `None` if the data is not set. 
                 If `False`, returns an empty array (i.e. filled with default values) if the variable is unset. 
-                Defaults to False.
+                Defaults to True.
             empty (bool, optional): If `True`, returns an array filled with default values, 
                 even if the variable is already set. Defaults to False.
             data_array (bool, optional): If `True`, returns the data as an xarray DataArray. 
@@ -1904,8 +1904,12 @@ class Skeleton:
                 empty=empty,
                 **kwargs,
             )
-            if mask_is_secondary:
+            if mask_is_secondary and data is not None:
+
+                # try:
                 data = np.logical_not(data).astype(int)
+                # except AttributeError:
+                #     breakpoint()
         elif self.core.get_dir_type(name) is not None: # Directional variable
             if rotated:
                 data = self._get_data(
