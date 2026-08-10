@@ -56,18 +56,21 @@ def test_triggered_land_mask():
     )
 
     np.testing.assert_array_almost_equal(grid.sea_points(), grid.get("sea_points"))
+
+    assert grid.sea_points(coord="x", strict=True) == grid.get("sea_points", coord="x")
+
     np.testing.assert_array_almost_equal(
-        grid.sea_points(coord="x"), grid.get("sea_points", coord="x")
+        grid.sea_points(coord="x"), grid.get("sea_points", coord="x", strict=False)
     )
     np.testing.assert_array_almost_equal(
         grid.sea_points(coord="x", crs=(33, "W")),
-        grid.get("sea_points", coord="x", crs=(33, "W")),
+        grid.get("sea_points", coord="x", crs=(33, "W"), strict=False),
     )
-    np.testing.assert_array_almost_equal(grid.land_points(), grid.get("land_points"))
+    np.testing.assert_array_almost_equal(grid.land_points(), grid.get("land_points", strict=False))
     np.testing.assert_array_almost_equal(
-        grid.land_points(coord="x"), grid.get("land_points", coord="x")
+        grid.land_points(coord="x"), grid.get("land_points", coord="x", strict=False)
     )
     np.testing.assert_array_almost_equal(
         grid.land_points(coord="x", crs=(33, "W")),
-        grid.get("land_points", coord="x", crs=(33, "W")),
+        grid.get("land_points", coord="x", crs=(33, "W"), strict=False),
     )
