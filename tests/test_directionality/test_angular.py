@@ -17,13 +17,13 @@ def test_angular_str():
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
 
-    np.testing.assert_almost_equal(np.mean(points.u()), 1)
-    np.testing.assert_almost_equal(np.mean(points.v()), -1)
-    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.u(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.v(strict=False)), -1)
+    np.testing.assert_almost_equal(np.mean(points.wind(strict=False)), 2**0.5)
 
-    np.testing.assert_almost_equal(np.mean(points.wdir()), 315)
-    np.testing.assert_almost_equal(np.mean(points.stokes()), 0.1)
-    np.testing.assert_almost_equal(np.mean(points.stokes_dir()), 0)
+    np.testing.assert_almost_equal(np.mean(points.wdir(strict=False)), 315)
+    np.testing.assert_almost_equal(np.mean(points.stokes(strict=False)), 0.1)
+    np.testing.assert_almost_equal(np.mean(points.stokes_dir(strict=False)), 0)
 
     assert points.u(strict=True) is None
     assert points.v(strict=True) is None
@@ -65,12 +65,12 @@ def test_angular_gp():
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
 
-    np.testing.assert_almost_equal(np.mean(points.u()), 1)
-    np.testing.assert_almost_equal(np.mean(points.v()), -1)
-    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
-    np.testing.assert_almost_equal(np.mean(points.wdir()), 315)
-    np.testing.assert_almost_equal(np.mean(points.us()), 0.1)
-    np.testing.assert_almost_equal(np.mean(points.us_dir()), 0)
+    np.testing.assert_almost_equal(np.mean(points.u(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.v(strict=False)), -1)
+    np.testing.assert_almost_equal(np.mean(points.wind(strict=False)), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir(strict=False)), 315)
+    np.testing.assert_almost_equal(np.mean(points.us(strict=False)), 0.1)
+    np.testing.assert_almost_equal(np.mean(points.us_dir(strict=False)), 0)
 
     assert points.u(strict=True) is None
     assert points.v(strict=True) is None
@@ -117,12 +117,12 @@ def test_angular_gp_flip_dir():
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7), chunks="auto")
     points.dask.deactivate()
 
-    np.testing.assert_almost_equal(np.mean(points.u()), 1)
-    np.testing.assert_almost_equal(np.mean(points.v()), -1)
-    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
-    np.testing.assert_almost_equal(np.mean(points.wdir()), 135)
-    np.testing.assert_almost_equal(np.mean(points.us()), 0.1)
-    np.testing.assert_almost_equal(np.mean(points.us_dir()), 0)
+    np.testing.assert_almost_equal(np.mean(points.u(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.v(strict=False)), -1)
+    np.testing.assert_almost_equal(np.mean(points.wind(strict=False)), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir(strict=False)), 135)
+    np.testing.assert_almost_equal(np.mean(points.us(strict=False)), 0.1)
+    np.testing.assert_almost_equal(np.mean(points.us_dir(strict=False)), 0)
 
     assert points.u(strict=True) is None
     assert points.v(strict=True) is None
