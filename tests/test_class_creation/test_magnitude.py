@@ -12,16 +12,15 @@ def test_magnitude_point():
         pass
 
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7))
-    u = points.u()
 
-    np.testing.assert_almost_equal(np.mean(points.u()), 1)
-    np.testing.assert_almost_equal(np.mean(points.v()), 1)
-    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
-    np.testing.assert_almost_equal(np.mean(points.wdir()), 225)
-    assert points.u(strict=True) is None
-    assert points.v(strict=True) is None
-    assert points.wind(strict=True) is None
-    assert points.wdir(strict=True) is None
+    np.testing.assert_almost_equal(np.mean(points.u(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.v(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.wind(strict=False)), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir(strict=False)), 225)
+    assert points.u() is None
+    assert points.v() is None
+    assert points.wind() is None
+    assert points.wdir() is None
 
     wind = (points.u(empty=True) ** 2 + points.v(empty=True) ** 2) ** 0.5
     np.testing.assert_almost_equal(points.wind(empty=True), wind)
@@ -82,14 +81,14 @@ def test_magnitude_gridded():
     points = Magnitude(x=(0, 1, 2), y=(5, 6, 7, 8), chunks="auto")
     points.dask.deactivate()
 
-    np.testing.assert_almost_equal(np.mean(points.u()), 1)
-    np.testing.assert_almost_equal(np.mean(points.v()), 1)
-    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
-    np.testing.assert_almost_equal(np.mean(points.wdir()), 225)
-    assert points.u(strict=True) is None
-    assert points.v(strict=True) is None
-    assert points.wind(strict=True) is None
-    assert points.wdir(strict=True) is None
+    np.testing.assert_almost_equal(np.mean(points.u(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.v(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.wind(strict=False)), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir(strict=False)), 225)
+    assert points.u() is None
+    assert points.v() is None
+    assert points.wind() is None
+    assert points.wdir() is None
     wind = (
         points.u(empty=True, dask=False) ** 2 + points.v(empty=True, dask=False) ** 2
     ) ** 0.5
@@ -153,15 +152,15 @@ def test_add_magnitude():
     points.dask.activate(rechunk=False)
     points.dask.deactivate()
 
-    np.testing.assert_almost_equal(np.mean(points.u()), 1)
-    np.testing.assert_almost_equal(np.mean(points.v()), 1)
-    np.testing.assert_almost_equal(np.mean(points.wind()), 2**0.5)
-    np.testing.assert_almost_equal(np.mean(points.wdir()), 225)
+    np.testing.assert_almost_equal(np.mean(points.u(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.v(strict=False)), 1)
+    np.testing.assert_almost_equal(np.mean(points.wind(strict=False)), 2**0.5)
+    np.testing.assert_almost_equal(np.mean(points.wdir(strict=False)), 225)
 
-    assert points.u(strict=True) is None
-    assert points.v(strict=True) is None
-    assert points.wind(strict=True) is None
-    assert points.wdir(strict=True) is None
+    assert points.u() is None
+    assert points.v() is None
+    assert points.wind() is None
+    assert points.wdir() is None
     wind = (
         points.u(empty=True, dask=False) ** 2 + points.v(empty=True, dask=False) ** 2
     ) ** 0.5

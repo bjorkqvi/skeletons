@@ -1,9 +1,14 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import numpy as np
 import xarray as xr
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager
+if TYPE_CHECKING:
+    from .managers.coordinate_manager import CoordinateManager
+
 from .decoders import (
     identify_core_in_ds,
     set_core_vars_to_skeleton_from_ds,
@@ -1622,7 +1627,7 @@ class Skeleton:
         x_component, y_component = obj.x, obj.y
         if obj.direction is None:
             raise SkeletonError(f"Cannot set a magnitude '{name}' that has no associated direction! Set componensts '{obj.x}' and '{obj.y}' separatesly, or modify class to have an associated direction.")
-        dir_data = self.get(obj.direction.name, dir_type="math", squeeze=False)
+        dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False)
 
         s = dask_computations.sin(dir_data)
         c = dask_computations.cos(dir_data)
@@ -1818,37 +1823,7 @@ class Skeleton:
             )
 
         if gp.is_gp(name):
-            if verbose:
-                print(f"Requested geo-parameter {name}")
-            
-            if name.dir_type() is None:
-                names = self.core.find(name)
-
-            else:
-                # Allows getting with e.g. gp.wave.DirpTo when skeleton has gp.wave.Dirp
-                for key, var in name.my_family().items():
-                    if key in {'direction', 'opposite_direction'}:
-                        names = self.core.find(var)
-                        if len(names) > 0:
-                            if verbose:
-                                print(f"Found directional geo-parameter {var} in dataset")
-                            if dir_type is None:
-                                dir_type = name.dir_type()
-                                if verbose:
-                                    print(f"'dir_type' not specified, setting to '{dir_type}'")
-                            break
-            
-            
-            if len(names) == 0:
-                raise UnknownVariableError(f"Variable matching {name} not found!")
-            if len(names) > 1:
-                raise UnknownVariableError(
-                    f"Found several variables ({names}) matching {name}!"
-                )
-            name = names[0]
-            if verbose:
-                print(f"Reading variable '{name}'")
-
+            name, dir_type = _find_variable_in_core(name, self.core, dir_type, verbose)
         if name == "x":
             return self.x(strict=strict, **kwargs)
         elif name == "y":
@@ -1884,12 +1859,16 @@ class Skeleton:
                 **kwargs,
             )
         elif name in self.core.mask_points():
+            if dir_type:
+                raise DirTypeError
             if rotated:
                 raise ProjectionError('Cannot rotate mask points!')
             lon, lat = eval(f"self.{name}(strict=strict, **kwargs)")
             return lon, lat
 
         elif name in self.core.masks():
+            if dir_type:
+                raise DirTypeError
             if rotated:
                 raise ProjectionError('Cannot rotate a mask!')
             mask_is_secondary = not self.core._mask_is_primary(name)
@@ -1905,11 +1884,8 @@ class Skeleton:
                 **kwargs,
             )
             if mask_is_secondary and data is not None:
-
-                # try:
                 data = np.logical_not(data).astype(int)
-                # except AttributeError:
-                #     breakpoint()
+
         elif self.core.get_dir_type(name) is not None: # Directional variable
             if rotated:
                 data = self._get_data(
@@ -1934,6 +1910,8 @@ class Skeleton:
                     **kwargs,
                 )
         else:
+            if dir_type:
+                raise DirTypeError
             data = self._get_data(
                 name=name,
                 strict=strict,
@@ -2495,35 +2473,6 @@ class Skeleton:
 
         return  (float(np.min(val)), float(np.max(val)))
     
-    # def extent(self, coord: str, strict: bool = False) -> float:
-    #     """Gives the extent in metres in x- or y-direction.
-
-    #     Cartesian grid: The difference between the edges
-    #     Spherical grid ['x']: Mean of distance between longitude edges for southern and northern edges
-    #     Spherical grid ['y']: Mean of distance between latitude edges for western and eastern edges
-
-    #     Note, that for PointSkeletons the extens is actually a measure of the rectangle covering the points."""
-    #     if coord not in ["x", "y",'lon','lat']:
-    #         raise KeyError("coord need to be 'x', 'y', 'lon' or 'lat'.")
-
-
-    #     if not self.core.is_projected() and strict:
-    #         return None
-
-    #     if self.core.is_projected():
-    #         return np.diff(self.edges(coord))[0]
-
-    #     lon1, lon2 = self.edges("lon")
-    #     lat1, lat2 = self.edges("lat")
-    #     if coord in ['x','lon']:
-    #         d_south = distance_2points(lat1=lat1, lon1=lon1, lat2=lat1, lon2=lon2)
-    #         d_north = distance_2points(lat1=lat2, lon1=lon1, lat2=lat2, lon2=lon2)
-    #         return (d_south+d_north)/2
-    #     else:
-    #         d_west = distance_2points(lat1=lat1, lon1=lon1, lat2=lat2, lon2=lon1)
-    #         d_east = distance_2points(lat1=lat1, lon1=lon2, lat2=lat2, lon2=lon2)
-    #         return (d_west + d_east)/2
-
     def nx(self) -> int:
         """Length of x/lon-vector."""
         return len(self.x(native=True))
@@ -2944,3 +2893,41 @@ def _determine_inds(coord_slice, all_vals):
         )
     )[0]
     return coord_inds
+
+
+def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_type: str, verbose: bool):
+    """Finds a geo-parameter in the core, accounting for that we might have been given an opposite direction (DirTo instead of Dir)
+    
+    Sets the dir_type accordingly if not explicitly given by the user"""
+    if verbose:
+        print(f"Requested geo-parameter {name}")
+    
+    if name.dir_type() is None:
+        names = core.find(name)
+
+    else:
+        # Allows getting with e.g. gp.wave.DirpTo when skeleton has gp.wave.Dirp
+        for key, var in name.my_family().items():
+            if key in {'direction', 'opposite_direction'}:
+                names = core.find(var)
+                if len(names) > 0:
+                    if verbose:
+                        print(f"Found directional geo-parameter {var} in dataset")
+                    if dir_type is None:
+                        dir_type = name.dir_type()
+                        if verbose:
+                            print(f"'dir_type' not specified, setting to '{dir_type}'")
+                    break
+    
+    
+    if len(names) == 0:
+        raise UnknownVariableError(f"Variable matching {name} not found!")
+    if len(names) > 1:
+        raise UnknownVariableError(
+            f"Found several variables ({names}) matching {name}!"
+        )
+    name = names[0]
+    if verbose:
+        print(f"Reading variable '{name}'")
+
+    return name, dir_type
