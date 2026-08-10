@@ -1655,7 +1655,7 @@ class Skeleton:
         Data needs to be exactly right shape."""
         obj = self.core.get(name)
         x_component, y_component = obj.x, obj.y
-        mag_data = self.get(obj.magnitude.name, squeeze=False)
+        mag_data = self.get(obj.magnitude.name, squeeze=False, strict=False)
 
         dir_type = dir_type or obj.dir_type
 
@@ -1738,7 +1738,7 @@ class Skeleton:
             name (str): The name of the variable to retrieve.
             strict (bool, optional): If `True`, returns `None` if the data is not set. 
                 If `False`, returns an empty array (i.e. filled with default values) if the variable is unset. 
-                Defaults to True.
+                Defaults to False.
             empty (bool, optional): If `True`, returns an array filled with default values, 
                 even if the variable is already set. Defaults to False.
             data_array (bool, optional): If `True`, returns the data as an xarray DataArray. 
