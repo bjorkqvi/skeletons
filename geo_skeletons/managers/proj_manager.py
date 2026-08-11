@@ -499,7 +499,7 @@ class ProjManager:
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
         return alpha
 
-    def _rotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
+    def _rotate_u_v(self, x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
         """Rotates x,y component data to the set coordinate reference system """
         if x_data is None or y_data is None:
             raise ProjectionError(f"Data for both components not found. Cannot rotate!")
@@ -514,7 +514,7 @@ class ProjManager:
 
         return x_rot, y_rot
 
-    def _unrotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
+    def _unrotate_u_v(self,  x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
         """*Unrotates x,y component data from the set coordinate reference system """
 
         if x_data is None or y_data is None:
@@ -531,7 +531,7 @@ class ProjManager:
 
         return x_unrot, y_unrot
 
-def _rotate_components(x_data, y_data, alpha) -> tuple[xr.DataArray, xr.DataArray]:
+def _rotate_components(x_data:xr.DataArray, y_data:xr.DataArray, alpha: xr.DataArray) -> tuple[xr.DataArray, xr.DataArray]:
     """Rotates given components with alpha values. Keeps metadata intact."""
     # To preserve metadata
     xmeta = x_data.attrs
