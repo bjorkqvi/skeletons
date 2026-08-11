@@ -377,7 +377,6 @@ def test_scale_magnitude():
 
     np.testing.assert_almost_equal(points.wdir(), ud)
     np.testing.assert_almost_equal(points.wind(), u)
-
     points.set_wind(umag * 2)
     np.testing.assert_almost_equal(points.wind(), u * 2)
     np.testing.assert_almost_equal(points.wdir(), ud)

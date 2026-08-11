@@ -28,6 +28,7 @@ from .errors import (
     UnknownVariableError,
     MissingDatasetError
 )
+import warnings
 from collections.abc import Iterable
 from typing import Iterable
 from copy import deepcopy
@@ -1364,6 +1365,8 @@ class Skeleton:
         coords: Optional[list[str]] = None,
         silent: bool = True,
         chunks: Optional[Union[tuple, str]] = None,
+        rotated: bool = False, 
+        verbose: bool = False, 
     ) -> None:
         """Sets or updates the data for a variable in the Skeleton.
 
@@ -1449,16 +1452,15 @@ class Skeleton:
                 f"'name' must be of type 'str', or 'MetaParameter' not '{type(name).__name__}'!"
             )
         
-        if gp.is_gp(name):
-            names = self.core.find(name)
-            if len(names) == 0:
-                raise UnknownVariableError(f"Variable matching {name} not found!")
-            if len(names) > 1:
-                raise UnknownVariableError(
-                    f"Found several variables ({names}) matching {name}!"
-                )
-            name = names[0]
 
+        # Allows for setting using opposite direction variable
+        if gp.is_gp(name):
+            name, dir_type = _find_variable_in_core(name, self.core, dir_type, verbose)
+
+        _dir_type_consistency_check(name, self.core, dir_type)
+        _rotated_consistency_check(name, self.core, rotated)
+
+        # Used to set metadata for the first time
         first_set = (
             name in self._ds_manager.empty_vars()
             or name in self._ds_manager.empty_masks()
@@ -1493,18 +1495,11 @@ class Skeleton:
             fit_to_data, 
         )
 
-        if dir_type not in ["to", "from", "math", None]:
-            raise DirTypeError(
-                f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
-            )
-
         # Masks are stored as integers
         if name in self.core.masks("all"):
             data = data.astype(int)
 
         if name in self.core.magnitudes("all"):
-            if dir_type:
-                raise DirTypeError
             self._set_magnitude(
                 name=name,
                 data=data,
@@ -1824,6 +1819,10 @@ class Skeleton:
 
         if gp.is_gp(name):
             name, dir_type = _find_variable_in_core(name, self.core, dir_type, verbose)
+
+        _dir_type_consistency_check(name, self.core, dir_type)
+        _rotated_consistency_check(name, self.core, rotated)
+
         if name == "x":
             return self.x(strict=strict, **kwargs)
         elif name == "y":
@@ -1833,16 +1832,8 @@ class Skeleton:
         elif name == "lat":
             return self.lat(strict=strict, **kwargs)
 
-        if dir_type not in ["to", "from", "math", None]:
-            raise DirTypeError(
-                f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
-            )
 
         if name in self.core.magnitudes():
-            if dir_type:
-                raise DirTypeError
-            if rotated:
-                raise ProjectionError('Cannot rotate a magnitude!')
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
@@ -1859,18 +1850,9 @@ class Skeleton:
                 **kwargs,
             )
         elif name in self.core.mask_points():
-            if dir_type:
-                raise DirTypeError
-            if rotated:
-                raise ProjectionError('Cannot rotate mask points!')
             lon, lat = eval(f"self.{name}(strict=strict, **kwargs)")
             return lon, lat
-
         elif name in self.core.masks():
-            if dir_type:
-                raise DirTypeError
-            if rotated:
-                raise ProjectionError('Cannot rotate a mask!')
             mask_is_secondary = not self.core._mask_is_primary(name)
             if mask_is_secondary:
                 primary_name = self.core._find_primary_mask(name)
@@ -1910,8 +1892,6 @@ class Skeleton:
                     **kwargs,
                 )
         else:
-            if dir_type:
-                raise DirTypeError
             data = self._get_data(
                 name=name,
                 strict=strict,
@@ -2895,7 +2875,7 @@ def _determine_inds(coord_slice, all_vals):
     return coord_inds
 
 
-def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_type: str, verbose: bool):
+def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_type: str, verbose: bool) -> str:
     """Finds a geo-parameter in the core, accounting for that we might have been given an opposite direction (DirTo instead of Dir)
     
     Sets the dir_type accordingly if not explicitly given by the user"""
@@ -2931,3 +2911,33 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
         print(f"Reading variable '{name}'")
 
     return name, dir_type
+
+def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: str):
+    """Checks the consistency of the directional type.
+
+    Raiser DirTypeError if no dir_type is possible for the variable.
+    """
+
+    # Catch illegal dir_types that might have been given
+    if dir_type not in ["to", "from", "math", None]:
+        raise DirTypeError(
+            f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
+        )
+
+    core_dir_type = core.get_dir_type(name)
+    if core_dir_type is None: # Non-directional parameter
+        # Don't allow specifying dir_type since it doesn't make any sense
+        if dir_type is not None:
+            raise DirTypeError
+    
+
+def _rotated_consistency_check(name: str, core: CoordinateManager, rotated: bool):
+    if not rotated:
+        return 
+    
+    if name in core.magnitudes():
+        raise ProjectionError('Cannot rotate a magnitude!')
+    elif name in core.mask_points():
+        raise ProjectionError('Cannot rotate mask points!')
+    elif name in core.masks():
+        raise ProjectionError('Cannot rotate a mask!')
