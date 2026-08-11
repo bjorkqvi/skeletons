@@ -1,4 +1,6 @@
 from geo_skeletons.classes import WindGrid
+from geo_skeletons import GriddedSkeleton
+import geo_parameters as gp
 import numpy as np
 
 def test_reproj_southerly_winds_rotated_grid_lon0_0():
@@ -8,36 +10,31 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0():
 
     wind.set_ff(10)
     wind.set_dd(180)
+
     rot = wind.dd(rotated=True)
+    unrot = wind.dd()
 
-    
+    wind.set_dd(rot, rotated=False)
+    np.testing.assert_array_almost_equal(wind.dd(), rot) # Takes them "as is"
+    wind.set_dd(rot, rotated=True)
+    np.testing.assert_array_almost_equal(wind.dd(rotated=True), rot)
+    np.testing.assert_array_almost_equal(wind.dd(), unrot)
 
 
-    ind = np.where(wind.lon()==180)[0][0]
-    np.testing.assert_almost_equal(rot[ind],0)
 
-    ind = np.where(wind.lon()==0)[0][0]
-    np.testing.assert_almost_equal(rot[ind],180)
-    
-        
-    ind = np.where(wind.lon()==90)[0][0]
-    np.testing.assert_almost_equal(rot[ind],90)
-    
-    
-    ind = np.where(wind.lon()==-90)[0][0]
-    np.testing.assert_almost_equal(rot[ind],270)
+def test_reproj_southerly_winds_rotated_grid_lon0_0_dir_variable():
+    proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    wind = GriddedSkeleton.add_time().add_datavar([gp.wind.Wind, gp.wind.WindDir])(lat=10, lon=(-180, 180), time=("2020-01-01 00:00", "2020-01-01 23:00"), crs=proj4)
+    wind.set_spacing(nx=181)
 
-    x, y = wind.xy()
-    ind = np.argmin(x)
+    wind.set_ff(10)
+    wind.set_dd(180)
 
-    np.testing.assert_almost_equal(rot[ind],270)
+    rot = wind.dd(rotated=True)
+    unrot = wind.dd()
 
-    ind = np.argmax(x)
-    np.testing.assert_almost_equal(rot[ind],90)
-
-    ind = np.argmin(y)
-    np.testing.assert_almost_equal(rot[ind],180)
-
-    ind = np.argmax(y)
-    np.testing.assert_almost_equal(rot[ind],0)
-
+    wind.set_dd(rot, rotated=False)
+    np.testing.assert_array_almost_equal(wind.dd(), rot) # Takes them "as is"
+    wind.set_dd(rot, rotated=True)
+    np.testing.assert_array_almost_equal(wind.dd(rotated=True), rot)
+    np.testing.assert_array_almost_equal(wind.dd(), unrot)

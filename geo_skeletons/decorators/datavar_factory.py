@@ -31,6 +31,8 @@ def add_datavar(
             data_array: bool = False,
             squeeze: bool = True,
             dask: Optional[bool] = None,
+            rotated: bool = False, 
+            verbose: bool = False,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the data variable.
@@ -47,6 +49,8 @@ def add_datavar(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
+                rotated=rotated,
+                verbose=verbose,
                 **kwargs,
             )
 
@@ -60,6 +64,7 @@ def add_datavar(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
+            rotated: bool = False,
             silent: bool = True,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
@@ -72,6 +77,7 @@ def add_datavar(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
+                rotated=rotated,
                 silent=silent,
             )
 
