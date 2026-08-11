@@ -1510,12 +1510,40 @@ class Skeleton:
                 data=data,
                 dir_type=dir_type,
             )
+
+            if rotated:
+                data = self.get(name, dir_type='math', data_array=True, squeeze=False)
+                x_data = dask_computations.cos(data)
+                y_data = dask_computations.sin(data)
+                lon, lat = self.lonlat()
+                x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+                data = dir_conversions.compute_math_direction(x_data, y_data)
+
+                self._set_direction(
+                    name=name,
+                    data=data,
+                    dir_type="math",
+                )
         else:
             self._set_data(
                 name=name,
                 data=data,
                 dir_type=dir_type,
             )
+            if rotated:
+                data = self.get(name, dir_type='math', data_array=True, squeeze=False)
+                x_data = dask_computations.cos(data)
+                y_data = dask_computations.sin(data)
+                lon, lat = self.lonlat()
+                x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+                data = dir_conversions.compute_math_direction(x_data, y_data)
+
+                self._set_data(
+                    name=name,
+                    data=data,
+                    dir_type="math",
+                )
+
         
         if first_set:
             self.meta._metadata_to_ds(name)
@@ -1833,14 +1861,14 @@ class Skeleton:
             return self.lat(strict=strict, **kwargs)
 
 
-        if name in self.core.magnitudes():
+        if name in self.core.magnitudes("all"):
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
                 empty=empty,
                 **kwargs,
             )
-        elif name in self.core.directions():
+        elif name in self.core.directions("all"):
             data = self._get_direction(
                 name=name,
                 strict=strict,
@@ -1849,7 +1877,7 @@ class Skeleton:
                 rotated=rotated,
                 **kwargs,
             )
-        elif name in self.core.mask_points():
+        elif name in self.core.mask_points("all"):
             lon, lat = eval(f"self.{name}(strict=strict, **kwargs)")
             return lon, lat
         elif name in self.core.masks():
@@ -2941,3 +2969,5 @@ def _rotated_consistency_check(name: str, core: CoordinateManager, rotated: bool
         raise ProjectionError('Cannot rotate mask points!')
     elif name in core.masks():
         raise ProjectionError('Cannot rotate a mask!')
+    elif name in core.data_vars() and core.get_dir_type(name) is None:
+        raise ProjectionError('Cannot rotate a non-directional variable!')

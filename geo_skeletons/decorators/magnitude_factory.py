@@ -41,6 +41,7 @@ def add_magnitude(
             squeeze: bool = True,
             dask: Optional[bool] = None,
             dir_type: Optional[str] = None,
+            rotated: bool=False, 
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
@@ -57,6 +58,7 @@ def add_magnitude(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
+                rotated=rotated,
                 **kwargs,
             )
 
@@ -116,6 +118,7 @@ def add_magnitude(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
+            rotated: bool = False, 
             silent: bool = True,
         ):
             self.set(
@@ -126,6 +129,7 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
+                rotated=rotated,
                 silent=silent,
             )
 
