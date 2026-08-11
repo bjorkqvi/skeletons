@@ -481,14 +481,8 @@ class ProjManager:
         }
         return CRS.from_dict(proj4)
 
-    def _rotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
-        """Rotates x,y component data to the set coordinate reference system """
-        if x_data is None or y_data is None:
-            raise ProjectionError(f"Data for both components not found. Cannot rotate!")
-        
-        if self.crs() is None:
-            raise ProjectionError(f"No projection defined. Cannot rotate!")
-
+    def _calculate_rotation_alpha(self, lon, lat) -> np.ndarray:
+        """Calculates the rotation angle alpha from lon-lat to the set CRS"""
         if isinstance(self.crs(), tuple):
             x = self._utm_x(lon=lon, lat=lat, utm=self.crs())
             y = self._utm_y(lon=lon, lat=lat, utm=self.crs())
@@ -503,28 +497,68 @@ class ProjManager:
             x2, y2 = self._xy(lon=lon, lat=lat+dlat, crs=self.crs())
 
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
+        return alpha
+
+    def _rotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
+        """Rotates x,y component data to the set coordinate reference system """
+        if x_data is None or y_data is None:
+            raise ProjectionError(f"Data for both components not found. Cannot rotate!")
         
-        if hasattr(x_data, 'lon'):
-            x_str, y_str = 'lon', 'lat'
-        elif hasattr(x_data, 'x'):
-            x_str, y_str = 'x', 'y'
-        else:
-            x_str, y_str = 'inds', None
+        if self.crs() is None:
+            raise ProjectionError(f"No projection defined. Cannot rotate!")
 
-        alpha = np.reshape(alpha, grid_shape)
-        # Redoing this to a DataArray automatically broadcasts alpha values to different time steps
-        if y_str is not None:
-            alpha = xr.DataArray(data=alpha,dims=[y_str, x_str], coords={x_str: ([x_str], x_data[x_str].values), y_str: ([y_str], y_data[y_str].values)})
-        else:
-            alpha = xr.DataArray(data=alpha,dims=[x_str], coords={x_str: ([x_str], x_data[x_str].values)})
+        alpha = self._calculate_rotation_alpha(lon, lat)
+        alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
 
-        # To preserve metadata
-        xmeta = x_data.attrs
-        ymeta = y_data.attrs
-        
-        x_rot =x_data * np.cos(alpha) - y_data * np.sin(alpha)
-        y_rot =x_data * np.sin(alpha) + y_data * np.cos(alpha)
+        x_rot, y_rot = _rotate_components(x_data, y_data, alpha)
 
-        x_rot = x_rot.assign_attrs(xmeta)
-        y_rot = y_rot.assign_attrs(ymeta)
         return x_rot, y_rot
+
+    def _unrotate_u_v(self, x_data, y_data, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
+        """*Unrotates x,y component data from the set coordinate reference system """
+
+        if x_data is None or y_data is None:
+            raise ProjectionError(f"Data for both components not found. Cannot unrotate!")
+        
+        if self.crs() is None:
+            raise ProjectionError(f"No projection defined. Cannot unrotate!")
+
+        alpha = self._calculate_rotation_alpha(lon, lat)
+        alpha = -alpha
+        alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
+
+        x_unrot, y_unrot = _rotate_components(x_data, y_data, alpha)
+
+        return x_unrot, y_unrot
+
+def _rotate_components(x_data, y_data, alpha) -> tuple[xr.DataArray, xr.DataArray]:
+    """Rotates given components with alpha values. Keeps metadata intact."""
+    # To preserve metadata
+    xmeta = x_data.attrs
+    ymeta = y_data.attrs
+    
+    x_rot =x_data * np.cos(alpha) - y_data * np.sin(alpha)
+    y_rot =x_data * np.sin(alpha) + y_data * np.cos(alpha)
+
+    x_rot = x_rot.assign_attrs(xmeta)
+    y_rot = y_rot.assign_attrs(ymeta)
+    return x_rot, y_rot
+
+
+def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: np.ndarray, y_data:np.ndarray, grid_shape: tuple[int]) -> xr.DataArray:
+    """Broadcastsa a spatial np.ndarray of alpha values to possible time instances also"""
+    if hasattr(x_data, 'lon'):
+        x_str, y_str = 'lon', 'lat'
+    elif hasattr(x_data, 'x'):
+        x_str, y_str = 'x', 'y'
+    else:
+        x_str, y_str = 'inds', None
+
+    alpha = np.reshape(alpha, grid_shape)
+    # Redoing this to a DataArray automatically broadcasts alpha values to different time steps
+    if y_str is not None:
+        alpha = xr.DataArray(data=alpha,dims=[y_str, x_str], coords={x_str: ([x_str], x_data[x_str].values), y_str: ([y_str], y_data[y_str].values)})
+    else:
+        alpha = xr.DataArray(data=alpha,dims=[x_str], coords={x_str: ([x_str], x_data[x_str].values)})
+
+    return alpha
