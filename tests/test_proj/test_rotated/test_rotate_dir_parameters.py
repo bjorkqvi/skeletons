@@ -12,17 +12,6 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0():
 
     rot = wind.dd(rotated=True)
 
-    # import matplotlib.pyplot as plt
-    # #plt.scatter(x,y,c=lon,s=2)
-    # x,y = wind.xy()
-    # plt.scatter(x,y,c=rot,s=10, label='u')
-
-    # plt.colorbar()
-
-
-    # plt.show()
-
-
     ind = np.where(wind.lon()==180)[0][0]
     np.testing.assert_almost_equal(rot[ind],0)
 
