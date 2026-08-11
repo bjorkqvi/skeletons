@@ -159,15 +159,3 @@ def test_reproj_southerly_winds_rotated_grid_utm_u():
     # Rotation should be minimal in a small area
     np.testing.assert_array_almost_equal(wind.dd(), rot, decimal=0)
 
-
-    # breakpoint()
-    # import matplotlib.pyplot as plt
-    # #plt.scatter(x,y,c=lon,s=2)
-    # x,y = wind.xy()
-    # plt.scatter(x,y,c=rot,s=10, label='u')
-
-    # plt.colorbar()
-    
-
-    # plt.show()
-    # breakpoint()

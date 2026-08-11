@@ -7,6 +7,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_u():
     wind.set_spacing(nx=181)
     wind.set_ff(10)
     wind.set_dd(180)
+    breakpoint()
     rot_u = wind.u(rotated=True) 
     assert rot_u[0] == rot_u[-1]
 
