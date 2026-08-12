@@ -96,7 +96,7 @@ def identify_core_in_ds(
         if ds_coord is not None:
             core_coords_to_ds_coords[coord] = ds_coord
 
-    for var in core.data_vars('nonspatial') + core.masks():
+    for var in core.data_vars('noncoordinate') + core.masks():
         search_param = core.meta_parameter(var) or var
         # Find the parameter straight up
         ds_var_x = _map_geo_parameter_to_ds_variable(
@@ -218,11 +218,7 @@ def identify_core_in_ds(
     else:
         coords_needed = core.coords("init", cartesian=(not lonlat_set))
 
-    # missing_coords = set(coords_needed) - set(core_coords_to_ds_coords.keys())
-    # if not missing_coords.issubset(set(allowed_misses)) and strict:
-    #     raise GridError(
-    #         f"Coordinates {list(missing_coords)} not found in dataset or provided as keywords!"
-    #     )
+
 
     return (
         core_coords_to_ds_coords,
