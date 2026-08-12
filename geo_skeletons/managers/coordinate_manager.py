@@ -273,9 +273,10 @@ class CoordinateManager:
                 if coord.coord_group in [coord_group, "spatial"]
             ]
         elif coord_group == "init":
-            coords = list(set(self.coords()) - set(["inds"])) + self.data_vars(
+
+            coords = list(set(self.coords()) - set(["inds"])) + list(set(self.data_vars(
                 "spatial"
-            )
+            )).intersection({'lon','lat','x','y'}))
             if (
                 not self._is_initialized()
             ):  # Can use either x/y or lon/lat if it has not yet been determined
@@ -943,6 +944,21 @@ class CoordinateManager:
 
         return names
 
+    def is_component(self, name: str) -> bool:
+        """Checks if given parameter is a component, e.g. XWind
+        
+        Retruns True if:
+
+        1) The variable is created using a MetaParameter that is an x- or y-component
+        2) The variable has a Magnitude connected to it
+        """
+
+        # 1)
+        if self.meta_parameter(name).i_am() in {'x','y'}:
+            return True
+
+
+        
     def find(self, param: Union[MetaParameter, str]) -> list[str]:
         """Finds the names of parameters based on a CF standard name or MetaParameter.
 

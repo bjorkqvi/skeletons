@@ -230,3 +230,20 @@ def test_gridded_added_coord_and_var():
         "eta_gridpoint",
         "eta_spatial",
     ]
+
+def test_coord_groups():
+    cls = GriddedSkeleton.add_time().add_datavar('hs').add_datavar('depth', coord_group='spatial')
+    assert set(cls.core.coords('all') ) == {'time', 'x','y'}
+    assert set(cls.core.coords('spatial') ) == {'x','y'}
+    assert set(cls.core.coords('nonspatial') ) == {'time'}
+    assert set(cls.core.coords('grid') ) == {'time', 'x','y'}
+    assert not set(cls.core.coords('gridpoint') ) 
+    assert set(cls.core.coords('init') ) == {'time', 'x','y', 'lon','lat'}
+
+    data = cls(lon=0, lat=0, time='2020-01-01 00:00')
+    assert set(data.core.coords('all') ) == {'time', 'lon','lat'}
+    assert set(data.core.coords('spatial') ) == {'lon','lat'}
+    assert set(data.core.coords('nonspatial') ) == {'time'}
+    assert set(data.core.coords('grid') ) == {'time', 'lon','lat'}
+    assert not set(data.core.coords('gridpoint') )
+    assert set(data.core.coords('init') ) == {'time', 'lon','lat'}
