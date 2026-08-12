@@ -116,8 +116,12 @@ def add_datavar(
             f"'dir_type' needs to be 'to', 'from' or 'math' (or None), not {dir_type}"
         )
 
-    if dir_type is None and gp.is_gp(name):
-        dir_type = name.dir_type()
+    if dir_type is None:
+        if gp.is_gp(name):
+            dir_type = name.dir_type()
+        elif isinstance(name, DataVar):
+            dir_type = name.dir_type
+    
 
 
     if gp.is_gp(name) and name.i_am() in ['x', 'y']:
@@ -134,4 +138,4 @@ def consistency_check_of_set_parameters(meta, dir_type):
     """Warn if all the parameters are not consistent with what is expected based on the metaparameters"""
     if gp.is_gp(meta):
         if meta.dir_type() != dir_type:
-            warnings.warn(f"The directional parameter {meta} has a directional type '{meta.dir_type()}', but the provided 'dir_type' is '{dir_type}'! It is highly recommended to keep the classes consistent.", Warning)
+              warnings.warn(f"The directional parameter {meta} has a directional type '{meta.dir_type()}', but the provided 'dir_type' is '{dir_type}'! It is highly recommended to keep the classes consistent.", Warning)
