@@ -2,6 +2,8 @@ def ravel_regrid(data, new_grid, new_data, verbose, **kwargs):
     """Regrids the data by ravelling. Actually just used to get a GriddedSkeleton to a PointSkeleton that contains the same data
     Can also be used to go from a spherical PointSkeleton to a cartesian PointSkeleton or vice versa"""
     for var in data.core.data_vars():
+        if data.get(var) is None:
+            continue
         if not data.is_gridded():
             new_data.set(var, data.get(var))
         else:
