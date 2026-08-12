@@ -201,12 +201,3 @@ def _rename_coords(
             unused_core_coords_len.append(core_lens.get(coord))
 
     return coords, unused_core_coords, unused_core_coords_len
-
-
-#     # # Data can be given as x-y with trivial y for example
-#     # if "inds" not in coords and is_pointskeleton:
-#     #     for n, ds_c in missed_coords:
-#     #         if len(ds.get(ds_c)) > 1 or max_len_of_missed_coords == 1:
-#     #             coords[n] = "inds"
-#     # coords = [c for c in coords if c is not None]
-#     # return coords

@@ -605,7 +605,7 @@ class Skeleton:
             allowed_misses=list(kwargs.keys()),
             verbose=verbose,
         )
-        
+
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )

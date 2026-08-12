@@ -369,15 +369,13 @@ def _xy_as_mag_dir(var, mag_dir_datavars_in_core):
     if mag is None and dirs is None and op_dirs is None:
         return False
 
-    try:
-        if var.my_family("magnitude").is_in(mag_dir_datavars_in_core):
-            return True
-    except AttributeError:
-        breakpoint()
-    if var.my_family("direction").is_in(mag_dir_datavars_in_core):
+
+    if mag is not None and mag.is_in(mag_dir_datavars_in_core):
+        return True
+    if dirs is not None and dirs.is_in(mag_dir_datavars_in_core):
         return True
 
-    if var.my_family("opposite_direction").is_in(mag_dir_datavars_in_core):
+    if op_dirs is not None and op_dirs.is_in(mag_dir_datavars_in_core):
         return True
 
     return False
