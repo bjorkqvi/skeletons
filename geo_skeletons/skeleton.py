@@ -1056,13 +1056,55 @@ class Skeleton:
         """Determines the inds for a slice if we are using lon/lat to select in a projected grid or vice versa"""
         if x_slice is None and y_slice is None:
             return None, None
+        only_one_given = x_slice is None or y_slice is None
+        if only_one_given:
+            if x_slice is not None and not isinstance(x_slice, slice) and len(np.atleast_1d(x_slice)) == 1:
+                x_slice = slice(x_slice, x_slice)
+            if y_slice is not None and not isinstance(y_slice, slice) and len(np.atleast_1d(y_slice)) == 1:
+                y_slice = slice(y_slice, y_slice)
 
-        x_not_a_slice = x_slice is not None and not isinstance(x_slice, slice)
-        y_not_a_slice = y_slice is not None and not isinstance(y_slice, slice)
+        
+        if x_slice is None or isinstance(x_slice, slice):
+            x_inds = _determine_inds(x_slice, self.ravel(verbose=False).get(x, strict=False))
+        else:
+            x_inds = None
+        if y_slice is None or isinstance(y_slice, slice):
+            y_inds = _determine_inds(y_slice, self.ravel(verbose=False).get(y, strict=False))
+        else:
+            y_inds = None
 
-        if x_not_a_slice and y_not_a_slice and len(np.atleast_1d(x_slice)) == len(np.atleast_1d(y_slice)):
+        if len(np.atleast_1d(x_inds)) == 0:
+            raise SkeletonError(f"No x-points found! Consider using slightly tolerant slices instead of a single exact value.")
+        if len(np.atleast_1d(y_inds)) == 0:
+            raise SkeletonError(f"No y-points found! Consider using slightly tolerant slices instead of a single exact value.")
+
+        if only_one_given:
+            inds = np.array(list(set(x_inds).intersection(set(y_inds))))
+            indy, indx = np.unravel_index(inds, self.size('spatial'))
+            return indx, indy
+       
+        
+        if x_inds is not None:
+            x_slice = self.ravel(verbose=False).get(x, strict=False)[x_inds]
+        if y_inds is not None:
+            y_slice = self.ravel(verbose=False).get(y, strict=False)[y_inds]
+
+        if not (x_inds is None and y_inds is None): # No slices given, only points. Then no expansion
+            if len(np.atleast_1d(x_slice)) == 1:
+                if len(np.atleast_1d(y_slice)) > 1:
+                    x_slice = np.array([x_slice] * len(np.atleast_1d(y_slice)))
+
+            if len(np.atleast_1d(y_slice)) == 1:
+                        if len(np.atleast_1d(x_slice)) > 1:
+                            y_slice = np.array([y_slice] * len(np.atleast_1d(x_slice)))
+
+        if len(np.atleast_1d(x_slice)) == len(np.atleast_1d(y_slice)):
             inds_dict = self.yank_point(**{x: x_slice, y: y_slice})
             return inds_dict["inds_x"], inds_dict["inds_y"]
+        else:
+            
+            raise ValueError(f"Give an equal amount of x ({len(np.atleast_1d(x_slice))}) and y ({len(np.atleast_1d(y_slice))}) coordinates")
+    
 
     def _determine_var_slice_inds(self, name, var_slice):
         """Determines the indeces to slice using variable values if variable is 1D"""
@@ -1183,8 +1225,8 @@ class Skeleton:
                     return self.sel(inds=inds, **new_kwargs)
 
         # Check if we are selecting using lon/lat in cartesian or x/y in spherical. Then we must determine inds
-        lon_lat_inverse_search = 'lon' in kwargs.keys() or 'lat' in kwargs.keys() and self.core.is_projected()
-        x_y_inverse_search = 'x' in kwargs.keys() or 'y' in kwargs.keys() and not self.core.is_projected()
+        lon_lat_inverse_search = ('lon' in kwargs.keys() or 'lat' in kwargs.keys()) and self.core.is_projected()
+        x_y_inverse_search = ('x' in kwargs.keys() or 'y' in kwargs.keys()) and not self.core.is_projected()
 
         if lon_lat_inverse_search or x_y_inverse_search:
             slice_inds_x, slice_inds_y = self._determine_gridded_slice_inds(lon_slice, lat_slice, "lon", "lat")
