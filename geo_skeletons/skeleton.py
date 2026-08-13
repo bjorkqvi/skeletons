@@ -3045,6 +3045,9 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
 def _rotated_consistency_check(name: str, core: CoordinateManager, rotated: bool):
     if not rotated:
         return 
+
+    if core.is_component(name) or name in core.directions():
+        return
     
     if name in core.magnitudes():
         raise ProjectionError('Cannot rotate a magnitude!')
