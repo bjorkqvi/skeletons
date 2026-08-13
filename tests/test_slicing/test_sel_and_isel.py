@@ -3,7 +3,8 @@ import numpy as np
 from geo_skeletons.decorators import add_datavar
 
 import geo_parameters as gp
-
+import pytest
+from geo_skeletons.errors import SkeletonError
 
 def test_point():
     points = PointSkeleton(lon=(1, 2, 3, 4), lat=(10, 20, 30, 40))
@@ -195,3 +196,117 @@ def test_sel_one_xy_point_from_lonlat_gridded_with_third_coordinate():
     np.testing.assert_almost_equal(grid.ravel().lon()[2], point.lon())
     np.testing.assert_almost_equal(grid.ravel().lat()[2], point.lat())
     np.testing.assert_almost_equal((20, 30), point.depth())
+
+def test_sel_two_lonlat_points_from_xy_gridded():
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
+    utm_grid = grid.proj_grid()
+    point = utm_grid.sel(lon=(6, 7), lat=(51, 52))
+    assert point.size() == (2,2)
+
+    point = utm_grid.sel(lon=(6, 6), lat=(51, 52))
+    assert point.size() == (2,1)
+    
+    # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal(6, point.ravel().lon()[0], decimal=1)
+    np.testing.assert_almost_equal(51, point.ravel().lat()[0], decimal=1)
+
+    np.testing.assert_almost_equal(6, point.ravel().lon()[1], decimal=0)
+    np.testing.assert_almost_equal(52, point.ravel().lat()[1], decimal=1)
+
+
+def test_sel_two_xy_points_from_lonlat_gridded():
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
+
+    x0, y0 = grid.ravel().x()[2], grid.ravel().y()[2:4]
+    with pytest.raises(ValueError): # 1 x and 2 y coordinates wont work
+        point = grid.sel(x=x0, y=y0)
+
+    x0, y0 = grid.ravel().x()[2:4], grid.ravel().y()[2:4]
+    point = grid.sel(x=x0, y=y0)
+    
+    assert point.size() == (2,2)
+
+
+    x0, y0 = grid.ravel().x()[2], grid.ravel().y()[2:4]
+    point = grid.sel(x=(x0, x0), y=y0)
+    assert point.size() == (2,1)
+
+    np.testing.assert_almost_equal(grid.ravel().lon()[2], point.lon())
+    np.testing.assert_almost_equal(grid.ravel().lat()[2:4], point.lat())
+
+
+def test_sel_lonlat_slice_from_xy_gridded():
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
+    utm_grid = grid.proj_grid()
+
+    point = utm_grid.sel(lon=slice(5.5,6.6))
+    assert point.size() == (3,1)
+
+    # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal([6,6,6], point.ravel().lon(), decimal=0)
+    np.testing.assert_almost_equal([50,51,52], point.ravel().lat(), decimal=1)
+
+
+    point = utm_grid.sel(lon=slice(5.5,6.6), lat=51)
+    assert point.size() == (1,1)
+
+    # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal([6], point.ravel().lon(), decimal=0)
+    np.testing.assert_almost_equal([51], point.ravel().lat(), decimal=1)
+
+
+    point = utm_grid.sel(lon=slice(5.5,6.6), lat=slice(50.9, 51.1))
+    assert point.size() == (1,1)
+
+    # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal([6], point.ravel().lon(), decimal=0)
+    np.testing.assert_almost_equal([51], point.ravel().lat(), decimal=1)
+
+    with pytest.raises(SkeletonError):
+        point = utm_grid.sel(lat=51)
+    point = utm_grid.sel(lat=slice(50.9, 51.1))
+    assert point.size() == (1,3)
+
+    # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal([5,6,7], point.ravel().lon(), decimal=0)
+    np.testing.assert_almost_equal([51,51,51], point.ravel().lat(), decimal=0)
+
+
+def test_sel_xy_slice_from_lonlat_gridded():
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
+    x0 = grid.ravel().x()[4]
+    y0 = grid.ravel().y()[4]
+
+
+    point = grid.sel(x=slice(x0-20000, x0+20000))
+    assert point.size() == (3,1)
+
+    # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal([x0/10_000,x0/10_000,x0/10_000], point.ravel().x()/10_000, decimal=0)
+    np.testing.assert_almost_equal(grid.ygrid()[:,1]/10_000, point.ravel().y()/10_000, decimal=0)
+
+
+    point = grid.sel(x=slice(x0-20000, x0+20000), y=y0)
+    assert point.size() == (1,1)
+
+    # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal([x0/10_000], point.ravel().x()/10_000, decimal=0)
+    np.testing.assert_almost_equal([y0/10_000], point.ravel().y()/10_000, decimal=0)
+
+
+    point = grid.sel(x=slice(x0-20000, x0+20000), y=slice(y0-20000, y0+20000))
+    assert point.size() == (1,1)
+
+    np.testing.assert_almost_equal([x0/10_000], point.ravel().x()/10_000, decimal=0)
+    np.testing.assert_almost_equal([y0/10_000], point.ravel().y()/10_000, decimal=0)
+
+    with pytest.raises(SkeletonError):
+        point = grid.sel(y=y0+100)
+    point = grid.sel(y=slice(y0-20000, y0+20000))
+    assert point.size() == (1,3)
+
+    # # There is a rotation etc so won't match exactly here
+    np.testing.assert_almost_equal([y0/10_000,y0/10_000,y0/10_000], point.ravel().y()/10_000, decimal=0)
+    np.testing.assert_almost_equal(grid.xgrid()[1,:]/10_000, point.ravel().x()/10_000, decimal=0)
+
+  
