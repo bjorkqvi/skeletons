@@ -944,7 +944,7 @@ class CoordinateManager:
 
         return names
 
-    def is_component(self, name: str) -> bool:
+    def is_component(self, name: str) -> Union[bool, str]:
         """Checks if given parameter is a component, e.g. XWind
         
         Retruns True if:
@@ -953,16 +953,23 @@ class CoordinateManager:
         2) The variable has a Magnitude connected to it
         """
 
-        if name not in self.data_vars():
-            raise ValueError(f"Skeleton doesn't have a data variable called '{name}'")
+        if name not in self.all_objects():
+            raise ValueError(f"Skeleton doesn't have a variable called '{name}'")
 
         # 1)
-        if self.meta_parameter(name) is not None and self.meta_parameter(name).i_am() in {'x','y'}:
-            return True
+        if self.meta_parameter(name) is not None: 
+            if self.meta_parameter(name).i_am() == 'x':
+                return 'x'
+            if self.meta_parameter(name).i_am() == 'x':
+                return 'y'
         # 2)
         for mag in self.magnitudes():
-            if name == self.get(mag).x or name == self.get(mag).y:
-                return True
+            if name == self.get(mag).x:
+                return 'x'
+            elif name == self.get(mag).y:
+                return 'y'
+
+        return False
 
         
     def find(self, param: Union[MetaParameter, str]) -> list[str]:
