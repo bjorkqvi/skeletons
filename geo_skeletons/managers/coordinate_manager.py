@@ -953,10 +953,16 @@ class CoordinateManager:
         2) The variable has a Magnitude connected to it
         """
 
-        # 1)
-        if self.meta_parameter(name).i_am() in {'x','y'}:
-            return True
+        if name not in self.data_vars():
+            raise ValueError(f"Skeleton doesn't have a data variable called '{name}'")
 
+        # 1)
+        if self.meta_parameter(name) is not None and self.meta_parameter(name).i_am() in {'x','y'}:
+            return True
+        # 2)
+        for mag in self.magnitudes():
+            if name == self.get(mag).x or name == self.get(mag).y:
+                return True
 
         
     def find(self, param: Union[MetaParameter, str]) -> list[str]:
