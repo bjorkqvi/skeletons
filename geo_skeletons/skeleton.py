@@ -79,6 +79,7 @@ class Skeleton:
         self._init_structure(x, y, lon, lat, **kwargs)
         self._init_managers(crs=crs, chunks=chunks)
         self._init_metadata(name=name)
+        self._u_v_buffer: dict[str, np.ndarray] = {}
 
     def _init_structure(self, x: Optional[CoordinateValue] = None, y: Optional[CoordinateValue] = None, lon: Optional[CoordinateValue] = None, lat: Optional[CoordinateValue] = None, **kwargs) -> None:
         """Determines grid type (Cartesian/Spherical), generates a DatasetManager
@@ -1449,7 +1450,6 @@ class Skeleton:
         silent: bool = True,
         chunks: Optional[Union[tuple, str]] = None,
         rotated: bool = False, 
-        verbose: bool = False, 
     ) -> None:
         """Sets or updates the data for a variable in the Skeleton.
 
@@ -1607,6 +1607,55 @@ class Skeleton:
                     data=data,
                     dir_type="math",
                 )
+        elif self.core.is_component(name):
+            if not rotated:
+                self._set_data(
+                    name=name,
+                    data=data,
+                    dir_type=dir_type,
+                )
+            else:
+                twin = self.core.find_twin_component(name)
+                twin_data = self._u_v_buffer.get(twin)
+                if twin_data is None:
+                    self._u_v_buffer[name] = self._ds_manager.compile_data_array(data, name)
+                    if not silent:
+                        print(f"Buffering rotated '{name}' data. Will be set when rotated '{twin}' data is set.")
+                else:
+                    if not silent:
+                        print(f"Reading '{twin}' data from buffer...")
+                    if self.core.is_component(name) == 'x':
+                        x_data = self._ds_manager.compile_data_array(data, name)
+                        y_data = twin_data
+                    else:
+                        x_data = twin_data
+                        y_data = self._ds_manager.compile_data_array(data, name)
+                        
+
+                    lon, lat = self.lonlat()
+                    x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+
+                    if self.core.is_component(name) == 'x':
+                        self._set_data(
+                            name=name,
+                            data=x_data,
+                        )
+                        self._set_data(
+                            name=twin,
+                            data=y_data,
+                        )
+                    else:
+                        self._set_data(
+                            name=twin,
+                            data=x_data,
+                        )
+                        self._set_data(
+                            name=name,
+                            data=y_data,
+                        )
+                    if not silent:
+                        print(f"Deleting '{twin}' data from buffer...")
+                    del self._u_v_buffer[twin]
         else:
             self._set_data(
                 name=name,
