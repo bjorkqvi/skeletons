@@ -89,12 +89,12 @@ class GriddedSkeleton(Skeleton):
         """
         return INITIAL_VARS
 
-    def ravel(self, proj: Optional[str] = None, crs: Optional[CRSValue] = None) -> "PointSkeleton":
+    def ravel(self, proj: Optional[str] = None, crs: Optional[CRSValue] = None, verbose: bool=True) -> "PointSkeleton":
         points = PointSkeleton.from_skeleton(self, proj=proj)
         if crs is not None:
             x, y = points.xy(crs=crs)
             points = PointSkeleton(x=x, y=y, crs=crs)
-        return self.resample.grid(points, engine='ravel')
+        return self.resample.grid(points, engine='ravel', verbose=verbose)
 
     def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float]):
         """This is called by the quicklook method of the Skelton class"""
