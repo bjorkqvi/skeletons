@@ -545,7 +545,7 @@ def _rotate_components(x_data:xr.DataArray, y_data:xr.DataArray, alpha: xr.DataA
     return x_rot, y_rot
 
 
-def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: np.ndarray, y_data:np.ndarray, grid_shape: tuple[int]) -> xr.DataArray:
+def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_data:xr.DataArray, grid_shape: tuple[int]) -> xr.DataArray:
     """Broadcastsa a spatial np.ndarray of alpha values to possible time instances also"""
     if hasattr(x_data, 'lon'):
         x_str, y_str = 'lon', 'lat'

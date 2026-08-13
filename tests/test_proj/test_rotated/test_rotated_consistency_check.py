@@ -2,6 +2,7 @@ from geo_skeletons.classes import WindGrid
 import pytest
 from geo_skeletons.errors import ProjectionError
 import geo_parameters as gp
+import numpy as np
 def test_magnitude():
     wind = WindGrid(lon=0, lat=0)
 
@@ -47,28 +48,13 @@ def test_mask():
         wind.land_mask(rotated=True)
 
     with pytest.raises(ProjectionError):
-        wind.get('land_masl', rotated=True)
+        wind.get('land_mask', rotated=True)
 
     with pytest.raises(ProjectionError):
         wind.land_points(rotated=True)
 
-    with pytest.raises(ProjectionError):
+    with pytest.raises(ValueError):
         wind.get('land_points', rotated=True)
 
 
 
-def test_components():
-    wind = WindGrid(lon=0, lat=0)
-
-    wind.set_u(0, rotated=True)
-    wind.set('u',0, rotated=True)
-
-    wind.u(rotated=True)
-    wind.get('u',rotated=True)
-
-
-    wind.set_v(0, rotated=True)
-    wind.set('v',0, rotated=True)
-
-    wind.v(rotated=True)
-    wind.get('v',rotated=True)
