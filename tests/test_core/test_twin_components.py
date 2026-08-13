@@ -1,4 +1,3 @@
-from geo_skeletons.errors import ProjectionError
 from geo_skeletons import PointSkeleton
 import pytest
 import geo_parameters as gp
