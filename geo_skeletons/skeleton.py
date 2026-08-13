@@ -1034,7 +1034,7 @@ class Skeleton:
             time=common_times
         )
 
-    def _determine_slice_inds(self, x_slice, y_slice, x: str, y: str):
+    def _determine_slice_inds(self, x_slice, y_slice, x: str, y: str) -> np.ndarray:
         """Determines the indeces of e.g. a lon-slice for a PointSkeleton"""
         if x_slice is None and y_slice is None:
             return None
@@ -1051,6 +1051,19 @@ class Skeleton:
 
         return np.array(list(set(x_inds).intersection(set(y_inds))))
         
+
+    def _determine_gridded_slice_inds(self, x_slice, y_slice, x:str, y:str) -> np.ndarray:
+        """Determines the inds for a slice if we are using lon/lat to select in a projected grid or vice versa"""
+        if x_slice is None and y_slice is None:
+            return None, None
+
+        x_not_a_slice = x_slice is not None and not isinstance(x_slice, slice)
+        y_not_a_slice = y_slice is not None and not isinstance(y_slice, slice)
+
+        if x_not_a_slice and y_not_a_slice and len(np.atleast_1d(x_slice)) == len(np.atleast_1d(y_slice)):
+            inds_dict = self.yank_point(**{x: x_slice, y: y_slice})
+            return inds_dict["inds_x"], inds_dict["inds_y"]
+
     def _determine_var_slice_inds(self, name, var_slice):
         """Determines the indeces to slice using variable values if variable is 1D"""
         var_inds = _determine_inds(var_slice, self.get(name))
@@ -1169,6 +1182,34 @@ class Skeleton:
                 if len(inds) != self.nx():
                     return self.sel(inds=inds, **new_kwargs)
 
+        # Check if we are selecting using lon/lat in cartesian or x/y in spherical. Then we must determine inds
+        lon_lat_inverse_search = 'lon' in kwargs.keys() or 'lat' in kwargs.keys() and self.core.is_projected()
+        x_y_inverse_search = 'x' in kwargs.keys() or 'y' in kwargs.keys() and not self.core.is_projected()
+
+        if lon_lat_inverse_search or x_y_inverse_search:
+            slice_inds_x, slice_inds_y = self._determine_gridded_slice_inds(lon_slice, lat_slice, "lon", "lat")
+            if slice_inds_x is None or slice_inds_y is None:
+                slice_inds_x, slice_inds_y = self._determine_gridded_slice_inds(x_slice, y_slice, "x", "y")
+
+            if lon_slice is not None:
+                del kwargs["lon"]
+            if lat_slice is not None:
+                del kwargs["lat"]
+            if x_slice is not None:
+                del kwargs["x"]
+            if y_slice is not None:
+                del kwargs["y"]
+
+            data = self.isel(**{self.core.x_str:slice_inds_x, self.core.y_str: slice_inds_y})
+            return data.from_ds(
+                data.ds().sel(**kwargs),
+                data_vars=data.core.non_coord_objects(),
+                keep_ds_names=True,
+                name=self.name,
+            )
+            
+                
+        
         return self.from_ds(
             self.ds().sel(**kwargs),
             data_vars=self.core.non_coord_objects(),
@@ -2609,7 +2650,7 @@ class Skeleton:
             inds_x = []
             inds_y = []
             for ind in inds:
-                indy, indx = np.unravel_index(ind, self.size())
+                indy, indx = np.unravel_index(ind, self.size('spatial'))
                 inds_x.append(indx)
                 inds_y.append(indy)
             return {

@@ -434,6 +434,18 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_projected():
             if native:
                 return self.lon(**kwargs)
+            elif strict:
+                return None
+            elif self.nx() == 1 and self.ny()==1:
+                x = self.proj._x(
+                    lon=self.lon(mask=mask, crs=self.proj.crs(),**kwargs),
+                    lat=self.lat(mask=mask, crs=self.proj.crs(), **kwargs),
+                    crs=crs,
+                )
+
+                if normalize:
+                    x = x - min(x)
+                return x
             return None
         
         if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
@@ -482,6 +494,18 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_projected():
             if native:
                 return self.lat(**kwargs)
+            elif strict:
+                return None
+            elif self.nx() == 1 and self.ny()==1:
+                y = self.proj._y(
+                    lon=self.lon(mask=mask, crs=self.proj.crs(),**kwargs),
+                    lat=self.lat(mask=mask, crs=self.proj.crs(), **kwargs),
+                    crs=crs,
+                )
+
+                if normalize:
+                    y = y - min(y)
+                return y
             return None
 
         if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
@@ -528,6 +552,14 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_projected():
             if native:
                 return self.x(crs=crs, **kwargs)
+            elif strict:
+                return None
+            elif self.nx() == 1 and self.ny()==1:
+                return self.proj._lon(
+                    x=self.x(mask=mask, **kwargs) ,
+                    y= self.y(mask=mask, **kwargs) ,
+                    crs=crs,
+                )
             return None
         
         return self._ds_manager.get("lon", **kwargs).values.copy()[vec_mask]
@@ -568,6 +600,14 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_projected():
             if native:
                 return self.y(crs=crs, **kwargs)
+            elif strict:
+                return None
+            elif self.nx() == 1 and self.ny()==1:
+                return self.proj._lat(
+                    x=self.x(mask=mask, **kwargs) ,
+                    y= self.y(mask=mask, **kwargs) ,
+                    crs=crs,
+                )
             return None
         
         return self._ds_manager.get("lat", **kwargs).values.copy()[vec_mask]
