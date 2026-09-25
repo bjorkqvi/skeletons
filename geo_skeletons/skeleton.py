@@ -9,6 +9,7 @@ from .managers.resample_manager import ResampleManager
 if TYPE_CHECKING:
     from .managers.coordinate_manager import CoordinateManager
 
+from . import logger
 from .decoders import (
     identify_core_in_ds,
     set_core_vars_to_skeleton_from_ds,
@@ -127,7 +128,7 @@ class Skeleton:
         self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), x=self.edges("x", strict=True),y=self.edges("y", strict=True),metadata_manager=self.meta)
         self.core.proj = self.proj
         if crs is None and not self.core.is_projected():
-            self.proj.reset_utm(silent=True)
+            self.proj.reset_utm()
         self.resample = ResampleManager(self)
         
 
@@ -408,7 +409,7 @@ class Skeleton:
         core_aliases: dict[Union[MetaParameter, str], str] = None,
         ds_aliases: dict[str, Union[MetaParameter, str]] = None,
         dynamic: bool = False,
-        verbose: bool = False,
+        verbose: Optional[bool] = None,
         meta_dict: dict = None,
         name: Optional[str] = None, **kwargs) -> "Skeleton":
         """Generates an instance of the Skeleton class from a NetCDF file.
@@ -430,7 +431,7 @@ class Skeleton:
             core_aliases (dict[Union[MetaParameter, str], str], optional): A dictionary mapping existing Skeleton variables to variables in the NetCDF file. Defaults to None.
             ds_aliases (dict[str, Union[MetaParameter, str]], optional): A dictionary describing NetCDF variables in terms of geo-parameters or strings. Defaults to None.
             dynamic (bool, optional): If `True`, allows the creation of new data variables. Otherwise, limits operations to existing variables. Defaults to False.
-            verbose (bool, optional): If `True`, provides detailed output during the process. Defaults to False.
+            verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
             meta_dict (dict, optional): Metadata dictionary to provide additional information. Defaults to None.
             name (Optional[str], optional): Name to give to the Skeleton instance. If not provided, the name is determined from the Dataset or the filename. Defaults to None.
             **kwargs: Additional keyword arguments, such as missing coordinates, passed to the `from_ds` method.
@@ -489,7 +490,7 @@ class Skeleton:
         core_aliases: dict[Union[MetaParameter, str], str] = None,
         ds_aliases: dict[str, Union[MetaParameter, str]] = None,
         dynamic: bool = False,
-        verbose: bool = False,
+        verbose: Optional[bool] = None,
         meta_dict: dict = None,
         name: Optional[str] = None,
         **kwargs,
@@ -506,7 +507,7 @@ class Skeleton:
             core_aliases (dict[Union[MetaParameter, str], str], optional): A dictionary mapping existing Skeleton variables to variables in the Dataset. Defaults to None.
             ds_aliases (dict[str, Union[MetaParameter, str]], optional): A dictionary describing Dataset variables in terms of geo-parameters or strings. Defaults to None.
             dynamic (bool, optional): If `True`, allows the creation of new data variables. Otherwise, limits operations to existing variables. Defaults to False.
-            verbose (bool, optional): If `True`, provides detailed output during the process. Defaults to False.
+            verbose (Optional[bool], optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
             meta_dict (dict, optional): Dictionary to set metadata to the Skeleton. Defaults to None.
             name (Optional[str], optional): Name to give to the Skeleton instance. Defaults to None.
             **kwargs: Additional keyword arguments, such as missing coordinates.
@@ -617,7 +618,7 @@ class Skeleton:
                 val = coords.get(key)
                 val = np.atleast_1d(val)
                 if val is not None and len(val) > 1 and val[0]> val[-1]:
-                    print(f'Variable {core_coords_to_ds_coords.get(key)} is not monotonically increasing. Flipping!')
+                    logger.log.info(f'Variable {core_coords_to_ds_coords.get(key)} is not monotonically increasing. Flipping!')
                     ds = ds.isel(**{core_coords_to_ds_coords.get(key):slice(None, None, -1)})
                     resubmit = True
 
@@ -669,9 +670,9 @@ class Skeleton:
 
         proj_obj = find_proj(ds)
         if proj_obj:
-            points.proj.set(proj_obj, silent=not verbose)
+            points.proj.set(proj_obj, verbose=verbose)
         elif points.core.is_projected():
-            print('Could not decode any projection for the cartesian data!')
+            logger.log.info('Could not decode any projection for the cartesian data!')
 
         return points
 
@@ -781,7 +782,7 @@ class Skeleton:
         try:
             import matplotlib.pyplot as plt
         except ImportError as e:
-            print(f"Quicklook required matplotlib")
+            logger.log.info(f"Quicklook required matplotlib")
             raise e
 
 
@@ -820,7 +821,7 @@ class Skeleton:
                 from cartopy import feature as cfeature
                 from cartopy import crs as ccrs
             except ImportError as e:
-                print(f"Coastlines require cartopy")
+                logger.log.info(f"Coastlines require cartopy")
                 raise e
             if proj == 'lonlat':
                 plot_proj = ccrs.PlateCarree()
@@ -1447,7 +1448,7 @@ class Skeleton:
         allow_transpose: bool = False,
         fit_to_data: bool = False, 
         coords: Optional[list[str]] = None,
-        silent: bool = True,
+        verbose: Optional[bool] = None,
         chunks: Optional[Union[tuple, str]] = None,
         rotated: bool = False, 
     ) -> None:
@@ -1488,8 +1489,8 @@ class Skeleton:
                 be reshaped accordingly. If `None`, the method attempts to infer the coordinates automatically. 
                 Only non-trivial dimensions need to be identified.
                 Defaults to None. 
-            silent (bool, optional): If `True`, suppresses output messages about any reshaping or adjustments 
-                performed. Defaults to True.
+            verbose (bool, optional): If `True`, enables output messages about any reshaping or adjustments 
+                performed. Defaults to False.
             chunks (Optional[Union[tuple, str]], optional): If specified, the data is converted to a dask array 
                 with the given chunking strategy. If `dask-mode` is activated using `.dask.activate()`, any 
                 NumPy array is automatically converted to a dask array. Defaults to None.
@@ -1572,7 +1573,7 @@ class Skeleton:
             name,
             data,
             coords,
-            silent,
+            verbose,
             allow_reshape,
             allow_transpose,
             fit_to_data, 
@@ -1619,11 +1620,11 @@ class Skeleton:
                 twin_data = self._u_v_buffer.get(twin)
                 if twin_data is None:
                     self._u_v_buffer[name] = self._ds_manager.compile_data_array(data, name)
-                    if not silent:
-                        print(f"Buffering rotated '{name}' data. Will be set when rotated '{twin}' data is set.")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Buffering rotated '{name}' data. Will be set when rotated '{twin}' data is set.")
                 else:
-                    if not silent:
-                        print(f"Reading '{twin}' data from buffer...")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Reading '{twin}' data from buffer...")
                     if self.core.is_component(name) == 'x':
                         x_data = self._ds_manager.compile_data_array(data, name)
                         y_data = twin_data
@@ -1653,8 +1654,8 @@ class Skeleton:
                             name=name,
                             data=y_data,
                         )
-                    if not silent:
-                        print(f"Deleting '{twin}' data from buffer...")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Deleting '{twin}' data from buffer...")
                     del self._u_v_buffer[twin]
         else:
             self._set_data(
@@ -1691,7 +1692,7 @@ class Skeleton:
         name: str,
         data: np.ndarray,
         coords: list[str],
-        silent: bool,
+        verbose: bool,
         allow_reshape: bool,
         allow_transpose: bool,
         fit_to_data: bool, 
@@ -1709,11 +1710,11 @@ class Skeleton:
 
         NB! For 1), only non-trivial dimensions need to be identified
 
-        silent [True]: Don't output what reshaping is being performed.
+        verbose [False]: If `True`, outputs what reshaping is being performed.
 
         If data cannot be reshaped, a DataWrongDimensionError is raised.
         """
-        reshape_manager = ReshapeManager(silent=silent)
+        reshape_manager = ReshapeManager()
         coord_type = self.core.coord_group(name)
 
         # Do explicit reshape if coordinates of the provided data is given
@@ -1728,6 +1729,7 @@ class Skeleton:
                 data.squeeze(),
                 data_coords=squeezed_coords,
                 expected_coords=self.core.coords(coord_type),
+                verbose=verbose,
             )
 
             # Unsqueeze the data before setting to get back trivial dimensions
@@ -1738,8 +1740,8 @@ class Skeleton:
             raise DataWrongDimensionError(self.shape(name), len(coords))
         if data.shape != self.shape(name):
             # If we are here then the data could not be set, but we are allowed to try to reshape
-            if not silent:
-                print(f"Size of {name} does not match size of {type(self).__name__}...")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Size of {name} does not match size of {type(self).__name__}...")
             # Save this for messages
             original_data_shape = data.shape
 
@@ -1764,8 +1766,8 @@ class Skeleton:
                     original_data_shape, self.shape(name)
                 )  # Reshapes have failed or were not tried
 
-            if not silent:
-                print(f"Reshaping data {original_data_shape} -> {data.shape}...")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Reshaping data {original_data_shape} -> {data.shape}...")
         return data
 
     def _set_magnitude(
@@ -1879,7 +1881,7 @@ class Skeleton:
         squeeze: bool = True,
         dask: Optional[bool] = None,
         rotated: bool=False,
-        verbose: bool=False,
+        verbose: Optional[bool]=None,
         **kwargs,
     ) -> Union[np.ndarray, xr.DataArray, da.Array]:
         """Retrieves a mask or data variable as an array.
@@ -1913,6 +1915,7 @@ class Skeleton:
                 - `None`: Uses the Skeleton's current dask mode. Defaults to None.
             rotated (bool, optional): If `True`, rotates the data to align with the set CRS 
                 projection (e.g., UTM or rotated pole). Defaults to False.
+            verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
             **kwargs: Additional arguments for filtering or subsetting the data.
 
         Returns:
@@ -3039,8 +3042,8 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
     """Finds a geo-parameter in the core, accounting for that we might have been given an opposite direction (DirTo instead of Dir)
     
     Sets the dir_type accordingly if not explicitly given by the user"""
-    if verbose:
-        print(f"Requested geo-parameter {name}")
+    if logger.is_verbose(verbose):
+        logger.log.info(f"Requested geo-parameter {name}")
     
     if name.dir_type() is None:
         names = core.find(name)
@@ -3051,12 +3054,12 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
             if key in {'direction', 'opposite_direction'}:
                 names = core.find(var)
                 if len(names) > 0:
-                    if verbose:
-                        print(f"Found directional geo-parameter {var} in dataset")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Found directional geo-parameter {var} in dataset")
                     if dir_type is None:
                         dir_type = name.dir_type()
-                        if verbose:
-                            print(f"'dir_type' not specified, setting to '{dir_type}'")
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"'dir_type' not specified, setting to '{dir_type}'")
                     break
     
     
@@ -3067,8 +3070,8 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
             f"Found several variables ({names}) matching {name}!"
         )
     name = names[0]
-    if verbose:
-        print(f"Reading variable '{name}'")
+    if logger.is_verbose(verbose):
+        logger.log.info(f"Reading variable '{name}'")
 
     return name, dir_type
 

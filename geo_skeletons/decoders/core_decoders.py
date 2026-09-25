@@ -14,7 +14,7 @@ from geo_skeletons.variable_archive import (
     var_alias_to_gp,
 )
 from geo_skeletons.dir_conversions import compute_magnitude, compute_math_direction
-
+from .. import logger
 
 def identify_core_in_ds(
     core: CoordinateManager,
@@ -24,7 +24,7 @@ def identify_core_in_ds(
     ignore_vars: list[str] = None,
     only_vars: list[str] = None,
     allowed_misses: list[str] = None,
-    verbose: bool = False,
+    verbose: Optional[bool] = None,
     decode_cf: bool = True,
     strict: bool = True,
 ) -> tuple[dict[str, str], dict[str, str], dict[str, list[str]], list[str]]:
@@ -283,8 +283,8 @@ def _map_geo_parameter_to_ds_variable(
     # 1) Use aliases mapping if exists
     if aliases.get(var_str) is not None:
         return_var = aliases.get(var_str)
-        if verbose:
-            print("Alias: {var_str} >> {return_var}")
+        if logger.is_verbose(verbose):
+            logger.log.info("Alias: {var_str} >> {return_var}")
         return return_var
 
     if param is None:
@@ -292,8 +292,8 @@ def _map_geo_parameter_to_ds_variable(
         if not gp.is_gp(param):
             param = None
         else:
-            if verbose:
-                print(f"Internal alias map: {var_str} >> {param}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Internal alias map: {var_str} >> {param}")
 
     ## Find in ds_aliases
     # Only use var_str if we have no param OR param has now dir_type and we are not set to ignore that
@@ -310,15 +310,15 @@ def _map_geo_parameter_to_ds_variable(
 
     ds_match = _match_ds_aliases_to_parameter(var_str, ds_aliases, directional_ambiguity)
     if ds_match is not None:
-        if verbose:
-            print(f"Dataset Alias: {var_str} >> {ds_match}")
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Dataset Alias: {var_str} >> {ds_match}")
         return ds_match
 
     if param is not None:
         ds_match = _match_ds_aliases_to_parameter(param, ds_aliases, directional_ambiguity)
         if ds_match is not None:
-            if verbose:
-                print(f"Dataset Alias: {param} >> {ds_match}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Dataset Alias: {param} >> {ds_match}")
             return ds_match
 
     if param is not None:
@@ -331,18 +331,18 @@ def _map_geo_parameter_to_ds_variable(
 
         if ds_var is not None:
             if len(ds_var) == 1:
-                if verbose:
-                    print(f"Match: {param} >> {ds_var}")
+                if logger.is_verbose(verbose):
+                    logger.log.info(f"Match: {param} >> {ds_var}")
                 var_shape = ds.get(ds_var[0]).shape
                 if var_str not in ['lon','lat','time','x','y'] or len(var_shape) < 2:
                     return ds_var[0]
                 else:
-                    if verbose:
-                        print(f"Expected '{var_str}' to be an array but '{ds_var[0]}' has shape {var_shape}. Skipping.")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Expected '{var_str}' to be an array but '{ds_var[0]}' has shape {var_shape}. Skipping.")
                     return None
             elif len(ds_var) > 1:
-                if verbose:
-                    print(
+                if logger.is_verbose(verbose):
+                    logger.log.info(
                         f"Conflicting matches in Dataset for {param} [{var_str}]: {ds_var}!"
                     )
                 return None
@@ -354,12 +354,12 @@ def _map_geo_parameter_to_ds_variable(
             for alias_var in alias_list:  # E.g. LON_ALIASES = ['lon','lognitude']
                 # E.g. 'longitude' in ds.data_vars
                 if alias_var in ds_coords.keys():
-                    if verbose:
-                        print(f"Intenal alias map: {param} >> {alias_var}")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Intenal alias map: {param} >> {alias_var}")
                     return ds_coords[alias_var]
                 if alias_var in ds_vars.keys():
-                    if verbose:
-                        print(f"Intenal alias map: {param} >> {alias_var}")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Intenal alias map: {param} >> {alias_var}")
                     return ds_vars[alias_var]
 
     # 3) Try to see it the name is the same in the skeleton and the dataset
@@ -369,13 +369,13 @@ def _map_geo_parameter_to_ds_variable(
 
     if param is None or param.dir_type() is None:
         if var_str.lower() in ds_vars:
-            if verbose:
-                print(f"Exact name match: {var_str} >> {var_str}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Exact name match: {var_str} >> {var_str}")
             return var_str
 
     if var_str.lower() in ds_coords:
-        if verbose:
-            print(f"Exact name match: {var_str} >> {var_str}")
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Exact name match: {var_str} >> {var_str}")
         return var_str
 
     # 4) Reads from a known list of aliases
@@ -384,18 +384,18 @@ def _map_geo_parameter_to_ds_variable(
             for alias_var in alias_list:  # E.g. LON_ALIASES = ['lon','lognitude']
                 # E.g. 'longitude' in ds.data_vars
                 if alias_var in ds_coords.keys():
-                    if verbose:
-                        print(f"Intenal str-alias map: {var_str} >> {alias_var}")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Intenal str-alias map: {var_str} >> {alias_var}")
                     return ds_coords[alias_var]
                 if alias_var in ds_vars.keys():
-                    if verbose:
-                        print(f"Intenal str-alias map: {var_str} >> {alias_var}")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Intenal str-alias map: {var_str} >> {alias_var}")
                     return ds_vars[alias_var]
 
                 ds_match = _match_ds_aliases_to_parameter(alias_var, ds_aliases, directional_ambiguity=False)
                 if ds_match in ds.coords or ds_match in ds.data_vars:
-                    if verbose:
-                        print(
+                    if logger.is_verbose(verbose):
+                        logger.log.info(
                             f"Intenal str-alias and Dataset aliases: {var_str} >> {ds_match}"
                         )
                     return ds_match
@@ -542,8 +542,8 @@ def _map_inverse_geo_parameter_to_ds_variable(
         return None, None, None
 
     if ds_var is not None:
-        if verbose:
-            print(f"Mapping {var} >> {ds_var} using {transform_function}")
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Mapping {var} >> {ds_var} using {transform_function}")
         return ds_var, transform_function, dir_type
 
     return None, None, None

@@ -42,7 +42,7 @@ def test_trivial_dimension_explicit_starting_with_numpy():
 
     points.set_dummy(data_T, coords=["z", "inds"])
     assert not data_is_dask(points.dummy())
-    points.set_dummy(data_T, coords=["z", "inds"], chunks="auto", silent=False)
+    points.set_dummy(data_T, coords=["z", "inds"], chunks="auto")
     assert data_is_dask(points.dummy())
 
 
@@ -75,7 +75,7 @@ def test_trivial_dimension_explicit_starting_with_dask():
 
     points.set_dummy(data_wrong_dim)
 
-    points.set_dummy(data_T, coords=["z", "inds"], chunks="auto", silent=False)
+    points.set_dummy(data_T, coords=["z", "inds"], chunks="auto")
     assert data_is_dask(points.dummy())
     assert data_is_dask(points.ds().dummy)
 
@@ -121,7 +121,7 @@ def test_trivial_dimension_implicit_starting_with_numpy():
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_T, allow_reshape=False)
 
-    points.set_dummy(data_T, allow_reshape=True, silent=False)
+    points.set_dummy(data_T, allow_reshape=True)
     assert not data_is_dask(points.dummy())
 
 
@@ -165,7 +165,7 @@ def test_trivial_dimension_implicit_starting_with_dask():
 
     points.set_dummy(data_T)
 
-    points.set_dummy(data_T, allow_reshape=True, silent=False)
+    points.set_dummy(data_T, allow_reshape=True)
     assert not data_is_dask(points.dummy())
 
 
@@ -205,7 +205,7 @@ def test_squeeze_trivial_dimension_implicit_starting_with_numpy():
 
     points.set_dummy(data_wrong_dim)
 
-    points.set_dummy(data_wrong_dim, allow_reshape=True, silent=False)
+    points.set_dummy(data_wrong_dim, allow_reshape=True)
     assert not data_is_dask(points.dummy())
 
     with pytest.raises(DataWrongDimensionError):
@@ -251,7 +251,7 @@ def test_squeeze_trivial_dimension_implicit_starting_with_dask():
     with pytest.raises(DataWrongDimensionError):
         points.set_dummy(data_wrong_dim, allow_reshape=False)
 
-    points.set_dummy(data_wrong_dim, allow_reshape=True, silent=False)
+    points.set_dummy(data_wrong_dim, allow_reshape=True)
     assert not data_is_dask(points.dummy())
 
     with pytest.raises(DataWrongDimensionError):

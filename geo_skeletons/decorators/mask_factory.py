@@ -112,7 +112,7 @@ def add_mask(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            silent: bool = True,
+            verbose: Optional[bool] = None,
         ) -> None:
             self.set(
                 f"{name_str}_mask",
@@ -121,7 +121,7 @@ def add_mask(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                silent=silent,
+                verbose=verbose,
             )
 
         def set_opposite_mask(
@@ -131,7 +131,7 @@ def add_mask(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            silent: bool = True,
+            verbose: Optional[bool] = None,
         ) -> None:
 
             data = self.dask.dask_me(data)
@@ -149,7 +149,7 @@ def add_mask(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                silent=silent,
+                verbose=verbose,
             )
 
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager
