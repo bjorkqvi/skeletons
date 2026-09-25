@@ -98,7 +98,7 @@ def add_magnitude(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            silent: bool = True,
+            verbose: Optional[bool] = None,
         ):
             self.set(
                 name_str,
@@ -107,7 +107,7 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                silent=silent,
+                verbose=verbose,
             )
 
         def set_direction(
@@ -119,7 +119,7 @@ def add_magnitude(
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
             rotated: bool = False, 
-            silent: bool = True,
+            verbose: Optional[bool] = None,
         ):
             self.set(
                 dir_str,
@@ -130,7 +130,7 @@ def add_magnitude(
                 coords=coords,
                 chunks=chunks,
                 rotated=rotated,
-                silent=silent,
+                verbose=verbose,
             )
 
         c.core = deepcopy(c.core)  # Makes a copy of the class coord_manager

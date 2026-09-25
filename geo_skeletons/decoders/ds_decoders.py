@@ -2,13 +2,13 @@ from geo_skeletons.managers.coordinate_manager import CoordinateManager
 import xarray as xr
 from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
-from typing import Union
+from typing import Optional, Union
 from geo_skeletons.variable_archive import (
     coord_alias_to_gp,
     var_alias_to_gp,
     COORD_ALIASES,
 )
-
+from .. import logger
 
 def find_proj(ds: xr.Dataset):
     """Finds a projection in the dataset"""
@@ -55,7 +55,7 @@ def map_ds_to_gp(
     decode_cf: bool = True,
     aliases: dict = None,
     keep_ds_names: bool = False,
-    verbose: bool = False,
+    verbose: Optional[bool] = None,
 ) -> tuple[dict[str, Union[str, MetaParameter]]]:
     """Maps data variables in the dataset to geoparameters
 
@@ -154,8 +154,8 @@ def _map_ds_variable_to_geo_parameter(
             return_var = aliases.get(var)()
         else:
             return_var = aliases.get(var)
-        if verbose:
-            print(f"Given alias: {var} >> {return_var}")
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Given alias: {var} >> {return_var}")
         return return_var
 
     # 2) Check for standard name
@@ -166,8 +166,8 @@ def _map_ds_variable_to_geo_parameter(
                 return_var = param(var)
             else:
                 return_var = param()
-            if verbose:
-                print(
+            if logger.is_verbose(verbose):
+                logger.log.info(
                     f"Standard_name: {var} [{ds[var].standard_name}] >> {return_var} [{return_var.name}]"
                 )
             return return_var

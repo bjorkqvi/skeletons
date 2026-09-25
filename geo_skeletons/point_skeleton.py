@@ -8,8 +8,8 @@ from .variables import DataVar, Coordinate
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
-import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
+from . import logger
+
 from .managers.resample_manager import find_original_skeleton_in_inheritance_chain
 from . import distance_funcs
 from .errors import MissingDatasetError
@@ -69,7 +69,7 @@ class PointSkeleton(Skeleton):
         
         crs = crs or skeleton.proj.crs()
         if crs is not None:
-            new_skeleton.proj.set(crs, silent=True)
+            new_skeleton.proj.set(crs)
 
         return new_skeleton
 
@@ -119,7 +119,7 @@ class PointSkeleton(Skeleton):
             if len(levels) == 1:
                 levels = np.arange(int(np.round(levels[0]))-1, int(np.round(levels[0]))+2,1)
         if len(levels) < 2 and contour:
-            print(f'Need at least two levels to use contour. Setting to False.')
+            logger.log.info(f'Need at least two levels to use contour. Setting to False.')
             contour = False
         if proj is None:
             x, y = self.xy(native=True)
@@ -136,6 +136,13 @@ class PointSkeleton(Skeleton):
         if contour:
             cont = ax.tricontourf(x[mask], y[mask],data[mask], levels=levels, cmap=cmap)
         else:
+            try:
+                import matplotlib.colors as mcolors
+                import matplotlib.pyplot as plt
+            except ImportError as e:
+                logger.log.info(f"Quicklook required matplotlib")
+                raise e
+            
             if cmap == 'viridis':
                 cmap = plt.cm.viridis
             else:

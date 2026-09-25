@@ -1,9 +1,10 @@
+
 from scipy.interpolate import griddata, RegularGridInterpolator
 import numpy as np
 from geo_skeletons.errors import GridError, SkeletonError
 from copy import copy
 from geo_skeletons.dask_computations import undask_me
-
+from ... import logger 
 def data_doesnt_cover_request(x,y, xq,yq):
     return min(xq) < min(x) or max(xq) > max(x) or min(yq) < min(y) or max(yq) > max(y)
 
@@ -20,11 +21,12 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
     if not data.is_gridded():
         raise Exception('Input data needs to be gridded!')
     
-    if verbose:
-        print(f"Using method '{method}'")
+    if logger.is_verbose(verbose):
+        logger.log.info(f"Using method '{method}'")
 
     if drop_nan:
-        print(f'Cannot drop nans and keep data gridded. Redirecting interpolation to {scipy_regrid_point_data}')
+        if logger.is_verbose(verbose):
+            logger.log.info(f'Cannot drop nans and keep data gridded. Redirecting interpolation to {scipy_regrid_point_data}')
         new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
         return new_data
 
@@ -69,19 +71,22 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
     x_expanded = False
     if data_doesnt_cover_request(x,y,xq,yq) and not data.core.is_projected():
         if data_close_to_wrapping_180(x, data.dlon()):
-            print("Data doesn't cover requested area. Trying to see if it is a +-180 longitude wrapping issue...")
+            if logger.is_verbose(verbose):
+                logger.log.info("Data doesn't cover requested area. Trying to see if it is a +-180 longitude wrapping issue...")
             x = np.concatenate(([x[-1]-360], x, [x[0]+360]))
             x_expanded = True
     
     if data_doesnt_cover_request(x,y,xq,yq):
         x, y = data.lon(native=True), data.lat(native=True)
-        print(f"Data ({data.core.x_str}={data.edges(data.core.x_str)}, {data.core.y_str}={data.edges(data.core.y_str)}) doesnt cover new grid ({data.core.x_str}=({min(xq):.4f}, {max(xq):.4f}, {data.core.y_str}=({min(yq):.4f}, {max(yq):.4f})). Redirecting interpolation to {scipy_regrid_point_data}")
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Data ({data.core.x_str}={data.edges(data.core.x_str)}, {data.core.y_str}={data.edges(data.core.y_str)}) doesnt cover new grid ({data.core.x_str}=({min(xq):.4f}, {max(xq):.4f}, {data.core.y_str}=({min(yq):.4f}, {max(yq):.4f})). Redirecting interpolation to {scipy_regrid_point_data}")
         new_data = scipy_regrid_point_data(data, new_grid, new_data, verbose, method=method, drop_nan=drop_nan, mask_nan=mask_nan,**kwargs)
         return new_data
 
-    if verbose:
+    if logger.is_verbose(verbose):
         if mask_nan is not None:
-            print(f"Replacing nan values with {mask_nan}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Replacing nan values with {mask_nan}")
 
 
     for var_name in data.core.data_vars('all'):
@@ -91,27 +96,28 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                 squeezed_var_coords = data.coord_squeeze(data.core.coords(var.coord_group))
                 time_regridding = False
                 if set(var_coords) != set(squeezed_var_coords):
-                    if verbose:
-                        print(f"Ignoring coordinates {list(set(var_coords)-set(squeezed_var_coords))} with trivial dimensions...")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Ignoring coordinates {list(set(var_coords)-set(squeezed_var_coords))} with trivial dimensions...")
                 if var_coords == spatial_coords:
-                    if verbose:
-                        print(f"'{var_name}' {var_coords}: Regridding...")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"'{var_name}' {var_coords}: Regridding...")
                     target_points = (y, x)
                     qp = query_points
                 elif set(spatial_coords + ['time']) == set(squeezed_var_coords) and 'time' in new_data.core.coords():
                     time_regridding = True
-                    if verbose:
-                        print(f"'{var_name}' {var_coords}: Regridding over time...")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"'{var_name}' {var_coords}: Regridding over time...")
                     target_points = (t, y, x)
                     qp = query_points_time
                 else:
-                    if verbose:
-                        print(f"'{var_name}' {var_coords}: Skipping!")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"'{var_name}' {var_coords}: Skipping!")
                     continue
                 
                 source_values = data.get(var_name)
                 if x_expanded:
-                    print('Fixed +-180 longitude wrapping issue and expanding data to match...')
+                    if logger.is_verbose(verbose):
+                        logger.log.info('Fixed +-180 longitude wrapping issue and expanding data to match...')
 
                     if time_regridding:
                         first_column = source_values[:, :,0] 
@@ -138,8 +144,8 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
 
 def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nearest', drop_nan: bool=False, mask_nan: float=None,**kwargs):
     """Uses a simple scipy griddata to regrid non-gridded data."""
-    if verbose:
-        print(f"Using method '{method}'")
+    if logger.is_verbose(verbose):
+        logger.log.info(f"Using method '{method}'")
     # Determine the coordinates
     if new_grid.is_gridded():
         target_lon, target_lat = new_grid.longrid(native=True), new_grid.latgrid(native=True)
@@ -156,11 +162,13 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
 
     spatial_coords = data.core.coords('spatial')
 
-    if verbose:
+    if logger.is_verbose(verbose):
         if drop_nan:
-            print("Excluding nan values from interpolation")
+            if logger.is_verbose(verbose):
+                logger.log.info("Excluding nan values from interpolation")
         elif mask_nan is not None:
-            print(f"Replacing nan values with {mask_nan}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Replacing nan values with {mask_nan}")
 
     for var_name in data.core.data_vars('all'):
         if var_name not in ['x','y','lon','lat']:
@@ -169,11 +177,11 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
                 var_coords = data.core.coords(var.coord_group)
                 squeezed_var_coords = data.coord_squeeze(data.core.coords(var.coord_group))
                 if set(var_coords) != set(squeezed_var_coords):
-                    if verbose:
-                        print(f"Ignoring coordinates {list(set(var_coords)-set(squeezed_var_coords))} with trivial dimensions...")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Ignoring coordinates {list(set(var_coords)-set(squeezed_var_coords))} with trivial dimensions...")
                 if var_coords == spatial_coords:
-                    if verbose:
-                        print(f"'{var_name}' {var_coords}: Regridding...")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"'{var_name}' {var_coords}: Regridding...")
                     source_values = data.get(var_name).flatten()
                     if drop_nan:
                         mask = np.logical_not(np.isnan(source_values))
@@ -191,15 +199,15 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
                     new_array = griddata(points, source_values, (target_lon, target_lat), method=method)
                     new_data.set(var_name, new_array)
                 elif set(spatial_coords + ['time']) == set(squeezed_var_coords) and 'time' in new_data.core.coords():
-                    if verbose:
-                        print(f"'{var_name}' {var_coords}: Regridding over time.", end='')
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"'{var_name}' {var_coords}: Regridding over time.", end='')
                     new_array = np.empty(new_data.shape(var_name))
                     Nt = len(data.time())
                     ct = 0
                     for t in range(Nt):
                         if ct > Nt/10:
-                            if verbose:
-                                print('.', end='')
+                            if logger.is_verbose(verbose):
+                                logger.log.info('.', end='')
                             ct = 0
 
                         # Flatten the data for the current time step
@@ -219,11 +227,11 @@ def scipy_regrid_point_data(data, new_grid, new_data, verbose, method: str ='nea
                         new_array[t, ...] = griddata(points, source_values, (target_lon, target_lat), method=method)
                         ct += 1
                     new_data.set(var_name, new_array)
-                    if verbose:
-                        print('')
+                    if logger.is_verbose(verbose):
+                        logger.log.info('')
                 else:
-                    if verbose:
-                        print(f"'{var_name}' {var_coords}: Skipping!")
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"'{var_name}' {var_coords}: Skipping!")
             
 
     return new_data

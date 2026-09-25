@@ -6,6 +6,7 @@ import utm as utm_module
 import xarray as xr
 from geo_skeletons.errors import ProjectionError
 from geo_parameters.metaparameter import MetaParameter
+from .. import logger
 VALID_UTM_ZONES = [
     "C",
     "D",
@@ -76,7 +77,7 @@ class ProjManager:
         self._meta: MetaDataManager = metadata_manager
         self._crs = None
         if crs is not None:
-            self.set(crs, silent=True)
+            self.set(crs)
         
 
     def _is_valid_utm(self, utm: tuple[int, str]) -> bool:
@@ -135,15 +136,14 @@ class ProjManager:
             lon, lat = self._lon_edges, self._lat_edges
         return self._optimal_utm(lon, lat)
 
-    def reset_utm(self, silent: bool = False) -> None:
+    def reset_utm(self, verbose: Optional[bool] = None) -> None:
         """Resets the UTM zone based on the grid's longitude and latitude edges.
 
         This method recalculates the UTM zone using the current longitude and latitude 
         edges of the grid. The latitude edges are capped to above -80° and below 84°).
 
         Args:
-            silent (bool, optional): If `True`, suppresses the print statement that displays 
-                the new UTM zone after resetting. Defaults to `False`.
+            verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
 
         Returns:
             None: This method modifies the object's UTM zone in place.
@@ -157,8 +157,8 @@ class ProjManager:
             # *** utm.error.OutOfRangeError: latitude out of range (must be between 80 deg S and 84 deg N)
             # raise OutOfRangeError('longitude out of range (must be between 180 deg W and 180 deg E)')
             self._crs = self._optimal_utm(lon=lon, lat=lat)
-        if not silent and self._crs is not None:
-            print(f"Setting UTM {self._crs}")
+        if verbose and self._crs is not None:
+            logger.log.info(f"Setting UTM {self._crs}")
 
     def units_are_in_degrees(self) -> bool:
         """Determines whether the current CRS projection is in degrees.
@@ -181,7 +181,7 @@ class ProjManager:
             return False
         return self.crs().is_geographic
     
-    def set(self, crs: CRSValue, silent: bool = True) -> None:
+    def set(self, crs: CRSValue, verbose: Optional[bool] = None) -> None:
         """Sets the Coordinate Reference System (CRS) for the object.
 
         This method sets the CRS based on various input formats, such as an EPSG code, 
@@ -196,8 +196,8 @@ class ProjManager:
                 - CF-compliant dictionary (e.g., `{'grid_mapping_name': 'latitude_longitude'}`).
                 - UTM zone as a tuple (e.g., `(33, 'N')`).
                 - CRS object (e.g., `pyproj.CRS` instance).
-            silent (bool, optional): If `True`, suppresses print statements that indicate 
-                the CRS being set. Defaults to `True`.
+            verbose (bool, optional): If `True`, outputs print statements that indicate 
+                the CRS being set. Defaults to global state, which is by default `False`.
 
         Returns:
             None: This method modifies the object's CRS in place.
@@ -216,28 +216,28 @@ class ProjManager:
         epsg, proj4, cf_dict, utm, crs_obj = decode_crs(crs)
         
         if epsg is not None:
-            if not silent:
-                print(f"Setting EPSG code {epsg}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Setting EPSG code {epsg}")
             if self._meta is not None:
                 self._meta.set({'epsg':epsg},'crs')
         elif proj4 is not None:
-            if not silent:
-                print(f"Setting proj4 string {proj4}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Setting proj4 string {proj4}")
             if self._meta is not None:
                 self._meta.set({'proj4':proj4},'crs')
         elif cf_dict is not None:
-            if not silent:
-                print(f"Setting projection from dict {cf_dict}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Setting projection from dict {cf_dict}")
             if self._meta is not None:
                 self._meta.set(cf_dict,'crs')
         elif utm is not None:
-            if not silent:
-                print(f"Setting UTM {utm}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Setting UTM {utm}")
             if self._meta is not None:
                 self._meta.set({"utm_zone": utm[0], 'utm_letter': utm[1]},'crs')
         elif crs_obj is not None:
-            if not silent:
-                print(f"Setting CRS {crs_obj}")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Setting CRS {crs_obj}")
             if self._meta is not None:
                 try:
                     self._meta.set(crs.to_cf(),'crs')
@@ -324,7 +324,6 @@ class ProjManager:
         """Calculates lon coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if crs is None:
-            #print("Can't transform x-y without a projection!")
             return None
         if isinstance(crs, tuple):
             lon = self._utm_lon(x=x, y=y, utm=crs)
@@ -336,7 +335,6 @@ class ProjManager:
         """Calculates lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if crs is None:
-            #print("Can't transform x-y without a projection!")
             return None
         if isinstance(crs, tuple):
             lat = self._utm_lat(x=x, y=y, utm=crs)
@@ -357,7 +355,7 @@ class ProjManager:
         """Calculates projected x coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if crs is None:
-            print("Can't transform lon-lat without a projection!")
+            logger.log.info("Can't transform lon-lat without a projection!")
             return None
         if isinstance(crs, tuple):
             x = self._utm_x(lon=lon, lat=lat, utm=crs)
@@ -369,7 +367,7 @@ class ProjManager:
         """Calculates projected y coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if crs is None:
-            print("Can't transform lon-lat without a projection!")
+            logger.log.info("Can't transform lon-lat without a projection!")
             return None
         if isinstance(crs, tuple):
             y = self._utm_y(lon=lon, lat=lat, utm=crs)

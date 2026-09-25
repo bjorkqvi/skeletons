@@ -5,19 +5,14 @@ from geo_skeletons import dask_computations
 import dask.array as da
 from typing import Union
 
-
+from .. import logger
 class ReshapeManager:
-    def __init__(
-        self,
-        silent: bool = True,
-    ) -> None:
-        self.silent = silent
-
     def explicit_reshape(
         self,
         data: Union[np.ndarray, da.array],
         data_coords: list[str],
         expected_coords: list[str],
+        verbose: bool,
     ) -> Union[np.ndarray, da.array]:
         """Reshapes the data by using explicitly given coordinate names for the data and the expected coords."""
         
@@ -38,8 +33,8 @@ class ReshapeManager:
 
         original_shape = data.shape
         data = dask_computations.reshape_me(data, tuple(coord_order))
-        if not self.silent:
-            print(
+        if logger.is_verbose(verbose):
+            logger.log.info(
                 f"Reshaping data {original_shape} -> {data.shape}: {data_coords} -> {expected_coords}"
             )
         

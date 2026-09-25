@@ -13,7 +13,7 @@ from .resample.scipy_regridders import scipy_regridders
 from .resample.ravel import ravel_regridders
 import geo_parameters as gp
 from copy import deepcopy
-
+from .. import logger
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
     return np.sqrt(np.mean(x**2, *args, **kwargs))
@@ -181,7 +181,7 @@ def init_new_class_to_grid(new_class, new_grid, data):
        
     new_data = new_class(**new_coords)
     if new_grid.proj.crs() is not None:
-        new_data.proj.set(new_grid.proj.crs(), silent=True)
+        new_data.proj.set(new_grid.proj.crs())
     new_data.name = data.name
 
     return new_data
@@ -238,9 +238,9 @@ class ResampleManager:
             'ravel'         N/A
             -----------------------------------------------------------------------------------------------------------------------------
         """
-        print('-'*125)
-        print('Engine\t\t\tgrid-to-grid\tpoint-to-grid\tpoint-to-point\tgrid-to-point\tInstallation')
-        print('-'*125)
+        logger.log.info('-'*125)
+        logger.log.info('Engine\t\t\tgrid-to-grid\tpoint-to-grid\tpoint-to-point\tgrid-to-point\tInstallation')
+        logger.log.info('-'*125)
         for key, value in REGRID_ENGINES.items():
             g2g = 'Yes' if value.get('gridded_to_gridded') is not None else ' No'
             p2g = 'Yes' if value.get('point_to_gridded') is not None else ' No'
@@ -249,16 +249,16 @@ class ResampleManager:
             
             available = 'Installed' if value.get('available') else 'Not installed'
 
-            print(f"'{key}' ({available})\t     {g2g}\t      {p2g}\t      {p2p}\t     {g2p}\t{value.get('installation')}")
-        print('-'*125)
-        print('Engine\t\tOptions')
-        print('-'*125)
+            logger.log.info(f"'{key}' ({available})\t     {g2g}\t      {p2g}\t      {p2p}\t     {g2p}\t{value.get('installation')}")
+        logger.log.info('-'*125)
+        logger.log.info('Engine\t\tOptions')
+        logger.log.info('-'*125)
         for key, value in REGRID_ENGINES.items():
             
-            print(f"'{key}'\t\t{value.get('options')}")
-        print('-'*125)
+            logger.log.info(f"'{key}'\t\t{value.get('options')}")
+        logger.log.info('-'*125)
 
-    def grid(self, new_grid: Skeleton, target_class: Optional[Skeleton] = None, engine: str='scipy', verbose: bool=True, **kwargs) -> Skeleton:
+    def grid(self, new_grid: Skeleton, target_class: Optional[Skeleton] = None, engine: str='scipy', verbose: Optional[bool]=None, **kwargs) -> Skeleton:
         """Regrids the data of the Skeleton onto a new grid.
 
         This method regrids the data from the current Skeleton to a specified new grid using 
@@ -274,8 +274,7 @@ class ResampleManager:
                 Defaults to `None`.
             engine (str, optional): The regridding engine to use. Must be one of the supported 
                 engines in. Defaults to `'scipy'`. 
-            verbose (bool, optional): If `True`, prints detailed information about the original 
-                and target grids, as well as the regridding process. Defaults to `True`.
+        verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
             **kwargs: Additional keyword arguments passed to the regridding engine.
 
         Returns:
@@ -315,18 +314,18 @@ class ResampleManager:
         new_class = target_class or create_new_class(self.skeleton, new_grid)
         new_data = init_new_class_to_grid(new_class, new_grid, self.skeleton)
 
-        if verbose:
+        if logger.is_verbose(verbose):
             if self.skeleton.core.is_projected():
-                print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')} CRS {str(self.skeleton.proj.crs())[:20]}")
+                logger.log.info(f"Original data has spatial coords {self.skeleton.core.coords('spatial')} CRS {str(self.skeleton.proj.crs())[:20]}")
             else:
-                print(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
+                logger.log.info(f"Original data has spatial coords {self.skeleton.core.coords('spatial')}")
             if new_data.core.is_projected():
-                print(f"Target grid has spatial coords {new_data.core.coords('spatial')} CRS {str(new_data.proj.crs())[:20]}")
+                logger.log.info(f"Target grid has spatial coords {new_data.core.coords('spatial')} CRS {str(new_data.proj.crs())[:20]}")
             else:
-                print(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
+                logger.log.info(f"Target grid has spatial coords {new_data.core.coords('spatial')}")
 
             
-            print(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
+            logger.log.info(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
         
         new_data = regridder(self.skeleton, new_grid, new_data, verbose=verbose, **kwargs)
         
