@@ -9,7 +9,7 @@ dependencies:
   - xarray
   - pip
   - utm
-  - pytest
+  - pyproj
   - geopy
   - pylint
   - dask
