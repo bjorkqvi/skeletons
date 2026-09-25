@@ -10,8 +10,8 @@ from .variables import Coordinate, DataVar
 import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
-import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
+from . import logger
+
 from .errors import SkeletonError, MissingDatasetError, ProjectionError
 lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
 lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
@@ -64,7 +64,7 @@ class GriddedSkeleton(Skeleton):
         x, y = skeleton.x(strict=True, mask=mask), skeleton.y(strict=True, mask=mask)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        new_skeleton.proj.set(skeleton.proj.crs(), silent=True)
+        new_skeleton.proj.set(skeleton.proj.crs())
 
         return new_skeleton
 
@@ -89,7 +89,44 @@ class GriddedSkeleton(Skeleton):
         """
         return INITIAL_VARS
 
-    def ravel(self, proj: Optional[str] = None, crs: Optional[CRSValue] = None, verbose: bool=True) -> "PointSkeleton":
+    def ravel(self, proj: Optional[str] = None, crs: Optional[CRSValue] = None, verbose: Optional[bool]=None) -> "PointSkeleton":
+        """
+        Convert the skeleton points from a regular structure to a non-regular structure.
+
+        This function processes the skeleton by converting its points from a regular grid 
+        structure to a non-regular structure. It also allows you to specify whether the 
+        skeleton's native coordinate system should be spherical (`'lonlat'`) or projected/rotated 
+        (`'xy'`) using the `proj` argument. Additionally, the function supports transforming the 
+        points into a specified coordinate reference system (`crs`), even if the structure is 
+        already non-regular.
+
+        Args:
+            proj (str, optional): 
+                Determines the native coordinate system for the new skeleton:
+                - `'lonlat'`: Use a spherical coordinate system (longitude/latitude).
+                - `'xy'`: Use a projected or rotated Cartesian coordinate system.
+                Defaults to `None`, meaning no change to the current native CRS.
+
+            crs (CRSValue, optional): 
+                The target coordinate reference system (CRS) to which the skeleton points 
+                should be transformed. If provided, the points are transformed into the specified 
+                CRS. Defaults to `None`, meaning no CRS transformation is applied.
+
+            verbose (bool, optional): 
+                If `True`, provides detailed output during the process. If `None`, falls back 
+                to the global verbosity setting. Defaults to the global verbosity setting.
+
+        Returns:
+            PointSkeleton: 
+                A new `PointSkeleton` object containing the points after applying the optional 
+                native CRS adjustment (`proj`), CRS transformation (`crs`), and conversion to 
+                a non-regular structure.
+
+        Example:
+            >>> skeleton.ravel(proj="lonlat", verbose=True) # Converts target to sperical lon-lat coordinates
+            >>> skeleton.ravel(proj="xy", crs=(33,W))  # Converts the raveled points to UTM 33W coordinates
+            >>> skeleton.ravel()  # No changes to CRS
+        """
         points = PointSkeleton.from_skeleton(self, proj=proj)
         if crs is not None:
             x, y = points.xy(crs=crs)
@@ -116,15 +153,22 @@ class GriddedSkeleton(Skeleton):
 
 
         if len(levels) < 2 and contour:
-            print(f'Need at least two levels to use contour. Setting to False.')
+            logger.log.info(f'Need at least two levels to use contour. Setting to False.')
             contour = False
         if len(data.shape) == 1 and contour:
-            print(f'Need true 2D-data (not {data.shape}) to use contour. Setting to False.')
+            logger.log.info(f'Need true 2D-data (not {data.shape}) to use contour. Setting to False.')
             contour=False
         if proj is None:
             if contour:
                 cont = ax.contourf(self.x(native=True), self.y(native=True),data, cmap=cmap, levels=levels)
             else:
+                try:
+                    import matplotlib.colors as mcolors
+                    import matplotlib.pyplot as plt
+                except ImportError as e:
+                    logger.log.info(f"Quicklook required matplotlib")
+                    raise e
+                
                 if cmap == 'viridis':
                     cmap = plt.cm.viridis
                 else:
@@ -141,6 +185,12 @@ class GriddedSkeleton(Skeleton):
             if contour:
                 cont = ax.contourf(self.longrid(), self.latgrid(),data, cmap=cmap,levels=levels)
             else:
+                try:
+                    import matplotlib.colors as mcolors
+                    import matplotlib.pyplot as plt
+                except ImportError as e:
+                    logger.log.info(f"Quicklook required matplotlib")
+                    raise e
                 if cmap == 'viridis':
                     cmap = plt.cm.viridis
                 else:
@@ -154,6 +204,12 @@ class GriddedSkeleton(Skeleton):
             if contour:
                 cont = ax.contourf(self.xgrid(), self.ygrid(),data, cmap=cmap, levels=levels)
             else:
+                try:
+                    import matplotlib.colors as mcolors
+                    import matplotlib.pyplot as plt
+                except ImportError as e:
+                    logger.log.info(f"Quicklook required matplotlib")
+                    raise e
                 if cmap == 'viridis':
                     cmap = plt.cm.viridis
                 else:
@@ -252,12 +308,9 @@ class GriddedSkeleton(Skeleton):
                 ystep = 10
                 xstep = int(np.round(self.dmy()/self.dmx()))*ystep
             expansions = []
-            print('Iterating to find a grid fitting inside projected parent grid...')
+            logger.log.info('Iterating to find a grid fitting inside projected parent grid...')
             while x_too_small or y_too_small:
-                #print(new_grid.edges('lon'))
-                #print(new_grid.edges('lat'))
-                # Add a little bit of tolerance
-                # Otherwise we might run into problems at -180 180 border in polar projections
+
                 x_edge = self.edges(not_x_str)
                 x_edge = (x_edge[0] - self.dlon(native=True), x_edge[1] + self.dlon(native=True))
 
@@ -276,40 +329,23 @@ class GriddedSkeleton(Skeleton):
                     expansions.append('y')
                     coord_dict[y_str] = (coord_dict[y_str][0]-ystep*new_grid.dy(native=True), coord_dict[y_str][1]+ystep*new_grid.dy(native=True))
 
-                # We might get stuck in a infinite loop because of the expansion
 
                 new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
-                #self.quicklook(proj='xy', compare=new_grid)
-                #breakpoint()
-            # Undo last expansion since it put us outside the grid
+
             if 'y' in expansions[-2:]:
                 coord_dict[y_str] = (coord_dict[y_str][0]+ystep*new_grid.dy(native=True), coord_dict[y_str][1]-ystep*new_grid.dy(native=True))
             if 'x' in expansions[-2:]:
                 coord_dict[x_str] = (coord_dict[x_str][0]+xstep*new_grid.dx(native=True), coord_dict[x_str][1]-xstep*new_grid.dx(native=True))
             new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
-            #print('----')
-            #print(xstep)
-            #print(ystep)
-            #breakpoint()
-            #print(new_grid.edges('lon'))
-            #print(new_grid.edges('lat'))
+
         elif area == 'outer':
             coord_dict[x_str] = self.edges(x_str)
             coord_dict[y_str] = self.edges(y_str)
             new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
-        #     while not covered_by_grid(new_grid.edges(not_x_str), new_grid.edges(not_y_str), self.edges(not_x_str), self.edges(not_y_str)):
-        #         print(new_grid.edges(not_x_str))
-        #         print(new_grid.edges(not_y_str))
-        #         coord_dict[x_str] = (coord_dict[x_str][0]+100*new_grid.dx(native=True), coord_dict[x_str][1]-100*new_grid.dx(native=True))
-        #         coord_dict[y_str] = (coord_dict[y_str][0]+100*new_grid.dy(native=True), coord_dict[y_str][1]-100*new_grid.dy(native=True))
-        #         new_grid = create_new_grid(coord_dict, **kwargs)
-        # breakpoint()
 
         else:
             raise ValueError(f"'area' needs to be 'inner' or 'outer', not {area}!")
-        # new_grid = self.__class__(**coord_dict)
 
-        # new_grid.proj.set(self.proj.crs())
         return new_grid
 
     def xgrid(
@@ -663,7 +699,7 @@ class GriddedSkeleton(Skeleton):
         else:
             points = PointSkeleton(lon=x, lat=y)
         if self.proj.crs() is not None:    
-            points.proj.set(self.proj.crs(), silent=True)
+            points.proj.set(self.proj.crs())
        
         return points.xy(mask=mask, normalize=normalize, native=native, crs = crs or self.proj.crs())
 
@@ -720,7 +756,7 @@ class GriddedSkeleton(Skeleton):
         points = PointSkeleton(x=x, y=y)
         if self.proj.crs() is None:
             return None, None
-        points.proj.set(self.proj.crs(), silent=True)
+        points.proj.set(self.proj.crs())
         return points.lonlat(mask=mask, native=native, crs = crs or self.proj.crs())
     
     def _native_xy(

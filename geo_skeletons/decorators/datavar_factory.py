@@ -65,7 +65,7 @@ def add_datavar(
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
             rotated: bool = False,
-            silent: bool = True,
+            verbose: Optional[bool] = None,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
                 data = np.full(self.shape(name_str), data)
@@ -78,7 +78,7 @@ def add_datavar(
                 coords=coords,
                 chunks=chunks,
                 rotated=rotated,
-                silent=silent,
+                verbose=verbose,
             )
 
         if isinstance(name, DataVar):

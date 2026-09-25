@@ -362,7 +362,7 @@ class CoordinateManager:
             ['swell_mask']
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
-            print(
+            raise ValueError(
                 "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
             )
             return None
@@ -454,7 +454,7 @@ class CoordinateManager:
             ['swell_points']
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
-            print(
+            raise ValueError(
                 "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
             )
             return None
@@ -617,7 +617,7 @@ class CoordinateManager:
         
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint","noncoordinate"]:
-            print(
+            raise ValueError(
                 "Coord group needs to be 'all', 'spatial', 'nonspatial','grid', 'gridpoint' or 'noncoordinate'."
             )
             return None
@@ -674,7 +674,7 @@ class CoordinateManager:
             or intensities, tied to their respective coordinates.
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
-            print(
+            raise ValueError(
                 "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
             )
             return None
@@ -730,7 +730,7 @@ class CoordinateManager:
             tied to their respective coordinates, such as wind or wave directions.
         """
         if coord_group not in ["all", "spatial", "nonspatial", "grid", "gridpoint"]:
-            print(
+            raise ValueError(
                 "Coord group needs to be 'all', 'spatial', 'nonspatial','grid' or 'gridpoint'."
             )
             return None
