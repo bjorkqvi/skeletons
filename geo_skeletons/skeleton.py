@@ -648,6 +648,7 @@ class Skeleton:
             priority=priority
         )
 
+
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
@@ -690,6 +691,7 @@ class Skeleton:
             c: v for (c, v) in core_coords_to_ds_coords.items() if c in coords_needed
         }
         # Remap the names of the Dataset dimension so that we can traspose data when setting
+
         ds_remapped_coords, __ = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
@@ -697,11 +699,11 @@ class Skeleton:
 
         proj_obj = find_proj(ds)
         if proj_obj:
-            if verbose:
+            if logger.is_verbose(verbose):
                 logger.log.info(f'Setting projection as: {proj_obj}')
             points.proj.set(proj_obj, verbose=verbose)
         elif points.core.is_projected():
-            if verbose:
+            if logger.is_verbose(verbose):
                 logger.log.info('Could not decode any projection for the cartesian data!')
 
         # Set data
@@ -769,7 +771,7 @@ class Skeleton:
        
         return vars
     
-    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, projected: Optional[bool]=None, sparse: bool=True, show: bool=True, coastline: bool=False) -> None:
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, projected: Optional[bool]=None, sparse: bool=True, show: bool=True, coastline: bool=True) -> None:
         """Generates a quick visualization of the data in the Skeleton instance.
 
         If a time variable is present, the first time instance is displayed. This method 
@@ -864,31 +866,31 @@ class Skeleton:
         rows = int(np.ceil(len(vars)/cols))
 
 
-        if coastline:
-            try:
-                from cartopy import feature as cfeature
-                from cartopy import crs as ccrs
-            except ImportError as e:
-                logger.log.info(f"Coastlines require cartopy")
-                raise e
-            if proj == 'lonlat':
-                plot_proj = ccrs.PlateCarree()
-            elif proj == 'xy':
-                if isinstance(self.proj.crs(), tuple):
-                    plot_proj = ccrs.UTM(self.proj.crs()[0])
-                else:
-                    raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
-            else:
-                if not self.core.is_projected():
-                    plot_proj = ccrs.PlateCarree()
-                else:
-                    if isinstance(self.proj.crs(), tuple):
-                        plot_proj = ccrs.UTM(self.proj.crs()[0])
-                    else:
-                        raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
-            fig, ax = plt.subplots(rows, cols,subplot_kw={"projection": plot_proj})
-        else:
-            fig, ax = plt.subplots(rows, cols)
+        # if coastline:
+        #     try:
+        #         from cartopy import feature as cfeature
+        #         from cartopy import crs as ccrs
+        #     except ImportError as e:
+        #         logger.log.info(f"Coastlines requires cartopy")
+        #         raise e
+        #     if proj == 'lonlat':
+        #         plot_proj = ccrs.PlateCarree()
+        #     elif proj == 'xy':
+        #         if isinstance(self.proj.crs(), tuple):
+        #             plot_proj = ccrs.UTM(self.proj.crs()[0])
+        #         else:
+        #             raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
+        #     else:
+        #         if not self.core.is_projected():
+        #             plot_proj = ccrs.PlateCarree()
+        #         else:
+        #             if isinstance(self.proj.crs(), tuple):
+        #                 plot_proj = ccrs.UTM(self.proj.crs()[0])
+        #             else:
+        #                 raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
+        #     fig, ax = plt.subplots(rows, cols,subplot_kw={"projection": plot_proj})
+        # else:
+        fig, ax = plt.subplots(rows, cols)
         
         
         ax = np.atleast_2d(ax)
@@ -906,10 +908,10 @@ class Skeleton:
         r, c = 0, 0
         for var, var_dict in vars.items():
             try:
-                data = self.get(var, projected=projected)
+                data = self.get(var, projected=projected, squeeze=False)
                 wrt = ' with respect to CRS' if projected else ''
             except ProjectionError:
-                data = self.get(var, projected=False)
+                data = self.get(var, projected=False, squeeze=False)
                 wrt = ''
             if not var_dict.get('is_arrow', False):
                 if 'time' in self.core.coords():
@@ -930,14 +932,14 @@ class Skeleton:
                 arrow_var = var_dict.get('arrow_data', '')
                 if arrow_var:
                     wrt = ' with respect to CRS' if projected else ''
-                    arrow_data = self.get(arrow_var, dir_type='math', projected=projected)
+                    arrow_data = self.get(arrow_var, dir_type='math', projected=projected, squeeze=False)
                     if 'time' in self.core.coords():
                         arrow_data = arrow_data[0,...]
                     ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, arrow_var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
                     ax[r,c].legend(loc='upper right')
                     wrt = ''
             else:
-                arrow_data = self.get(var, dir_type='math', projected=projected)
+                arrow_data = self.get(var, dir_type='math', projected=projected, squeeze=False)
                 wrt = ' with respect to CRS' if projected else ''
                 if 'time' in self.core.coords():
                     arrow_data = arrow_data[0,...]
@@ -979,11 +981,82 @@ class Skeleton:
                 plt.legend()
             
             if coastline:
-                ax[r,c].add_feature(
-                    cfeature.NaturalEarthFeature(
-                "physical", "coastline", "10m", facecolor="none", edgecolor="black"
-                )
-                )
+                from pyproj import Transformer, CRS
+                def crs_from_utm(utm: tuple[int, str]) -> CRS:
+                    """Return a pyproj CRS for UTM zone (1..60) and band letter (C..X).
+                    Uses hemisphere implied by band (C..M => southern, N..X => northern).
+                    """
+                    zone, band = utm
+                    if not (1 <= zone <= 60):
+                        raise ValueError("Zone must be 1..60")
+                    band = band.upper()
+                    BAND_LETTERS = "CDEFGHJKLMNPQRSTUVWX"
+                    if band not in BAND_LETTERS:
+                        raise ValueError("Band must be one of " + ", ".join(BAND_LETTERS))
+                    hemisphere = "N" if BAND_LETTERS.index(band) >= BAND_LETTERS.index("N") else "S"
+                    epsg_base = 32600 if hemisphere == "N" else 32700
+                    epsg = epsg_base + zone
+                    return CRS.from_epsg(epsg)
+                if proj is None and self.core.is_projected():
+                    crs = self.proj.crs()
+
+                elif proj == "xy":
+                    crs = self.proj.crs()
+                else:
+                    crs = "EPSG:4326"
+
+                if isinstance(crs, tuple):
+                    crs = crs_from_utm(crs)
+                transformer = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+                from shapely.ops import transform
+
+                import cartopy.feature as cfeature 
+                coast_feat = cfeature.NaturalEarthFeature('physical', 'coastline', '10m')
+                geoms = list(coast_feat.geometries())
+                def reproject_geom(geom):
+                    return transform(lambda x, y, z=None: transformer.transform(x, y), geom)
+
+
+                def plot_features(ax, geoms):
+                    for geom in geoms:
+                        proj_geom = reproject_geom(geom)
+                        # proj_geom can be LineString, MultiLineString, Polygon, MultiPolygon
+                        # handle common types:
+                        if proj_geom.geom_type == 'LineString':
+                            x, y = proj_geom.xy
+                            ax[r,c].plot(x, y, color='black', linewidth=0.5)
+                        elif proj_geom.geom_type == 'MultiLineString':
+                            for part in proj_geom.geoms:
+                                x, y = part.xy
+                                ax[r,c].plot(x, y, color='black', linewidth=0.5)
+                        elif proj_geom.geom_type == 'Polygon':
+                            x, y = proj_geom.exterior.xy
+                            ax[r,c].plot(x, y, color='black', linewidth=0.5)
+                        elif proj_geom.geom_type == 'MultiPolygon':
+                            for poly in proj_geom.geoms:
+                                x, y = poly.exterior.xy
+                                ax[r,c].plot(x, y, color='black', linewidth=0.5)
+
+
+
+                if proj is None:
+                    plot_features(ax, geoms)
+                    ax[r,c].set_xlim(self.edges('lon', native=True))
+                    ax[r,c].set_ylim(self.edges('lat', native=True))
+                elif proj == 'lonlat':
+                    plot_features(ax, geoms)
+                    ax[r,c].set_xlim(self.edges('lon'))
+                    ax[r,c].set_ylim(self.edges('lat'))
+                elif proj == 'xy':
+                    plot_features(ax, geoms)
+                    ax[r,c].set_xlim(self.edges('x'))
+                    ax[r,c].set_ylim(self.edges('y'))
+
+            #     ax[r,c].add_feature(
+            #         cfeature.NaturalEarthFeature(
+            #     "physical", "coastline", "10m", facecolor="none", edgecolor="black"
+            #     )
+            #     )
 
             c += 1
             if c > cols-1:
@@ -1490,7 +1563,7 @@ class Skeleton:
     def set(
         self,
         name: Union[str, MetaParameter],
-        data: Optional[Union[np.ndarray, xr.DataArray, da.Array]] = None,
+        data: Union[np.ndarray, xr.DataArray, da.Array],
         dir_type: Optional[str] = None,
         allow_reshape: bool = True,
         allow_transpose: bool = False,
@@ -1509,8 +1582,7 @@ class Skeleton:
 
         Args:
             name (Union[str, MetaParameter]): The name of the variable to set or update.
-            data (Optional[Union[np.ndarray, xr.DataArray, da.Array]], optional): The data to set for the variable. 
-                - If `None`, an empty array is set. Defaults to None.
+            data (Union[np.ndarray, xr.DataArray, da.Array]): The data to set for the variable. 
             dir_type (Optional[str], optional): Defines the directional convention of the data when setting 
                 a directional variable. Can be one of:
                 - `'from'`: Directions are interpreted as coming from the specified angle in degrees.
@@ -1597,9 +1669,6 @@ class Skeleton:
             or name in self._ds_manager.empty_masks()
         )
 
-        if data is None:
-            data = self.get(name, empty=True, squeeze=False, dir_type=dir_type)
-
         data = dask_computations.atleast_1d(data)
 
         # Make constant array if given data has no shape
@@ -1661,24 +1730,27 @@ class Skeleton:
                 twin = self.core.find_twin_component(name)
                 twin_data = self._u_v_buffer.get(twin)
                 if twin_data is None:
-                    self._u_v_buffer[name] = self._ds_manager.compile_data_array(data, name)
+                    self._u_v_buffer[name] = data #self._ds_manager.compile_data_array(data, name)
                     if logger.is_verbose(verbose):
                         logger.log.info(f"Buffering projected '{name}' data. Will be set when projected '{twin}' data is set.")
                 else:
                     if logger.is_verbose(verbose):
                         logger.log.info(f"Reading '{twin}' data from buffer...")
                     if self.core.is_component(name) == 'x':
-                        x_data = self._ds_manager.compile_data_array(data, name)
+                        x_data = data #self._ds_manager.compile_data_array(data, name)
                         y_data = twin_data
                     else:
                         x_data = twin_data
-                        y_data = self._ds_manager.compile_data_array(data, name)
-                        
+                        y_data = data #self._ds_manager.compile_data_array(data, name)
 
                     lon, lat = self.lonlat()
                     if projected:
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"Unrotating '{name}' and '{twin}' data...")
                         x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
                     else:
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"Rotating '{name}' and '{twin}' data...")
                         x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
 
                     if self.core.is_component(name) == 'x':
@@ -2126,14 +2198,23 @@ class Skeleton:
                 lon, lat = self.lonlat()
                 if my_param.i_am() in ['x', 'east']:
                     if projected:
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"Rotating '{name}' and its twin component '{twin_name}'")
                         data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
                     else:
+                        
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"Unrotating '{name}' and its twin component '{twin_name}'")
                         data, __ = self.proj._unrotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
 
                 elif my_param.i_am() in ['y', 'north']:
                     if projected:
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"Rotating '{name}' and its twin component '{twin_name}'")
                         __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
                     else:
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"Unrotating '{name}' and its twin component '{twin_name}'")
                         __, data = self.proj._unrotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
                 else:
                     raise ProjectionError(f"'{name}' doesn't seem to be a component!")
