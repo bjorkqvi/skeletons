@@ -5,7 +5,7 @@ import xarray as xr
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
 from .managers.reshape_manager import ReshapeManager
-from .managers.resample_manager import ResampleManager
+from .managers.resample_manager import ResampleManager, create_new_class
 if TYPE_CHECKING:
     from .managers.coordinate_manager import CoordinateManager
 
@@ -413,12 +413,21 @@ class Skeleton:
         )(new_cls)
 
     @classmethod
-    def projected_class(cls, cls_name: Optional[str] = None) -> "Skeleton":
+    def project_class(cls, cls_name: Optional[str] = None) -> "Skeleton":
         """Creates a projected version of the class."""
-        cls_name = cls_name or _modified_name(cls.__name__)
+        cls_name = cls_name or cls.__name__+'LonLat'
+        new_cls = create_new_class(cls, cls, projected=True)
+        return new_cls
+
+    @classmethod
+    def unproject_class(cls, cls_name: Optional[str] = None) -> "Skeleton":
+        """Creates a projected version of the class."""
+
+        cls_name = cls_name or cls.__name__ + 'XY'
+        new_cls = create_new_class(cls, cls, projected=False)
         
-        
-        return type(cls_name, (cls,), {})
+        new_cls = type(cls_name, (new_cls,), {})
+        return new_cls
 
     @classmethod
     def from_coord_dict(cls, coord_dict: dict) -> "Skeleton":

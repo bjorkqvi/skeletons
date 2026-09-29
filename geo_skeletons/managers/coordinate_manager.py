@@ -1092,6 +1092,11 @@ class CoordinateManager:
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
+                proj = self.meta_parameter(var).projection_type()
+                if proj is not None:
+                    crs = 'wgs84' if proj == 'lonlat' else 'crs'
+                    string += f" ({crs})"
+
         else:
             string += "\n    *empty*"
 
@@ -1130,6 +1135,10 @@ class CoordinateManager:
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
+                proj = self.meta_parameter(key).projection_type()
+                if proj is not None:
+                    crs = 'wgs84' if proj == 'lonlat' else 'crs'
+                    string += f" ({crs})"
         else:
             string += "\n    *empty*"
 

@@ -77,8 +77,12 @@ def set_up_mean_func(
     return mean_func, attr_str
 
 def find_original_skeleton_in_inheritance_chain(data):
-    cls = data.__class__
+    if not isinstance(data, type):
+        cls = data.__class__
+    else:
+        cls = data
     chain = [cls]
+
     while cls.__bases__:  # While there are more parents in the hierarchy
         cls = cls.__bases__[0]
         chain.append(cls)
@@ -91,13 +95,13 @@ def sort_out_regridded_type(data, new_grid) -> str:
     return f"{source}_to_{target}"
 
 
-def create_new_class(data, new_grid, projected: bool, native: bool=True):
+def create_new_class(data, new_grid, projected: Optional[bool]=None):
     """Creates a new class that will contain the gridded data. 
     If we change type (i.e. from gridded to point), then we will reconstruct the class to contain the correct data variables etc"""
-    if data.is_gridded() and new_grid.is_gridded():
-        return data.__class__
-    if not data.is_gridded() and not new_grid.is_gridded():
-        return data.__class__
+    # if data.is_gridded() and new_grid.is_gridded():
+    #     return data.__class__
+    # if not data.is_gridded() and not new_grid.is_gridded():
+    #     return data.__class__
 
     
     old_base = find_original_skeleton_in_inheritance_chain(new_grid)
@@ -120,8 +124,27 @@ def create_new_class(data, new_grid, projected: bool, native: bool=True):
 
     for key, param in data.core._added_vars.items():
         if key not in ['x','y','lon','lat']:
-            new_base = new_base.add_datavar(param)
-    
+            if projected is None:
+                new_base = new_base.add_datavar(param)
+            elif gp.is_gp(param.meta):
+                new_param = deepcopy(param)
+                if projected:
+                    if param.meta.i_am() in ['x', 'y']:
+                        pass
+                        
+                    elif param.meta.i_am() == 'east':
+                        new_param.meta = param.meta.my_family().get('x')
+                    elif param.meta.i_am() == 'north':
+                        new_param.meta = param.meta.my_family().get('y')
+                else:
+                    if param.meta.i_am() in ['east', 'north']:
+                        pass
+                    elif param.meta.i_am() == 'x':
+                        new_param.meta = param.meta.my_family().get('east')
+                    elif param.meta.i_am() == 'y':
+                        new_param.meta = param.meta.my_family().get('north')
+                new_base = new_base.add_datavar(new_param)
+
     for key, param in data.core._added_magnitudes.items():
         direction = param.direction
         if direction is not None:
@@ -142,10 +165,14 @@ def create_new_class(data, new_grid, projected: bool, native: bool=True):
         if (param.meta or param.name[:-5]) not in ignore_these:
             new_base = new_base.add_mask(param.meta or param.name[:-5], default_value=param.default_value, coord_group=param.coord_group, opposite_name=opposite_name, triggered_by=param.triggered_by, valid_range=param.valid_range, range_inclusive=param.range_inclusive)
     
-
+    if isinstance(data, type):
+        return new_base
     new_base_coords = new_base.core._added_coords
     new_base_vars = new_base.core._added_vars
+
+
     new_base.core = deepcopy(data.__class__.core) # Copy over coordinates, data variables, magnitudes, masks etc.
+
     if not data.is_gridded() and new_grid.is_gridded():
         del new_base.core._added_coords['inds']
         del new_base.core._added_vars['x']
@@ -167,6 +194,7 @@ def create_new_class(data, new_grid, projected: bool, native: bool=True):
         
         return new_base
 
+    return new_base
 
 def init_new_class_to_grid(new_class, new_grid, data):
     """Initializes new class to the wanted grid
