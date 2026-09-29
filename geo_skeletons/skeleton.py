@@ -27,7 +27,8 @@ from .errors import (
     DirTypeError,
     SkeletonError,
     UnknownVariableError,
-    MissingDatasetError
+    MissingDatasetError,
+    ProjectionError,
 )
 import warnings
 from collections.abc import Iterable
@@ -139,14 +140,17 @@ class Skeleton:
             if metavar is not None:
                 self.meta.append(metavar.meta_dict(), coord_name)
                 if metavar.i_am() in {'x','y','direction', 'opposite_direction'} or (metavar.dir_type() is not None and coord_name not in self.core.coords()):
-                    self.meta.append({'rotated_according_to': 'wgs84'}, coord_name)
+                    crs_val = 'crs' if metavar.projection_type() =='xy' else 'wgs84'
+                    self.meta.append({'projected_according_to': crs_val}, coord_name)
 
             if self.core.get(coord_name).coord_group in ['all', 'spatial', 'grid'] and coord_name not in ['inds', 'time']:
                 if self.core.is_projected():
                     self.meta.append({'grid_mapping': 'crs'}, coord_name)
                 else:
                     self.meta.append({'grid_mapping': 'wgs84'}, coord_name)
-
+                if metavar is not None:
+                    crs_val = 'crs' if metavar.projection_type() =='xy' else 'wgs84'
+                    self.meta.append({'projected_according_to': crs_val}, coord_name)
         self.meta.append({"name":name})
         self.meta.set({'epsg': 4326}, 'wgs84')
 
@@ -493,6 +497,7 @@ class Skeleton:
         verbose: Optional[bool] = None,
         meta_dict: dict = None,
         name: Optional[str] = None,
+        priority: str = 'components',
         **kwargs,
     ) -> "Skeleton":
         """Generates an instance of a Skeleton from an xarray Dataset.
@@ -510,6 +515,7 @@ class Skeleton:
             verbose (Optional[bool], optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
             meta_dict (dict, optional): Dictionary to set metadata to the Skeleton. Defaults to None.
             name (Optional[str], optional): Name to give to the Skeleton instance. Defaults to None.
+            priority (str, optional): Determines whether to prioritize 'components' or 'magdir' when both are present in the Dataset. Defaults to 'components'.
             **kwargs: Additional keyword arguments, such as missing coordinates.
 
         Returns:
@@ -606,6 +612,7 @@ class Skeleton:
             only_vars=only_vars,
             allowed_misses=list(kwargs.keys()),
             verbose=verbose,
+            priority=priority
         )
 
         coords = gather_coord_values(
@@ -654,13 +661,25 @@ class Skeleton:
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
         
+
+        proj_obj = find_proj(ds)
+        if proj_obj:
+            if verbose:
+                logger.log.info(f'Setting projection as: {proj_obj}')
+            points.proj.set(proj_obj, verbose=verbose)
+        elif points.core.is_projected():
+            if verbose:
+                logger.log.info('Could not decode any projection for the cartesian data!')
+
         # Set data
         points = set_core_vars_to_skeleton_from_ds(
             points,
             ds,
             core_vars_to_ds_vars,
             ds_remapped_coords,
-            meta_dict,
+            verbose=verbose,
+            meta_dict=meta_dict,
+
         )
 
         metadata = meta_dict.get("_global_") or ds.attrs
@@ -668,11 +687,7 @@ class Skeleton:
         metadata = {key: value for key, value in metadata.items() if key != 'name'}
         points.meta.append(metadata)
 
-        proj_obj = find_proj(ds)
-        if proj_obj:
-            points.proj.set(proj_obj, verbose=verbose)
-        elif points.core.is_projected():
-            logger.log.info('Could not decode any projection for the cartesian data!')
+
 
         return points
 
@@ -721,7 +736,7 @@ class Skeleton:
        
         return vars
     
-    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=False, dir: bool=False, arrows: bool=False, arrow_vars: dict[str, str] = None, rotated: Optional[bool]=None, sparse: bool=True, show: bool=True, coastline: bool=False) -> None:
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, projected: Optional[bool]=None, sparse: bool=True, show: bool=True, coastline: bool=False) -> None:
         """Generates a quick visualization of the data in the Skeleton instance.
 
         If a time variable is present, the first time instance is displayed. This method 
@@ -731,7 +746,7 @@ class Skeleton:
         Args:
             proj (str, optional): Projection for the plot. Can be one of:
                 - `'lonlat'`: Longitude-latitude projection.
-                - `'xy'`: Cartesian or rotated projection.
+                - `'xy'`: Projected or rotated projection.
                 If `None`, uses the default projection of the data. Defaults to None.
             compare ("Skeleton", optional): Another Skeleton instance to compare with. 
                 The points of the comparison Skeleton are plotted in the same projection 
@@ -739,17 +754,17 @@ class Skeleton:
             contour (bool, optional): If `True`, uses contour-type plots. If `False`, 
                 uses scatter-type plots. Defaults to True.
             mag (bool, optional): If `True`, plots magnitudes instead of components. 
-                Defaults to False.
+                Defaults to True.
             dir (bool, optional): If `True`, plots directions instead of components. 
                 Defaults to False.
             arrows (bool, optional): If `True`, overlays arrows on top of the magnitudes 
-                to show direction. Defaults to False.
+                to show direction. Defaults to True.
             arrow_vars (dict[str, str], optional): A dictionary defining which directional 
                 variable to use for plotting arrows on top of a data variable. For example:
                 - `{'hs': 'dirp'}`: Plots peak wave direction (`dirp`) on top of significant 
                 wave height (`hs`).
                 If `None`, no specific arrow variables are defined. Defaults to None.
-            rotated (Optional[bool], optional): If `True`, rotates directions and arrows 
+            projected (Optional[bool], optional): If `True`, rotates directions and arrows 
                 to align with the projection set by the CRS. If `None`, follows the behavior 
                 defined by the `proj` argument. Defaults to None.
             sparse (bool, optional): If `True`, plots only a sparse set of arrows (e.g., 
@@ -845,23 +860,23 @@ class Skeleton:
         
         ax = np.atleast_2d(ax)
         
-        if rotated is None:
+        if projected is None:
             if proj == 'xy':
-                rotated = True
+                projected = True
             elif proj == 'lonlat':
-                rotated = False
+                projected = False
             elif self.core.is_projected():
-                rotated = True
+                projected = True
             else:
-                rotated = False
+                projected = False
 
         r, c = 0, 0
         for var, var_dict in vars.items():
             try:
-                data = self.get(var, rotated=rotated)
-                wrt = ' with respect to CRS' if rotated else ''
+                data = self.get(var, projected=projected)
+                wrt = ' with respect to CRS' if projected else ''
             except ProjectionError:
-                data = self.get(var, rotated=False)
+                data = self.get(var, projected=False)
                 wrt = ''
             if not var_dict.get('is_arrow', False):
                 if 'time' in self.core.coords():
@@ -881,16 +896,16 @@ class Skeleton:
 
                 arrow_var = var_dict.get('arrow_data', '')
                 if arrow_var:
-                    wrt = ' with respect to CRS' if rotated else ''
-                    arrow_data = self.get(arrow_var, dir_type='math', rotated=rotated)
+                    wrt = ' with respect to CRS' if projected else ''
+                    arrow_data = self.get(arrow_var, dir_type='math', projected=projected)
                     if 'time' in self.core.coords():
                         arrow_data = arrow_data[0,...]
                     ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, arrow_var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
                     ax[r,c].legend(loc='upper right')
                     wrt = ''
             else:
-                arrow_data = self.get(var, dir_type='math', rotated=rotated)
-                wrt = ' with respect to CRS' if rotated else ''
+                arrow_data = self.get(var, dir_type='math', projected=projected)
+                wrt = ' with respect to CRS' if projected else ''
                 if 'time' in self.core.coords():
                     arrow_data = arrow_data[0,...]
                 ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
@@ -1448,9 +1463,10 @@ class Skeleton:
         allow_transpose: bool = False,
         fit_to_data: bool = False, 
         coords: Optional[list[str]] = None,
-        verbose: Optional[bool] = None,
         chunks: Optional[Union[tuple, str]] = None,
-        rotated: bool = False, 
+        native: bool = False,
+        projected: bool = False, 
+        verbose: Optional[bool] = None,
     ) -> None:
         """Sets or updates the data for a variable in the Skeleton.
 
@@ -1535,14 +1551,13 @@ class Skeleton:
             raise TypeError(
                 f"'name' must be of type 'str', or 'MetaParameter' not '{type(name).__name__}'!"
             )
-        
 
         # Allows for setting using opposite direction variable
         if gp.is_gp(name):
-            name, dir_type = _find_variable_in_core(name, self.core, dir_type, verbose)
+            name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
 
         _dir_type_consistency_check(name, self.core, dir_type)
-        _rotated_consistency_check(name, self.core, rotated)
+        projected = _projected_consistency_check(name, self.core, native, projected)
 
         # Used to set metadata for the first time
         first_set = (
@@ -1589,27 +1604,22 @@ class Skeleton:
                 data=data,
             )
         elif name in self.core.directions("all"):
+            # Use this method to set the data so we can request it in math dir_type as needed, even though we end up setting twice
             self._set_direction(
                 name=name,
                 data=data,
                 dir_type=dir_type,
+                projected=projected,
             )
 
-            if rotated:
-                data = self.get(name, dir_type='math', data_array=True, squeeze=False)
-                x_data = dask_computations.cos(data)
-                y_data = dask_computations.sin(data)
-                lon, lat = self.lonlat()
-                x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-                data = dir_conversions.compute_math_direction(x_data, y_data)
 
-                self._set_direction(
-                    name=name,
-                    data=data,
-                    dir_type="math",
-                )
         elif self.core.is_component(name):
-            if not rotated:
+            same_projection = self._same_projection(projected, name)
+            twin = self.core.find_twin_component(name)
+           
+            if same_projection:
+                if self._u_v_buffer.get(twin) is not None:
+                    raise ProjectionError(f"We are setting a component {name} while it's twin {twin} is buffered because of projections. Something is not consistent.")
                 self._set_data(
                     name=name,
                     data=data,
@@ -1621,7 +1631,7 @@ class Skeleton:
                 if twin_data is None:
                     self._u_v_buffer[name] = self._ds_manager.compile_data_array(data, name)
                     if logger.is_verbose(verbose):
-                        logger.log.info(f"Buffering rotated '{name}' data. Will be set when rotated '{twin}' data is set.")
+                        logger.log.info(f"Buffering projected '{name}' data. Will be set when projected '{twin}' data is set.")
                 else:
                     if logger.is_verbose(verbose):
                         logger.log.info(f"Reading '{twin}' data from buffer...")
@@ -1634,7 +1644,10 @@ class Skeleton:
                         
 
                     lon, lat = self.lonlat()
-                    x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+                    if projected:
+                        x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+                    else:
+                        x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
 
                     if self.core.is_component(name) == 'x':
                         self._set_data(
@@ -1663,7 +1676,7 @@ class Skeleton:
                 data=data,
                 dir_type=dir_type,
             )
-            if rotated:
+            if projected:
                 data = self.get(name, dir_type='math', data_array=True, squeeze=False)
                 x_data = dask_computations.cos(data)
                 y_data = dask_computations.sin(data)
@@ -1686,6 +1699,108 @@ class Skeleton:
                 else:
                     self.meta.append({'grid_mapping': 'wgs84'}, name)
         return
+
+    def _set_magnitude(
+        self,
+        name: str,
+        data: np.ndarray,
+    ) -> None:
+        """Sets a magnitude variable.
+
+        Calculates x- and y- components and sets them based on set connected direction.
+
+        Data needs to be exactly right shape."""
+        obj = self.core.get(name)
+        x_component, y_component = obj.x, obj.y
+        if obj.direction is None:
+            raise SkeletonError(f"Cannot set a magnitude '{name}' that has no associated direction! Set componensts '{obj.x}' and '{obj.y}' separatesly, or modify class to have an associated direction.")
+        dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False, projected=True)
+
+        s = dask_computations.sin(dir_data)
+        c = dask_computations.cos(dir_data)
+        ux = data * c
+        uy = data * s
+        self._set_data(
+            name=x_component,
+            data=ux,
+        )
+        self._set_data(
+            name=y_component,
+            data=uy,
+        )
+
+    def _set_direction(
+        self,
+        name: str,
+        data: np.ndarray,
+        dir_type: str,
+        projected: bool,
+    ) -> None:
+        """Sets a directeion variable.
+
+        Calculates x- and y- components and sets them based on set connected magnitude.
+
+        Data needs to be exactly right shape."""
+        obj = self.core.get(name)
+        x_component, y_component = obj.x, obj.y
+        mag_data = self.get(obj.magnitude.name, squeeze=False, strict=False)
+
+        dir_type = dir_type or obj.dir_type
+
+        data = dir_conversions.convert_to_math_dir(data, dir_type)
+
+        s = dask_computations.sin(data)
+        c = dask_computations.cos(data)
+        ux = mag_data * c
+        uy = mag_data * s
+
+        self.set(name=x_component, data=ux, projected=projected)
+        self.set(name=y_component, data=uy, projected=projected)
+
+
+    def _set_data(
+        self,
+        name: str,
+        data: np.ndarray,
+        dir_type: str = None,
+    ) -> None:
+        """Sets a data variable to the underlying dataset.
+
+        Data needs to be exactly right shape.
+
+        Triggers setting metadata of the variable and possible connected masks."""
+        set_dir_type = self.core.get_dir_type(name)
+        if dir_type is not None and set_dir_type is None:
+            raise DirTypeError
+
+        dir_type = dir_type or set_dir_type
+        data = dir_conversions.convert(data, in_type=dir_type, out_type=set_dir_type)
+        self._ds_manager.set(data=data, name=name)
+        self.meta._metadata_to_ds(name)
+        self._trigger_masks(name, data)
+
+    def _trigger_masks(self, name: str, data: Union[np.ndarray, xr.DataArray]) -> None:
+        """Set any masks that are triggered by setting a specific data variable
+        E.g. Set new 'land_mask' when 'topo' is set."""
+        for mask in self.core._triggers(name):
+
+            if mask.range_inclusive[0]:
+                low_mask = data >= mask.valid_range[0]
+            else:
+                low_mask = data > mask.valid_range[0]
+
+            if mask.range_inclusive[1]:
+                high_mask = data <= mask.valid_range[1]
+            else:
+                high_mask = data < mask.valid_range[1]
+
+            mask_array = np.logical_and(low_mask, high_mask)
+            self.set(mask.name, mask_array)
+
+    def _same_projection(self, projected: bool, name:str) -> bool:
+        """Check if the given variable has the same projection as the provided flag."""
+        same_projection = (projected and self.proj.values_are_projected(name)) or (not projected and not self.proj.values_are_projected(name))
+        return same_projection
 
     def _reshape_data(
         self,
@@ -1770,107 +1885,6 @@ class Skeleton:
                 logger.log.info(f"Reshaping data {original_data_shape} -> {data.shape}...")
         return data
 
-    def _set_magnitude(
-        self,
-        name: str,
-        data: np.ndarray,
-    ) -> None:
-        """Sets a magnitude variable.
-
-        Calculates x- and y- components and sets them based on set connected direction.
-
-        Data needs to be exactly right shape."""
-        obj = self.core.get(name)
-        x_component, y_component = obj.x, obj.y
-        if obj.direction is None:
-            raise SkeletonError(f"Cannot set a magnitude '{name}' that has no associated direction! Set componensts '{obj.x}' and '{obj.y}' separatesly, or modify class to have an associated direction.")
-        dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False)
-
-        s = dask_computations.sin(dir_data)
-        c = dask_computations.cos(dir_data)
-        ux = data * c
-        uy = data * s
-        self._set_data(
-            name=x_component,
-            data=ux,
-        )
-        self._set_data(
-            name=y_component,
-            data=uy,
-        )
-
-    def _set_direction(
-        self,
-        name: str,
-        data: np.ndarray,
-        dir_type: str,
-    ) -> None:
-        """Sets a directeion variable.
-
-        Calculates x- and y- components and sets them based on set connected magnitude.
-
-        Data needs to be exactly right shape."""
-        obj = self.core.get(name)
-        x_component, y_component = obj.x, obj.y
-        mag_data = self.get(obj.magnitude.name, squeeze=False, strict=False)
-
-        dir_type = dir_type or obj.dir_type
-
-        data = dir_conversions.convert_to_math_dir(data, dir_type)
-
-        s = dask_computations.sin(data)
-        c = dask_computations.cos(data)
-        ux = mag_data * c
-        uy = mag_data * s
-
-        self._set_data(
-            name=x_component,
-            data=ux,
-        )
-        self._set_data(
-            name=y_component,
-            data=uy,
-        )
-
-    def _set_data(
-        self,
-        name: str,
-        data: np.ndarray,
-        dir_type: str = None,
-    ) -> None:
-        """Sets a data variable to the underlying dataset.
-
-        Data needs to be exactly right shape.
-
-        Triggers setting metadata of the variable and possible connected masks."""
-        set_dir_type = self.core.get_dir_type(name)
-        if dir_type is not None and set_dir_type is None:
-            raise DirTypeError
-
-        dir_type = dir_type or set_dir_type
-        data = dir_conversions.convert(data, in_type=dir_type, out_type=set_dir_type)
-        self._ds_manager.set(data=data, name=name)
-        self.meta._metadata_to_ds(name)
-        self._trigger_masks(name, data)
-
-    def _trigger_masks(self, name: str, data: Union[np.ndarray, xr.DataArray]) -> None:
-        """Set any masks that are triggered by setting a specific data variable
-        E.g. Set new 'land_mask' when 'topo' is set."""
-        for mask in self.core._triggers(name):
-
-            if mask.range_inclusive[0]:
-                low_mask = data >= mask.valid_range[0]
-            else:
-                low_mask = data > mask.valid_range[0]
-
-            if mask.range_inclusive[1]:
-                high_mask = data <= mask.valid_range[1]
-            else:
-                high_mask = data < mask.valid_range[1]
-
-            mask_array = np.logical_and(low_mask, high_mask)
-            self.set(mask.name, mask_array)
-
     def get(
         self,
         name: str,
@@ -1880,7 +1894,8 @@ class Skeleton:
         dir_type: Optional[str] = None,
         squeeze: bool = True,
         dask: Optional[bool] = None,
-        rotated: bool=False,
+        native: bool = False,
+        projected: bool=False,
         verbose: Optional[bool]=None,
         **kwargs,
     ) -> Union[np.ndarray, xr.DataArray, da.Array]:
@@ -1913,7 +1928,7 @@ class Skeleton:
                 - `True`: Returns a dask array.
                 - `False`: Returns a NumPy array.
                 - `None`: Uses the Skeleton's current dask mode. Defaults to None.
-            rotated (bool, optional): If `True`, rotates the data to align with the set CRS 
+            projected (bool, optional): If `True`, rotates the data to align with the set CRS 
                 projection (e.g., UTM or rotated pole). Defaults to False.
             verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
             **kwargs: Additional arguments for filtering or subsetting the data.
@@ -1964,8 +1979,8 @@ class Skeleton:
             Retrieving data with trivial dimensions squeezed are not squeezed:
             >>> data = skeleton.get('temperature', squeeze=False)
 
-            Retrieving rotated data:
-            >>> rotated_data = skeleton.get('wind', rotated=True)
+            Retrieving projected data:
+            >>> projected_data = skeleton.get('wind', projected=True)
 
             Handling unset variables:
             >>> data = skeleton.get('unknown_var', strict=True)  # Returns None if not set
@@ -1981,10 +1996,10 @@ class Skeleton:
             )
 
         if gp.is_gp(name):
-            name, dir_type = _find_variable_in_core(name, self.core, dir_type, verbose)
+            name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
 
         _dir_type_consistency_check(name, self.core, dir_type)
-        _rotated_consistency_check(name, self.core, rotated)
+        projected =_projected_consistency_check(name, self.core, native, projected)
 
         if name == "x":
             return self.x(strict=strict, **kwargs)
@@ -2009,7 +2024,7 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
-                rotated=rotated,
+                projected=projected,
                 **kwargs,
             )
         elif name in self.core.mask_points("all"):
@@ -2032,7 +2047,7 @@ class Skeleton:
                 data = np.logical_not(data).astype(int)
 
         elif self.core.get_dir_type(name) is not None: # Directional variable
-            if rotated:
+            if projected:
                 data = self._get_data(
                     name=name,
                     strict=strict,
@@ -2063,7 +2078,7 @@ class Skeleton:
                 **kwargs,
             )
 
-            if rotated:
+            if projected:
                 twin_name = self.core.find_twin_component(name)
                 twin_data = self._get_data(
                     name=twin_name,
@@ -2077,9 +2092,9 @@ class Skeleton:
                 if twin_param is None:
                     raise ProjectionError(f"Cannot find orthogonal component to '{name}'!")
                 lon, lat = self.lonlat()
-                if my_param.i_am() =='x':
+                if my_param.i_am() in ['x', 'east']:
                     data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
-                elif my_param.i_am() == 'y':
+                elif my_param.i_am() in ['y', 'north']:
                     __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
                 else:
                     raise ProjectionError(f"'{name}' doesn't seem to be a component!")
@@ -2117,8 +2132,8 @@ class Skeleton:
             if name == "time":
                 data = pd.to_datetime(data)
         else:
-            if rotated:
-                data = data.assign_attrs({'rotated_according_to':'crs'})
+            if projected:
+                data = data.assign_attrs({'projected_according_to':'crs'})
 
         return data
 
@@ -2128,7 +2143,7 @@ class Skeleton:
         strict: bool,
         empty: bool,
         dir_type: str,
-        rotated: bool,
+        projected: bool,
         **kwargs,
     ) -> xr.DataArray:
         x_name = self.core.get(name).x
@@ -2158,10 +2173,12 @@ class Skeleton:
         ):
             x_data = self.dask.undask_me(x_data)
 
-        if rotated:
+        if not self._same_projection(projected, x_name):
             lon, lat = self.lonlat()
-            x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-            
+            if projected:
+                x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+            else:
+                x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
 
         dir_type = dir_type or self.core.get(name).dir_type
         data = dir_conversions.compute_math_direction(x_data, y_data)
@@ -2330,7 +2347,7 @@ class Skeleton:
         if "x" in present_spatial_coords:
             return ["x"]
 
-    def ds(self, compile: bool = False, rotated: bool = False) -> Union[xr.Dataset, None]:
+    def ds(self, compile: bool = False, projected: bool = False) -> Union[xr.Dataset, None]:
         """Returns the underlying xarray Dataset for the Skeleton.
 
         This method provides access to the underlying xarray Dataset associated with 
@@ -2341,7 +2358,7 @@ class Skeleton:
             compile (bool, optional): If `True`, adds computed magnitudes and directional 
                 variables to the Dataset. Note that this operation performs a deep copy 
                 of the data and may be computationally expensive. Defaults to False.
-            rotated (bool, optional): If `True`, rotates directional variables to align 
+            projected (bool, optional): If `True`, rotates directional variables to align 
                 with the set CRS (e.g., UTM or rotated pole). Defaults to False.
 
         Returns:
@@ -2351,7 +2368,7 @@ class Skeleton:
         Notes:
             - If `compile=True`, the method computes and adds magnitudes and directions 
             to the Dataset.
-            - If `rotated=True`, the method applies rotation to directional variables 
+            - If `projected=True`, the method applies rotation to directional variables 
             (e.g., wind directions) based on the set CRS.
 
         Examples:
@@ -2361,16 +2378,16 @@ class Skeleton:
             Retrieving the Dataset with computed magnitudes and directions:
             >>> compiled_dataset = skeleton.ds(compile=True)
 
-            Retrieving the Dataset with rotated directions:
-            >>> rotated_dataset = skeleton.ds(rotated=True)
+            Retrieving the Dataset with projected directions:
+            >>> projected_dataset = skeleton.ds(projected=True)
 
             Combining both options:
-            >>> compiled_and_rotated_dataset = skeleton.ds(compile=True, rotated=True)
+            >>> compiled_and_projected_dataset = skeleton.ds(compile=True, projected=True)
         """
         if not hasattr(self, "_ds_manager"):
             return None
         ds = self._ds_manager.ds()
-        if compile or rotated:
+        if compile or projected:
             ds = deepcopy(ds)
             crs = self.proj.crs()
             if isinstance(crs, tuple):
@@ -2378,18 +2395,18 @@ class Skeleton:
             else:
                 crs = crs.to_cf()
             ds['crs'].attrs = crs
-            if rotated:
+            if projected:
                 for var in self.core.data_vars():
                     param = self.core.meta_parameter(var)
                     if param is None:
                         continue
                     if param.i_am() in ['x', 'y'] or param.dir_type() is not None:
-                        ds[var] = self.get(var, data_array=True, rotated=rotated, squeeze=False)
+                        ds[var] = self.get(var, data_array=True, projected=projected, squeeze=False)
                 
             for mag in self.core.magnitudes():
                 ds[mag] = self.get(mag, data_array=True, squeeze=False)
             for dirs in self.core.directions():
-                ds[dirs] = self.get(dirs, data_array=True, rotated=rotated, squeeze=False)
+                ds[dirs] = self.get(dirs, data_array=True, projected=projected, squeeze=False)
 
         return ds
 
@@ -3038,17 +3055,15 @@ def _determine_inds(coord_slice, all_vals):
     return coord_inds
 
 
-def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_type: str, verbose: bool) -> str:
+def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_type: str, projected: bool, verbose: bool) -> str:
     """Finds a geo-parameter in the core, accounting for that we might have been given an opposite direction (DirTo instead of Dir)
+    or that we might have a projected vs lonlat co,mponent
     
-    Sets the dir_type accordingly if not explicitly given by the user"""
+    Sets the dir_type and projected accordingly if not explicitly given by the user"""
     if logger.is_verbose(verbose):
         logger.log.info(f"Requested geo-parameter {name}")
     
-    if name.dir_type() is None:
-        names = core.find(name)
-
-    else:
+    if name.dir_type() is not None:
         # Allows getting with e.g. gp.wave.DirpTo when skeleton has gp.wave.Dirp
         for key, var in name.my_family().items():
             if key in {'direction', 'opposite_direction'}:
@@ -3061,8 +3076,20 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
                         if logger.is_verbose(verbose):
                             logger.log.info(f"'dir_type' not specified, setting to '{dir_type}'")
                     break
-    
-    
+    elif name.i_am() in ['x','y','east','north']:
+        for key, var in name.my_family().items():
+            if key in {'x', 'y', 'east', 'north'}:
+                names = core.find(var)
+                if len(names) > 0:
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Found component geo-parameter {var} in dataset")
+                    if projected is None:
+                        projected = var.projection_type() == 'xy'
+                        if logger.is_verbose(verbose):
+                            logger.log.info(f"'projected' not specified, setting to '{projected}'")
+                    break
+    else:
+        names = core.find(name)
     if len(names) == 0:
         raise UnknownVariableError(f"Variable matching {name} not found!")
     if len(names) > 1:
@@ -3073,7 +3100,7 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
     if logger.is_verbose(verbose):
         logger.log.info(f"Reading variable '{name}'")
 
-    return name, dir_type
+    return name, dir_type, projected
 
 def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: str):
     """Checks the consistency of the directional type.
@@ -3094,18 +3121,24 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
             raise DirTypeError
     
 
-def _rotated_consistency_check(name: str, core: CoordinateManager, rotated: bool):
-    if not rotated:
-        return 
+def _projected_consistency_check(name: str, core: CoordinateManager, native: bool, projected: bool) -> bool:
+    """Checks that projected information is not requested when it is not available"""
+    if native and projected:
+        raise ValueError("Both 'native' and 'projected' cannot be True at the same time.")
 
-    if core.is_component(name) or name in core.directions():
-        return
+    if native:
+        projected = core.meta.get(name).get('projected_according_to') == 'crs'
     
-    if name in core.magnitudes():
-        raise ProjectionError('Cannot rotate a magnitude!')
-    elif name in core.mask_points():
-        raise ProjectionError('Cannot rotate mask points!')
-    elif name in core.masks():
-        raise ProjectionError('Cannot rotate a mask!')
-    elif name in core.data_vars() and core.get_dir_type(name) is None:
-        raise ProjectionError('Cannot rotate a non-directional variable!')
+    
+    if not projected:
+        return False
+
+    # Lets not raise errors for scalars, since nothing will happen
+    if not core.is_component(name) and not core.is_direction(name):
+        return False
+
+    # Don't proceed if the variable needs directional information but no projection information is present
+    if projected and core.meta.get(name).get('projected_according_to') is None:
+        raise ProjectionError(f"Variable '{name}' lacks 'projected_according_to' metadata, but 'projected'=True is requested.")
+
+    return True

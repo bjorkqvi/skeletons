@@ -10,3 +10,5 @@ class DataVar:
     default_value: float
     dir_type: str = None
     grid_mapping: str = None
+    magnitude: str = None
+    direction: str = None

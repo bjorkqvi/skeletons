@@ -41,7 +41,8 @@ def add_magnitude(
             squeeze: bool = True,
             dask: Optional[bool] = None,
             dir_type: Optional[str] = None,
-            rotated: bool=False, 
+            native: bool = False,
+            projected: bool=False, 
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
@@ -58,7 +59,8 @@ def add_magnitude(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-                rotated=rotated,
+                native=native,
+                projected=projected,
                 **kwargs,
             )
 
@@ -71,6 +73,8 @@ def add_magnitude(
             strict: bool = True,
             squeeze: bool = True,
             dask: Optional[bool] = None,
+            native: bool = False,
+            projected: bool = False,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
@@ -86,6 +90,8 @@ def add_magnitude(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
+                native=native,
+                projected=projected,
                 **kwargs,
             )
 
@@ -98,6 +104,8 @@ def add_magnitude(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
+            native: bool = False,
+            projected: bool = False,
             verbose: Optional[bool] = None,
         ):
             self.set(
@@ -107,6 +115,8 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
+                native=native,
+                projected=projected,
                 verbose=verbose,
             )
 
@@ -118,7 +128,8 @@ def add_magnitude(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            rotated: bool = False, 
+            native: bool = False,
+            projected: bool = False, 
             verbose: Optional[bool] = None,
         ):
             self.set(
@@ -129,7 +140,8 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                rotated=rotated,
+                native=native,
+                projected=projected,
                 verbose=verbose,
             )
 
@@ -144,7 +156,6 @@ def add_magnitude(
 
         # Find right names for the components if given as geo-parameters
         xstr, ystr = figure_out_components(c, name, x, y)
-
 
         coord_group = c.core.get(xstr).coord_group
         mag_obj = Magnitude(name=name_str, meta=meta, x=xstr, y=ystr, coord_group=coord_group)
@@ -164,6 +175,12 @@ def add_magnitude(
             )
             mag_obj.direction = dir_obj
 
+            # Since xstr and ystr now implicitly have directional information through the connection with dir_obj, make sure they have a projection information if needed..
+            if c.core.meta_parameter(xstr).projection_type() is None:
+                c.core.meta.set({'projected_according_to': 'wgs84'},xstr)
+            if c.core.meta_parameter(ystr).projection_type() is None:
+                c.core.meta.set({'projected_according_to': 'wgs84'},ystr)
+
             c.core._add_direction(dir_obj)
 
             exec(f"c.{dir_str} = get_direction")
@@ -177,6 +194,17 @@ def add_magnitude(
         exec(f"c.set_{name_str} = set_magnitude")
 
         c.core._add_magnitude(mag_obj)
+
+        # Adds information that the components are connected to magnitudes and direction also to the components
+        xobj = c.core.get(xstr)
+        yobj = c.core.get(ystr)
+        xobj.magnitude = name_str
+        yobj.magnitude = name_str
+        if direction is not None:
+            xobj.direction = dir_str
+            yobj.direction = dir_str
+        c.core._add_var(xobj, update=True)
+        c.core._add_var(yobj, update=True)
 
         return c
 
@@ -204,33 +232,55 @@ def add_magnitude(
 
 
 def figure_out_components(cls, name: Union[str, MetaParameter], x: Union[str, MetaParameter], y: Union[str, MetaParameter]) -> tuple[str, str]:
-    if gp.is_gp(name) and x is None:
+    """Figures out the components associated with a given magnitude."""
+    if x is not None and y is not None:
+        return x, y
+
+    
+    if gp.is_gp(name):
         x = name.my_family().get('x')
+        east = name.my_family().get('east')
 
-    if gp.is_gp(name) and y is None:
+    if gp.is_gp(name):
         y = name.my_family().get('y')
+        north = name.my_family().get('north')
 
-    if gp.is_gp(x):
-        xstr = cls.core.find(x)
+    xname = [[], []]
+    xstr = None
+    for n, xvar in enumerate([x, east]):
+        if gp.is_gp(xvar):
+            xname[n] = cls.core.find(xvar)
 
-        if len(xstr) == 0:
+            if len(xname[n]) == 1:
+                xstr = xname[n][0]
+                continue
+
+    
+    if xstr is None:
+        if len(xname[0]) == 0:
             raise UnknownVariableError(f"Cannot find a data variable matching parameter {x}!")
-        if len(xstr) > 1:
-            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {x}! (found {xstr})")
-        xstr = xstr[0]
-    else:
-        xstr = x
+        if len(xname[0]) > 1:
+            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {x}! (found {xname[n]})")
 
-    if gp.is_gp(y):
-        ystr = cls.core.find(y)
+        
 
-        if len(ystr) == 0:
+    yname = [[], []]
+    ystr = None
+    for n, yvar in enumerate([y, north]):
+        if gp.is_gp(yvar):
+            yname[n] = cls.core.find(yvar)
+
+            if len(yname[n]) == 1:
+                ystr = yname[n][0]
+                continue
+              
+    
+    if ystr is None:
+        if len(yname[0]) == 0:
             raise UnknownVariableError(f"Cannot find a data variable matching parameter {y}!")
-        if len(ystr) > 1:
-            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {y}! (found {ystr})")
-        ystr = ystr[0]
-    else:
-        ystr = y
+        if len(yname[0]) > 1:
+            raise UnknownVariableError(f"Cannot find a unique data variable matching parameter {y}! (found {yname[n]})")
+
 
     return xstr, ystr
 

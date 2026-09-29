@@ -9,7 +9,7 @@ from geo_parameters.metaparameter import MetaParameter
 from .core_decoders import identify_core_in_ds, gather_coord_values
 from .ds_decoders import map_ds_to_gp, find_addable_vars_and_magnitudes
 from .coord_remapping import remap_coords_of_ds_vars_to_skeleton_names
-
+from .. import logger
 
 def create_new_class_dynamically(
     cls,
@@ -95,7 +95,9 @@ def set_core_vars_to_skeleton_from_ds(
     ds: xr.Dataset,
     core_vars_to_ds_vars: dict[str, str],
     ds_remapped_coords: dict[str, list[str]],
+    verbose: bool,
     meta_dict: dict = None,
+    
 ):
     """Set core (static) variables to a skeleton from an xarray Dataset.
 
@@ -112,7 +114,7 @@ def set_core_vars_to_skeleton_from_ds(
     for var, ds_var_x in core_vars_to_ds_vars.items():
         get_metadata_from_ds = True
         if isinstance(ds_var_x, tuple):
-            ds_var_x, ds_var_y, transform_function, dir_type = ds_var_x
+            ds_var_x, ds_var_y, transform_function, dir_type, projected = ds_var_x
             data_to_set = transform_function(ds.get(ds_var_x), ds.get(ds_var_y))
             if ds_var_y is None:
                 get_metadata_from_ds = False
@@ -121,12 +123,30 @@ def set_core_vars_to_skeleton_from_ds(
             dir_type = None
         
         if ds_remapped_coords.get(var):
+            # See if the data in the xarray dataset was from a projected variable or not
+            if projected is None:
+                projection = skeleton.meta.get(var).get('projected_according_to')
+            elif projected:
+                projection = 'crs'
+            else:
+                projection = 'wgs84'
+            if verbose:
+                
+                if skeleton.core.get_dir_type(var) is not None and dir_type is None:
+                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data has projection='{projection}' and dir_type='{skeleton.core.get_dir_type(var)}'")           
+                elif dir_type is not None:
+                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data has projection='{projection}' and dir_type='{dir_type}'")
+                else:
+                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data has projection='{projection}'.")
+            
             skeleton.set(
                 var,
                 data_to_set.data,
                 coords=ds_remapped_coords[var],
                 dir_type=dir_type,
+                projected=projection == 'crs',
             )
+
             old_metadata = {
                 "standard_name": skeleton.meta.get(var).get("standard_name"),
                 "units": skeleton.meta.get(var).get("units"),

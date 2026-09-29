@@ -31,7 +31,8 @@ def add_datavar(
             data_array: bool = False,
             squeeze: bool = True,
             dask: Optional[bool] = None,
-            rotated: bool = False, 
+            native: bool = False,
+            projected: bool = False, 
             verbose: bool = False,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
@@ -49,7 +50,8 @@ def add_datavar(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-                rotated=rotated,
+                native=native,
+                projected=projected,
                 verbose=verbose,
                 **kwargs,
             )
@@ -64,7 +66,8 @@ def add_datavar(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            rotated: bool = False,
+            native: bool = False,
+            projected: bool = False,
             verbose: Optional[bool] = None,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
@@ -77,7 +80,8 @@ def add_datavar(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                rotated=rotated,
+                native=native,
+                projected=projected,
                 verbose=verbose,
             )
 
@@ -124,7 +128,7 @@ def add_datavar(
     
 
 
-    if gp.is_gp(name) and name.i_am() in ['x', 'y']:
+    if gp.is_gp(name) and name.i_am() in ['x', 'y', 'north', 'east']:
         # Can't allow components to have a 0 default value because they are not scalable and loose directional information
         if default_value is None or np.isclose(default_value, 0):
             default_value = 1.0e-16

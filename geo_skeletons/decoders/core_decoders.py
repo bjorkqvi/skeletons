@@ -5,7 +5,7 @@ from geo_parameters.metaparameter import MetaParameter
 import geo_parameters as gp
 from typing import Union, Optional
 from geo_skeletons.errors import GridError
-
+from copy import copy
 from geo_skeletons.variable_archive import (
     LIST_OF_COORD_ALIASES,
     LIST_OF_VAR_ALIASES,
@@ -27,6 +27,7 @@ def identify_core_in_ds(
     verbose: Optional[bool] = None,
     decode_cf: bool = True,
     strict: bool = True,
+    priority: str = 'components',
 ) -> tuple[dict[str, str], dict[str, str], dict[str, list[str]], list[str]]:
     """Identify the variables in the Dataset that matches the variables in the Skeleton core
 
@@ -117,10 +118,10 @@ def identify_core_in_ds(
         if not decode_cf:
             continue
 
-        # Find e.g. fp when we want Tp, or WindDirTo when we want WindDir
 
-        ds_var_x, transform_function, dir_type = (
-            _map_inverse_geo_parameter_to_ds_variable(
+        # Find e.g. fp when we want Tp, or WindDirTo when we want WindDir
+        ds_var_x, transform_function, dir_type, projected = (
+            _map_similar_geo_parameter_to_ds_variable(
                 search_param,
                 ds,
                 aliases=aliases,
@@ -136,11 +137,12 @@ def identify_core_in_ds(
                 None,
                 transform_function,
                 dir_type,
+                projected,
             )
             continue
 
         # Find e.g. x_wind and y_wind when we want Wind or WindDir
-        ds_var_x, ds_var_y, transform_function, dir_type = (
+        ds_var_x, ds_var_y, transform_function, dir_type, projected = (
             _map_geo_parameter_to_components_in_ds(
                 search_param,
                 ds,
@@ -157,6 +159,7 @@ def identify_core_in_ds(
                 ds_var_y,
                 transform_function,
                 dir_type,
+                projected,
             )
 
     for var in core.magnitudes() + core.directions():
@@ -177,8 +180,8 @@ def identify_core_in_ds(
             core_vars_to_ds_vars[var] = ds_var
             continue
 
-        ds_var_x, transform_function, dir_type = (
-            _map_inverse_geo_parameter_to_ds_variable(
+        ds_var_x, transform_function, dir_type, projected = (
+            _map_similar_geo_parameter_to_ds_variable(
                 search_param,
                 ds,
                 aliases=aliases,
@@ -194,6 +197,7 @@ def identify_core_in_ds(
                 None,
                 transform_function,
                 dir_type,
+                projected,
             )
 
     xy_set = (
@@ -219,12 +223,43 @@ def identify_core_in_ds(
         coords_needed = core.coords("init", cartesian=(not lonlat_set))
 
 
+    core_vars_to_ds_vars = prioritize_components_or_magdir(core, core_vars_to_ds_vars, priority, verbose)
 
     return (
         core_coords_to_ds_coords,
         core_vars_to_ds_vars,
         coords_needed,
     )
+
+def prioritize_components_or_magdir(core: CoordinateManager, core_vars_to_ds_vars: dict[str, str], priority: str, verbose: bool) -> dict[str,str]:
+    """Decided if data should be set using components or magnitude and direction in case both are present in the xarray dataset."""
+    clean_core_vars_to_ds_vars = copy(core_vars_to_ds_vars)
+    if priority == 'components':
+        for key in core_vars_to_ds_vars.keys():
+            is_magdir = key in core.magnitudes() or key in core.directions()
+            if is_magdir:
+                has_components = core_vars_to_ds_vars.get(core.get(key).x) is not None and core_vars_to_ds_vars.get(core.get(key).y) is not None
+            else:
+                continue
+            if has_components:
+                if verbose:
+                    logger.log.info(f"Will not set '{key}' because priority is 'components'.")
+                del clean_core_vars_to_ds_vars[key]
+    elif priority == 'magdir':
+        for key in core_vars_to_ds_vars.keys():
+            is_component = core.is_component(key)
+            if is_component:
+                has_magdir = core_vars_to_ds_vars.get(core.get(key).magnitude) is not None and core_vars_to_ds_vars.get(core.get(key).direction) is not None
+            else:
+                continue
+            if has_magdir:
+                if verbose:
+                    logger.log.info(f"Will not set '{key}' because priority is 'magdir'.")
+                del clean_core_vars_to_ds_vars[key]
+    else:
+        raise KeyError(f"'priority' must be either 'components' or 'magdir', not '{priority}'!")
+
+    return clean_core_vars_to_ds_vars
 
 
 def gather_coord_values(
@@ -471,7 +506,7 @@ def _find_geoparameter_in_ds(
     return None
 
 
-def _map_inverse_geo_parameter_to_ds_variable(
+def _map_similar_geo_parameter_to_ds_variable(
     var: Union[MetaParameter, str],
     ds: xr.Dataset,
     aliases: dict[str, str],
@@ -480,7 +515,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
     only_vars: list[str],
     verbose: bool,
 ):
-    """Get inverse from Dataset (e.g. get fp if we want Tp)"""
+    """Get similar geo-parameter from Dataset (e.g. get fp if we want Tp)"""
     if not gp.is_gp(var):
         var = var_alias_to_gp(var) or coord_alias_to_gp(var)
     if var is None:
@@ -499,6 +534,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
         )
         transform_function = lambda x, y: 1 / x
         dir_type = None
+        projected = None
     elif var.i_am() == "frequency":
         ds_var = _map_geo_parameter_to_ds_variable(
             var.my_family("period"),
@@ -512,6 +548,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
         )
         transform_function = lambda x, y: 1 / x
         dir_type = None
+        projected = None
     elif var.i_am() == "direction":
         ds_var = _map_geo_parameter_to_ds_variable(
             var.my_family("opposite_direction"),
@@ -525,6 +562,7 @@ def _map_inverse_geo_parameter_to_ds_variable(
         )
         transform_function = lambda x, y: x # dir_type takes care of the conversion, so lambda can be trivial
         dir_type = var.my_family("opposite_direction").dir_type()
+        projected = None
     elif var.i_am() == "opposite_direction":
         ds_var = _map_geo_parameter_to_ds_variable(
             var.my_family("direction"),
@@ -538,15 +576,72 @@ def _map_inverse_geo_parameter_to_ds_variable(
         )
         transform_function = lambda x, y: x # dir_type takes care of the conversion, so lambda can be trivial
         dir_type = var.my_family("direction").dir_type()
+        projected = None
+    elif var.i_am() == "x":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("east"),
+            ds,
+            aliases=aliases,
+            ds_aliases=ds_aliases,
+            ignore_vars=ignore_vars,
+            only_vars=only_vars,
+            ignore_dir_ambiguity=False,
+            verbose=verbose,
+        )
+        transform_function = lambda x, y: x
+        dir_type = None
+        projected = False
+    elif var.i_am() == "y":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("north"),
+            ds,
+            aliases=aliases,
+            ds_aliases=ds_aliases,
+            ignore_vars=ignore_vars,
+            only_vars=only_vars,
+            ignore_dir_ambiguity=False,
+            verbose=verbose,
+        )
+        transform_function = lambda x, y: x
+        dir_type = None
+        projected = False
+    elif var.i_am() == "east":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("x"),
+            ds,
+            aliases=aliases,
+            ds_aliases=ds_aliases,
+            ignore_vars=ignore_vars,
+            only_vars=only_vars,
+            ignore_dir_ambiguity=False,
+            verbose=verbose,
+        )
+        transform_function = lambda x, y: x
+        dir_type = None
+        projected = True
+    elif var.i_am() == "north":
+        ds_var = _map_geo_parameter_to_ds_variable(
+            var.my_family("y"),
+            ds,
+            aliases=aliases,
+            ds_aliases=ds_aliases,
+            ignore_vars=ignore_vars,
+            only_vars=only_vars,
+            ignore_dir_ambiguity=False,
+            verbose=verbose,
+        )
+        transform_function = lambda x, y: x
+        dir_type = None
+        projected = True
     else:
-        return None, None, None
+        return None, None, None, None
 
     if ds_var is not None:
         if logger.is_verbose(verbose):
-            logger.log.info(f"Mapping {var} >> {ds_var} using {transform_function}")
-        return ds_var, transform_function, dir_type
+            logger.log.info(f"Mapping {var} >> {ds_var} using {transform_function} assuming dir_type {dir_type} and projected={projected}")
+        return ds_var, transform_function, dir_type, projected
 
-    return None, None, None
+    return None, None, None, None
 
 
 def _map_geo_parameter_to_components_in_ds(
@@ -586,10 +681,35 @@ def _map_geo_parameter_to_components_in_ds(
                 ignore_dir_ambiguity=False,
                 verbose=verbose,
             )
+            projected = True
+        if ds_var_x is None and ds_var_y is None:
+            if var.my_family("east") is not None and var.my_family("north") is not None:
+                ds_var_x = _map_geo_parameter_to_ds_variable(
+                    var.my_family("east"),
+                    ds,
+                    aliases=aliases,
+                    ds_aliases=ds_aliases,
+                    ignore_vars=ignore_vars,
+                    only_vars=only_vars,
+                    ignore_dir_ambiguity=False,
+                    verbose=verbose,
+                )
+                ds_var_y = _map_geo_parameter_to_ds_variable(
+                    var.my_family("north"),
+                    ds,
+                    aliases=aliases,
+                    ds_aliases=ds_aliases,
+                    ignore_vars=ignore_vars,
+                    only_vars=only_vars,
+                    ignore_dir_ambiguity=False,
+                    verbose=verbose,
+                )
+                projected = False
+
         else:
-             return None, None, None, None
+             return None, None, None, None, None
     else:
-        return None, None, None, None
+        return None, None, None, None, None
 
     if var.i_am() == "magnitude":
         transform_function = compute_magnitude
@@ -598,9 +718,11 @@ def _map_geo_parameter_to_components_in_ds(
         transform_function = compute_math_direction
         dir_type = "math"
     if ds_var_x is not None and ds_var_y is not None:
-        return ds_var_x, ds_var_y, transform_function, dir_type
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Mapping {var} >> {ds_var_x}, {ds_var_y} using {transform_function} assuming dir_type {dir_type} and projected={projected}")
+        return ds_var_x, ds_var_y, transform_function, dir_type, projected
 
-    return None, None, None, None
+    return None, None, None, None, None
 
 
 def _remap_core_aliases_keys_to_strings(
