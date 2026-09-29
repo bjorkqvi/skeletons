@@ -91,7 +91,7 @@ def sort_out_regridded_type(data, new_grid) -> str:
     return f"{source}_to_{target}"
 
 
-def create_new_class(data, new_grid):
+def create_new_class(data, new_grid, projected: bool, native: bool=True):
     """Creates a new class that will contain the gridded data. 
     If we change type (i.e. from gridded to point), then we will reconstruct the class to contain the correct data variables etc"""
     if data.is_gridded() and new_grid.is_gridded():
