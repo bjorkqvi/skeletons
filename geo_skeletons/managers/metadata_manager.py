@@ -84,8 +84,8 @@ class MetaDataManager:
             TypeError: If the `metadata` argument is not a dictionary.
 
         Notes:
-            - If `name` is provided and the variable already has a `grid_mapping` set, 
-            the `grid_mapping` is preserved and not overwritten.
+            - If `name` is provided and the variable already has a `grid_mapping` or `projected_according_to` set, 
+            the values are not overwritten.
         """
         if not isinstance(metadata, dict):
             raise TypeError(f"metadata needs to be a dict, not '{metadata}'!")
@@ -94,9 +94,12 @@ class MetaDataManager:
         if name is not None:
             # Once grid mapping is set, we don't want to replace it
             grid_mapping = self._metadata.get(name,{}).get('grid_mapping', metadata.get('grid_mapping'))
+            projected_according_to = self._metadata.get(name,{}).get('projected_according_to', metadata.get('projected_according_to'))
             self._metadata[name] = metadata
             if grid_mapping is not None:
                 self._metadata[name]['grid_mapping'] = grid_mapping
+            if projected_according_to is not None:
+                self._metadata[name]['projected_according_to'] = projected_according_to
 
         else:
             self._metadata["_global_"] = metadata

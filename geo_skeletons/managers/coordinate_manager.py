@@ -70,9 +70,11 @@ class CoordinateManager:
         """Checks if the grid is natively in a rotated coordinates"""
         return self.is_projected () and not self.is_cartesian()
 
-    def _add_var(self, data_var: DataVar) -> None:
-        """Adds a data variable to the structure"""
-        if self.get(data_var.name) is not None:
+    def _add_var(self, data_var: DataVar, update: bool = False) -> None:
+        """Adds a data variable to the structure
+        
+        update can be used to set a new DataVar if information about connections to Magnitudes and Directions need to be added"""
+        if self.get(data_var.name) is not None and not update:
             raise VariableExistsError(data_var.name)
         self._added_vars[data_var.name] = data_var
 
@@ -958,9 +960,9 @@ class CoordinateManager:
 
         # 1)
         if self.meta_parameter(name) is not None: 
-            if self.meta_parameter(name).i_am() == 'x':
+            if self.meta_parameter(name).i_am() in ['x', 'east']:
                 return 'x'
-            if self.meta_parameter(name).i_am() == 'x':
+            if self.meta_parameter(name).i_am() in ['y', 'north']:
                 return 'y'
         # 2)
         for mag in self.magnitudes():
@@ -971,6 +973,19 @@ class CoordinateManager:
 
         return False
 
+    def is_direction(self, name:str) -> bool:
+        """Checks if the given parameter represents a direction.
+        
+        This means it is either a MetaParameter with a kwnown directional property, or it is added as a direction connected to a magnitude and components."""
+        if name not in self.all_objects():
+            raise ValueError(f"Skeleton doesn't have a variable called '{name}'")
+
+        meta_param = self.meta_parameter(name)
+        if meta_param is not None:
+            return meta_param.i_am() == 'direction'
+        if name in self.directions():
+            return True
+        return False
         
     def find(self, param: Union[MetaParameter, str]) -> list[str]:
         """Finds the names of parameters based on a CF standard name or MetaParameter.
@@ -1026,6 +1041,10 @@ class CoordinateManager:
             twin = self.find(param.my_family('y'))
         elif my_type == 'y':
             twin = self.find(param.my_family('x'))
+        if my_type == 'east':
+                twin = self.find(param.my_family('north'))
+        if my_type == 'north':
+            twin = self.find(param.my_family('east'))
         else:
             return None
 
