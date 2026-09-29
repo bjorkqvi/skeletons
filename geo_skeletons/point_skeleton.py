@@ -45,25 +45,19 @@ class PointSkeleton(Skeleton):
         skeleton: Skeleton,
         proj: Optional[str] = None,
         crs: Optional[CRSValue] = None,
-        mask: Optional[np.ndarray] = None,
     ) -> PointSkeleton:
-        """Creates a new PointSkeleton containing only points from another Gridded- or PointSkeleton.
+        """Creates a new PointSkeleton containing only points from another Gridded- or PointSkeleton."""
 
-        Points can be selected by a boolean mask. No data is transferred"""
-
-        if mask is None:
-            mask = np.full(skeleton.size("spatial"), True)
-        mask = undask_me(mask)
-        
+       
         if proj is None:
-            lon, lat = skeleton.lonlat(strict=True, mask=mask)
-            x, y = skeleton.xy(strict=True, mask=mask)
+            lon, lat = skeleton.lonlat(strict=True)
+            x, y = skeleton.xy(strict=True)
         elif proj == 'lonlat':
-            lon, lat = skeleton.lonlat(mask=mask)
+            lon, lat = skeleton.lonlat()
             x, y = None, None
         elif proj == 'xy':
             lon, lat = None, None
-            x, y = skeleton.xy(mask=mask)
+            x, y = skeleton.xy()
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
         
@@ -148,7 +142,11 @@ class PointSkeleton(Skeleton):
             else:
                 cmap = plt.cm.twilight
             norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
-            cont = ax.scatter(x, y,c=data, s=2,  cmap=cmap, norm=norm)
+            import matplotlib.tri as mtri
+            tri = mtri.Triangulation(x, y)          # compute once
+            cont = plt.tripcolor(tri, data, shading='gouraud', cmap=cmap, norm=norm)  # or shading='gouraud'
+            
+            #cont = ax.scatter(x, y,c=data, s=2,  cmap=cmap, norm=norm, rasterized=True)
         
 
         return ax, cont
@@ -180,7 +178,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         normalize: bool = False,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of projected x-values.
@@ -192,21 +189,19 @@ class PointSkeleton(Skeleton):
                 if spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the x-values by subtracting the minimum value. 
                 Defaults to `False`.
 
         Returns:
             np.ndarray: A meshgrid of projected x-values.
         """
-        x, _ = self.xy(native=native, strict=strict, normalize=normalize, mask=mask)
+        x, _ = self.xy(native=native, strict=strict, normalize=normalize)
         return x
 
     def ygrid(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         normalize: bool = False,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of projected y-values.
@@ -218,21 +213,19 @@ class PointSkeleton(Skeleton):
                 if spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the y-values by subtracting the minimum value. 
                 Defaults to `False`.
 
         Returns:
             np.ndarray: A meshgrid of projected y-values.
         """
-        _, y = self.xy(native=native, strict=strict, normalize=normalize, mask=mask)
+        _, y = self.xy(native=native, strict=strict, normalize=normalize)
         return y
 
     def longrid(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of longitude values. For an x-y grids without a projection, returns `None`.
 
@@ -243,19 +236,17 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
 
         Returns:
             np.ndarray: A meshgrid of longitude values.
         """
-        lon, _ = self.lonlat(native=native, strict=strict, mask=mask)
+        lon, _ = self.lonlat(native=native, strict=strict)
         return lon
 
     def latgrid(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of latitude values. For an x-y grids without a projection, returns `None`.
 
@@ -267,12 +258,11 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
 
         Returns:
             np.ndarray: A meshgrid of latitude values.
         """
-        _, lat = self.lonlat(native=native, strict=strict, mask=mask)
+        _, lat = self.lonlat(native=native, strict=strict)
         return lat
 
     def x(
@@ -280,7 +270,6 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         crs: Optional[CRSValue] = None,
-        mask: Optional[np.ndarray] = None,
         normalize: bool = False,
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -293,7 +282,6 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue]], optional): Specifies the CRS to use for retrieving 
                 the x-coordinate. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the x-values by subtracting the minimum value. 
                 Defaults to `False`.
             **kwargs: Additional arguments passed to internal methods.
@@ -302,7 +290,6 @@ class PointSkeleton(Skeleton):
             np.ndarray: The x-coordinate values.
         """
 
-        mask = self._check_mask_right_shape(mask, **kwargs)
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
 
@@ -310,17 +297,17 @@ class PointSkeleton(Skeleton):
             raise MissingDatasetError
 
         if not self.core.is_projected() and native:
-            return self.lon(mask=mask, **kwargs)
+            return self.lon(**kwargs)
 
         if not self.core.is_projected() and strict:
             return None
 
         if self.core.is_projected() and (crs is None or self.proj.crs() == crs):
-            x = self._ds_manager.get("x", **kwargs).values.copy()[mask]
+            x = self._ds_manager.get("x", **kwargs).data.copy()
         else:
             x = self.proj._x(
-                lon=self.lon(mask=mask,crs=self.proj.crs(), **kwargs),
-                lat=self.lat(mask=mask,crs=self.proj.crs(), **kwargs),
+                lon=self.lon(crs=self.proj.crs(), **kwargs),
+                lat=self.lat(crs=self.proj.crs(), **kwargs),
                 crs=crs,
             )
 
@@ -334,7 +321,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[CRSValue] = None,
         normalize: bool = False,
         in_meters: bool = False, 
@@ -349,7 +335,6 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
                 the y-coordinate. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the y-values by subtracting the minimum value. 
                 Defaults to `False`.
             in_meters (bool, optional): If `True`, calculates the y-coordinate in meters. Defaults to `False`.
@@ -359,15 +344,13 @@ class PointSkeleton(Skeleton):
             np.ndarray: The y-coordinate values.
         """
 
-        mask = self._check_mask_right_shape(mask, **kwargs)
-
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.ds() is None:
             raise MissingDatasetError
 
         if not self.core.is_projected() and native:
-            return self.lat(mask=mask, **kwargs)
+            return self.lat(**kwargs)
 
         if not self.core.is_projected() and strict:
             return None
@@ -377,11 +360,11 @@ class PointSkeleton(Skeleton):
                 raise ValueError("Can't both ask ")
 
         if self.core.is_projected() and (crs is None or self.proj.crs() == crs):
-            y = self._ds_manager.get("y", **kwargs).values.copy()[mask]
+            y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
             y = self.proj._y(
-                lon=self.lon(mask=mask, crs=self.proj.crs(),**kwargs),
-                lat=self.lat(mask=mask, crs=self.proj.crs(), **kwargs),
+                lon=self.lon(crs=self.proj.crs(),**kwargs),
+                lat=self.lat(crs=self.proj.crs(), **kwargs),
                 crs=crs,
             )
         
@@ -396,7 +379,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[CRSValue] = None,
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -409,13 +391,11 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
                 the longitude. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
             np.ndarray: The longitude values.
         """
-        mask = self._check_mask_right_shape(mask, **kwargs)
 
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -424,18 +404,18 @@ class PointSkeleton(Skeleton):
             raise MissingDatasetError
 
         if self.core.is_projected() and native:
-            return self.x(mask=mask, crs=crs, **kwargs)
+            return self.x(crs=crs, **kwargs)
 
         if self.core.is_projected() and strict:
             return None
 
         if not self.core.is_projected():
-            return self._ds_manager.get("lon", **kwargs).values.copy()[mask]
+            return self._ds_manager.get("lon", **kwargs).data.copy()
 
         
         return self.proj._lon(
-            x=self.x(mask=mask, **kwargs) ,
-            y= self.y(mask=mask, **kwargs) ,
+            x=self.x(**kwargs) ,
+            y= self.y(**kwargs) ,
             crs=crs,
         )
 
@@ -444,7 +424,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[CRSValue] = None,
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -457,13 +436,11 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
                 the longitude. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
             np.ndarray: The latitude values.
         """
-        mask = self._check_mask_right_shape(mask, **kwargs)
 
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
@@ -472,17 +449,17 @@ class PointSkeleton(Skeleton):
             raise MissingDatasetError
 
         if self.core.is_projected() and native:
-            return self.y(mask=mask, crs=crs, **kwargs)
+            return self.y(crs=crs, **kwargs)
 
         if self.core.is_projected() and strict:
             return None
 
         if not self.core.is_projected():
-            return self._ds_manager.get("lat", **kwargs).values.copy()[mask]
+            return self._ds_manager.get("lat", **kwargs).data.copy()
 
         return self.proj._lat(
-            x=self.x(mask=mask, **kwargs),
-            y=self.y(mask=mask, **kwargs),
+            x=self.x(**kwargs),
+            y=self.y(**kwargs),
             crs=crs,
         )
 
@@ -491,7 +468,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[CRSValue] = None,
         normalize: bool = False,
         **kwargs,
@@ -505,7 +481,6 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
                 the coordinates. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the x- and y-values by subtracting 
                 the minimum value. Defaults to `False`.
             **kwargs: Additional arguments passed to internal methods.
@@ -513,12 +488,11 @@ class PointSkeleton(Skeleton):
         Returns:
             tuple[np.ndarray, np.ndarray]: A tuple of x- and y-coordinates.
         """
-        mask = self._check_mask_right_shape(mask, **kwargs)
 
         # Transforms x-y to lon-lat if necessary
         x, y = self.x(
-            strict=strict, native=native, normalize=normalize, crs=crs, mask=mask, **kwargs
-        ), self.y(strict=strict, native=native, normalize=normalize, crs=crs, mask=mask, **kwargs)
+            strict=strict, native=native, normalize=normalize, crs=crs, **kwargs
+        ), self.y(strict=strict, native=native, normalize=normalize, crs=crs, **kwargs)
 
         if x is None:
             return None, None
@@ -529,7 +503,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[CRSValue] = None,
         **kwargs,
         ) -> tuple[np.ndarray, np.ndarray]:
@@ -542,35 +515,19 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
                 the coordinates. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
             tuple[np.ndarray, np.ndarray]: A tuple of longitude and latitude values.
         """
 
-        mask = self._check_mask_right_shape(mask)
-
         lon, lat = self.lon(
-            native=native, strict=strict, mask=mask, crs=crs ,**kwargs
-        ), self.lat(native=native, strict=strict, mask=mask,  crs=crs, **kwargs)
+            native=native, strict=strict, crs=crs ,**kwargs
+        ), self.lat(native=native, strict=strict, crs=crs, **kwargs)
         
         if lon is None:
             return None, None
         return lon, lat
-
-    def _check_mask_right_shape(self, mask: np.ndarray, **kwargs) -> np.array:
-        """Checks that the given mask is same shape as the skeleton.
-        Creates a full True maks if mask is None"""
-        if mask is None:
-            return np.full(self.size("spatial", **kwargs), True)
-        mask = np.array(mask)
-
-        if mask.shape != self.size("spatial", **kwargs):
-            raise ValueError(
-                f"Skeleton has shape {self.size('spatial',**kwargs)} but mask is shape {mask.shape}"
-            )
-        return mask
 
     def resolution(self, full: bool=False) -> np.ndarray:
         """Returns an array with the resolution (in metres).

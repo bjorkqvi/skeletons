@@ -11,7 +11,7 @@ import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
 from . import logger
-
+from functools import lru_cache
 from .errors import SkeletonError, MissingDatasetError, ProjectionError
 lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
 lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
@@ -44,7 +44,6 @@ class GriddedSkeleton(Skeleton):
     def from_skeleton(
         cls,
         skeleton: Skeleton,
-        mask: Optional[np.ndarray] = None,
     ) -> GriddedSkeleton:
         """Creates a new PointSkeleton containing only points from another GriddedSkeleton.
 
@@ -54,14 +53,9 @@ class GriddedSkeleton(Skeleton):
                 "Can't create a GriddedSkeleton from a non-gridded data structure!"
             )
 
-        if mask is None:
-            mask = np.full(skeleton.size("spatial"), True)
-        mask = undask_me(mask)
 
-        lon, lat = skeleton.lon(strict=True, mask=mask), skeleton.lat(
-            strict=True, mask=mask
-        )
-        x, y = skeleton.x(strict=True, mask=mask), skeleton.y(strict=True, mask=mask)
+        lon, lat = skeleton.lon(strict=True), skeleton.lat(strict=True)        
+        x, y = skeleton.x(strict=True), skeleton.y(strict=True)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
         new_skeleton.proj.set(skeleton.proj.crs())
@@ -158,9 +152,13 @@ class GriddedSkeleton(Skeleton):
         if len(data.shape) == 1 and contour:
             logger.log.info(f'Need true 2D-data (not {data.shape}) to use contour. Setting to False.')
             contour=False
+      
+
         if proj is None:
             if contour:
-                cont = ax.contourf(self.x(native=True), self.y(native=True),data, cmap=cmap, levels=levels)
+
+                x, y = self.x(native=True), self.y(native=True)
+                cont = ax.contourf(x,y,data, cmap=cmap, levels=levels)
             else:
                 try:
                     import matplotlib.colors as mcolors
@@ -177,13 +175,13 @@ class GriddedSkeleton(Skeleton):
                 norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
                 if len(data.shape) > 1:
                 
-                    cont = ax.pcolormesh(self.x(native=True), self.y(native=True),data, cmap=cmap,norm=norm)
+                    cont = ax.imshow(self.x(native=True), self.y(native=True),data, cmap=cmap,norm=norm)
                 else:
                     cont = ax.scatter(self.xgrid(native=True), self.ygrid(native=True),c=data, s=10, cmap=cmap, norm=norm)
-
         elif proj == 'lonlat':
             if contour:
                 cont = ax.contourf(self.longrid(), self.latgrid(),data, cmap=cmap,levels=levels)
+
             else:
                 try:
                     import matplotlib.colors as mcolors
@@ -196,8 +194,9 @@ class GriddedSkeleton(Skeleton):
                 else:
                     cmap = plt.cm.twilight
                 norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
-                cont = ax.pcolormesh(self.longrid(), self.latgrid(),data, cmap=cmap, norm=norm)
+                cont = ax.imshow(self.longrid(), self.latgrid(),data, cmap=cmap, norm=norm)
                 #cont = ax.scatter(self.longrid(), self.latgrid(),c=data, s=2, cmap=cmap, norm=norm)
+
 
 
         elif proj == 'xy':
@@ -215,7 +214,7 @@ class GriddedSkeleton(Skeleton):
                 else:
                     cmap = plt.cm.twilight
                 norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
-                cont = ax.pcolormesh(self.xgrid(), self.ygrid(),data, cmap=cmap, norm=norm)
+                cont = ax.imshow(self.xgrid(), self.ygrid(),data, cmap=cmap, norm=norm)
                 #cont = ax.scatter(self.xgrid(), self.ygrid(),c=data, s=10, cmap=cmap, norm=norm)
 
 
@@ -433,11 +432,11 @@ class GriddedSkeleton(Skeleton):
             return None
         return np.reshape(lat, self.size("spatial"))
 
+    @lru_cache(maxsize=10)
     def x(
         self,
         native: bool = False,
         strict: bool = False, 
-        mask: Optional[np.ndarray] = None,
         normalize: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
@@ -449,7 +448,6 @@ class GriddedSkeleton(Skeleton):
                 is spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the x-values by subtracting 
                 the minimum value. Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
@@ -461,8 +459,6 @@ class GriddedSkeleton(Skeleton):
         """
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
-        mask = self._check_mask_right_shape(mask, self.core.x_str, **kwargs)
-        vec_mask = np.any(mask, axis=0)
 
         if self.ds() is None:
             raise MissingDatasetError
@@ -474,8 +470,8 @@ class GriddedSkeleton(Skeleton):
                 return None
             elif self.nx() == 1 and self.ny()==1:
                 x = self.proj._x(
-                    lon=self.lon(mask=mask, crs=self.proj.crs(),**kwargs),
-                    lat=self.lat(mask=mask, crs=self.proj.crs(), **kwargs),
+                    lon=self.lon(crs=self.proj.crs(),**kwargs),
+                    lat=self.lat(crs=self.proj.crs(), **kwargs),
                     crs=crs,
                 )
 
@@ -485,7 +481,7 @@ class GriddedSkeleton(Skeleton):
             return None
         
         if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
-            x = self._ds_manager.get("x", **kwargs).values.copy()[vec_mask]
+            x = self._ds_manager.get("x", **kwargs).data.copy()
         else:
             return None
 
@@ -493,11 +489,11 @@ class GriddedSkeleton(Skeleton):
             x = x - min(x)
         return x
 
+    @lru_cache(maxsize=10)
     def y(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         normalize: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
@@ -505,11 +501,10 @@ class GriddedSkeleton(Skeleton):
         """Returns the y-coordinate. Return None for spherical grids.
 
         Args:
-            native (bool, optional): If `True`, returns longitude values if the Skeleton 
+            native (bool, optional): If `True`, returns latitude values if the Skeleton 
                 is spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the x-values by subtracting 
                 the minimum value. Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
@@ -521,8 +516,6 @@ class GriddedSkeleton(Skeleton):
         """
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
-        mask = self._check_mask_right_shape(mask, self.core.y_str, **kwargs)
-        vec_mask = np.any(mask, axis=1)
 
         if self.ds() is None:
             raise MissingDatasetError
@@ -534,8 +527,8 @@ class GriddedSkeleton(Skeleton):
                 return None
             elif self.nx() == 1 and self.ny()==1:
                 y = self.proj._y(
-                    lon=self.lon(mask=mask, crs=self.proj.crs(),**kwargs),
-                    lat=self.lat(mask=mask, crs=self.proj.crs(), **kwargs),
+                    lon=self.lon(crs=self.proj.crs(),**kwargs),
+                    lat=self.lat(crs=self.proj.crs(), **kwargs),
                     crs=crs,
                 )
 
@@ -545,7 +538,7 @@ class GriddedSkeleton(Skeleton):
             return None
 
         if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
-            y = self._ds_manager.get("y", **kwargs).values.copy()[vec_mask]
+            y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
             return None
 
@@ -553,12 +546,12 @@ class GriddedSkeleton(Skeleton):
             y = y - min(y)
 
         return y
-
+    
+    @lru_cache(maxsize=10)
     def lon(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -569,7 +562,6 @@ class GriddedSkeleton(Skeleton):
                 is cartesian. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
                 the longitude. Defaults to the current grid CRS.
             **kwargs: Additional arguments passed to internal methods.
@@ -579,8 +571,6 @@ class GriddedSkeleton(Skeleton):
         """
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
-        mask = self._check_mask_right_shape(mask, self.core.x_str, **kwargs)
-        vec_mask = np.any(mask, axis=0)
 
         if self.ds() is None:
             raise MissingDatasetError
@@ -592,20 +582,19 @@ class GriddedSkeleton(Skeleton):
                 return None
             elif self.nx() == 1 and self.ny()==1:
                 return self.proj._lon(
-                    x=self.x(mask=mask, **kwargs) ,
-                    y= self.y(mask=mask, **kwargs) ,
+                    x=self.x(**kwargs) ,
+                    y= self.y(**kwargs) ,
                     crs=crs,
                 )
             return None
         
-        return self._ds_manager.get("lon", **kwargs).values.copy()[vec_mask]
+        return self._ds_manager.get("lon", **kwargs).data.copy()
 
-
+    @lru_cache(maxsize=10)
     def lat(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -616,7 +605,6 @@ class GriddedSkeleton(Skeleton):
                 is cartesian. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is cartesian. 
                 Defaults to `False`.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
                 the longitude. Defaults to the current grid CRS.
             **kwargs: Additional arguments passed to internal methods.
@@ -627,8 +615,6 @@ class GriddedSkeleton(Skeleton):
 
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
-        mask = self._check_mask_right_shape(mask, self.core.y_str, **kwargs)
-        vec_mask = np.any(mask, axis=1)
 
         if self.ds() is None:
             raise MissingDatasetError
@@ -640,20 +626,19 @@ class GriddedSkeleton(Skeleton):
                 return None
             elif self.nx() == 1 and self.ny()==1:
                 return self.proj._lat(
-                    x=self.x(mask=mask, **kwargs) ,
-                    y= self.y(mask=mask, **kwargs) ,
+                    x=self.x(**kwargs) ,
+                    y=self.y(**kwargs) ,
                     crs=crs,
                 )
             return None
         
-        return self._ds_manager.get("lat", **kwargs).values.copy()[vec_mask]
+        return self._ds_manager.get("lat", **kwargs).data.copy()
 
-
+    @lru_cache(maxsize=10)
     def xy(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         normalize: bool = False,
         **kwargs,
@@ -667,7 +652,6 @@ class GriddedSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
                 the coordinates. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             normalize (bool, optional): If `True`, normalizes the x- and y-values by subtracting 
                 the minimum value. Defaults to `False`.
             **kwargs: Additional arguments passed to internal methods.
@@ -681,17 +665,6 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_projected() and strict:
             return None, None
 
-        if mask is None:
-            mask = np.full(super().size("spatial", **kwargs), True)
-
-        num_of_elements = (
-            self.shape(self.core.x_str)[0] * self.shape(self.core.y_str)[0]
-        )
-        if mask.ravel().shape[0] != num_of_elements:
-            raise ValueError(
-                f"Skeleton has {num_of_elements} elements but mask has shape {mask.shape}, not ({num_of_elements},)!"
-            )
-        mask = mask.ravel()
         x, y = self._native_xy(**kwargs)
 
         if self.core.is_projected():
@@ -701,13 +674,13 @@ class GriddedSkeleton(Skeleton):
         if self.proj.crs() is not None:    
             points.proj.set(self.proj.crs())
        
-        return points.xy(mask=mask, normalize=normalize, native=native, crs = crs or self.proj.crs())
-
+        return points.xy(normalize=normalize, native=native, crs = crs or self.proj.crs())
+    
+    @lru_cache(maxsize=10)
     def lonlat(
         self,
         native: bool = False,
         strict: bool = False,
-        mask: Optional[np.ndarray] = None,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -720,7 +693,6 @@ class GriddedSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
                 the coordinates. Defaults to the current grid CRS.
-            mask (Optional[np.ndarray], optional): A boolean mask to filter points. Defaults to `None`.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
@@ -733,32 +705,23 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_projected() and strict:
             return None, None
 
-        if mask is None:
-            mask = np.full(super().size("spatial", **kwargs), True)
 
-        num_of_elements = (
-            self.shape(self.core.x_str)[0] * self.shape(self.core.y_str)[0]
-        )
-        if mask.ravel().shape[0] != num_of_elements:
-            raise ValueError(
-                f"Skeleton has {num_of_elements} elements but mask has shape {mask.shape}, not ({num_of_elements},)!"
-            )
-        mask = mask.ravel()
         x, y = self._native_xy(**kwargs)
 
         if not self.core.is_projected():
-            return x[mask], y[mask]
+            return x, y
         
         if self.core.is_projected() and native:
-            return x[mask], y[mask]
+            return x, y
             
 
         points = PointSkeleton(x=x, y=y)
         if self.proj.crs() is None:
             return None, None
         points.proj.set(self.proj.crs())
-        return points.lonlat(mask=mask, native=native, crs = crs or self.proj.crs())
-    
+        return points.lonlat(native=native, crs = crs or self.proj.crs())
+
+    @lru_cache(maxsize=10)
     def _native_xy(
         self, **kwargs
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -997,7 +960,8 @@ class GriddedSkeleton(Skeleton):
         old_metadata = self.meta._metadata
         self._init_structure(x, y, lon, lat)
         self.meta.set_by_dict(old_metadata)
-
+    
+    @lru_cache(maxsize=10)
     def dmx(self,native: bool = False, strict: bool = False) -> float:
         """The grid distance in metres for the x-direction.
         
@@ -1029,6 +993,7 @@ class GriddedSkeleton(Skeleton):
             #d = distance_funcs.lon_in_km(sum(lat)/2, lon[0])*1000*(lon[1]-lon[0])
             return float(d/(data_slice.nx()-1))
 
+    @lru_cache(maxsize=4)
     def dmy(self,native: bool = False, strict: bool = False) -> float:
         """The grid distance in metres for the y-direction.
         
@@ -1060,7 +1025,7 @@ class GriddedSkeleton(Skeleton):
         d = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
         return float(d/(data_slice.ny()-1))
 
-
+    @lru_cache(maxsize=4)
     def dy(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
         
@@ -1096,6 +1061,7 @@ class GriddedSkeleton(Skeleton):
         # return float(d/(self.ny()-1))
 
 
+    @lru_cache(maxsize=4)
     def dx(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the x vector. Conversion made for spherical grids."""
         if not self.core.is_projected() and strict and (not native):
@@ -1128,6 +1094,7 @@ class GriddedSkeleton(Skeleton):
         # d = distance_2points(lat, lon[0], lat, lon[1]) 
         # return float(d/(self.nx()-1))
 
+    @lru_cache(maxsize=4)
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""
@@ -1160,6 +1127,7 @@ class GriddedSkeleton(Skeleton):
 
         return distance_funcs.dy_to_dlat(dy=dmy, lat=lat, lon=lon)
 
+    @lru_cache(maxsize=4)
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""

@@ -33,7 +33,7 @@ VALID_UTM_ZONES = [
 SOUTH_UTM_ZONES = ["C", "D", "E", "F", "G", "H", "J", "K", "L", "M"]
 
 VALID_UTM_NUMBERS = np.linspace(1, 60, 60).astype(int)
-
+from functools import lru_cache
 CRSValue = Union[int, str, tuple[int, str], dict, CRS]
 
 def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
@@ -78,6 +78,7 @@ class ProjManager:
         self._crs = None
         if crs is not None:
             self.set(crs)
+        self._alpha: dict = {}
         
 
     def values_are_projected(self, var: str) -> bool:
@@ -165,7 +166,7 @@ class ProjManager:
             # *** utm.error.OutOfRangeError: latitude out of range (must be between 80 deg S and 84 deg N)
             # raise OutOfRangeError('longitude out of range (must be between 180 deg W and 180 deg E)')
             self._crs = self._optimal_utm(lon=lon, lat=lat)
-        if verbose and self._crs is not None:
+        if logger.is_verbose(verbose) and self._crs is not None:
             logger.log.info(f"Setting UTM {self._crs}")
 
     def units_are_in_degrees(self) -> bool:
@@ -486,9 +487,13 @@ class ProjManager:
             'datum': 'WGS84'
         }
         return CRS.from_dict(proj4)
+    
 
     def _calculate_rotation_alpha(self, lon, lat) -> np.ndarray:
         """Calculates the rotation angle alpha from lon-lat to the set CRS"""
+        saved_alpha = self._alpha.get(self.crs)
+        if saved_alpha is not None:
+            return saved_alpha
         if isinstance(self.crs(), tuple):
             x = self._utm_x(lon=lon, lat=lat, utm=self.crs())
             y = self._utm_y(lon=lon, lat=lat, utm=self.crs())
@@ -503,7 +508,11 @@ class ProjManager:
             x2, y2 = self._xy(lon=lon, lat=lat+dlat, crs=self.crs())
 
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
+        self._alpha[self.crs] = alpha
         return alpha
+    
+    
+
 
     def _rotate_u_v(self, x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
         """Rotates x,y component data to the set coordinate reference system """
@@ -519,7 +528,8 @@ class ProjManager:
         x_rot, y_rot = _rotate_components(x_data, y_data, alpha)
 
         return x_rot, y_rot
-
+    
+    
     def _unrotate_u_v(self,  x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
         """*Unrotates x,y component data from the set coordinate reference system """
 
@@ -540,31 +550,77 @@ class ProjManager:
 def _rotate_components(x_data:xr.DataArray, y_data:xr.DataArray, alpha: xr.DataArray) -> tuple[xr.DataArray, xr.DataArray]:
     """Rotates given components with alpha values. Keeps metadata intact."""
     # To preserve metadata
-    xmeta = x_data.attrs
-    ymeta = y_data.attrs
+    #xmeta = x_data.attrs
+    #ymeta = y_data.attrs
     
     x_rot =x_data * np.cos(alpha) - y_data * np.sin(alpha)
     y_rot =x_data * np.sin(alpha) + y_data * np.cos(alpha)
 
-    x_rot = x_rot.assign_attrs(xmeta)
-    y_rot = y_rot.assign_attrs(ymeta)
+    #x_rot = x_rot.assign_attrs(xmeta)
+    #y_rot = y_rot.assign_attrs(ymeta)
     return x_rot, y_rot
 
 
+def broadcast_alpha_to_target(alpha: np.ndarray, target_shape: tuple[int, ...], copy: bool = False) -> np.ndarray:
+    """
+    Broadcast `alpha` (numpy array) to `target_shape`.
+    - alpha.shape must be a contiguous sub-shape of target_shape.
+    - Returns a broadcasted view (read-only) unless copy=True.
+    """
+    alpha = np.asarray(alpha)
+    tshape = tuple(target_shape)
+    ashape = tuple(alpha.shape)
+
+    if ashape == tshape:
+        return alpha.copy() if copy else alpha
+
+    if len(ashape) > len(tshape):
+        raise ValueError(f"alpha has more dimensions {ashape} than target {tshape}")
+
+    # Quick common case: alpha matches the last axes (trailing alignment)
+    ndiff = len(tshape) - len(ashape)
+    if ashape == tshape[-len(ashape):]:
+        newshape = (1,) * ndiff + ashape
+        out = np.broadcast_to(alpha.reshape(newshape), tshape)
+        return out.copy() if copy else out
+
+    # Try to find a contiguous sub-shape match anywhere in target_shape
+    n = len(tshape)
+    m = len(ashape)
+    for start in range(0, n - m + 1):
+        if ashape == tshape[start:start + m]:
+            prepend = start
+            append = n - m - start
+            newshape = (1,) * prepend + ashape + (1,) * append
+            out = np.broadcast_to(alpha.reshape(newshape), tshape)
+            return out.copy() if copy else out
+
+    raise ValueError(f"alpha.shape {ashape} is not a contiguous sub-shape of target.shape {tshape}")
+
 def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_data:xr.DataArray, grid_shape: tuple[int]) -> xr.DataArray:
     """Broadcastsa a spatial np.ndarray of alpha values to possible time instances also"""
-    if hasattr(x_data, 'lon'):
-        x_str, y_str = 'lon', 'lat'
-    elif hasattr(x_data, 'x'):
-        x_str, y_str = 'x', 'y'
-    else:
-        x_str, y_str = 'inds', None
 
     alpha = np.reshape(alpha, grid_shape)
-    # Redoing this to a DataArray automatically broadcasts alpha values to different time steps
-    if y_str is not None:
-        alpha = xr.DataArray(data=alpha,dims=[y_str, x_str], coords={x_str: ([x_str], x_data[x_str].values), y_str: ([y_str], y_data[y_str].values)})
-    else:
-        alpha = xr.DataArray(data=alpha,dims=[x_str], coords={x_str: ([x_str], x_data[x_str].values)})
-
+    alpha = broadcast_alpha_to_target(alpha, target_shape=x_data.shape)
     return alpha
+
+
+# def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_data:xr.DataArray, grid_shape: tuple[int]) -> xr.DataArray:
+#     """Broadcastsa a spatial np.ndarray of alpha values to possible time instances also"""
+#     if hasattr(x_data, 'lon'):
+#         x_str, y_str = 'lon', 'lat'
+#     elif hasattr(x_data, 'x'):
+#         x_str, y_str = 'x', 'y'
+#     else:
+#         x_str, y_str = 'inds', None
+
+#     breakpoint()
+#     alpha = np.reshape(alpha, grid_shape)
+    
+#     # Redoing this to a DataArray automatically broadcasts alpha values to different time steps
+#     if y_str is not None:
+#         alpha = xr.DataArray(data=alpha,dims=[y_str, x_str], coords={x_str: ([x_str], x_data[x_str].values), y_str: ([y_str], y_data[y_str].values)})
+#     else:
+#         alpha = xr.DataArray(data=alpha,dims=[x_str], coords={x_str: ([x_str], x_data[x_str].values)})
+
+#     return alpha
