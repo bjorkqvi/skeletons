@@ -83,9 +83,9 @@ class ProjManager:
     def values_are_projected(self, var: str) -> bool:
         """Checks if the values of the given variable are projected. Checks metadata to see if the attribute 'projected_according_to' is 'crs' or 'wgs84'.
         """
-        crs_value = self._meta.get(var).get('projected_according_to')
-        if crs_value not in ['crs','wgs84']:
-            raise ProjectionError(f"Variable '{var}' has an invalid 'projected_according_to' value {crs_value}.")
+        #crs_value = self._meta.get(var).get('projected_according_to')
+        # if crs_value not in ['crs','wgs84']:
+        #     raise ProjectionError(f"Variable '{var}' has an invalid 'projected_according_to' value {crs_value}.")
         return self._meta.get(var).get('projected_according_to') == 'crs'
 
     def _is_valid_utm(self, utm: tuple[int, str]) -> bool:

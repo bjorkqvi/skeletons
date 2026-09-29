@@ -1041,9 +1041,9 @@ class CoordinateManager:
             twin = self.find(param.my_family('y'))
         elif my_type == 'y':
             twin = self.find(param.my_family('x'))
-        if my_type == 'east':
-                twin = self.find(param.my_family('north'))
-        if my_type == 'north':
+        elif my_type == 'east':
+            twin = self.find(param.my_family('north'))
+        elif my_type == 'north':
             twin = self.find(param.my_family('east'))
         else:
             return None

@@ -155,7 +155,7 @@ class Skeleton:
         self.meta.set({'epsg': 4326}, 'wgs84')
 
     @classmethod
-    def add_time(cls, grid_coord: bool = True) -> "Skeleton":
+    def add_time(cls, grid_coord: bool = True, cls_name: Optional[str] = None) -> "Skeleton":
         """Creates a new class with a time variable added.
 
         Args:
@@ -172,12 +172,13 @@ class Skeleton:
             >>> class NewClass(OldClass):
             >>>     pass
         """
-        new_cls = type(_modified_name(cls.__name__), (cls,), {})
+        cls_name = cls_name or _modified_name(cls.__name__)
+        new_cls = type(cls_name, (cls,), {})
         return add_time(grid_coord=grid_coord)(new_cls)
 
     @classmethod
     def add_frequency(
-        cls, name: Union[str, MetaParameter] = gp.wave.Freq, grid_coord: bool = False
+        cls, name: Union[str, MetaParameter] = gp.wave.Freq, grid_coord: bool = False, cls_name: Optional[str] = None
     ) -> "Skeleton":
         """Creates a new class with a frequency variable added.
 
@@ -196,7 +197,9 @@ class Skeleton:
             >>> class NewClass(OldClass):
             >>>     pass
         """
-        new_cls = type(_modified_name(cls.__name__), (cls,), {})
+
+        cls_name = cls_name or _modified_name(cls.__name__)
+        new_cls = type(cls_name, (cls,), {})
         return add_frequency(name=name, grid_coord=grid_coord)(new_cls)
 
     @classmethod
@@ -205,6 +208,7 @@ class Skeleton:
         name: Union[str, MetaParameter] = gp.wave.Dirs,
         grid_coord: bool = False,
         dir_type: Optional[bool] = None,
+        cls_name: Optional[str] = None
     ) -> "Skeleton":
         """Creates a new class with a direction variable added.
 
@@ -224,7 +228,9 @@ class Skeleton:
             >>> class NewClass(OldClass):
             >>>     pass
         """
-        new_cls = type(_modified_name(cls.__name__), (cls,), {})
+
+        cls_name = cls_name or _modified_name(cls.__name__)
+        new_cls = type(cls_name, (cls,), {})
         return add_direction(name=name, grid_coord=grid_coord, dir_type=dir_type)(
             new_cls
         )
@@ -234,6 +240,7 @@ class Skeleton:
         cls,
         name: Union[str, MetaParameter] = "dummy",
         grid_coord: bool = False,
+        cls_name: Optional[str] = None,
     ) -> "Skeleton":
         """Creates a new class with a coordinate added.
 
@@ -252,7 +259,9 @@ class Skeleton:
             >>> class NewClass(OldClass):
             >>>     pass
         """
-        new_cls = type(_modified_name(cls.__name__), (cls,), {})
+
+        cls_name = cls_name or _modified_name(cls.__name__)
+        new_cls = type(cls_name, (cls,), {})
         return add_coord(name=name, grid_coord=grid_coord)(new_cls)
 
     @classmethod
@@ -261,6 +270,7 @@ class Skeleton:
         name: Union[Union[str, MetaParameter], list[Union[str, MetaParameter]]],
         coord_group: Union[str, list[str]] = "all",
         default_value: Union[float, list[float]] = 0.0,
+        cls_name: Optional[str] = None,
     ) -> "Skeleton":
         """Creates a new class with a data variable added.
 
@@ -280,7 +290,9 @@ class Skeleton:
             >>> class NewClass(OldClass):
             >>>     pass
         """
-        new_cls = type(_modified_name(cls.__name__), (cls,), {})
+
+        cls_name = cls_name or _modified_name(cls.__name__)
+        new_cls = type(cls_name, (cls,), {})
         if not isinstance(name, list):
             name = [name]
 
@@ -304,6 +316,7 @@ class Skeleton:
         y: str,
         direction: Optional[Union[str, MetaParameter]] = None,
         dir_type: Optional[str] = None,
+        cls_name: Optional[str] = None,
     ) -> "Skeleton":
         """Creates a new class with a data variable for magnitude added.
 
@@ -335,7 +348,8 @@ class Skeleton:
             >>>     pass
         """
 
-        new_cls = type(_modified_name(cls.__name__), (cls,), {})
+        cls_name = cls_name or _modified_name(cls.__name__)
+        new_cls = type(cls_name, (cls,), {})
         return add_magnitude(
             name=name, x=x, y=y, direction=direction, dir_type=dir_type
         )(new_cls)
@@ -350,6 +364,7 @@ class Skeleton:
         triggered_by: Optional[str] = None,
         valid_range: tuple[float] = (0.0, None),
         range_inclusive: bool = True,
+        cls_name: Optional[str] = None,
     ) -> "Skeleton":
         """Creates a new class with a mask added.
 
@@ -385,7 +400,8 @@ class Skeleton:
             >>>     pass
         """
 
-        new_cls = type(_modified_name(cls.__name__), (cls,), {})
+        cls_name = cls_name or _modified_name(cls.__name__)
+        new_cls = type(cls_name, (cls,), {})
         return add_mask(
             name=name,
             default_value=default_value,
@@ -395,6 +411,14 @@ class Skeleton:
             valid_range=valid_range,
             range_inclusive=range_inclusive,
         )(new_cls)
+
+    @classmethod
+    def projected_class(cls, cls_name: Optional[str] = None) -> "Skeleton":
+        """Creates a projected version of the class."""
+        cls_name = cls_name or _modified_name(cls.__name__)
+        
+        
+        return type(cls_name, (cls,), {})
 
     @classmethod
     def from_coord_dict(cls, coord_dict: dict) -> "Skeleton":
@@ -1464,9 +1488,8 @@ class Skeleton:
         fit_to_data: bool = False, 
         coords: Optional[list[str]] = None,
         chunks: Optional[Union[tuple, str]] = None,
-        native: bool = False,
-        projected: bool = False, 
-        verbose: Optional[bool] = None,
+        projected: Optional[bool] = None, 
+        verbose: bool = False,
     ) -> None:
         """Sets or updates the data for a variable in the Skeleton.
 
@@ -1557,7 +1580,7 @@ class Skeleton:
             name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
 
         _dir_type_consistency_check(name, self.core, dir_type)
-        projected = _projected_consistency_check(name, self.core, native, projected)
+        projected = _projected_consistency_check(name, self.core, projected)
 
         # Used to set metadata for the first time
         first_set = (
@@ -1894,9 +1917,8 @@ class Skeleton:
         dir_type: Optional[str] = None,
         squeeze: bool = True,
         dask: Optional[bool] = None,
-        native: bool = False,
-        projected: bool=False,
-        verbose: Optional[bool]=None,
+        projected: Optional[bool]=None,
+        verbose: bool=False,
         **kwargs,
     ) -> Union[np.ndarray, xr.DataArray, da.Array]:
         """Retrieves a mask or data variable as an array.
@@ -1999,7 +2021,7 @@ class Skeleton:
             name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
 
         _dir_type_consistency_check(name, self.core, dir_type)
-        projected =_projected_consistency_check(name, self.core, native, projected)
+        projected =_projected_consistency_check(name, self.core, projected)
 
         if name == "x":
             return self.x(strict=strict, **kwargs)
@@ -2078,7 +2100,7 @@ class Skeleton:
                 **kwargs,
             )
 
-            if projected:
+            if not self._same_projection(projected, name):
                 twin_name = self.core.find_twin_component(name)
                 twin_data = self._get_data(
                     name=twin_name,
@@ -2089,13 +2111,21 @@ class Skeleton:
                 )
                 my_param = self.core.meta_parameter(name)
                 twin_param = self.core.meta_parameter(twin_name)
+
                 if twin_param is None:
                     raise ProjectionError(f"Cannot find orthogonal component to '{name}'!")
                 lon, lat = self.lonlat()
                 if my_param.i_am() in ['x', 'east']:
-                    data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
+                    if projected:
+                        data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
+                    else:
+                        data, __ = self.proj._unrotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
+
                 elif my_param.i_am() in ['y', 'north']:
-                    __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
+                    if projected:
+                        __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
+                    else:
+                        __, data = self.proj._unrotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
                 else:
                     raise ProjectionError(f"'{name}' doesn't seem to be a component!")
 
@@ -3121,12 +3151,9 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
             raise DirTypeError
     
 
-def _projected_consistency_check(name: str, core: CoordinateManager, native: bool, projected: bool) -> bool:
+def _projected_consistency_check(name: str, core: CoordinateManager, projected: bool) -> bool:
     """Checks that projected information is not requested when it is not available"""
-    if native and projected:
-        raise ValueError("Both 'native' and 'projected' cannot be True at the same time.")
-
-    if native:
+    if projected is None:
         projected = core.meta.get(name).get('projected_according_to') == 'crs'
     
     

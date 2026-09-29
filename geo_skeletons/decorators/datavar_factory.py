@@ -31,8 +31,7 @@ def add_datavar(
             data_array: bool = False,
             squeeze: bool = True,
             dask: Optional[bool] = None,
-            native: bool = False,
-            projected: bool = False, 
+            projected: Optional[bool] = None, 
             verbose: bool = False,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
@@ -50,7 +49,6 @@ def add_datavar(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-                native=native,
                 projected=projected,
                 verbose=verbose,
                 **kwargs,
@@ -66,8 +64,7 @@ def add_datavar(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            native: bool = False,
-            projected: bool = False,
+            projected: Optional[bool] = None,
             verbose: Optional[bool] = None,
         ) -> None:
             if isinstance(data, int) or isinstance(data, float):
@@ -80,7 +77,6 @@ def add_datavar(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                native=native,
                 projected=projected,
                 verbose=verbose,
             )

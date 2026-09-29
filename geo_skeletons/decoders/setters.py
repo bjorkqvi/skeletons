@@ -121,6 +121,7 @@ def set_core_vars_to_skeleton_from_ds(
         else:
             data_to_set = ds.get(ds_var_x)
             dir_type = None
+            projected = None
         
         if ds_remapped_coords.get(var):
             # See if the data in the xarray dataset was from a projected variable or not

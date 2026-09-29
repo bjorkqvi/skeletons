@@ -41,8 +41,7 @@ def add_magnitude(
             squeeze: bool = True,
             dask: Optional[bool] = None,
             dir_type: Optional[str] = None,
-            native: bool = False,
-            projected: bool=False, 
+            projected: Optional[bool] = None, 
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
@@ -59,7 +58,7 @@ def add_magnitude(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-                native=native,
+
                 projected=projected,
                 **kwargs,
             )
@@ -73,8 +72,7 @@ def add_magnitude(
             strict: bool = True,
             squeeze: bool = True,
             dask: Optional[bool] = None,
-            native: bool = False,
-            projected: bool = False,
+            projected: Optional[bool] = None,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
@@ -90,7 +88,6 @@ def add_magnitude(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-                native=native,
                 projected=projected,
                 **kwargs,
             )
@@ -104,8 +101,7 @@ def add_magnitude(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            native: bool = False,
-            projected: bool = False,
+            projected: Optional[bool] = None,
             verbose: Optional[bool] = None,
         ):
             self.set(
@@ -115,7 +111,6 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                native=native,
                 projected=projected,
                 verbose=verbose,
             )
@@ -128,8 +123,7 @@ def add_magnitude(
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            native: bool = False,
-            projected: bool = False, 
+            projected: Optional[bool] = None, 
             verbose: Optional[bool] = None,
         ):
             self.set(
@@ -140,7 +134,6 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                native=native,
                 projected=projected,
                 verbose=verbose,
             )
