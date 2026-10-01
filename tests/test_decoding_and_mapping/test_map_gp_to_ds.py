@@ -10,7 +10,7 @@ import geo_parameters as gp
 
 from geo_skeletons.decoders.core_decoders import (
     _map_geo_parameter_to_ds_variable,
-    _map_inverse_geo_parameter_to_ds_variable,
+    _map_similar_geo_parameter_to_ds_variable,
     _map_geo_parameter_to_components_in_ds,
 )
 

@@ -17,7 +17,7 @@ def test_insert_point():
         pass
 
     points = WaveHeight(x=(0, 1, 2), y=(5, 6, 7))
-    points.set_hs()
+    points.set_hs(0)
     np.testing.assert_array_almost_equal(points.hs(), np.array([0, 0, 0]))
     points.ind_insert("hs", 1, inds=0)
     np.testing.assert_array_almost_equal(points.hs(), np.array([1, 0, 0]))
@@ -32,7 +32,7 @@ def test_insert_point_dask():
         pass
 
     points = WaveHeight(x=(0, 1, 2), y=(5, 6, 7))
-    points.set_hs()
+    points.set_hs(0)
     np.testing.assert_array_almost_equal(points.hs(), np.array([0, 0, 0]))
     points.ind_insert("hs", 1, inds=0)
     np.testing.assert_array_almost_equal(points.hs(), np.array([1, 0, 0]))
@@ -47,7 +47,7 @@ def test_insert_slice():
         pass
 
     points = WaveHeight(lon=(0, 1), lat=(5, 6, 7))
-    points.set_hs()
+    points.set_hs(0)
     np.testing.assert_array_almost_equal(
         points.hs(), np.array([[0, 0], [0, 0], [0, 0]])
     )
@@ -75,8 +75,9 @@ def test_slice_magnitude():
         pass
 
     points = Wind(lon=(0, 1), lat=(5, 6, 7))
-    points.set_u()
-    points.set_v()
+    points.set_u(1)
+    points.set_v(1)
+
     np.testing.assert_array_almost_equal(points.u(), np.array([[1, 1], [1, 1], [1, 1]]))
     np.testing.assert_array_almost_equal(points.v(), np.array([[1, 1], [1, 1], [1, 1]]))
     np.testing.assert_array_almost_equal(
@@ -139,7 +140,7 @@ def test_insert_time():
 
     time = pd.date_range("2020-01-01 00:00", "2020-01-01 23:00", freq="1h")
     points = WaveHeight(x=(0), y=(5), threshold=[6.0, 7.0], time=time)
-    points.set_hs()
+    points.set_hs(0)
     data = np.zeros((24, 2))
 
     np.testing.assert_array_almost_equal(points.hs(), data)

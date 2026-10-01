@@ -96,7 +96,7 @@ def add_magnitude(
 
         def set_magnitude(
             self,
-            magnitude: Optional[Union[np.ndarray, int, float]] = None,
+            magnitude: Union[np.ndarray, xr.DataArray, da.Array, float, int],
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
@@ -117,7 +117,7 @@ def add_magnitude(
 
         def set_direction(
             self,
-            direction: Optional[Union[np.ndarray, int, float]] = None,
+            direction: Union[np.ndarray, xr.DataArray, da.Array, float, int],
             dir_type: Optional[str] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
@@ -168,11 +168,6 @@ def add_magnitude(
             )
             mag_obj.direction = dir_obj
 
-            # Since xstr and ystr now implicitly have directional information through the connection with dir_obj, make sure they have a projection information if needed..
-            if c.core.meta_parameter(xstr).projection_type() is None:
-                c.core.meta.set({'projected_according_to': 'wgs84'},xstr)
-            if c.core.meta_parameter(ystr).projection_type() is None:
-                c.core.meta.set({'projected_according_to': 'wgs84'},ystr)
 
             c.core._add_direction(dir_obj)
 
