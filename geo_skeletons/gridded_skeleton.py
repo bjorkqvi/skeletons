@@ -11,7 +11,6 @@ import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
 from . import logger
-from functools import lru_cache
 from .errors import SkeletonError, MissingDatasetError, ProjectionError
 lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
 lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
@@ -432,7 +431,6 @@ class GriddedSkeleton(Skeleton):
             return None
         return np.reshape(lat, self.size("spatial"))
 
-    @lru_cache(maxsize=10)
     def x(
         self,
         native: bool = False,
@@ -489,7 +487,6 @@ class GriddedSkeleton(Skeleton):
             x = x - min(x)
         return x
 
-    @lru_cache(maxsize=10)
     def y(
         self,
         native: bool = False,
@@ -547,7 +544,6 @@ class GriddedSkeleton(Skeleton):
 
         return y
     
-    @lru_cache(maxsize=10)
     def lon(
         self,
         native: bool = False,
@@ -590,7 +586,6 @@ class GriddedSkeleton(Skeleton):
         
         return self._ds_manager.get("lon", **kwargs).data.copy()
 
-    @lru_cache(maxsize=10)
     def lat(
         self,
         native: bool = False,
@@ -634,7 +629,6 @@ class GriddedSkeleton(Skeleton):
         
         return self._ds_manager.get("lat", **kwargs).data.copy()
 
-    @lru_cache(maxsize=10)
     def xy(
         self,
         native: bool = False,
@@ -676,7 +670,6 @@ class GriddedSkeleton(Skeleton):
        
         return points.xy(normalize=normalize, native=native, crs = crs or self.proj.crs())
     
-    @lru_cache(maxsize=10)
     def lonlat(
         self,
         native: bool = False,
@@ -721,7 +714,6 @@ class GriddedSkeleton(Skeleton):
         points.proj.set(self.proj.crs())
         return points.lonlat(native=native, crs = crs or self.proj.crs())
 
-    @lru_cache(maxsize=10)
     def _native_xy(
         self, **kwargs
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -961,7 +953,6 @@ class GriddedSkeleton(Skeleton):
         self._init_structure(x, y, lon, lat)
         self.meta.set_by_dict(old_metadata)
     
-    @lru_cache(maxsize=10)
     def dmx(self,native: bool = False, strict: bool = False) -> float:
         """The grid distance in metres for the x-direction.
         
@@ -993,7 +984,6 @@ class GriddedSkeleton(Skeleton):
             #d = distance_funcs.lon_in_km(sum(lat)/2, lon[0])*1000*(lon[1]-lon[0])
             return float(d/(data_slice.nx()-1))
 
-    @lru_cache(maxsize=4)
     def dmy(self,native: bool = False, strict: bool = False) -> float:
         """The grid distance in metres for the y-direction.
         
@@ -1025,7 +1015,6 @@ class GriddedSkeleton(Skeleton):
         d = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
         return float(d/(data_slice.ny()-1))
 
-    @lru_cache(maxsize=4)
     def dy(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
         
@@ -1061,7 +1050,6 @@ class GriddedSkeleton(Skeleton):
         # return float(d/(self.ny()-1))
 
 
-    @lru_cache(maxsize=4)
     def dx(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the x vector. Conversion made for spherical grids."""
         if not self.core.is_projected() and strict and (not native):
@@ -1094,7 +1082,6 @@ class GriddedSkeleton(Skeleton):
         # d = distance_2points(lat, lon[0], lat, lon[1]) 
         # return float(d/(self.nx()-1))
 
-    @lru_cache(maxsize=4)
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""
@@ -1127,7 +1114,6 @@ class GriddedSkeleton(Skeleton):
 
         return distance_funcs.dy_to_dlat(dy=dmy, lat=lat, lon=lon)
 
-    @lru_cache(maxsize=4)
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""

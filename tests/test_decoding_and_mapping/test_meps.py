@@ -59,6 +59,6 @@ def test_check_consistency_with_northwind_ywind(ds):
     wind_components = WindLonLat.from_ds(ds, priority='components', verbose=True)
     #wind_magdir = WindLonLat.from_ds(ds, priority='magdir', verbose=True)
     #wind_magdir.v(projected=True)[0,0,0]
-    breakpoint()
+
     #wind_magdir.set(gp.wind.XWind, ds.x_wind_10m.values)
     

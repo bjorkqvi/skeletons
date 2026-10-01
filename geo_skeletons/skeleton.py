@@ -1563,7 +1563,7 @@ class Skeleton:
     def set(
         self,
         name: Union[str, MetaParameter],
-        data: Union[np.ndarray, xr.DataArray, da.Array],
+        data: Union[np.ndarray, xr.DataArray, da.Array, float, int],
         dir_type: Optional[str] = None,
         allow_reshape: bool = True,
         allow_transpose: bool = False,
@@ -1726,6 +1726,10 @@ class Skeleton:
                     data=data,
                     dir_type=dir_type,
                 )
+                if self._u_v_buffer.get(name) is not None:                    
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f"Setting '{name}' without reprojecting. Clearing out data from cache that was waiting on reprojection.")
+                    del self._u_v_buffer[name]
             else:
                 twin = self.core.find_twin_component(name)
                 twin_data = self._u_v_buffer.get(twin)
@@ -1818,7 +1822,8 @@ class Skeleton:
         x_component, y_component = obj.x, obj.y
         if obj.direction is None:
             raise SkeletonError(f"Cannot set a magnitude '{name}' that has no associated direction! Set componensts '{obj.x}' and '{obj.y}' separatesly, or modify class to have an associated direction.")
-        dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False, projected=True)
+        
+        dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False, projected=self.core.values_are_projected(obj.x))
 
         s = dask_computations.sin(dir_data)
         c = dask_computations.cos(dir_data)
@@ -1903,7 +1908,7 @@ class Skeleton:
 
     def _same_projection(self, projected: bool, name:str) -> bool:
         """Check if the given variable has the same projection as the provided flag."""
-        same_projection = (projected and self.proj.values_are_projected(name)) or (not projected and not self.proj.values_are_projected(name))
+        same_projection = (projected and self.core.values_are_projected(name)) or (not projected and not self.core.values_are_projected(name))
         return same_projection
 
     def _reshape_data(
@@ -3210,6 +3215,13 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
                     break
     else:
         names = core.find(name)
+    
+    if len(names) > 1:
+        if name.name in names:
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Found {names} matching {name}. Choose '{name.name}' based on {name.__class__.__name__}.name.")            
+            names = [name.name]
+    
     if len(names) == 0:
         raise UnknownVariableError(f"Variable matching {name} not found!")
     if len(names) > 1:
@@ -3244,18 +3256,22 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
 def _projected_consistency_check(name: str, core: CoordinateManager, projected: bool) -> bool:
     """Checks that projected information is not requested when it is not available"""
     if projected is None:
-        projected = core.meta.get(name).get('projected_according_to') == 'crs'
+        param = core.get(name).meta
+        if param is None:
+            return False
+        projected = param.projection_type() == 'xy'
+
+    return projected
     
-    
-    if not projected:
-        return False
+    # if not projected:
+    #     return False
 
-    # Lets not raise errors for scalars, since nothing will happen
-    if not core.is_component(name) and not core.is_direction(name):
-        return False
+    # # Lets not raise errors for scalars, since nothing will happen
+    # # if not core.is_component(name) and not core.is_direction(name):
+    # #     return False
 
-    # Don't proceed if the variable needs directional information but no projection information is present
-    if projected and core.meta.get(name).get('projected_according_to') is None:
-        raise ProjectionError(f"Variable '{name}' lacks 'projected_according_to' metadata, but 'projected'=True is requested.")
+    # # Don't proceed if the variable needs directional information but no projection information is present
+    # # if projected and core.meta.get(name).get('projected_according_to') is None:
+    # #     raise ProjectionError(f"Variable '{name}' lacks 'projected_according_to' metadata, but 'projected'=True is requested.")
 
-    return True
+    # return True

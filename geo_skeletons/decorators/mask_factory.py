@@ -13,7 +13,8 @@ from ..managers.dask_manager import DaskManager
 import geo_parameters as gp
 from geo_skeletons.variables import GridMask
 from functools import partial
-
+import dask.array as da
+import xarray as xr
 
 def add_mask(
     name: Union[str, MetaParameter],
@@ -107,7 +108,7 @@ def add_mask(
 
         def set_mask(
             self,
-            data: Optional[Union[np.ndarray, int, bool]] = None,
+            data: Union[np.ndarray, xr.DataArray, da.Array, int, bool],
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
@@ -126,7 +127,7 @@ def add_mask(
 
         def set_opposite_mask(
             self,
-            data: Optional[Union[np.ndarray, int, bool]] = None,
+            data: Union[np.ndarray, xr.DataArray, da.Array, int, bool],
             allow_reshape: bool = True,
             allow_transpose: bool = False,
             coords: Optional[list[str]] = None,
@@ -136,11 +137,11 @@ def add_mask(
 
             data = self.dask.dask_me(data)
 
-            if data is not None:
-                if self.dask.is_active() or chunks is not None:
-                    data = dask.array.logical_not(data)
-                else:
-                    data = np.logical_not(data)
+    
+            if self.dask.is_active() or chunks is not None:
+                data = dask.array.logical_not(data)
+            else:
+                data = np.logical_not(data)
 
             self.set(
                 f"{name_str}_mask",

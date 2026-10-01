@@ -68,6 +68,7 @@ def test_basic_spherical_to_utm_gridded():
         force_zone_letter="W",
     )
     xx, yy = points.xy()
+    
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
 

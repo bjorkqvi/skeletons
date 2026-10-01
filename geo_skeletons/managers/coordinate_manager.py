@@ -1015,6 +1015,17 @@ class CoordinateManager:
                 return clean_names
             return names
 
+    def values_are_projected(self, var: str) -> bool:
+        """Checks if the values of the given variable are projected. Checks metadata to see if the attribute 'projected_according_to' is 'crs' or 'wgs84'.
+        """
+        #crs_value = self._meta.get(var).get('projected_according_to')
+        # if crs_value not in ['crs','wgs84']:
+        #     raise ProjectionError(f"Variable '{var}' has an invalid 'projected_according_to' value {crs_value}.")
+        param = self.meta_parameter(var)
+        if param is None:
+            return False
+        return param.projection_type() == 'xy'
+
     def find_twin_component(self, param: Union[MetaParameter, str]) -> Union[str, None]:
         """Finds the twin component of a given parameter.
 
@@ -1047,7 +1058,18 @@ class CoordinateManager:
             twin = self.find(param.my_family('east'))
         else:
             return None
-
+        
+        if len(twin) > 1:
+            # Several metaparameters match, try to see if one of them are connected through a magnitude
+            mag = self.get(self.get(param.name).magnitude)
+            if mag is not None:
+                
+                if my_type in ['x','east']:
+                    possible_twin = mag.y
+                elif my_type in ['y','north']:
+                    possible_twin = mag.x
+                if possible_twin in twin:
+                    twin = [possible_twin]
         if len(twin) > 1:
             raise ValueError(f"Found two possible candidates for a second component: {twin}")
         

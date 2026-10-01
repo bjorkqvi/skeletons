@@ -58,7 +58,7 @@ def add_datavar(
 
         def set_var(
             self,
-            data: Optional[Union[np.ndarray, int, float]] = None,
+            data: Union[np.ndarray, xr.DataArray, da.Array, float, int],
             dir_type: Optional[str] = None,
             allow_reshape: bool = True,
             allow_transpose: bool = False,
@@ -67,8 +67,6 @@ def add_datavar(
             projected: Optional[bool] = None,
             verbose: Optional[bool] = None,
         ) -> None:
-            if isinstance(data, int) or isinstance(data, float):
-                data = np.full(self.shape(name_str), data)
             self.set(
                 name_str,
                 data,
