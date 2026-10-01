@@ -27,6 +27,7 @@ from .errors import (
     DirTypeError,
     SkeletonError,
     UnknownVariableError,
+    UnknownCoordinateError,
     MissingDatasetError,
     ProjectionError,
 )
@@ -1945,10 +1946,18 @@ class Skeleton:
         if coords is not None:
             # Some dimensions of the provided data might not exist in the Skeleton
             # If they are trivial then they don't matter, so squeeze them out
-            squeezed_coords = [
-                c for c in coords if self.get(c) is not None and len(self.get(c)) > 1
-            ]
-
+           
+            if len(coords) == len(data.shape):
+                squeezed_coords = [ c for n, c in enumerate(coords) if data.shape[n] > 1 ]
+            else: # Assuming only non-trivial coords are given
+                numer_of_non_trivial_dims = sum([True for n in data.shape if n>1])
+                if numer_of_non_trivial_dims != len(coords):
+                    raise DataWrongDimensionError(numer_of_non_trivial_dims, len(coords))
+                if set(coords) == set(self.coord_squeeze(self.core.coords(coord_type))):
+                    squeezed_coords = coords
+                else:
+                    raise UnknownCoordinateError(f"Some of the provided coordinates are unknown: {coords}")
+            
             data = reshape_manager.explicit_reshape(
                 data.squeeze(),
                 data_coords=squeezed_coords,
@@ -2105,6 +2114,9 @@ class Skeleton:
 
         if gp.is_gp(name):
             name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
+
+        if name not in self.core.all_objects():
+            return None
 
         _dir_type_consistency_check(name, self.core, dir_type)
         projected =_projected_consistency_check(name, self.core, projected)
@@ -3255,8 +3267,15 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
 
 def _projected_consistency_check(name: str, core: CoordinateManager, projected: bool) -> bool:
     """Checks that projected information is not requested when it is not available"""
+    
+    # If variable is not a component or a direction, ignore projection information
+    if not core.is_component(name) and not core.is_direction(name):
+        return False
+    
+
+    param = core.get(name).meta
     if projected is None:
-        param = core.get(name).meta
+        # If no metadata is available, assume the variable is not projected
         if param is None:
             return False
         projected = param.projection_type() == 'xy'
@@ -3267,8 +3286,7 @@ def _projected_consistency_check(name: str, core: CoordinateManager, projected: 
     #     return False
 
     # # Lets not raise errors for scalars, since nothing will happen
-    # # if not core.is_component(name) and not core.is_direction(name):
-    # #     return False
+
 
     # # Don't proceed if the variable needs directional information but no projection information is present
     # # if projected and core.meta.get(name).get('projected_according_to') is None:

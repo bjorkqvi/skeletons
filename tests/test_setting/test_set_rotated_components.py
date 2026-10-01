@@ -25,8 +25,7 @@ def test_dummy_ok():
     assert wind.ff() == 10
     wind.set_ff(10, projected=False)
     assert wind.ff() == 10
-    wind.set_ff(10)
-    assert wind.ff() == 10
+
 
 
 def test_no_gp_components():

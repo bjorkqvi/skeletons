@@ -38,6 +38,7 @@ def test_absorb_gridded_cartesian():
     grid2.set_spacing(nx=2, ny=2)
     grid = grid.absorb(grid2, dim="x")
     assert grid.inds() is None
+
     np.testing.assert_array_almost_equal(grid.x(), np.array([1, 2, 3, 4]))
     np.testing.assert_array_almost_equal(grid.x(normalize=True), np.array([0, 1, 2, 3]))
     np.testing.assert_array_almost_equal(grid.y(), np.array([0, 3]))
