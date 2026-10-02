@@ -5,6 +5,7 @@ import numpy as np
 def test_point_high_lat():
     points = PointSkeleton(lon=(0, 1, 2, 3), lat=(80, 82, 84, 85))
     x, y = points.x(), points.y()
+    
     assert np.isnan(x[-1])
     assert np.isnan(y[-1])
 
