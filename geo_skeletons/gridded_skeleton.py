@@ -468,8 +468,8 @@ class GriddedSkeleton(Skeleton):
                 return None
             elif self.nx() == 1 and self.ny()==1:
                 x = self.proj._x(
-                    lon=self.lon(crs=self.proj.crs(),**kwargs),
-                    lat=self.lat(crs=self.proj.crs(), **kwargs),
+                    lon=self.lon(**kwargs),
+                    lat=self.lat(**kwargs),
                     crs=crs,
                 )
 
@@ -524,8 +524,8 @@ class GriddedSkeleton(Skeleton):
                 return None
             elif self.nx() == 1 and self.ny()==1:
                 y = self.proj._y(
-                    lon=self.lon(crs=self.proj.crs(),**kwargs),
-                    lat=self.lat(crs=self.proj.crs(), **kwargs),
+                    lon=self.lon(**kwargs),
+                    lat=self.lat(**kwargs),
                     crs=crs,
                 )
 
@@ -663,12 +663,13 @@ class GriddedSkeleton(Skeleton):
 
         if self.core.is_projected():
             points = PointSkeleton(x=x, y=y)
+            self_crs = self.proj.crs()
         else:
             points = PointSkeleton(lon=x, lat=y)
-        if self.proj.crs() is not None:    
-            points.proj.set(self.proj.crs())
-       
-        return points.xy(normalize=normalize, native=native, crs = crs or self.proj.crs())
+            self_crs = self.proj.utm()
+        points.proj.set(self_crs)
+
+        return points.xy(normalize=normalize, native=native, crs = crs or self_crs)
     
     def lonlat(
         self,

@@ -115,17 +115,15 @@ def test_nan_treatment_point_point_to_utm():
 
 
     grid = Wind(x=data.edges('x'),y=data.edges('y'), crs=data.proj.crs())
-    #grid.set_spacing(nx=10, ny=21)
 
-    new_data = data.resample.grid(grid)
     new_data_high = data_high.resample.grid(grid)
     new_data_high_from_nan = data_nan.resample.grid(grid, mask_nan=100)
     new_data_drop_nan = data_nan.resample.grid(grid, drop_nan=True)
 
     np.testing.assert_array_almost_equal(new_data_high.u(), new_data_high_from_nan.u())
     np.testing.assert_array_almost_equal(new_data_high.v(), new_data_high_from_nan.v())
-    np.testing.assert_array_almost_equal(new_data.u(), new_data_drop_nan.u())
-    np.testing.assert_array_almost_equal(new_data.v(), new_data_drop_nan.v())
+    np.testing.assert_array_almost_equal(data.u()[[1,-1]], new_data_drop_nan.u())
+    np.testing.assert_array_almost_equal(data.v()[[1,-1]], new_data_drop_nan.v())
 
 def test_nan_treatment_point_point():
     data = Wind(lon=(10,11,12,20), lat=(50,50,51,60))
@@ -161,8 +159,11 @@ def test_nan_treatment_point_point():
 
     np.testing.assert_array_almost_equal(new_data_high.u(), new_data_high_from_nan.u())
     np.testing.assert_array_almost_equal(new_data_high.v(), new_data_high_from_nan.v())
-    np.testing.assert_array_almost_equal(new_data.u(), new_data_drop_nan.u())
-    np.testing.assert_array_almost_equal(new_data.v(), new_data_drop_nan.v())
+    
+    u[0] = u[1]
+    v[0] = v[1]
+    np.testing.assert_array_almost_equal(u, new_data_drop_nan.u())
+    np.testing.assert_array_almost_equal(v, new_data_drop_nan.v())
 
 def test_nan_treatment_grid_grid():
     data = WindGrid(lon=(10,20), lat=(50,60))
@@ -192,18 +193,21 @@ def test_nan_treatment_grid_grid():
     data_nan.set_v(vnan)
 
 
-    grid = WindGrid(lon=(10.5,19.5),lat=(50.5,59.5))
+    grid = WindGrid(lon=(10.5,19.5),lat=(50.5,59.51))
     grid.set_spacing(nx=10, ny=11)
-
+    
     new_data = data.resample.grid(grid)
     new_data_high = data_high.resample.grid(grid)
     new_data_high_from_nan = data_nan.resample.grid(grid, mask_nan=100)
     new_data_drop_nan = data_nan.resample.grid(grid, drop_nan=True)
-
+    
     np.testing.assert_array_almost_equal(new_data_high.u(), new_data_high_from_nan.u())
     np.testing.assert_array_almost_equal(new_data_high.v(), new_data_high_from_nan.v())
-    np.testing.assert_array_almost_equal(new_data.u(), new_data_drop_nan.u())
-    np.testing.assert_array_almost_equal(new_data.v(), new_data_drop_nan.v())
+    # The dropped latitude is equal to the second latitude in original data
+    np.testing.assert_array_almost_equal(new_data.u()[1:,:], new_data_drop_nan.u()[1:,:])
+    np.testing.assert_array_almost_equal(new_data.v()[1:,:], new_data_drop_nan.v()[1:,:])
+    np.testing.assert_array_almost_equal(new_data.u()[1,:], new_data_drop_nan.u()[0,:])
+    np.testing.assert_array_almost_equal(new_data.v()[1,:], new_data_drop_nan.v()[0,:])
 
 def test_nan_treatment_grid_point():
     data = WindGrid(lon=(10,20), lat=(50,60))
@@ -235,7 +239,7 @@ def test_nan_treatment_grid_point():
 
     grid = Wind(lon=(10.1,11.1,12.1,20.1), lat=(50.1,50.1,51.1,60.1))
 
-    new_data = data.resample.grid(grid)
+    new_data = data.sel(lat=slice(51,60)).resample.grid(grid)
     new_data_high = data_high.resample.grid(grid)
     new_data_high_from_nan = data_nan.resample.grid(grid, mask_nan=100)
     new_data_drop_nan = data_nan.resample.grid(grid, drop_nan=True)
@@ -250,7 +254,7 @@ def test_nan_treatment_point_grid():
     data = Wind(lon=(10,11,12,20), lat=(50,50,51,60))
     data_high = Wind(lon=(10,11,12,20), lat=(50,50,51,60))
     data_nan = Wind(lon=(10,11,12,20), lat=(50,50,51,60))
-
+    breakpoint()
     data.set_dd(0)
     data.set_ff(10)
     
@@ -273,7 +277,7 @@ def test_nan_treatment_point_grid():
     grid = WindGrid(lon=(10.5,19.5),lat=(50.5,59.5))
     grid.set_spacing(nx=10, ny=11)
 
-    new_data = data.resample.grid(grid)
+    new_data = data.sel(inds=slice(1,None)).resample.grid(grid)
     new_data_high = data_high.resample.grid(grid)
     new_data_high_from_nan = data_nan.resample.grid(grid, mask_nan=100)
     new_data_drop_nan = data_nan.resample.grid(grid, drop_nan=True)

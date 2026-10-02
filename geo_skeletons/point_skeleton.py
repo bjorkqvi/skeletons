@@ -302,12 +302,12 @@ class PointSkeleton(Skeleton):
         if not self.core.is_projected() and strict:
             return None
 
-        if self.core.is_projected() and (crs is None or self.proj.crs() == crs):
+        if self.core.is_projected() and (crs is None or self.proj.crs() == self.proj.to_crs(crs)):
             x = self._ds_manager.get("x", **kwargs).data.copy()
         else:
             x = self.proj._x(
-                lon=self.lon(crs=self.proj.crs(), **kwargs),
-                lat=self.lat(crs=self.proj.crs(), **kwargs),
+                lon=self.lon(**kwargs),
+                lat=self.lat(**kwargs),
                 crs=crs,
             )
 
@@ -363,8 +363,8 @@ class PointSkeleton(Skeleton):
             y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
             y = self.proj._y(
-                lon=self.lon(crs=self.proj.crs(),**kwargs),
-                lat=self.lat(crs=self.proj.crs(), **kwargs),
+                lon=self.lon(**kwargs),
+                lat=self.lat(**kwargs),
                 crs=crs,
             )
         
@@ -415,7 +415,7 @@ class PointSkeleton(Skeleton):
         
         return self.proj._lon(
             x=self.x(**kwargs) ,
-            y= self.y(**kwargs) ,
+            y=self.y(**kwargs) ,
             crs=crs,
         )
 

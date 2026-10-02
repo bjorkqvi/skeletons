@@ -6,7 +6,7 @@ import utm
 def test_basic_spherical_to_utm_point():
     points = PointSkeleton(lon=range(1, 6), lat=range(10, 60, 10))
     x, y, zone, letter = utm.from_latlon(points.lat(), points.lon())
-    assert points.proj.crs() == (zone, letter)  # (31,'P')
+    assert points.proj.utm() == (zone, letter)  # (31,'P')
     np.testing.assert_array_almost_equal(points.x(), x, decimal=7)
     np.testing.assert_array_almost_equal(points.y(), y,decimal=7)
     xx, yy = points.xy()
@@ -24,9 +24,9 @@ def test_basic_spherical_to_utm_point():
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
 
-    assert points.proj.crs() == (31, "P")  # Should not change
-    points.proj.set((33, "W"))
-    assert points.proj.crs() == (33, "W")
+    assert points.proj.utm() == (31, "P")  # Should not change
+    points.proj.set_utm((33, "W"))
+    assert points.proj.utm() == (33, "W")
 
     np.testing.assert_array_almost_equal(points.x(), x, decimal=7)
     np.testing.assert_array_almost_equal(points.y(), y, decimal=7)
@@ -40,7 +40,7 @@ def test_basic_spherical_to_utm_point():
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
 
-    points.proj.set((32, "W"))
+    points.proj.set_utm((32, "W"))
     xedge = points.edges("x", crs=(33, "W"))
     yedge = points.edges("y", crs=(33, "W"))
     np.testing.assert_almost_equal(np.min(x), xedge[0], decimal=7)
@@ -54,12 +54,12 @@ def test_basic_spherical_to_utm_gridded():
 
     lon, lat = points.lonlat()
     x, y, zone, letter = utm.from_latlon(lat, lon)
-    assert points.proj.crs() == (zone, letter)  # (31,'P')
+    assert points.proj.utm() == (zone, letter)  # (31,'P')
     xx, yy = points.xy()
     np.testing.assert_array_almost_equal(xx, x, decimal=7)
     np.testing.assert_array_almost_equal(yy, y, decimal=7)
 
-    points.proj.set((33, "W"))
+    points.proj.set_utm((33, "W"))
     lon, lat = points.lonlat()
     x, y, zone, letter = utm.from_latlon(
         lat,
@@ -75,7 +75,8 @@ def test_basic_spherical_to_utm_gridded():
 
 def test_point_cartesian():
     points = PointSkeleton(x=(0, 100, 200, 300), y=(6000000, 6100000, 6400000, 6600000))
-    points.proj.set((33, "W"))
+    points.proj.set_utm((33, "W"))
+    points.x(crs=(30, "W"))
     np.testing.assert_raises(
         AssertionError,
         np.testing.assert_array_almost_equal,
