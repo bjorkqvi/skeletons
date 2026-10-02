@@ -311,7 +311,6 @@ class PointSkeleton(Skeleton):
                 crs=crs,
             )
 
-
         if normalize:
             x = x - min(x)
 

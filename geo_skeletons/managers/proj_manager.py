@@ -80,6 +80,8 @@ class ProjManager:
         self._utm = None
         if crs is not None:
             self.set(crs)
+        if not isinstance(self.crs(), tuple):
+            self.reset_utm()
         self._alpha: dict = {}
         
 
@@ -99,11 +101,12 @@ class ProjManager:
         lon = np.array(lon)
 
         mask = np.logical_and(lat <= 84, lat >= -80)
-        if np.logical_not(np.all(mask)):
+        if np.all(np.logical_not(mask)):
             return None
 
         lat = lat[mask]
         lon = lon[mask]
+
         try:
             __, __, zone_number, zone_letter = utm_module.from_latlon(lat, lon)
         except ValueError:  # ValueError: latitudes must all have the same sign
