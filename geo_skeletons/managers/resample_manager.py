@@ -356,8 +356,8 @@ class ResampleManager:
             
             logger.log.info(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
 
-        if method == 'nearest':
-            projected 
+        # if method == 'nearest':
+        #     projected 
         
         new_data = regridder(self.skeleton, new_grid, new_data, verbose=verbose, **kwargs)
         
