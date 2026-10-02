@@ -2117,12 +2117,6 @@ class Skeleton:
         if gp.is_gp(name):
             name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
 
-        if name not in self.core.all_objects():
-            return None
-
-        _dir_type_consistency_check(name, self.core, dir_type)
-        projected =_projected_consistency_check(name, self.core, projected)
-
         if name == "x":
             return self.x(strict=strict, **kwargs)
         elif name == "y":
@@ -2132,6 +2126,11 @@ class Skeleton:
         elif name == "lat":
             return self.lat(strict=strict, **kwargs)
 
+        if name not in self.core.all_objects():
+            return None
+
+        _dir_type_consistency_check(name, self.core, dir_type)
+        projected =_projected_consistency_check(name, self.core, projected)
 
         if name in self.core.magnitudes("all"):
             data = self._get_magnitude(
