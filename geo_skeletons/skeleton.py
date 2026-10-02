@@ -2926,13 +2926,17 @@ class Skeleton:
         self, x: np.ndarray, y: np.ndarray, fast: bool, npoints: int
     ) -> dict[str, np.ndarray]:
         """Finds the indeces of nearest points and distances if x,y coordinates are provided"""
-        if self.proj.crs() is not None:
-            lat = self.proj._lat(x, y, crs=self.proj.crs())
-            lon = self.proj._lon(x, y, crs=self.proj.crs())
-        else:
+        if self.core.is_projected() and self.proj.crs() is None:
             lat, lon = None, None
+        else:
+            if not self.core.is_projected():
+                self_proj = self.proj.utm()
+            else:
+                self_proj = self.proj.crs()
+            lat = self.proj._lat(x, y, crs=self_proj)
+            lon = self.proj._lon(x, y, crs=self_proj)
 
-        inds, dx = self._yank_inds(x, y, lon, lat, self.proj.crs(), fast, npoints)
+        inds, dx = self._yank_inds(x, y, lon, lat, self_proj, fast, npoints)
         return inds, dx
 
     def _yank_using_lonlat(
