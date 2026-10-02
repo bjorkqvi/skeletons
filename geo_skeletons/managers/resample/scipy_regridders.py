@@ -137,7 +137,6 @@ def scipy_regrid_gridded_data(data, new_grid, new_data, verbose, method: str='ne
                 interpolated_values = interpolator(qp)
                 
                 new_data.set(var_name, interpolated_values, fit_to_data=True)
-                
     return new_data
 
 

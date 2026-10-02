@@ -286,7 +286,7 @@ class ResampleManager:
             logger.log.info(f"'{key}'\t\t{value.get('options')}")
         logger.log.info('-'*125)
 
-    def grid(self, new_grid: Skeleton, target_class: Optional[Skeleton] = None, engine: str='scipy', verbose: Optional[bool]=None, **kwargs) -> Skeleton:
+    def grid(self, new_grid: Skeleton, target_class: Optional[Skeleton] = None, engine: str='scipy', verbose: Optional[bool]=None, projected: Optional[bool]=None, **kwargs) -> Skeleton:
         """Regrids the data of the Skeleton onto a new grid.
 
         This method regrids the data from the current Skeleton to a specified new grid using 
@@ -302,7 +302,8 @@ class ResampleManager:
                 Defaults to `None`.
             engine (str, optional): The regridding engine to use. Must be one of the supported 
                 engines in. Defaults to `'scipy'`. 
-        verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
+            verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
+            projected (bool, optional): Indicates if the variables should be projected that the regridding should consider the data as projected. If `None`, the method will infer the projection from the data. Defaults to `None`.
             **kwargs: Additional keyword arguments passed to the regridding engine.
 
         Returns:
@@ -354,6 +355,9 @@ class ResampleManager:
 
             
             logger.log.info(f"Starting regridding ('{regrid_type}') with '{engine}'({regridder})...")
+
+        if method == 'nearest':
+            projected 
         
         new_data = regridder(self.skeleton, new_grid, new_data, verbose=verbose, **kwargs)
         

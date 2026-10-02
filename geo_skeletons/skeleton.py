@@ -56,7 +56,7 @@ from .distance_funcs import distance_2points
 import pandas as pd
 from copy import deepcopy
 
-
+from pyproj import CRS
 CoordinateValue = Union[Iterable[float], Iterable[int], float, int]
 CRSValue = Union[int, str, tuple[int, str], dict]
 class Skeleton:
@@ -80,6 +80,8 @@ class Skeleton:
         **kwargs,
     ) -> None:
         self._init_structure(x, y, lon, lat, **kwargs)
+        if crs is None and not self.core.is_projected():
+            crs = CRS.from_epsg(4326)
         self._init_managers(crs=crs, chunks=chunks)
         self._init_metadata(name=name)
         self._u_v_buffer: dict[str, np.ndarray] = {}
