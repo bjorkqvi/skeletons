@@ -42,7 +42,7 @@ def add_magnitude(
             squeeze: bool = True,
             dask: Optional[bool] = None,
             dir_type: Optional[str] = None,
-            projected: Optional[bool] = None, 
+            wrt:  Union[str, CRSValue, None] = None,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
@@ -59,8 +59,7 @@ def add_magnitude(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-
-                projected=projected,
+                wrt=wrt,
                 **kwargs,
             )
 
@@ -73,7 +72,7 @@ def add_magnitude(
             strict: bool = True,
             squeeze: bool = True,
             dask: Optional[bool] = None,
-            projected: Optional[bool] = None,
+            wrt:  Union[str, CRSValue, None] = None,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
             """Returns the magnitude.
@@ -89,7 +88,7 @@ def add_magnitude(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-                projected=projected,
+                wrt=wrt,
                 **kwargs,
             )
 

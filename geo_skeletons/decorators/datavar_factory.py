@@ -28,10 +28,10 @@ def add_datavar(
             empty: bool = False,
             strict: bool = True,
             dir_type: Optional[str] = None,
+            wrt:  Union[str, CRSValue, None] = None,
             data_array: bool = False,
             squeeze: bool = True,
             dask: Optional[bool] = None,
-            projected: Optional[bool] = None, 
             verbose: bool = False,
             **kwargs,
         ) -> Union[np.ndarray, da.array, xr.DataArray]:
@@ -49,7 +49,7 @@ def add_datavar(
                 data_array=data_array,
                 squeeze=squeeze,
                 dask=dask,
-                projected=projected,
+                wrt=wrt,
                 verbose=verbose,
                 **kwargs,
             )
