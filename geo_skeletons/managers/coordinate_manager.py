@@ -1016,11 +1016,9 @@ class CoordinateManager:
             return names
 
     def values_are_projected(self, var: str) -> bool:
-        """Checks if the values of the given variable are projected. Checks metadata to see if the attribute 'projected_according_to' is 'crs' or 'wgs84'.
+        """Checks if the values of the given variable are projected.
         """
-        #crs_value = self._meta.get(var).get('projected_according_to')
-        # if crs_value not in ['crs','wgs84']:
-        #     raise ProjectionError(f"Variable '{var}' has an invalid 'projected_according_to' value {crs_value}.")
+
         param = self.meta_parameter(var)
         if param is None:
             return False
@@ -1114,11 +1112,6 @@ class CoordinateManager:
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
-                if self.meta_parameter(var) is not None:
-                    proj = self.meta_parameter(var).projection_type()
-                    if proj is not None:
-                        crs = 'wgs84' if proj == 'lonlat' else 'crs'
-                        string += f" ({crs})"
 
         else:
             string += "\n    *empty*"
@@ -1158,11 +1151,7 @@ class CoordinateManager:
                 if meta_parameter is not None:
                     string += f" [{meta_parameter.units()}]"
                     string += f" {meta_parameter.standard_name()}"
-                if self.meta_parameter(key) is not None:
-                    proj = self.meta_parameter(key).projection_type()
-                    if proj is not None:
-                        crs = 'wgs84' if proj == 'lonlat' else 'crs'
-                        string += f" ({crs})"
+
         else:
             string += "\n    *empty*"
 

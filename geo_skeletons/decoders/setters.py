@@ -126,11 +126,11 @@ def set_core_vars_to_skeleton_from_ds(
         if ds_remapped_coords.get(var):
             # See if the data in the xarray dataset was from a projected variable or not
             if projected is None:
-                projection = skeleton.meta.get(var).get('projected_according_to')
+                wrt = None
             elif projected:
-                projection = 'crs'
+                wrt = 'xy'
             else:
-                projection = 'wgs84'
+                wrt = 'lonlat'
             if verbose:
                 
                 if skeleton.core.get_dir_type(var) is not None and dir_type is None:
@@ -145,7 +145,7 @@ def set_core_vars_to_skeleton_from_ds(
                 data_to_set.data,
                 coords=ds_remapped_coords[var],
                 dir_type=dir_type,
-                projected=projection == 'crs',
+                wrt = wrt,
             )
 
             old_metadata = {

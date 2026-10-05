@@ -12,10 +12,10 @@ from typing import Optional, Union
 from .dask_computations import undask_me
 from . import logger
 from .errors import SkeletonError, MissingDatasetError, ProjectionError
-lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", grid_mapping='wgs84')
-lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", grid_mapping='wgs84')
-x_var = Coordinate(name="x", meta=gp.grid.X, coord_group="spatial", grid_mapping='crs')
-y_var = Coordinate(name="y", meta=gp.grid.Y, coord_group="spatial", grid_mapping='crs')
+lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial")
+lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial")
+x_var = Coordinate(name="x", meta=gp.grid.X, coord_group="spatial")
+y_var = Coordinate(name="y", meta=gp.grid.Y, coord_group="spatial")
 
 INITIAL_CARTESIAN_COORDS = [y_var, x_var]
 INITIAL_SPERICAL_COORDS = [lat_var, lon_var]
