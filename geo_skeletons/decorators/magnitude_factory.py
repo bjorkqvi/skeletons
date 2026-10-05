@@ -1,3 +1,4 @@
+from ..managers.proj_manager import CRSValue
 import numpy as np
 from typing import Union, Optional
 from copy import deepcopy
@@ -97,11 +98,11 @@ def add_magnitude(
         def set_magnitude(
             self,
             magnitude: Union[np.ndarray, xr.DataArray, da.Array, float, int],
-            allow_reshape: bool = True,
-            allow_transpose: bool = False,
+            wrt:  Union[str, CRSValue, None] = None,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            projected: Optional[bool] = None,
+            allow_reshape: bool = True,
+            allow_transpose: bool = False,
             verbose: Optional[bool] = None,
         ):
             self.set(
@@ -111,7 +112,7 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                projected=projected,
+                wrt=wrt,
                 verbose=verbose,
             )
 
@@ -119,11 +120,11 @@ def add_magnitude(
             self,
             direction: Union[np.ndarray, xr.DataArray, da.Array, float, int],
             dir_type: Optional[str] = None,
-            allow_reshape: bool = True,
-            allow_transpose: bool = False,
+            wrt:  Union[str, CRSValue, None] = None,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            projected: Optional[bool] = None, 
+            allow_reshape: bool = True,
+            allow_transpose: bool = False,
             verbose: Optional[bool] = None,
         ):
             self.set(
@@ -134,7 +135,7 @@ def add_magnitude(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                projected=projected,
+                wrt=wrt,
                 verbose=verbose,
             )
 

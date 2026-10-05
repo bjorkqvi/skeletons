@@ -8,7 +8,7 @@ import dask.array as da
 import xarray as xr
 from geo_skeletons.variables import DataVar
 import warnings
-
+from ..managers.proj_manager import CRSValue
 def add_datavar(
     name: Union[str, MetaParameter],
     coord_group: str = "all",
@@ -60,11 +60,11 @@ def add_datavar(
             self,
             data: Union[np.ndarray, xr.DataArray, da.Array, float, int],
             dir_type: Optional[str] = None,
-            allow_reshape: bool = True,
-            allow_transpose: bool = False,
+            wrt:  Union[str, CRSValue, None] = None,
             coords: Optional[list[str]] = None,
             chunks: Optional[Union[tuple, str]] = None,
-            projected: Optional[bool] = None,
+            allow_reshape: bool = True,
+            allow_transpose: bool = False,
             verbose: Optional[bool] = None,
         ) -> None:
             self.set(
@@ -75,7 +75,7 @@ def add_datavar(
                 allow_transpose=allow_transpose,
                 coords=coords,
                 chunks=chunks,
-                projected=projected,
+                wrt=wrt,
                 verbose=verbose,
             )
 

@@ -509,32 +509,32 @@ class ProjManager:
         return CRS.from_dict(proj4)
     
 
-    def _calculate_rotation_alpha(self, lon, lat) -> np.ndarray:
+    def _calculate_rotation_alpha(self, lon, lat, target_crs: CRS) -> np.ndarray:
         """Calculates the rotation angle alpha from lon-lat to the set CRS"""
-        saved_alpha = self._alpha.get(self.crs)
+        saved_alpha = self._alpha.get(target_crs)
         if saved_alpha is not None:
             return saved_alpha
-        if isinstance(self.crs(), tuple):
-            x = self._utm_x(lon=tuple(lon), lat=tuple(lat), utm=self.crs())
-            y = self._utm_y(lon=tuple(lon), lat=tuple(lat), utm=self.crs())
+        if isinstance(target_crs, tuple):
+            x = self._utm_x(lon=tuple(lon), lat=tuple(lat), utm=target_crs)
+            y = self._utm_y(lon=tuple(lon), lat=tuple(lat), utm=target_crs)
             # Shift slightly towards north
             dlat = 1e-5
-            x2 = self._utm_x(lon=tuple(lon), lat=tuple(lat+dlat), utm=self.crs())
-            y2 = self._utm_y(lon=tuple(lon), lat=tuple(lat+dlat), utm=self.crs())
+            x2 = self._utm_x(lon=tuple(lon), lat=tuple(lat+dlat), utm=target_crs)
+            y2 = self._utm_y(lon=tuple(lon), lat=tuple(lat+dlat), utm=target_crs)
         else:
-            x, y = self._xy(lon=tuple(lon), lat=tuple(lat), crs=self.crs())
+            x, y = self._xy(lon=tuple(lon), lat=tuple(lat), crs=target_crs)
             # Shift slightly towards north
             dlat = 1e-5
-            x2, y2 = self._xy(lon=tuple(lon), lat=tuple(lat+dlat), crs=self.crs())
+            x2, y2 = self._xy(lon=tuple(lon), lat=tuple(lat+dlat), crs=target_crs)
 
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
-        self._alpha[self.crs] = alpha
+        self._alpha[target_crs] = alpha
         return alpha
     
     
 
 
-    def _rotate_u_v(self, x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
+    def _rotate_u_v(self, x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int], target_crs: CRS):
         """Rotates x,y component data to the set coordinate reference system """
         if x_data is None or y_data is None:
             raise ProjectionError(f"Data for both components not found. Cannot rotate!")
@@ -542,7 +542,7 @@ class ProjManager:
         if self.crs() is None:
             raise ProjectionError(f"No projection defined. Cannot rotate!")
 
-        alpha = self._calculate_rotation_alpha(lon, lat)
+        alpha = self._calculate_rotation_alpha(lon, lat, target_crs)
         alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
 
         x_rot, y_rot = _rotate_components(x_data, y_data, alpha)
@@ -550,7 +550,7 @@ class ProjManager:
         return x_rot, y_rot
     
     
-    def _unrotate_u_v(self,  x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int]):
+    def _unrotate_u_v(self,  x_data: xr.DataArray, y_data: xr.DataArray, lon: np.ndarray, lat: np.ndarray, grid_shape: tuple[int], source_crs: CRS):
         """*Unrotates x,y component data from the set coordinate reference system """
 
         if x_data is None or y_data is None:
@@ -559,7 +559,7 @@ class ProjManager:
         if self.crs() is None:
             raise ProjectionError(f"No projection defined. Cannot unrotate!")
 
-        alpha = self._calculate_rotation_alpha(lon, lat)
+        alpha = self._calculate_rotation_alpha(lon, lat, source_crs)
         alpha = -alpha
         alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
 
