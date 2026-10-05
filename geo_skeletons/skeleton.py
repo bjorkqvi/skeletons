@@ -1778,6 +1778,7 @@ class Skeleton:
         self,
         name: str,
         data: np.ndarray,
+        
         verbose: bool,
     ) -> None:
         """Sets a magnitude variable.
@@ -1790,7 +1791,7 @@ class Skeleton:
         if obj.direction is None:
             raise SkeletonError(f"Cannot set a magnitude '{name}' that has no associated direction! Set componensts '{obj.x}' and '{obj.y}' separatesly, or modify class to have an associated direction.")
         
-        dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False, projected=self.core.values_are_projected(obj.x))
+        dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False)
 
         s = dask_computations.sin(dir_data)
         c = dask_computations.cos(dir_data)
@@ -1973,7 +1974,7 @@ class Skeleton:
             x_data = dask_computations.cos(data)
             y_data = dask_computations.sin(data)
             
-            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, type='set')
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, proj_type='set')
             data = dir_conversions.compute_math_direction(x_data, y_data)
 
             self._set_data(
@@ -2170,7 +2171,7 @@ class Skeleton:
                 - If `data` is not gridded on one point with a `time` dimension having two time 
                 stamps (e.g., `time` only), and the data has shape `(2, 1)`, the result is `(2,)` (no spatial coordinate preserved).
             - **Handling Unset Variables**:
-            - If `strict=True` and the variable is unset, the method returns `None`.
+            - If `strict=True` (default) and the variable is unset, the method returns `None`.
             - If `strict=False` and the variable is unset, an empty array is returned.
             - **Dask Mode**:
             - If `dask=True`, the method ensures the returned data is a dask array.
@@ -2254,7 +2255,9 @@ class Skeleton:
                 name=primary_name,
                 strict=strict,
                 dir_type=dir_type,
+                wrt=wrt,
                 empty=empty,
+                verbose=verbose,
                 **kwargs,
             )
             if mask_is_secondary and data is not None:
@@ -2265,47 +2268,12 @@ class Skeleton:
                 name=name,
                 strict=strict,
                 dir_type=dir_type,
+                wrt=wrt,
                 empty=empty,
+                verbose=verbose,
                 **kwargs,
             )
 
-            if not self._same_projection(projected, name):
-                twin_name = self.core.find_twin_component(name)
-                twin_data = self._get_data(
-                    name=twin_name,
-                    strict=strict,
-                    dir_type=dir_type,
-                    empty=empty,
-                    **kwargs,
-                )
-                my_param = self.core.meta_parameter(name)
-                twin_param = self.core.meta_parameter(twin_name)
-
-                if twin_param is None:
-                    raise ProjectionError(f"Cannot find orthogonal component to '{name}'!")
-                lon, lat = self.lonlat()
-                if my_param.i_am() in ['x', 'east']:
-                    if projected:
-                        if logger.is_verbose(verbose):
-                            logger.log.info(f"Rotating '{name}' and its twin component '{twin_name}'")
-                        data, __ = self.proj._rotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
-                    else:
-                        
-                        if logger.is_verbose(verbose):
-                            logger.log.info(f"Unrotating '{name}' and its twin component '{twin_name}'")
-                        data, __ = self.proj._unrotate_u_v(data, twin_data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
-
-                elif my_param.i_am() in ['y', 'north']:
-                    if projected:
-                        if logger.is_verbose(verbose):
-                            logger.log.info(f"Rotating '{name}' and its twin component '{twin_name}'")
-                        __, data = self.proj._rotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
-                    else:
-                        if logger.is_verbose(verbose):
-                            logger.log.info(f"Unrotating '{name}' and its twin component '{twin_name}'")
-                        __, data = self.proj._unrotate_u_v(twin_data, data, lon=lon, lat=lat, grid_shape=self.size('spatial'))
-                else:
-                    raise ProjectionError(f"'{name}' doesn't seem to be a component!")
 
         if not isinstance(data, xr.DataArray):
             return None
@@ -2339,9 +2307,6 @@ class Skeleton:
             data = data.data
             if name == "time":
                 data = pd.to_datetime(data)
-        else:
-            if projected:
-                data = data.assign_attrs({'projected_according_to':'crs'})
 
         return data
 
@@ -2384,7 +2349,7 @@ class Skeleton:
 
         projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
         if projection_to_do:
-            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, wrt, verbose, proj_type='get')
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, proj_type='get')
 
         dir_type = dir_type or self.core.get(name).dir_type
         data = dir_conversions.compute_math_direction(x_data, y_data)
@@ -2430,20 +2395,6 @@ class Skeleton:
 
         return data
 
-                # data = self._get_data(
-                #     name=name,
-                #     strict=strict,
-                #     dir_type='math',
-                #     empty=empty,
-                #     **kwargs,
-                # )
-                # x_data = dask_computations.cos(data)
-                # y_data = dask_computations.sin(data)
-                # lon, lat = self.lonlat()
-                # x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-                # math_dir = dir_conversions.compute_math_direction(x_data, y_data)
-                # data = dir_conversions.convert_from_math_dir(math_dir, dir_type=dir_type or self.core.get_dir_type(name))
-
     def _get_data(
         self,
         name: str,
@@ -2476,7 +2427,8 @@ class Skeleton:
             data = dir_conversions.convert(data, in_type=set_dir_type, out_type='math')
             x_data = dask_computations.cos(data)
             y_data = dask_computations.sin(data)
-            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, wrt, verbose, proj_type='get')
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, proj_type='get')
+            data = dir_conversions.compute_math_direction(x_data, y_data)
             data = dir_conversions.convert(data, in_type='math', out_type=dir_type)
         else: # Component
             twin_name = self.core.find_twin_component(name)
@@ -2484,6 +2436,7 @@ class Skeleton:
                 name=twin_name,
                 strict=strict,
                 dir_type=dir_type,
+                wrt=wrt,
                 empty=empty,
                 **kwargs,
             )
@@ -2498,7 +2451,7 @@ class Skeleton:
             else:
                 x_data = twin_data
                 y_data = data
-            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, wrt, verbose, proj_type='get')
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, proj_type='get')
 
             if my_param.i_am() in ['x','east']:
                 data = x_data
