@@ -1838,7 +1838,7 @@ class Skeleton:
 
 
     def _set_component(self, name:str, data: np.ndarray, wrt: Union[str, CRSValue, None], verbose: bool) -> None:
-        projection_to_do = _determine_projection_to_do_for_setting(name, self.core, wrt) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
             
         twin = self.core.find_twin_component(name)
 
@@ -1878,7 +1878,7 @@ class Skeleton:
             y_data = data
 
         
-        x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, twin=twin)
+        x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, proj_type='set', twin=twin)
 
         if self.core.is_component(name) == 'x':
             self._set_data(
@@ -1906,11 +1906,15 @@ class Skeleton:
             logger.log.info(f"Deleting '{twin}' data from buffer...")
         del self._u_v_buffer[twin]
 
-    def _apply_projection_to_do(self, name, x_data, y_data, projection_to_do, verbose, twin=None):
+    def _apply_projection_to_do(self, name, x_data, y_data, projection_to_do, verbose, proj_type: str, twin=None):
         """Applies a list of rotations/unrotations to components.
         If twin is not give, then we are just rotating components that was internally calculated for a directional variable."""
         lon, lat = self.lonlat()
-        for proj in projection_to_do:
+        for proj_tuple in projection_to_do:
+            if proj_type == 'get': # Were determined for setting data, so flip order if getting data
+                proj = (proj_tuple[1], proj_tuple[0])
+            else:
+                proj = proj_tuple
             if proj[0] == 'lonlat': # We need to rotate
                 if proj[1] == 'xy':
                     target_crs = self.proj.crs()
@@ -1962,14 +1966,14 @@ class Skeleton:
         self.meta._metadata_to_ds(name)
         self._trigger_masks(name, data)
         
-        projection_to_do = _determine_projection_to_do_for_setting(name, self.core, wrt) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
         
         if projection_to_do:
             data = self.get(name, dir_type='math', data_array=True, squeeze=False)    
             x_data = dask_computations.cos(data)
             y_data = dask_computations.sin(data)
             
-            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose)
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, type='set')
             data = dir_conversions.compute_math_direction(x_data, y_data)
 
             self._set_data(
@@ -1997,11 +2001,6 @@ class Skeleton:
 
             mask_array = np.logical_and(low_mask, high_mask)
             self.set(mask.name, mask_array)
-
-    def _same_projection(self, projected: bool, name:str) -> bool:
-        """Check if the given variable has the same projection as the provided flag."""
-        same_projection = (projected and self.core.values_are_projected(name)) or (not projected and not self.core.values_are_projected(name))
-        return same_projection
 
     def _reshape_data(
         self,
@@ -2101,9 +2100,9 @@ class Skeleton:
         empty: bool = False,
         data_array: bool = False,
         dir_type: Optional[str] = None,
+        wrt: Optional[Union[str, CRSValue]] = None, 
         squeeze: bool = True,
         dask: Optional[bool] = None,
-        projected: Optional[bool]=None,
         verbose: bool=False,
         **kwargs,
     ) -> Union[np.ndarray, xr.DataArray, da.Array]:
@@ -2130,14 +2129,18 @@ class Skeleton:
                 - `'math'`: Directions follow standard mathematical conventions in readians.
                 If `None`, it gives data in the convention already associated with the variable's `dir_type`. 
                 Defaults to None.
+            wrt (Union[str, CRSValue], optional): Request data rotated "With Respect To" (used for directions and components). 
+                If specified, indicates the reference coordinate system frame for the data. Three possibilities:
+                - `None` (default): Data assumed to be in the CRS of the CF convention set in the skeleton metadata
+                - `'lonlat'/'xy'`: Data is rotated with respect to the longitude-latitude or coordinate system defined by the skeleton 'crs'.
+                - `CRSValue`: Data is rotated with respect to the specified coordinate reference system. 
+                    -- Can be given as e.g. a proj4 string, EPSG code, UTM tuple, or pyproj CRS object.
             squeeze (bool, optional): If `True`, removes trivial dimensions (e.g., dimensions 
                 of size 1) but ensures that the result is at least a 1D array. Defaults to True.
             dask (Optional[bool], optional): Determines the type of array to return:
                 - `True`: Returns a dask array.
                 - `False`: Returns a NumPy array.
                 - `None`: Uses the Skeleton's current dask mode. Defaults to None.
-            projected (bool, optional): If `True`, rotates the data to align with the set CRS 
-                projection (e.g., UTM or rotated pole). Defaults to False.
             verbose (bool, optional): If `True`, provides detailed output during the process. If `None`, falls back to the global verbosity setting. Defaults to the global setting, which is `False` unless explicitly changed.
             **kwargs: Additional arguments for filtering or subsetting the data.
 
@@ -2219,13 +2222,13 @@ class Skeleton:
             return None
 
         _dir_type_consistency_check(name, self.core, dir_type)
-        #projected =_projected_consistency_check(name, self.core, projected)
 
         if name in self.core.magnitudes("all"):
             data = self._get_magnitude(
                 name=name,
                 strict=strict,
                 empty=empty,
+                verbose=verbose,
                 **kwargs,
             )
         elif name in self.core.directions("all"):
@@ -2234,7 +2237,8 @@ class Skeleton:
                 strict=strict,
                 dir_type=dir_type,
                 empty=empty,
-                projected=projected,
+                wrt=wrt,
+                verbose=verbose,
                 **kwargs,
             )
         elif name in self.core.mask_points("all"):
@@ -2256,29 +2260,6 @@ class Skeleton:
             if mask_is_secondary and data is not None:
                 data = np.logical_not(data).astype(int)
 
-        elif self.core.get_dir_type(name) is not None: # Directional variable
-            if projected:
-                data = self._get_data(
-                    name=name,
-                    strict=strict,
-                    dir_type='math',
-                    empty=empty,
-                    **kwargs,
-                )
-                x_data = dask_computations.cos(data)
-                y_data = dask_computations.sin(data)
-                lon, lat = self.lonlat()
-                x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-                math_dir = dir_conversions.compute_math_direction(x_data, y_data)
-                data = dir_conversions.convert_from_math_dir(math_dir, dir_type=dir_type or self.core.get_dir_type(name))
-            else:
-                data = self._get_data(
-                    name=name,
-                    strict=strict,
-                    dir_type=dir_type,
-                    empty=empty,
-                    **kwargs,
-                )
         else:
             data = self._get_data(
                 name=name,
@@ -2370,7 +2351,8 @@ class Skeleton:
         strict: bool,
         empty: bool,
         dir_type: str,
-        projected: bool,
+        wrt: Union[str, CRSValue],
+        verbose: bool,
         **kwargs,
     ) -> xr.DataArray:
         x_name = self.core.get(name).x
@@ -2400,12 +2382,9 @@ class Skeleton:
         ):
             x_data = self.dask.undask_me(x_data)
 
-        if not self._same_projection(projected, x_name):
-            lon, lat = self.lonlat()
-            if projected:
-                x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-            else:
-                x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
+        if projection_to_do:
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, wrt, verbose, proj_type='get')
 
         dir_type = dir_type or self.core.get(name).dir_type
         data = dir_conversions.compute_math_direction(x_data, y_data)
@@ -2419,6 +2398,7 @@ class Skeleton:
         name: str,
         strict: bool,
         empty: bool,
+        verbose: bool,
         **kwargs,
     ) -> xr.DataArray:
         x_data = self._ds_manager.get(
@@ -2450,12 +2430,28 @@ class Skeleton:
 
         return data
 
+                # data = self._get_data(
+                #     name=name,
+                #     strict=strict,
+                #     dir_type='math',
+                #     empty=empty,
+                #     **kwargs,
+                # )
+                # x_data = dask_computations.cos(data)
+                # y_data = dask_computations.sin(data)
+                # lon, lat = self.lonlat()
+                # x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+                # math_dir = dir_conversions.compute_math_direction(x_data, y_data)
+                # data = dir_conversions.convert_from_math_dir(math_dir, dir_type=dir_type or self.core.get_dir_type(name))
+
     def _get_data(
         self,
         name: str,
         strict: bool,
         empty: bool,
         dir_type: str,
+        wrt: str,
+        verbose: bool,
         **kwargs,
     ) -> xr.DataArray:
         data = self._ds_manager.get(name, empty=empty, strict=strict, **kwargs)
@@ -2469,11 +2465,46 @@ class Skeleton:
             return None
 
         set_dir_type = self.core.get_dir_type(name)
-        if dir_type is not None and set_dir_type is None:
-            raise DirTypeError
         dir_type = dir_type or set_dir_type
-        data = dir_conversions.convert(data, in_type=set_dir_type, out_type=dir_type)
+        
 
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
+        if not projection_to_do:
+            return dir_conversions.convert(data, in_type=set_dir_type, out_type=dir_type)
+
+        if self.core.get_dir_type(name) is not None: # Directional variable
+            data = dir_conversions.convert(data, in_type=set_dir_type, out_type='math')
+            x_data = dask_computations.cos(data)
+            y_data = dask_computations.sin(data)
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, wrt, verbose, proj_type='get')
+            data = dir_conversions.convert(data, in_type='math', out_type=dir_type)
+        else: # Component
+            twin_name = self.core.find_twin_component(name)
+            twin_data = self._get_data(
+                name=twin_name,
+                strict=strict,
+                dir_type=dir_type,
+                empty=empty,
+                **kwargs,
+            )
+            my_param = self.core.meta_parameter(name)
+            twin_param = self.core.meta_parameter(twin_name)
+            if twin_param is None:
+                raise ProjectionError(f"Cannot find orthogonal component to '{name}'!")
+
+            if my_param.i_am() in ['x','east']:
+                x_data = data
+                y_data = twin_data
+            else:
+                x_data = twin_data
+                y_data = data
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, wrt, verbose, proj_type='get')
+
+            if my_param.i_am() in ['x','east']:
+                data = x_data
+            else:
+                data = y_data
+   
         return data
 
     def _smart_squeeze(self, name: str, data: xr.DataArray) -> xr.DataArray:
@@ -3362,8 +3393,8 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
             raise DirTypeError
     
 
-def _determine_projection_to_do_for_setting(name: str, core: CoordinateManager, wrt: Union[str, CRSValue, None]) -> list[tuple]:
-    """Checks that projected information is not requested when it is not available"""
+def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[str, CRSValue, None]) -> list[tuple]:
+    """Determines which projections needs to be done before storing the data"""
     
     # If variable is not a component or a direction, ignore projection information
     if not core.is_component(name) and not core.is_direction(name):
