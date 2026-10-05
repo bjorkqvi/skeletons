@@ -12,8 +12,8 @@ def test_gridded_lonlat():
             for mag in [True, False]:
                 for dir in [True, False]:
                     for arrows in [True, False]:
-                        for rotated in [True, False]:
-                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, rotated=rotated)
+                        for projected in [True, False]:
+                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, projected=projected)
                             plt.close()
 def test_gridded_lonlat_with_time():
     data = WindGrid.add_time()(lon=(10, 20), lat=(50,60), time=('2020-01-01 00:00','2020-01-01 10:00'))
@@ -26,8 +26,8 @@ def test_gridded_lonlat_with_time():
             for mag in [True, False]:
                 for dir in [True, False]:
                     for arrows in [True, False]:
-                        for rotated in [True, False]:
-                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, rotated=rotated)
+                        for projected in [True, False]:
+                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, projected=projected)
                             plt.close()
 def test_gridded_xy_cart():
     data = WindGrid(x=(440892.10517494264, 559107.8948250574), y=(6429147.6117879255, 6651832.7361561125))
@@ -41,8 +41,8 @@ def test_gridded_xy_cart():
             for mag in [True, False]:
                 for dir in [True, False]:
                     for arrows in [True, False]:
-                        for rotated in [True, False]:
-                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, rotated=rotated)
+                        for projected in [True, False]:
+                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, projected=projected)
                             plt.close()
 def test_gridded_xy_rot():
    
@@ -57,8 +57,8 @@ def test_gridded_xy_rot():
             for mag in [True, False]:
                 for dir in [True, False]:
                     for arrows in [True, False]:
-                        for rotated in [True, False]:
-                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, rotated=rotated)
+                        for projected in [True, False]:
+                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, projected=projected)
                             plt.close()
     
 
@@ -72,8 +72,8 @@ def test_point_lonlat():
             for mag in [True, False]:
                 for dir in [True, False]:
                     for arrows in [True, False]:
-                        for rotated in [True, False]:
-                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, rotated=rotated)
+                        for projected in [True, False]:
+                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, projected=projected)
                             plt.close()
     
 
@@ -88,8 +88,8 @@ def test_gridded_xy_cart():
             for mag in [True, False]:
                 for dir in [True, False]:
                     for arrows in [True, False]:
-                        for rotated in [True, False]:
-                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, rotated=rotated)
+                        for projected in [True, False]:
+                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, projected=projected)
                             plt.close()
 def test_gridded_xy_rot():
    
@@ -103,7 +103,7 @@ def test_gridded_xy_rot():
             for mag in [True, False]:
                 for dir in [True, False]:
                     for arrows in [True, False]:
-                        for rotated in [True, False]:
-                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, rotated=rotated)
+                        for projected in [True, False]:
+                            data.quicklook(show=False, proj=proj, contour=contour, mag=mag, dir=dir, arrows=arrows, projected=projected)
                             plt.close()
     

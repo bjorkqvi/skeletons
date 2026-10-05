@@ -30,7 +30,7 @@ def test_xy_utm():
     lon = np.array([-31.023573, -30.959545, -30.895535, -30.831545, -30.767574, -30.703623, -30.639692, -30.575779, -30.511889, -30.448015])
     lat =np.array([53.24779 , 53.241985, 53.236137, 53.230247, 53.22432 , 53.218346,53.212334, 53.206284, 53.20019 , 53.194057])
     points = GriddedSkeleton(lon=lon, lat=lat)
-    assert points.proj.crs() == (25, 'U')
+    assert points.proj.utm() == (25, 'U')
     
     
     points = GriddedSkeleton(x=lon, y=lat)
@@ -42,11 +42,11 @@ def test_utm_request():
 
     points = GriddedSkeleton(lon=lon, lat=lat)
     
-    assert points.proj.crs() == (25, 'U')
+    assert points.proj.utm() == (25, 'U')
 
     x, y = points.xy()
 
-    points = GriddedSkeleton(lon=lon, lat=lat, crs=(26, 'U'))
+    points = GriddedSkeleton(lon=lon, lat=lat, utm=(26, 'U'))
     xx, yy = points.xy(crs=(25,'U'))
 
     np.testing.assert_array_almost_equal(x,xx)
@@ -60,7 +60,7 @@ def test_utm_lonlat():
     lat.sort()
     lat = np.array(lat)
     points = GriddedSkeleton(lon=lon, lat=lat)
-    assert points.proj.crs() == (25, 'U')
+    assert points.proj.utm() == (25, 'U')
     lo, la = points.lon(), points.lat()
 
     np.testing.assert_array_almost_equal(lon, lo)

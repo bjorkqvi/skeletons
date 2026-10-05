@@ -1,6 +1,7 @@
 from geo_skeletons import GriddedSkeleton, PointSkeleton
 from pyproj import CRS
 import pytest
+from geo_skeletons.errors import ProjectionError
 PROJ4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
 crs_metadata = {
     "grid_mapping_name": "lambert_conformal_conic",
@@ -99,3 +100,8 @@ def test_set_utm_sets_crs_if_crs_is_utm():
     assert data.proj.utm() == (31,'U')
     assert data.proj.crs() == (31,'U')
     assert data.proj.optimal_utm() == (31,'U')
+
+def test_wgs84_is_protected():
+    data = GriddedSkeleton(lon=(10, 20), lat=(50, 60))
+    with pytest.raises(ProjectionError):
+        data.proj.set((33,'W'))

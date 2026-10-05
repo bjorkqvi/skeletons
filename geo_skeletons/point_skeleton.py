@@ -409,6 +409,8 @@ class PointSkeleton(Skeleton):
             return None
 
         if not self.core.is_projected():
+            if crs is not None:
+                raise Warning(f"Ignoring CRS={crs}, since requesting lon from a lon-lat skeleton...")
             return self._ds_manager.get("lon", **kwargs).data.copy()
 
         
@@ -454,6 +456,8 @@ class PointSkeleton(Skeleton):
             return None
 
         if not self.core.is_projected():
+            if crs is not None:
+                raise Warning(f"Ignoring CRS={crs}, since requesting lat from a lon-lat skeleton...")
             return self._ds_manager.get("lat", **kwargs).data.copy()
 
         return self.proj._lat(
