@@ -33,10 +33,7 @@ def test_utm_conversion():
     assert grid.y(strict=True) is None
     assert np.all(grid.xy(strict=True) == (None, None))
 
-    grid.proj.set((zone, letter))
-    assert grid.proj.crs() == (zone, letter)
-
-    
+   
     x_vec, y_vec, __, __ = utm.from_latlon(
         lat_vec, lon_vec, force_zone_number=zone, force_zone_letter=letter
     )
@@ -44,7 +41,7 @@ def test_utm_conversion():
     assert grid.x() is None
     assert grid.y() is None
     
-    np.testing.assert_array_almost_equal(grid.xy(), (x_vec, y_vec))
+    np.testing.assert_array_almost_equal(grid.xy(crs=(zone, letter)), (x_vec, y_vec))
 
     # Make linearly spaced in cartesian, not in spherical
     x = np.linspace(x[0], x[-1], 3)

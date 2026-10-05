@@ -23,16 +23,14 @@ def test_utm_conversion():
     assert grid.y(strict=True) is None
     assert np.all(grid.xy(strict=True) == (None, None))
 
-    grid.proj.set((zone, letter))
-    assert grid.proj.crs() == (zone, letter)
 
-    np.testing.assert_array_almost_equal(grid.x(), x)
-    np.testing.assert_array_almost_equal(grid.y(), y)
-    np.testing.assert_array_almost_equal(grid.xy(), (x, y))
+    np.testing.assert_array_almost_equal(grid.x(crs=(zone,letter)), x)
+    np.testing.assert_array_almost_equal(grid.y(crs=(zone,letter)), y)
+    np.testing.assert_array_almost_equal(grid.xy(crs=(zone,letter)), (x, y))
 
     grid2 = PointSkeleton(x=x, y=y)
     grid2.proj.set((zone, letter))
-    assert grid.proj.crs() == (zone, letter)
+    assert grid2.proj.crs() == (zone, letter)
 
     assert grid2.nx() == 3
     assert grid2.ny() == 3
