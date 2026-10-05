@@ -110,50 +110,48 @@ def test_set_projected_components():
     
     wind.set_ff(10)
     wind.set_dd(180)
-    breakpoint()
+
     dd = wind.dd()
-    dd_rot = wind.dd(projected=True)
     ff = wind.ff()
 
-    urot = wind.u()
-    vrot = wind.v()
+    urot = wind.u(wrt=proj4)
+    vrot = wind.v(wrt=proj4)
 
-    u = wind.u(projected=False)
-    v = wind.v(projected=False)
+    u = wind.u()
+    v = wind.v()
     
-    wind.set_u(u, projected=False)
-    wind.set_v(v, projected=False)
-    
-    assert wind._u_v_buffer.get('u') is None
-    wind.set_v(vrot, projected=True)
-    
-    np.testing.assert_array_almost_equal(wind.dd(), dd)
-    np.testing.assert_array_almost_equal(wind.ff(), ff)
-    np.testing.assert_array_almost_equal(wind.u(), urot)
-    np.testing.assert_array_almost_equal(wind.v(), vrot)
-    
-    wind.set_u(u, projected=False) # Stays in buffer
-    np.testing.assert_array_almost_equal(wind.dd(), dd)
-    np.testing.assert_array_almost_equal(wind.ff(), ff)
-    np.testing.assert_array_almost_equal(wind.u(projected=False), u)
-    np.testing.assert_array_almost_equal(wind.v(projected=False), v)
-    wind.set_u(urot, projected=True)
-    wind.set_v(vrot, projected=True)
-
-    np.testing.assert_array_almost_equal(wind.dd(), dd)
-    np.testing.assert_array_almost_equal(wind.ff(), ff)
-    np.testing.assert_array_almost_equal(wind.u(projected=False), u)
-    np.testing.assert_array_almost_equal(wind.v(projected=False), v)
-
-    # Setting wrong data
     wind.set_u(u)
     wind.set_v(v)
+    
+    assert wind._u_v_buffer.get('u') is None
+    
+    np.testing.assert_array_almost_equal(wind.dd(), dd)
+    np.testing.assert_array_almost_equal(wind.ff(), ff)
+    np.testing.assert_array_almost_equal(wind.u(wrt=proj4), urot)
+    np.testing.assert_array_almost_equal(wind.v(wrt=proj4), vrot)
+    
+    wind.set_u(urot, wrt=proj4) # Stays in buffer
+    np.testing.assert_array_almost_equal(wind.dd(), dd)
+    np.testing.assert_array_almost_equal(wind.ff(), ff)
+    np.testing.assert_array_almost_equal(wind.u(), u)
+    np.testing.assert_array_almost_equal(wind.v(), v)
+    wind.set_v(vrot, wrt=proj4)
+
+    np.testing.assert_array_almost_equal(wind.dd(), dd)
+    np.testing.assert_array_almost_equal(wind.ff(), ff)
+    np.testing.assert_array_almost_equal(wind.u(), u)
+    np.testing.assert_array_almost_equal(wind.v(), v)
+    np.testing.assert_array_almost_equal(wind.u(wrt=proj4), urot)
+    np.testing.assert_array_almost_equal(wind.v(wrt=proj4), vrot)
+    # Setting wrong data
+    wind.set_u(urot)
+    wind.set_v(vrot)
 
     with pytest.raises(AssertionError):
         np.testing.assert_array_almost_equal(wind.dd(), dd)
     np.testing.assert_array_almost_equal(wind.ff(), ff)
     with pytest.raises(AssertionError):
-        np.testing.assert_array_almost_equal(wind.u(), urot)
+        np.testing.assert_array_almost_equal(wind.u(), u)
     with pytest.raises(AssertionError):
-        np.testing.assert_array_almost_equal(wind.v(), vrot)
+        np.testing.assert_array_almost_equal(wind.v(), v)
 

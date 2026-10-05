@@ -2436,8 +2436,9 @@ class Skeleton:
                 name=twin_name,
                 strict=strict,
                 dir_type=dir_type,
-                wrt=wrt,
+                wrt=None,
                 empty=empty,
+                verbose=verbose,
                 **kwargs,
             )
             my_param = self.core.meta_parameter(name)
