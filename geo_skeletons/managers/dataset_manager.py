@@ -51,7 +51,6 @@ class DatasetManager:
         
         self.check_consistency(coord_dict=coord_dict, var_dict=var_dict)
         var_dict['crs'] = np.int32(0)
-        var_dict['wgs84'] = np.int32(0)
         self.set_new_ds(xr.Dataset(coords=coord_dict, data_vars=var_dict))
 
     def create_coord_dict_from_input(

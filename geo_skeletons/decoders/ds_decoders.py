@@ -76,7 +76,7 @@ def map_ds_to_gp(
     data_vars = {}
     coords = {}
     for var in ds.data_vars:
-        if var in ['wgs84', 'crs']:
+        if var == 'crs':
             continue
         # Coordinates can be listed as data variables in unstructured datasets
         # Check if we are dealing with a coordinate
@@ -499,41 +499,3 @@ def _compile_list_of_addable_magnitudes_and_directions(
                     addable_mags_and_dirs.append(mag_dict)
     return addable_mags_and_dirs
 
-
-# def _compile_list_of_settable_vars(
-#     addable_vars: list[Union[MetaParameter, str]],
-#     addable_magnitudes: list[dict[str, MetaParameter]],
-#     addable_ds_vars: list[Union[str, MetaParameter]],
-#     ds_vars_to_gp: dict[str, Union[MetaParameter, str]],
-# ):
-#     """Compiles a list of all variables that have data that shouldbe set"""
-
-#     def add_var(var):
-#         var_str, var = gp.decode(var)
-#         if var is None:
-#             exists_in_ds = var_str in ds_vars_to_gp.values()
-#         else:
-#             exists_in_ds = var.is_in(ds_vars_to_gp.values())
-
-#         if exists_in_ds:
-#             for ds_var, gp_var in ds_vars_to_gp.items():
-#                 gp_var_str, gp_var = gp.decode(gp_var)
-
-#                 if gp_var is None:
-#                     var_found = gp_var_str == var_str
-#                 else:
-#                     var_found = gp_var.is_same(var)
-
-#                 if var_found:
-#                     settable_vars.append(ds_var)
-
-#     settable_vars = []
-
-#     for var in addable_vars:
-#         add_var(var)
-
-#     for mag_dict in addable_magnitudes:
-#         for var in [mag_dict["name"], mag_dict["direction"]]:
-#             add_var(var)
-
-#     return settable_vars

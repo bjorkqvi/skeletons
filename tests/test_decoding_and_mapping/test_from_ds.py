@@ -1,4 +1,5 @@
 from geo_skeletons.point_skeleton import PointSkeleton
+from geo_skeletons.classes import Wind
 from geo_skeletons.gridded_skeleton import GriddedSkeleton
 from geo_skeletons.decorators import add_coord, add_datavar, add_time
 import numpy as np
@@ -8,18 +9,45 @@ import pytest
 
 @pytest.fixture
 def wind():
-    @add_datavar(gp.wind.YWind("v"))
-    @add_datavar(gp.wind.XWind("u"))
-    class WindData(PointSkeleton):
-        pass
 
-    data = WindData(lon=range(10), lat=range(10))
+    data = Wind(lon=range(10), lat=range(10))
     data.set_u(5)
     data.set_v(6)
 
     return data
 
+@pytest.fixture
+def windxy(wind):
+    x, y = wind.xy()
+    data = Wind(x=x, y=y, crs=wind.proj.utm())
+    data.set_u(wind.u(wrt=data.proj.crs()))
+    data.set_v(wind.v(wrt=data.proj.crs()))
 
+    return data
+
+def test_from_lonlat_ds(wind):
+    ds = wind.ds()
+    wind2 = Wind.from_ds(ds)
+    np.testing.assert_array_almost_equal(wind2.lon(), wind.lon())
+    np.testing.assert_array_almost_equal(wind2.lat(), wind.lat())
+    np.testing.assert_array_almost_equal(wind2.u(), wind.u())
+    np.testing.assert_array_almost_equal(wind2.v(), wind.v())
+    assert wind.proj.crs() == wind2.proj.crs()
+
+
+def test_from_xy_ds(windxy, wind):
+    ds = windxy.ds()
+    wind2 = Wind.from_ds(ds)
+    np.testing.assert_array_almost_equal(wind2.x(), windxy.x())
+    np.testing.assert_array_almost_equal(wind2.y(), windxy.y())
+    np.testing.assert_array_almost_equal(wind2.u(), windxy.u())
+    np.testing.assert_array_almost_equal(wind2.v(), windxy.v())
+
+    np.testing.assert_array_almost_equal(wind2.u(), wind.u(wrt=wind2.proj.crs()))
+    np.testing.assert_array_almost_equal(wind2.v(), wind.v(wrt=wind2.proj.crs()))
+    
+    assert windxy.proj.crs() == wind2.proj.crs()
+    
 def test_point_cartesian():
     @add_coord(name="test")
     class AddedCoordinate(PointSkeleton):

@@ -148,20 +148,12 @@ class Skeleton:
             metavar = self.core.get(coord_name).meta
             if metavar is not None:
                 self.meta.append(metavar.meta_dict(), coord_name)
-                if metavar.i_am() in {'x','y','direction', 'opposite_direction'} or (metavar.dir_type() is not None and coord_name not in self.core.coords()):
-                    crs_val = 'crs' if metavar.projection_type() =='xy' else 'wgs84'
-                    self.meta.append({'projected_according_to': crs_val}, coord_name)
 
             if self.core.get(coord_name).coord_group in ['all', 'spatial', 'grid'] and coord_name not in ['inds', 'time']:
-                if self.core.is_projected():
-                    self.meta.append({'grid_mapping': 'crs'}, coord_name)
-                else:
-                    self.meta.append({'grid_mapping': 'wgs84'}, coord_name)
-                if metavar is not None:
-                    crs_val = 'crs' if metavar.projection_type() =='xy' else 'wgs84'
-                    self.meta.append({'projected_according_to': crs_val}, coord_name)
+                self.meta.append({'grid_mapping': 'crs'}, coord_name)
+
         self.meta.append({"name":name})
-        self.meta.set({'epsg': 4326}, 'wgs84')
+
 
     @classmethod
     def add_time(cls, grid_coord: bool = True, cls_name: Optional[str] = None) -> "Skeleton":
@@ -707,7 +699,7 @@ class Skeleton:
         
 
         proj_obj = find_proj(ds)
-        if proj_obj:
+        if proj_obj and points.proj.crs() != points.proj.to_crs(proj_obj):
             if logger.is_verbose(verbose):
                 logger.log.info(f'Setting projection as: {proj_obj}')
             points.proj.set(proj_obj, verbose=verbose)
@@ -1768,10 +1760,8 @@ class Skeleton:
         if first_set:
             self.meta._metadata_to_ds(name)
             if self.core.get(name).coord_group in ['all', 'spatial', 'grid']:
-                if self.core.is_projected():
-                    self.meta.append({'grid_mapping': 'crs'}, name)
-                else:
-                    self.meta.append({'grid_mapping': 'wgs84'}, name)
+                self.meta.append({'grid_mapping': 'crs'}, name)
+
         return
 
     def _set_magnitude(
