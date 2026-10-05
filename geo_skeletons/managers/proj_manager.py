@@ -225,6 +225,9 @@ class ProjManager:
             variables are updated to `'degrees'`.
 
         """
+        if self.crs() == self.to_crs(4326):
+            raise ProjectionError("Cannot set a new CRS for a skeleton defined with lon-lat!")
+
         epsg, proj4, cf_dict, utm, crs_obj = decode_crs(crs)
         
         if epsg is not None:

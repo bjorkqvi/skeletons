@@ -76,13 +76,17 @@ class Skeleton:
         lat: Optional[CoordinateValue] = None,
         name: str = "LonelySkeleton",
         crs: Optional[CRSValue] = None,
+        utm: Optional[tuple[int, str]] = None,
         chunks: Optional[Union[tuple[int], str]] = None,
         **kwargs,
     ) -> None:
         self._init_structure(x, y, lon, lat, **kwargs)
-        if crs is None and not self.core.is_projected():
-            crs = CRS.from_epsg(4326)
-        self._init_managers(crs=crs, chunks=chunks)
+        if not self.core.is_projected():
+            if crs is not None:
+                raise ProjectionError("Cannot set a new CRS for a skeleton defined with lon-lat!")
+            else:   
+                crs =  CRS.from_epsg(4326)
+        self._init_managers(crs=crs, utm=utm, chunks=chunks)
         self._init_metadata(name=name)
         self._u_v_buffer: dict[str, np.ndarray] = {}
 
@@ -122,7 +126,7 @@ class Skeleton:
 
         self._ds_manager.create_structure(x=xvec, y=yvec, new_coords=kwargs)
 
-    def _init_managers(self, crs: CRSValue, chunks: Union[tuple[int], str]) -> None:
+    def _init_managers(self, crs: CRSValue, utm: Optional[tuple[int, str]] = None, chunks: Union[tuple[int], str] = None) -> None:
         """Initialized a DirTypeManager, UTMManager and DaskManager, and sets a UTM-zone"""
         if chunks is None:
             if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
@@ -131,8 +135,10 @@ class Skeleton:
         self.dask = DaskManager(skeleton=self, chunks=chunks)
         self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), x=self.edges("x", strict=True),y=self.edges("y", strict=True),metadata_manager=self.meta)
         self.core.proj = self.proj
-        if crs is None and not self.core.is_projected():
+        if utm is None and not self.core.is_projected():
             self.proj.reset_utm()
+        if utm is not None:
+            self.proj.set_utm(utm)
         self.resample = ResampleManager(self)
         
 
@@ -2928,6 +2934,7 @@ class Skeleton:
         """Finds the indeces of nearest points and distances if x,y coordinates are provided"""
         if self.core.is_projected() and self.proj.crs() is None:
             lat, lon = None, None
+            self_proj = None
         else:
             if not self.core.is_projected():
                 self_proj = self.proj.utm()

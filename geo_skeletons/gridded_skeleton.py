@@ -664,12 +664,12 @@ class GriddedSkeleton(Skeleton):
         if self.core.is_projected():
             points = PointSkeleton(x=x, y=y)
             self_crs = self.proj.crs()
+            if self_crs is not None:
+                points.proj.set(self_crs)
         else:
             points = PointSkeleton(lon=x, lat=y)
             self_crs = self.proj.utm()
-        if self_crs is None:
-            breakpoint()
-        points.proj.set(self_crs)
+
 
         return points.xy(normalize=normalize, native=native, crs = crs or self_crs)
     
