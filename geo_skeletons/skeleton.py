@@ -58,7 +58,7 @@ from copy import deepcopy
 
 from pyproj import CRS
 CoordinateValue = Union[Iterable[float], Iterable[int], float, int]
-CRSValue = Union[int, str, tuple[int, str], dict]
+CRSValue = Union[int, str, tuple[int, str], dict, CRS]
 class Skeleton:
     """Contains methods and data of the spatial x,y / lon, lat coordinates and
     makes possible conversions between them.
@@ -1574,12 +1574,12 @@ class Skeleton:
         name: Union[str, MetaParameter],
         data: Union[np.ndarray, xr.DataArray, da.Array, float, int],
         dir_type: Optional[str] = None,
+        wrt: Optional[Union[str, CRSValue]] = None, 
+        coords: Optional[list[str]] = None,
+        chunks: Optional[Union[tuple, str]] = None,
         allow_reshape: bool = True,
         allow_transpose: bool = False,
         fit_to_data: bool = False, 
-        coords: Optional[list[str]] = None,
-        chunks: Optional[Union[tuple, str]] = None,
-        projected: Optional[bool] = None, 
         verbose: bool = False,
     ) -> None:
         """Sets or updates the data for a variable in the Skeleton.
@@ -1599,6 +1599,20 @@ class Skeleton:
                 - `'math'`: Directions follow standard mathematical conventions using radians.
                 If `None`, it assumes the convention already associated with the variable's `dir_type`. 
                 Defaults to None.
+            wrt (Union[str, CRSValue], optional): Data rotated "With Respect To" (used for directions and components). 
+                If specified, indicates the reference coordinate system frame for the data. Three possibilities:
+                - `None` (default): Data assumed to be in the CRS of the CF convention set in the skeleton metadata
+                - `'lonlat'/'xy'`: Data is rotated with respect to the longitude-latitude or coordinate system defined by the skeleton 'crs'.
+                - `CRSValue`: Data is rotated with respect to the specified coordinate reference system. 
+                    -- Can be given as e.g. a proj4 string, EPSG code, UTM tuple, or pyproj CRS object.
+            coords (list[str], optional): A list of coordinate names (e.g., `['freq', 'inds']`) 
+                specifying the order of the dimensions in the provided data. If provided, the data will 
+                be reshaped accordingly. If `None`, the method attempts to infer the coordinates automatically. 
+                Only non-trivial dimensions need to be identified.
+                Defaults to None. 
+            chunks (Union[tuple, str], optional): If specified, the data is converted to a dask array 
+                with the given chunking strategy. If `dask-mode` is activated using `.dask.activate()`, any 
+                NumPy array is automatically converted to a dask array. Defaults to None.
             allow_reshape (bool, optional): If `True`, allows reshaping of data by squeezing or expanding 
                 trivial dimensions. For example:
                 - `(10, 1, 10)` → `(10, 10)`
@@ -1613,16 +1627,8 @@ class Skeleton:
                 automatically. For example:
                 - `(100,)` → `(10, 10)`
                 Defaults to False.
-            coords (Optional[list[str]], optional): A list of coordinate names (e.g., `['freq', 'inds']`) 
-                specifying the order of the dimensions in the provided data. If provided, the data will 
-                be reshaped accordingly. If `None`, the method attempts to infer the coordinates automatically. 
-                Only non-trivial dimensions need to be identified.
-                Defaults to None. 
             verbose (bool, optional): If `True`, enables output messages about any reshaping or adjustments 
                 performed. Defaults to False.
-            chunks (Optional[Union[tuple, str]], optional): If specified, the data is converted to a dask array 
-                with the given chunking strategy. If `dask-mode` is activated using `.dask.activate()`, any 
-                NumPy array is automatically converted to a dask array. Defaults to None.
 
         Returns:
             None: This method modifies the Skeleton in place by setting the data for the specified variable.
@@ -1670,7 +1676,7 @@ class Skeleton:
             name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
 
         _dir_type_consistency_check(name, self.core, dir_type)
-        projected = _projected_consistency_check(name, self.core, projected)
+        
 
         # Used to set metadata for the first time
         first_set = (
@@ -1708,10 +1714,14 @@ class Skeleton:
         if name in self.core.masks("all"):
             data = data.astype(int)
 
+
+
+        ## Beginning of setting of different types of variables (magnitudes, directions, components)
         if name in self.core.magnitudes("all"):
             self._set_magnitude(
                 name=name,
                 data=data,
+                verbose=verbose,
             )
         elif name in self.core.directions("all"):
             # Use this method to set the data so we can request it in math dir_type as needed, even though we end up setting twice
@@ -1719,93 +1729,40 @@ class Skeleton:
                 name=name,
                 data=data,
                 dir_type=dir_type,
-                projected=projected,
+                wrt=wrt,
+                verbose=verbose,
             )
 
 
         elif self.core.is_component(name):
-            same_projection = self._same_projection(projected, name)
-            twin = self.core.find_twin_component(name)
-           
-            if same_projection:
-                if self._u_v_buffer.get(twin) is not None:
-                    raise ProjectionError(f"We are setting a component {name} while it's twin {twin} is buffered because of projections. Something is not consistent.")
-                self._set_data(
-                    name=name,
-                    data=data,
-                    dir_type=dir_type,
-                )
-                if self._u_v_buffer.get(name) is not None:                    
-                    if logger.is_verbose(verbose):
-                        logger.log.info(f"Setting '{name}' without reprojecting. Clearing out data from cache that was waiting on reprojection.")
-                    del self._u_v_buffer[name]
-            else:
-                twin = self.core.find_twin_component(name)
-                twin_data = self._u_v_buffer.get(twin)
-                if twin_data is None:
-                    self._u_v_buffer[name] = data #self._ds_manager.compile_data_array(data, name)
-                    if logger.is_verbose(verbose):
-                        logger.log.info(f"Buffering projected '{name}' data. Will be set when projected '{twin}' data is set.")
-                else:
-                    if logger.is_verbose(verbose):
-                        logger.log.info(f"Reading '{twin}' data from buffer...")
-                    if self.core.is_component(name) == 'x':
-                        x_data = data #self._ds_manager.compile_data_array(data, name)
-                        y_data = twin_data
-                    else:
-                        x_data = twin_data
-                        y_data = data #self._ds_manager.compile_data_array(data, name)
-
-                    lon, lat = self.lonlat()
-                    if projected:
-                        if logger.is_verbose(verbose):
-                            logger.log.info(f"Unrotating '{name}' and '{twin}' data...")
-                        x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-                    else:
-                        if logger.is_verbose(verbose):
-                            logger.log.info(f"Rotating '{name}' and '{twin}' data...")
-                        x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-
-                    if self.core.is_component(name) == 'x':
-                        self._set_data(
-                            name=name,
-                            data=x_data,
-                        )
-                        self._set_data(
-                            name=twin,
-                            data=y_data,
-                        )
-                    else:
-                        self._set_data(
-                            name=twin,
-                            data=x_data,
-                        )
-                        self._set_data(
-                            name=name,
-                            data=y_data,
-                        )
-                    if logger.is_verbose(verbose):
-                        logger.log.info(f"Deleting '{twin}' data from buffer...")
-                    del self._u_v_buffer[twin]
+            self._set_component(
+                name=name,
+                data=data,
+                wrt=wrt,
+                verbose=verbose,
+            )
         else:
             self._set_data(
                 name=name,
                 data=data,
+                verbose=verbose,
                 dir_type=dir_type,
+                wrt=wrt,
             )
-            if projected:
-                data = self.get(name, dir_type='math', data_array=True, squeeze=False)
-                x_data = dask_computations.cos(data)
-                y_data = dask_computations.sin(data)
-                lon, lat = self.lonlat()
-                x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-                data = dir_conversions.compute_math_direction(x_data, y_data)
 
-                self._set_data(
-                    name=name,
-                    data=data,
-                    dir_type="math",
-                )
+            # if False:
+            #     data = self.get(name, dir_type='math', data_array=True, squeeze=False)
+            #     x_data = dask_computations.cos(data)
+            #     y_data = dask_computations.sin(data)
+            #     lon, lat = self.lonlat()
+            #     x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
+            #     data = dir_conversions.compute_math_direction(x_data, y_data)
+
+            #     self._set_data(
+            #         name=name,
+            #         data=data,
+            #         dir_type="math",
+            #     )
 
         
         if first_set:
@@ -1821,6 +1778,7 @@ class Skeleton:
         self,
         name: str,
         data: np.ndarray,
+        verbose: bool,
     ) -> None:
         """Sets a magnitude variable.
 
@@ -1841,10 +1799,12 @@ class Skeleton:
         self._set_data(
             name=x_component,
             data=ux,
+            verbose=verbose,
         )
         self._set_data(
             name=y_component,
             data=uy,
+            verbose=verbose,
         )
 
     def _set_direction(
@@ -1852,7 +1812,8 @@ class Skeleton:
         name: str,
         data: np.ndarray,
         dir_type: str,
-        projected: bool,
+        wrt: Union[str, CRSValue, None],
+        verbose: bool,
     ) -> None:
         """Sets a directeion variable.
 
@@ -1872,15 +1833,118 @@ class Skeleton:
         ux = mag_data * c
         uy = mag_data * s
 
-        self.set(name=x_component, data=ux, projected=projected)
-        self.set(name=y_component, data=uy, projected=projected)
+        self.set(name=x_component, data=ux, wrt=wrt)
+        self.set(name=y_component, data=uy, wrt=wrt)
+
+
+    def _set_component(self, name:str, data: np.ndarray, wrt: Union[str, CRSValue, None], verbose: bool) -> None:
+        projection_to_do = _determine_projection_to_do_for_setting(name, self.core, wrt) # List of rotations/unrotation to perform
+            
+        twin = self.core.find_twin_component(name)
+
+        
+        # No reprojection needed. Go ahead and set data as is
+        if not projection_to_do:
+            if self._u_v_buffer.get(twin) is not None:
+                raise ProjectionError(f"Setting a component {name} without projections while it's twin {twin} is buffered because of projections. Something is not consistent.")
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Setting '{name}' without re-projections.")
+            self._set_data(
+                name=name,
+                data=data,
+                verbose=verbose,
+            )
+            return
+
+        # If we need to reproject, the setting needs the twin component also (e.g. can't rotate and set x_wind if we don't have y_wind)
+        twin_data, twin_wrt = self._u_v_buffer.get(twin, (None, None))
+
+
+        if twin_data is None:
+            self._u_v_buffer[name] = (data, wrt)
+            if logger.is_verbose(verbose):
+                logger.log.info(f"Buffering projected '{name}' data. Will be set when projected '{twin}' data is set.")
+            return
+        
+        assert wrt == twin_wrt, f"Expected given 'wrt' ({wrt}) of '{name}' to match 'wrt' of buffered twin component '{twin}' ({twin_wrt})"
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Getting '{twin}' data from buffer...")
+        
+        if self.core.is_component(name) == 'x':
+            x_data = data
+            y_data = twin_data
+        else:
+            x_data = twin_data
+            y_data = data
+
+        
+        x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, twin=twin)
+
+        if self.core.is_component(name) == 'x':
+            self._set_data(
+                name=name,
+                data=x_data,
+                verbose=verbose,
+            )
+            self._set_data(
+                name=twin,
+                data=y_data,
+                verbose=verbose,
+            )
+        else:
+            self._set_data(
+                name=twin,
+                data=x_data,
+                verbose=verbose,
+            )
+            self._set_data(
+                name=name,
+                data=y_data,
+                verbose=verbose,
+            )
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Deleting '{twin}' data from buffer...")
+        del self._u_v_buffer[twin]
+
+    def _apply_projection_to_do(self, name, x_data, y_data, projection_to_do, verbose, twin=None):
+        """Applies a list of rotations/unrotations to components.
+        If twin is not give, then we are just rotating components that was internally calculated for a directional variable."""
+        lon, lat = self.lonlat()
+        for proj in projection_to_do:
+            if proj[0] == 'lonlat': # We need to rotate
+                if proj[1] == 'xy':
+                    target_crs = self.proj.crs()
+                else:
+                    target_crs = self.proj.to_crs(proj[1])
+                if logger.is_verbose(verbose):
+                    if twin is not None:
+                        logger.log.info(f"Rotating '{name}' and '{twin}' data ('lonlat' -> '{target_crs}')...")
+                    else:
+                        logger.log.info(f"Rotating '{name}' data ('lonlat' -> '{target_crs}')...")
+                x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat, grid_shape=self.size('spatial'), target_crs=target_crs)
+            else: # We need to unrotate
+                if proj[0] == 'xy':
+                    source_crs = self.proj.crs()
+                else:
+                    source_crs = self.proj.to_crs(proj[0])
+                
+                if logger.is_verbose(verbose):
+                    if twin is not None:
+                        logger.log.info(f"Unrotating '{name}' and '{twin}' data ('{source_crs}' -> 'lonlat')...")
+                    else:
+                        logger.log.info(f"Unrotating '{name}' data ('{source_crs}' -> 'lonlat')...")
+                x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat, grid_shape=self.size('spatial'), source_crs=source_crs)
+        return x_data, y_data
 
 
     def _set_data(
         self,
         name: str,
         data: np.ndarray,
+        verbose: bool,
         dir_type: str = None,
+        wrt: Union[str, CRSValue, None] = None,
+
     ) -> None:
         """Sets a data variable to the underlying dataset.
 
@@ -1888,14 +1952,33 @@ class Skeleton:
 
         Triggers setting metadata of the variable and possible connected masks."""
         set_dir_type = self.core.get_dir_type(name)
-        if dir_type is not None and set_dir_type is None:
-            raise DirTypeError
-
         dir_type = dir_type or set_dir_type
+
         data = dir_conversions.convert(data, in_type=dir_type, out_type=set_dir_type)
+        if logger.is_verbose(verbose):
+            logger.log.info(f"Setting data for '{name}'")
         self._ds_manager.set(data=data, name=name)
+        
         self.meta._metadata_to_ds(name)
         self._trigger_masks(name, data)
+        
+        projection_to_do = _determine_projection_to_do_for_setting(name, self.core, wrt) # List of rotations/unrotation to perform
+        
+        if projection_to_do:
+            data = self.get(name, dir_type='math', data_array=True, squeeze=False)    
+            x_data = dask_computations.cos(data)
+            y_data = dask_computations.sin(data)
+            
+            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose)
+            data = dir_conversions.compute_math_direction(x_data, y_data)
+
+            self._set_data(
+                name=name,
+                data=data,
+                dir_type="math",
+                verbose=False,
+                )
+
 
     def _trigger_masks(self, name: str, data: Union[np.ndarray, xr.DataArray]) -> None:
         """Set any masks that are triggered by setting a specific data variable
@@ -2136,7 +2219,7 @@ class Skeleton:
             return None
 
         _dir_type_consistency_check(name, self.core, dir_type)
-        projected =_projected_consistency_check(name, self.core, projected)
+        #projected =_projected_consistency_check(name, self.core, projected)
 
         if name in self.core.magnitudes("all"):
             data = self._get_magnitude(
@@ -3258,6 +3341,8 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
 
     return name, dir_type, projected
 
+
+
 def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: str):
     """Checks the consistency of the directional type.
 
@@ -3277,31 +3362,38 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
             raise DirTypeError
     
 
-def _projected_consistency_check(name: str, core: CoordinateManager, projected: bool) -> bool:
+def _determine_projection_to_do_for_setting(name: str, core: CoordinateManager, wrt: Union[str, CRSValue, None]) -> list[tuple]:
     """Checks that projected information is not requested when it is not available"""
     
     # If variable is not a component or a direction, ignore projection information
     if not core.is_component(name) and not core.is_direction(name):
-        return False
+        return []
+
+    # The data is assumed to be as already specified be the skeleton cf convention
+    # No reprojecting needed
+    if wrt is None:
+        return []
+
+    # What is the rotational convention defined by the metadata?
+    if core.values_are_projected(name) and core.is_projected():
+        target_crs = 'xy'
+    else:
+        target_crs = 'lonlat'
     
+    # If the specified CRS is the same as the cf-convention in skeleton -> do nothing
 
-    param = core.get(name).meta
-    if projected is None:
-        # If no metadata is available, assume the variable is not projected
-        if param is None:
-            return False
-        projected = param.projection_type() == 'xy'
+    if wrt == target_crs:
+        return []
 
-    return projected
+    # Otherwise rotate or unrotate    
+    if wrt == 'lonlat': 
+        return [('lonlat','xy')]
+    if wrt == 'xy':
+        return [('xy','lonlat')]
     
-    # if not projected:
-    #     return False
+    
+    if target_crs == 'lonlat':
+        return [(wrt,'lonlat')]
+    elif target_crs == 'xy':
+        return [(wrt, 'lonlat'), ('lonlat', 'xy')]
 
-    # # Lets not raise errors for scalars, since nothing will happen
-
-
-    # # Don't proceed if the variable needs directional information but no projection information is present
-    # # if projected and core.meta.get(name).get('projected_according_to') is None:
-    # #     raise ProjectionError(f"Variable '{name}' lacks 'projected_according_to' metadata, but 'projected'=True is requested.")
-
-    # return True
