@@ -9,6 +9,7 @@ class DataVar:
     coord_group: str
     default_value: float
     dir_type: str = None
-    rotated_version: "DataVar" = None
     magnitude: str = None
     direction: str = None
+    rotated_version: "DataVar" = None
+    unrotated_version: "DataVar" = None

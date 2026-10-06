@@ -10,8 +10,8 @@ import pytest
 @pytest.fixture
 def wind():
 
-    data = Wind(lon=range(10), lat=range(10))
-    breakpoint()
+    data = Wind(lon=range(10), lat=range(50,60))
+
     data.set_u(5)
     data.set_v(6)
     
@@ -21,6 +21,7 @@ def wind():
 def windxy(wind):
     x, y = wind.xy()
     data = Wind(x=x, y=y, crs=wind.proj.utm())
+    
     data.set_u(wind.u(wrt=data.proj.crs()))
     data.set_v(wind.v(wrt=data.proj.crs()))
     return data
@@ -39,7 +40,7 @@ def windrot(wind):
 
 def test_from_lonlat_ds(wind):
     ds = wind.ds()
-    breakpoint()
+
     wind2 = Wind.from_ds(ds)
     np.testing.assert_array_almost_equal(wind2.lon(), wind.lon())
     np.testing.assert_array_almost_equal(wind2.lat(), wind.lat())
@@ -50,12 +51,11 @@ def test_from_lonlat_ds(wind):
 
 def test_from_xy_ds(windxy, wind):
     ds = windxy.ds()
-    wind2 = Wind.from_ds(ds)
+    wind2 = Wind.from_ds(ds, verbose=True)
     np.testing.assert_array_almost_equal(wind2.x(), windxy.x())
     np.testing.assert_array_almost_equal(wind2.y(), windxy.y())
     np.testing.assert_array_almost_equal(wind2.u(), windxy.u())
     np.testing.assert_array_almost_equal(wind2.v(), windxy.v())
-
     np.testing.assert_array_almost_equal(wind2.u(), wind.u(wrt=wind2.proj.crs()))
     np.testing.assert_array_almost_equal(wind2.v(), wind.v(wrt=wind2.proj.crs()))
     
@@ -66,7 +66,8 @@ def test_from_xy_ds(windxy, wind):
 def test_rlon_rlon_from_ds(windrot, wind):
     ds = windrot.ds()
     wind2 = Wind.from_ds(ds)
-    breakpoint()
+    wind2.ds().x.attrs.get('standard_name') == 'grid_longitude'
+    wind2.ds().x.attrs.get('units') == 'degrees'
 
 def test_point_cartesian():
     @add_coord(name="test")

@@ -1,8 +1,9 @@
 from .coordinate_manager import CoordinateManager
-
+from typing import Any
 from .metadata_manager import MetaDataManager
 from typing import Optional, Union
 from pyproj import CRS, Transformer
+from pyproj.exceptions import CRSError
 import numpy as np
 import utm as utm_module
 import xarray as xr
@@ -71,18 +72,33 @@ def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
 
 class ProjManager:
     def __init__(
-        self,  lat: tuple[float], lon: tuple[float],y: tuple[float], x: tuple[float], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None,
+        self,  lat: tuple[float], lon: tuple[float],y: tuple[float], x: tuple[float], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None, utm: Optional[tuple[int, str]]=None
     ):
-        self._lat_edges: tuple[float] = lat
-        self._lon_edges: tuple[float] = lon        
-        self._y_edges: tuple[float] = y
-        self._x_edges: tuple[float] = x 
+        self._lat_values: tuple[float] = lat
+        self._lon_values: tuple[float] = lon      
+        self._y_values: tuple[float] = y
+        self._x_values: tuple[float] = x
         self._meta: MetaDataManager = metadata_manager
         self._coordinate_manager: CoordinateManager = coordinate_manager
         self._crs = None
         self._utm = None
-        if crs is not None:
-            self.set(crs)
+
+        if crs is None:
+            if not self._coordinate_manager.is_projected():
+                crs = CRS.from_epsg(4326)
+            else:
+                if utm is not None:
+                    crs = utm
+                else:
+                    wkt = (
+                        'ENGINEERINGCRS["Local Cartesian", '
+                        'ENGINEERINGDATUM["Local datum"], '
+                        'CS[Cartesian,2], '
+                        'AXIS["x",east], AXIS["y",north], '
+                        'LENGTHUNIT["metre",1]]'
+                    )
+                    crs = CRS.from_wkt(wkt)
+        self.set(crs)
         if not isinstance(self.crs(), tuple):
             self.reset_utm()
         self._alpha: dict = {}
@@ -120,12 +136,13 @@ class ProjManager:
 
     def optimal_utm(self) -> tuple[int, str]:
         """Returns the optimal UTM (Universal Transverse Mercator) zone based on the grid's longitude and latitude edges."""
-        if self.crs() is None:
+        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             return None
-        if self._lon_edges == (None, None):
-            lon, lat = self._lonlat(self._x_edges, self._y_edges, self.crs())
+
+        if self._lon_values is None:
+            lon, lat = self._lonlat(tuple(self._x_values), tuple(self._y_values), self.crs())
         else:
-            lon, lat = self._lon_edges, self._lat_edges
+            lon, lat = self._lon_values, self._lat_values
         return self._optimal_utm(lon, lat)
 
     def utm(self) -> Union[tuple[int, str], None]:
@@ -264,15 +281,20 @@ class ProjManager:
         else:
             raise ValueError(f"{crs} is not a valid coordinate reference system!")
         self._crs = crs
+        self._meta.set(crs_to_netcdf_attrs(crs),'crs')
         if utm is not None and self._utm != utm:
             self.set_utm(utm, verbose=verbose)
+        
         # Set correct units for variables x and y if we are in a rotated grid
-        #if self.units_are_in_degrees():
-        #    breakpoint()
-            
-    
-        #     self._meta.set({'units': 'degrees'},'x')
-        #     self._meta.set({'units': 'degrees'},'y')
+        if self._coordinate_manager.is_projected():
+            if self.units_are_in_degrees():
+                self._coordinate_manager._switch_to_rotated()
+            else:
+                self._coordinate_manager._switch_to_not_rotated()
+                
+        
+            self._meta.set(self._coordinate_manager.get('x').meta.meta_dict(),'x')
+            self._meta.set(self._coordinate_manager.get('y').meta.meta_dict(),'y')
 
     def to_crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
         """Converts the given CRS into a pyproj CRS object or UTM tuple.
@@ -505,14 +527,14 @@ class ProjManager:
 
         return y
 
-    def _utm_zone_to_crs(self, utm) -> CRS:
-        proj4 = {
-            'proj': 'utm',
-            'zone': utm[0],
-            'south': utm[1] in SOUTH_UTM_ZONES,  # Use 'south' if in the southern hemisphere
-            'datum': 'WGS84'
-        }
-        return CRS.from_dict(proj4)
+    # def _utm_zone_to_crs(self, utm) -> CRS:
+    #     proj4 = {
+    #         'proj': 'utm',
+    #         'zone': utm[0],
+    #         'south': utm[1] in SOUTH_UTM_ZONES,  # Use 'south' if in the southern hemisphere
+    #         'datum': 'WGS84'
+    #     }
+    #     return CRS.from_dict(proj4)
     
 
     def _calculate_rotation_alpha(self, lon, lat, target_crs: CRS) -> np.ndarray:
@@ -578,15 +600,9 @@ class ProjManager:
 
 def _rotate_components(x_data:xr.DataArray, y_data:xr.DataArray, alpha: xr.DataArray) -> tuple[xr.DataArray, xr.DataArray]:
     """Rotates given components with alpha values. Keeps metadata intact."""
-    # To preserve metadata
-    #xmeta = x_data.attrs
-    #ymeta = y_data.attrs
-    
     x_rot =x_data * np.cos(alpha) - y_data * np.sin(alpha)
     y_rot =x_data * np.sin(alpha) + y_data * np.cos(alpha)
 
-    #x_rot = x_rot.assign_attrs(xmeta)
-    #y_rot = y_rot.assign_attrs(ymeta)
     return x_rot, y_rot
 
 
@@ -634,22 +650,189 @@ def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_da
     return alpha
 
 
-# def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_data:xr.DataArray, grid_shape: tuple[int]) -> xr.DataArray:
-#     """Broadcastsa a spatial np.ndarray of alpha values to possible time instances also"""
-#     if hasattr(x_data, 'lon'):
-#         x_str, y_str = 'lon', 'lat'
-#     elif hasattr(x_data, 'x'):
-#         x_str, y_str = 'x', 'y'
-#     else:
-#         x_str, y_str = 'inds', None
 
-#     breakpoint()
-#     alpha = np.reshape(alpha, grid_shape)
-    
-#     # Redoing this to a DataArray automatically broadcasts alpha values to different time steps
-#     if y_str is not None:
-#         alpha = xr.DataArray(data=alpha,dims=[y_str, x_str], coords={x_str: ([x_str], x_data[x_str].values), y_str: ([y_str], y_data[y_str].values)})
-#     else:
-#         alpha = xr.DataArray(data=alpha,dims=[x_str], coords={x_str: ([x_str], x_data[x_str].values)})
 
-#     return alpha
+# reuse allowlist from before (adjust as needed)
+_CF_ALLOWLIST = {
+    "grid_mapping_name",
+    "longitude_of_central_meridian",
+    "latitude_of_projection_origin",
+    "standard_parallel",
+    "standard_parallel_1", "standard_parallel_2",
+    "false_easting", "false_northing",
+    "scale_factor_at_central_meridian",
+    "latitude_of_origin",
+    "longitude_of_center",
+    "azimuth",
+    "grid_north_pole_longitude", "grid_north_pole_latitude",
+    "semi_major_axis", "inverse_flattening",
+    "towgs84",
+}
+
+
+def _is_utm_tuple(obj) -> bool:
+    """Return True if obj looks like a UTM tuple (zone:int, band:str)."""
+    if not isinstance(obj, tuple) or len(obj) != 2:
+        return False
+    zone, band = obj
+    if not isinstance(zone, int):
+        return False
+    if not (isinstance(band, str) and len(band.strip()) == 1 and band.strip().isalpha()):
+        return False
+    return True
+
+
+def _validate_utm_zone_and_band(zone: int, band: str) -> tuple[int, str]:
+    """Validate and normalize zone and band. Raises ValueError on bad input."""
+    if not (1 <= zone <= 60):
+        raise ValueError(f"UTM zone number out of range: {zone}")
+    band_up = band.strip().upper()
+    # UTM latitude bands are letters C..X excluding I and O
+    if band_up < "C" or band_up > "X" or band_up in {"I", "O"}:
+        raise ValueError(f"Invalid UTM latitude band letter: {band!r}")
+    return zone, band_up
+
+
+def _band_to_hemisphere(band_letter: str) -> str:
+    """Return 'N' for northern-hemisphere bands (N..X) otherwise 'S'."""
+    # Bands N .. X are northern hemisphere; C..M are southern
+    return "N" if band_letter >= "N" else "S"
+
+
+def crs_to_netcdf_attrs(crs_input) -> dict[str, Any]:
+    """
+    Return a compact dict of attributes suitable for writing to a CF grid-mapping
+    variable. Handles:
+      - pyproj.CRS or any input accepted by CRS.from_user_input
+      - explicit UTM tuple (zone:int, band:str) — preserves the latitude band
+      - engineering/local CRSs (is_engineering)
+    """
+    if crs_input is None:
+        return {}
+
+    # 1) If explicit UTM tuple like (33, 'W')
+    if _is_utm_tuple(crs_input):
+        try:
+            zone_raw, band_raw = crs_input
+            zone, band = _validate_utm_zone_and_band(zone_raw, band_raw)
+        except ValueError as e:
+            # invalid tuple: return empty or raise depending on your policy
+            raise
+
+        hemisphere = _band_to_hemisphere(band)
+        attrs: dict[str, Any] = {
+            "grid_mapping_name": "transverse_mercator",  # CF uses transverse_mercator for UTM
+            "utm_zone_number": int(zone),
+            "utm_latitude_band": band,                   # preserve exact band letter!
+            "utm_hemisphere": hemisphere,                # 'N' or 'S'
+            # human-friendly note
+            "description": (
+                f"UTM zone {zone}{band} (latitude band {band}); "
+                f"Hemisphere: {hemisphere}."
+            ),
+        }
+
+        # # Suggest an EPSG code for the zone+hemisphere (but do not drop the band)
+        # try:
+        #     epsg_code = 32600 + zone if hemisphere == "N" else 32700 + zone
+        #     attrs["epsg_code_candidate"] = f"EPSG:{epsg_code}"
+
+        #     # Optionally populate more CF fields from the EPSG CRS if pyproj can create it.
+        #     try:
+        #         crs_epsg = CRS.from_epsg(epsg_code)
+        #         # extract a compact set of CF-attrs from the EPSG CRS
+        #         try:
+        #             cf_dict = crs_epsg.to_cf()
+        #         except Exception:
+        #             cf_dict = {}
+        #         for k, v in cf_dict.items():
+        #             if k in _CF_ALLOWLIST and k not in attrs:
+        #                 attrs[k] = v
+        #         # also include precise WKT if available
+        #         try:
+        #             attrs["crs_wkt"] = crs_epsg.to_wkt()
+        #             attrs["spatial_ref"] = attrs["crs_wkt"]
+        #         except Exception:
+        #             pass
+        #     except CRSError:
+        #         # can't materialize EPSG CRS: that's OK — we still preserved the band
+        #         pass
+        # except Exception:
+        #     pass
+
+        return attrs
+
+    # 2) Otherwise try normal pyproj CRS handling (CRS, epsg code, WKT, etc.)
+    try:
+        crs = crs_input if isinstance(crs_input, CRS) else CRS.from_user_input(crs_input)
+    except CRSError:
+        return {}
+
+    # engineering/local
+    if getattr(crs, "is_engineering", False):
+        try:
+            wkt = crs.to_wkt()
+        except Exception:
+            wkt = (
+                'ENGINEERINGCRS["Local Cartesian", ENGINEERINGDATUM["Local datum"], '
+                'CS[Cartesian,2], AXIS["x",east], AXIS["y",north], LENGTHUNIT["metre",1]]'
+            )
+        return {
+            "grid_mapping_name": "local_cartesian",
+            "crs_wkt": wkt,
+            "spatial_ref": wkt,
+            "units": "metre",
+            "description": "Local engineering Cartesian CRS (no geodetic tie).",
+        }
+
+    # non-engineering: filter pyproj.to_cf()
+    attrs: dict[str, Any] = {}
+    try:
+        cf_dict = crs.to_cf()
+    except Exception:
+        cf_dict = {}
+    for k, v in cf_dict.items():
+        if k in _CF_ALLOWLIST:
+            attrs[k] = v
+
+    # authority / epsg
+    try:
+        auth = crs.to_authority()
+    except Exception:
+        auth = None
+    if auth:
+        attrs["epsg_code"] = f"{auth[0]}:{auth[1]}"
+    else:
+        try:
+            epsg = crs.to_epsg()
+            if epsg:
+                attrs["epsg_code"] = f"EPSG:{epsg}"
+        except Exception:
+            pass
+
+    # add WKT / spatial_ref
+    try:
+        wkt = crs.to_wkt()
+        attrs["crs_wkt"] = wkt
+        attrs["spatial_ref"] = wkt
+    except Exception:
+        try:
+            proj4 = crs.to_proj4()
+            if proj4:
+                attrs["proj4"] = proj4
+        except Exception:
+            pass
+
+    # ellipsoid numeric info
+    try:
+        ell = crs.ellipsoid
+        sa = getattr(ell, "semi_major_metre", None) or getattr(ell, "semi_major_axis", None)
+        if sa:
+            attrs.setdefault("semi_major_axis", float(sa))
+        invf = getattr(ell, "inverse_flattening", None)
+        if invf:
+            attrs.setdefault("inverse_flattening", float(invf))
+    except Exception:
+        pass
+
+    return attrs

@@ -10,20 +10,22 @@ from geo_skeletons.variable_archive import (
 )
 from .. import logger
 
-def find_proj(ds: xr.Dataset):
+def find_proj(ds: xr.Dataset, verbose: bool):
     """Finds a projection in the dataset"""
-    
     #1 Look for standard geo-skeletons format
     if 'crs' in ds.data_vars:
         attrs = ds.crs.attrs
         # pyproj cant decode the utm zone, so check that separately
         if 'utm_zone' in attrs.keys() and 'utm_letter' in attrs.keys():
+            if logger.is_verbose(verbose):
+                logger.log.info(f'Found UTM projection in dataset: zone {attrs["utm_zone"]}, letter {attrs["utm_letter"]}')
             return (attrs['utm_zone'], attrs['utm_letter'])
-        return attrs
     
     #2 Look for proj4 string in attributes
     proj4 = ds.attrs.get('proj4')
     if proj4 is not None:
+        if logger.is_verbose(verbose):
+            logger.log.info(f'Found proj4 string in dataset: {proj4}')
         return proj4
     
     #3 Look for UTM information in the attributes
@@ -31,9 +33,12 @@ def find_proj(ds: xr.Dataset):
     utm_letter = ds.attrs.get('utm_letter')
     if utm_zone is not None:
         if isinstance(utm_zone, str):
-            
+            if logger.is_verbose(verbose):
+                logger.log.info(f'Found UTM projection in dataset: zone {utm_zone[:-1]}, letter {utm_zone[-1]}')
             return (int(utm_zone[:-1]), str(utm_zone[-1]))
         if utm_letter is not None:
+            if logger.is_verbose(verbose):
+                logger.log.info(f'Found UTM projection in dataset: zone {utm_zone}, letter {utm_letter}')
             return (int(utm_zone), str(utm_letter))
 
     #4 Go through data variables and see if we can find projection information there
@@ -41,8 +46,16 @@ def find_proj(ds: xr.Dataset):
         da = ds.get(var)
         if 'grid_mapping_name' in da.attrs:
             attrs = da.attrs
+            if attrs.get('grid_mapping_name') == 'transverse_mercator': # UTM
+                zone, letter = attrs.get('utm_zone_number'), attrs.get('utm_latitude_band')
+                if zone is not None and letter is not None:
+                    if logger.is_verbose(verbose):
+                        logger.log.info(f'Found UTM projection in dataset: zone {zone}, letter {letter}')
+                    return (int(zone), str(letter))
             if 'proj4' in attrs: # It will interfere with the more extensive information provided in the dict and cause warnings in pyproj
                 del attrs['proj4']
+            if logger.is_verbose(verbose):
+                logger.log.info(f'Found projection information in dataset variable {var}: {attrs}')
             return attrs
         elif 'proj4' in da.attrs:
             return da.attrs.get('proj4')

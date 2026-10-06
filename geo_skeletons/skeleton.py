@@ -104,6 +104,7 @@ class Skeleton:
             self._ds_manager = DatasetManager(self.core)
         else:
             self._ds_manager.coord_manager = self.core
+        
         self.meta._ds_manager = self._ds_manager
 
         x, y, lon, lat, kwargs = sanitize.sanitize_input(
@@ -129,9 +130,9 @@ class Skeleton:
                 chunks = self._chunks
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
-        if crs is None and not self.core.is_projected():
-            crs = "EPSG:4326"
-        self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), x=self.edges("x", strict=True),y=self.edges("y", strict=True),metadata_manager=self.meta, coordinate_manager=self.core)
+        lon, lat = self.lonlat(strict=True)
+        x, y = self.xy(strict=True)
+        self.proj = ProjManager(crs=crs, utm=utm, lon=lon, lat=lat, x=x, y=y,metadata_manager=self.meta, coordinate_manager=self.core)
         self.core.proj = self.proj
         if utm is not None:
             self.proj.set_utm(utm)
@@ -697,14 +698,14 @@ class Skeleton:
         )
         
 
-        proj_obj = find_proj(ds)
+        proj_obj = find_proj(ds, verbose=verbose)
         if proj_obj and points.proj.crs() != points.proj.to_crs(proj_obj):
             if logger.is_verbose(verbose):
                 logger.log.info(f'Setting projection as: {proj_obj}')
             points.proj.set(proj_obj, verbose=verbose)
         elif points.core.is_projected():
             if logger.is_verbose(verbose):
-                logger.log.info('Could not decode any projection for the cartesian data!')
+                logger.log.warning('Could not decode any projection for the cartesian data!')
 
         # Set data
         points = set_core_vars_to_skeleton_from_ds(

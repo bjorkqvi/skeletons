@@ -134,11 +134,11 @@ def set_core_vars_to_skeleton_from_ds(
             if verbose:
                 
                 if skeleton.core.get_dir_type(var) is not None and dir_type is None:
-                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data has projection='{projection}' and dir_type='{skeleton.core.get_dir_type(var)}'")           
+                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data is with respect to '{wrt}' and dir_type='{skeleton.core.get_dir_type(var)}'")           
                 elif dir_type is not None:
-                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data has projection='{projection}' and dir_type='{dir_type}'")
+                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data is with respect to '{wrt}' and dir_type='{dir_type}'")
                 else:
-                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data has projection='{projection}'.")
+                    logger.log.info(f"Setting variable '{var}' from '{ds_var_x}' assuming data is with respect to '{wrt}'.")
             
             skeleton.set(
                 var,

@@ -22,6 +22,8 @@ lon_var = DataVar(name="lon", meta=gp.grid.Lon, coord_group="spatial", default_v
 lat_var = DataVar(name="lat", meta=gp.grid.Lat, coord_group="spatial", default_value=0)
 x_var = DataVar(name="x", meta=gp.grid.X, coord_group="spatial", rotated_version=rlon_var, default_value=0)
 y_var = DataVar(name="y", meta=gp.grid.Y, coord_group="spatial", rotated_version=rlat_var, default_value=0)
+rlon_var.unrotated_version = x_var
+rlat_var.unrotated_version = y_var
 
 INITIAL_CARTESIAN_VARS = [x_var, y_var]  #: "inds", "y": "inds"}
 INITIAL_SPHERICAL_VARS = [lon_var, lat_var]  # {"lat": "inds", "lon": "inds"}

@@ -160,6 +160,24 @@ class CoordinateManager:
         for coord in initial_coords:
             self._added_coords[coord.name] = coord
 
+    def _switch_to_rotated(self) -> None:
+        """Switches the coordinates to their rotated versions if available."""
+        for coord_name, coord in list(self._added_coords.items()):
+            if coord.rotated_version is not None:
+                self._added_coords[coord_name] = coord.rotated_version
+        for var_name, var in list(self._added_vars.items()):
+            if var.rotated_version is not None:
+                self._added_vars[var_name] = var.rotated_version
+
+    def _switch_to_not_rotated(self) -> None:
+        """Switches the coordinates to their unrotated versions if available."""
+        for coord_name, coord in list(self._added_coords.items()):
+            if coord.unrotated_version is not None:
+                self._added_coords[coord_name] = coord.unrotated_version
+        for var_name, var in list(self._added_vars.items()):
+            if var.unrotated_version is not None:
+                self._added_vars[var_name] = var.unrotated_version
+
     def coords(self, coord_group: str = "all", cartesian: bool = None) -> list[str]:
         """Returns a list of coordinates belonging to a specific coordinate group.
 
