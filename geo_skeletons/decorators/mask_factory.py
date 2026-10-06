@@ -75,13 +75,15 @@ def add_mask(
             coord = coord or self.core.x_str
 
             if coord in CARTESIAN_STRINGS:
-                return self.xy(
-                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
+                x, y = self.xy(
+                     native=native, strict=strict, crs=crs, **kwargs
                 )
+                return x[mask], y[mask]
             elif coord in SPHERICAL_STRINGS:
-                return self.lonlat(
-                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
+                lon, lat = self.lonlat(
+                    native=native, strict=strict, crs=crs, **kwargs
                 )
+                return lon[mask], lat[mask]
 
         def get_not_points(
             self,
@@ -98,13 +100,14 @@ def add_mask(
             coord = coord or self.core.x_str
 
             if coord in CARTESIAN_STRINGS:
-                return self.xy(
-                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
+
+                x, y = self.xy(native=native, strict=strict, crs=crs, **kwargs
                 )
+                return x[mask], y[mask]
             elif coord in SPHERICAL_STRINGS:
-                return self.lonlat(
-                    mask=mask, native=native, strict=strict, crs=crs, **kwargs
+                lon, lat = self.lonlat(native=native, strict=strict, crs=crs, **kwargs
                 )
+                return lon[mask], lat[mask]
 
         def set_mask(
             self,

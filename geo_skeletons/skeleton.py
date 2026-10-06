@@ -1807,7 +1807,7 @@ class Skeleton:
         ux = data * c
         uy = data * s
 
-        projection_to_do = _determine_projection_to_do(x_component, self.core, obj.direction.meta.projection_type()) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(x_component, self.core, obj.direction.meta.projection_type(), self.proj.is_engineering()) # List of rotations/unrotation to perform
         ux, uy = self._apply_projection_to_do(x_component, ux, uy, projection_to_do, verbose, proj_type='set', twin=y_component)
         
         self._set_data(
@@ -1846,14 +1846,14 @@ class Skeleton:
         c = dask_computations.cos(data)
         ux = mag_data * c
         uy = mag_data * s
-        projection_to_do = _determine_projection_to_do(x_component, self.core, obj.meta.projection_type()) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(x_component, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         ux, uy = self._apply_projection_to_do(x_component, ux, uy, projection_to_do, verbose, proj_type='set', twin=y_component)
         self.set(name=x_component, data=ux)
         self.set(name=y_component, data=uy)
 
 
     def _set_component(self, name:str, data: np.ndarray, wrt: Union[str, CRSValue, None], verbose: bool) -> None:
-        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
             
         twin = self.core.find_twin_component(name)
 
@@ -1981,7 +1981,7 @@ class Skeleton:
         self.meta._metadata_to_ds(name)
         self._trigger_masks(name, data)
         
-        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         
         if projection_to_do:
             data = self.get(name, dir_type='math', data_array=True, squeeze=False)    
@@ -2325,7 +2325,7 @@ class Skeleton:
             # If we have e.g. x_wind and have unrotated it, we need to update the metadata
             metaparam = self.core.get(name).meta
             if metaparam is not None:
-                projection_to_do = _determine_projection_to_do(name, self.core, wrt)
+                projection_to_do = _determine_projection_to_do(name, self.core, wrt, self.proj.is_engineering())
                 if projection_to_do and (metaparam.i_am() in ['x', 'y', 'east', 'north'] or metaparam.dir_type() is not None):
                     projection_to_do = projection_to_do[0]
                     #The ordering is for 'setting', so first element is what we end up with when 'getting'
@@ -2391,7 +2391,7 @@ class Skeleton:
         ):
             x_data = self.dask.undask_me(x_data)
 
-        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         if projection_to_do:
             x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, proj_type='get')
 
@@ -2463,7 +2463,7 @@ class Skeleton:
         dir_type = dir_type or set_dir_type
         
 
-        projection_to_do = _determine_projection_to_do(name, self.core, wrt) # List of rotations/unrotation to perform
+        projection_to_do = _determine_projection_to_do(name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         if not projection_to_do:
             return dir_conversions.convert(data, in_type=set_dir_type, out_type=dir_type)
 
@@ -3386,7 +3386,7 @@ def _dir_type_consistency_check(name: str, core: CoordinateManager, dir_type: st
             raise DirTypeError
     
 
-def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[str, CRSValue, None]) -> list[tuple]:
+def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[str, CRSValue, None], is_engineering: bool) -> list[tuple]:
     """Determines which projections needs to be done before storing the data"""
     
     # If variable is not a component or a direction, ignore projection information
@@ -3397,6 +3397,9 @@ def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[s
     # No reprojecting needed
     if wrt is None:
         return []
+
+    if is_engineering and wrt != 'xy':
+        raise ProjectionError(f'Cannot project data to {wrt} from an engineering coordinate system!')
 
     if hasattr(wrt, 'to_epsg'):
         if wrt.to_epsg() == 4326:

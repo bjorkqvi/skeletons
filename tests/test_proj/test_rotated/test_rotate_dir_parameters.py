@@ -4,13 +4,13 @@ import geo_parameters as gp
 
 def test_reproj_southerly_winds_rotated_grid_lon0_0():
     proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180), crs=proj4)
+    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180))
     wind.set_spacing(nx=181)
     
     wind.set_dd(180)
     
 
-    rot = wind.dd(rotated=True)
+    rot = wind.dd(wrt=proj4)
 
     ind = np.where(wind.lon()==180)[0][0]
     np.testing.assert_almost_equal(rot[ind],0)
@@ -26,7 +26,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0():
     ind = np.where(wind.lon()==-90)[0][0]
     np.testing.assert_almost_equal(rot[ind],270)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
 
     np.testing.assert_almost_equal(rot[ind],270)
@@ -42,11 +42,11 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0():
 
 def test_reproj_southerly_winds_rotated_grid_lon0_0_dir_to():
     proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180), crs=proj4)
+    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180))
     wind.set_spacing(nx=181)
     
     wind.set_dd(180)
-    rot = wind.dd(rotated=True, dir_type='to')
+    rot = wind.dd(wrt=proj4, dir_type='to')
 
     ind = np.where(wind.lon()==180)[0][0]
     np.testing.assert_almost_equal(rot[ind],180)
@@ -62,7 +62,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_dir_to():
     ind = np.where(wind.lon()==-90)[0][0]
     np.testing.assert_almost_equal(rot[ind],90)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
 
     np.testing.assert_almost_equal(rot[ind],90)
@@ -79,11 +79,11 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_dir_to():
 
 def test_reproj_southerly_winds_rotated_grid_lon0_20():
     proj4 = "+proj=laea +lat_0=90 +lon_0=-20 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180), crs=proj4)
+    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180))
     wind.set_spacing(nx=181)
     
     wind.set_dd(180)
-    rot = wind.dd(rotated=True)
+    rot = wind.dd(wrt=proj4)
 
     ind = np.where(wind.lon()==180-20)[0][0]
     np.testing.assert_almost_equal(rot[ind],0)
@@ -99,7 +99,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20():
     ind = np.where(wind.lon()==-90-20)[0][0]
     np.testing.assert_almost_equal(rot[ind],270)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
 
     np.testing.assert_almost_equal(rot[ind],270)
@@ -116,11 +116,11 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20():
 
 def test_reproj_southerly_winds_rotated_grid_lon0_20_dir_to():
     proj4 = "+proj=laea +lat_0=90 +lon_0=-20 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180), crs=proj4)
+    wind = GriddedSkeleton.add_datavar(gp.wind.WindDir('dd'))(lat=10, lon=(-180, 180))
     wind.set_spacing(nx=181)
     
     wind.set_dd(180)
-    rot = wind.dd(rotated=True, dir_type='to')
+    rot = wind.dd(wrt=proj4, dir_type='to')
 
     ind = np.where(wind.lon()==180-20)[0][0]
     np.testing.assert_almost_equal(rot[ind],180)
@@ -136,7 +136,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20_dir_to():
     ind = np.where(wind.lon()==-90-20)[0][0]
     np.testing.assert_almost_equal(rot[ind],90)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
 
     np.testing.assert_almost_equal(rot[ind],90)
@@ -156,8 +156,8 @@ def test_reproj_southerly_winds_rotated_grid_utm_u():
     wind.set_spacing(nx=181)
     
     wind.set_dd(180)
-    assert wind.proj.crs() == (34, 'V')
+    assert wind.proj.utm() == (34, 'V')
 
-    rot = wind.dd(rotated=True) 
+    rot = wind.dd(wrt=(34, 'V')) 
     # Rotation should be minimal in a small area
     np.testing.assert_array_almost_equal(wind.dd(), rot, decimal=0)
