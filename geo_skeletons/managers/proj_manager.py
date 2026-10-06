@@ -72,12 +72,21 @@ def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
 
 class ProjManager:
     def __init__(
-        self,  lat: tuple[float], lon: tuple[float],y: tuple[float], x: tuple[float], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None, utm: Optional[tuple[int, str]]=None
+        self,  lat: np.ndarray[np.float64], lon: np.ndarray[np.float64],y: np.ndarray[np.float64], x: np.ndarray[np.float64], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None, utm: Optional[tuple[int, str]]=None
     ):
-        self._lat_values: tuple[float] = lat
-        self._lon_values: tuple[float] = lon      
-        self._y_values: tuple[float] = y
-        self._x_values: tuple[float] = x
+        if lon is not None and len(np.atleast_1d(lon)) == 1:
+            lon = np.array([lon, lon])
+        if lat is not None and len(np.atleast_1d(lat)) == 1:
+            lat = np.array([lat, lat])
+        if x is not None and len(np.atleast_1d(x)) == 1:
+            x = np.array([x, x])
+        if y is not None and len(np.atleast_1d(y)) == 1:
+            y = np.array([y, y])
+        self._lat_values: np.ndarray[np.float64] = lat
+        self._lon_values: np.ndarray[np.float64] = lon      
+        self._y_values: np.ndarray[np.float64] = y
+        self._x_values: np.ndarray[np.float64] = x
+
         self._meta: MetaDataManager = metadata_manager
         self._coordinate_manager: CoordinateManager = coordinate_manager
         self._crs = None

@@ -130,9 +130,15 @@ class Skeleton:
                 chunks = self._chunks
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
+        lon, lat = self.edges('lon',strict=True)
+        x, y = self.edges('x',strict=True)
+        self.proj = ProjManager(crs=crs, utm=utm, lon=lon, lat=lat, x=x, y=y,metadata_manager=self.meta, coordinate_manager=self.core)
         lon, lat = self.lonlat(strict=True)
         x, y = self.xy(strict=True)
-        self.proj = ProjManager(crs=crs, utm=utm, lon=lon, lat=lat, x=x, y=y,metadata_manager=self.meta, coordinate_manager=self.core)
+        self.proj._lat_values = lat
+        self.proj._lon_values = lon
+        self.proj._x_values = x
+        self.proj._y_values = y
         self.core.proj = self.proj
         if utm is not None:
             self.proj.set_utm(utm)
