@@ -11,9 +11,10 @@ import pytest
 def wind():
 
     data = Wind(lon=range(10), lat=range(10))
+    breakpoint()
     data.set_u(5)
     data.set_v(6)
-
+    
     return data
 
 @pytest.fixture
@@ -22,11 +23,23 @@ def windxy(wind):
     data = Wind(x=x, y=y, crs=wind.proj.utm())
     data.set_u(wind.u(wrt=data.proj.crs()))
     data.set_v(wind.v(wrt=data.proj.crs()))
+    return data
+
+@pytest.fixture
+def windrot(wind):
+    proj4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
+    x, y = wind.xy(crs=proj4)
+    data = Wind(x=x, y=y, crs=proj4)
+    data.set_u(wind.u(wrt=proj4))
+    data.set_v(wind.v(wrt=proj4))
 
     return data
 
+
+
 def test_from_lonlat_ds(wind):
     ds = wind.ds()
+    breakpoint()
     wind2 = Wind.from_ds(ds)
     np.testing.assert_array_almost_equal(wind2.lon(), wind.lon())
     np.testing.assert_array_almost_equal(wind2.lat(), wind.lat())
@@ -47,7 +60,14 @@ def test_from_xy_ds(windxy, wind):
     np.testing.assert_array_almost_equal(wind2.v(), wind.v(wrt=wind2.proj.crs()))
     
     assert windxy.proj.crs() == wind2.proj.crs()
-    
+    windxy.ds().x.attrs.get('standard_name') == 'projection_x_coordinate'
+    windxy.ds().x.attrs.get('units') == 'm'
+
+def test_rlon_rlon_from_ds(windrot, wind):
+    ds = windrot.ds()
+    wind2 = Wind.from_ds(ds)
+    breakpoint()
+
 def test_point_cartesian():
     @add_coord(name="test")
     class AddedCoordinate(PointSkeleton):

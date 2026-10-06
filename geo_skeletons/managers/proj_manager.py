@@ -1,3 +1,5 @@
+from .coordinate_manager import CoordinateManager
+
 from .metadata_manager import MetaDataManager
 from typing import Optional, Union
 from pyproj import CRS, Transformer
@@ -69,13 +71,14 @@ def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
 
 class ProjManager:
     def __init__(
-        self,  lat: tuple[float], lon: tuple[float],y: tuple[float], x: tuple[float], metadata_manager: MetaDataManager, crs: Optional[Union[int, str]]=None,
+        self,  lat: tuple[float], lon: tuple[float],y: tuple[float], x: tuple[float], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None,
     ):
-        self._lat_edges: float = lat
-        self._lon_edges: float = lon        
-        self._y_edges: float = y
-        self._x_edges: float = x 
+        self._lat_edges: tuple[float] = lat
+        self._lon_edges: tuple[float] = lon        
+        self._y_edges: tuple[float] = y
+        self._x_edges: tuple[float] = x 
         self._meta: MetaDataManager = metadata_manager
+        self._coordinate_manager: CoordinateManager = coordinate_manager
         self._crs = None
         self._utm = None
         if crs is not None:
@@ -264,9 +267,12 @@ class ProjManager:
         if utm is not None and self._utm != utm:
             self.set_utm(utm, verbose=verbose)
         # Set correct units for variables x and y if we are in a rotated grid
-        if self.units_are_in_degrees():
-            self._meta.set({'units': 'degrees'},'x')
-            self._meta.set({'units': 'degrees'},'y')
+        #if self.units_are_in_degrees():
+        #    breakpoint()
+            
+    
+        #     self._meta.set({'units': 'degrees'},'x')
+        #     self._meta.set({'units': 'degrees'},'y')
 
     def to_crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
         """Converts the given CRS into a pyproj CRS object or UTM tuple.
@@ -539,8 +545,8 @@ class ProjManager:
         if x_data is None or y_data is None:
             raise ProjectionError(f"Data for both components not found. Cannot rotate!")
         
-        if self.crs() is None:
-            raise ProjectionError(f"No projection defined. Cannot rotate!")
+        if target_crs is None:
+            raise ProjectionError(f"No projection given. Cannot rotate!")
 
         alpha = self._calculate_rotation_alpha(lon, lat, target_crs)
         alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
@@ -556,8 +562,8 @@ class ProjManager:
         if x_data is None or y_data is None:
             raise ProjectionError(f"Data for both components not found. Cannot unrotate!")
         
-        if self.crs() is None:
-            raise ProjectionError(f"No projection defined. Cannot unrotate!")
+        if source_crs is None:
+            raise ProjectionError(f"No projection given. Cannot unrotate!")
 
         alpha = self._calculate_rotation_alpha(lon, lat, source_crs)
         alpha = -alpha

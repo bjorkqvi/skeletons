@@ -81,11 +81,7 @@ class Skeleton:
         **kwargs,
     ) -> None:
         self._init_structure(x, y, lon, lat, **kwargs)
-        if not self.core.is_projected():
-            if crs is not None:
-                raise ProjectionError("Cannot set a new CRS for a skeleton defined with lon-lat!")
-            else:   
-                crs =  CRS.from_epsg(4326)
+
         self._init_managers(crs=crs, utm=utm, chunks=chunks)
         self._init_metadata(name=name)
         self._u_v_buffer: dict[str, np.ndarray] = {}
@@ -119,7 +115,7 @@ class Skeleton:
         )
         self.core.x_str = x_str
         self.core.y_str = y_str
-    
+
         # Reset initial coordinates and data variables (default are 'x','y' but might now be 'lon', 'lat')
         self.core._set_initial_coords(self._initial_coords(spherical=(x_str == "lon")))
         self.core._set_initial_vars(self._initial_vars(spherical=(x_str == "lon")))
@@ -133,12 +129,15 @@ class Skeleton:
                 chunks = self._chunks
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
-        self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), x=self.edges("x", strict=True),y=self.edges("y", strict=True),metadata_manager=self.meta)
+        if crs is None and not self.core.is_projected():
+            crs = "EPSG:4326"
+        self.proj = ProjManager(crs=crs, lon=self.edges("lon", strict=True),lat=self.edges("lat", strict=True), x=self.edges("x", strict=True),y=self.edges("y", strict=True),metadata_manager=self.meta, coordinate_manager=self.core)
         self.core.proj = self.proj
-        if utm is None and not self.core.is_projected():
-            self.proj.reset_utm()
         if utm is not None:
             self.proj.set_utm(utm)
+        elif self.core.is_projected():
+            self.proj.reset_utm()
+        
         self.resample = ResampleManager(self)
         
 
