@@ -216,7 +216,7 @@ class ProjManager:
         
         self._utm = utm
 
-        if isinstance(self._crs, tuple) or self._crs.is_engineering:
+        if isinstance(self.crs(), tuple) or self.is_engineering():
             # Set CRS to new UTM to not have conflicting values
             self.set(utm, verbose=verbose)
 

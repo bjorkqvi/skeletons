@@ -22,7 +22,7 @@ def test_noproj_xy_is_none():
     data = GriddedSkeleton(x=(10, 20), y=(50, 60))
     assert data.proj.utm() is None
     assert data.proj.optimal_utm() is None
-    assert data.proj.crs() is None
+    assert data.proj.is_engineering()
 
 
 def test_xy_utm_proj():
@@ -35,6 +35,7 @@ def test_xy_utm_proj():
 def test_xy_rot():
     data = GriddedSkeleton(x=(29.64961796, 25.77779487), y=(-5.51605865, 5.31451654))
     data.proj.set(PROJ4)
+
     assert data.proj.crs() == CRS.from_proj4(PROJ4)
     assert data.proj.utm() == (31,'U')
     assert data.proj.optimal_utm() == (31,'U')
