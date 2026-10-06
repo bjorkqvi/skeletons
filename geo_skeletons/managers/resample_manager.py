@@ -208,7 +208,7 @@ def init_new_class_to_grid(new_class, new_grid, data):
             new_coords[coord] = data.get(coord)
        
     new_data = new_class(**new_coords)
-    if new_grid.proj.crs() is not None:
+    if new_grid.proj.crs() is not None and new_data.core.is_projected():
         new_data.proj.set(new_grid.proj.crs())
     new_data.name = data.name
 

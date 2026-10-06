@@ -708,9 +708,10 @@ class Skeleton:
         proj_obj, orig_data = find_proj(ds, verbose=verbose)
         points.proj._original_ds_proj_data = orig_data
         if proj_obj and points.proj.crs() != points.proj.to_crs(proj_obj):
-            if logger.is_verbose(verbose):
-                logger.log.info(f'Setting projection as: {proj_obj}')
-            points.proj.set(proj_obj, verbose=verbose)
+            if points.core.is_projected():
+                if logger.is_verbose(verbose):
+                    logger.log.info(f'Setting projection as: {proj_obj}')
+                points.proj.set(proj_obj, verbose=verbose)
         elif points.core.is_projected():
             if logger.is_verbose(verbose):
                 logger.log.warning('Could not decode any projection for the cartesian data!')
@@ -1375,22 +1376,26 @@ class Skeleton:
                 del kwargs["y"]
 
             data = self.isel(**{self.core.x_str:slice_inds_x, self.core.y_str: slice_inds_y})
-            return data.from_ds(
+            new_data = data.from_ds(
                 data.ds().sel(**kwargs),
                 data_vars=data.core.non_coord_objects(),
                 keep_ds_names=True,
                 name=self.name,
             )
-            
+            if not new_data.core.is_projected():
+                new_data.proj.set_utm(self.proj.utm())
+            return new_data
                 
         
-        return self.from_ds(
+        new_data = self.from_ds(
             self.ds().sel(**kwargs),
             data_vars=self.core.non_coord_objects(),
             keep_ds_names=True,
             name=self.name,
         )
-
+        if not new_data.core.is_projected():
+            new_data.proj.set_utm(self.proj.utm())
+        return new_data
     def isel(self, **kwargs) -> "Skeleton":
         """Creates a new Skeleton instance by selecting subsets of the data using indices.
 
@@ -1440,12 +1445,17 @@ class Skeleton:
         for dim in expandable_dims:
             if dim not in ds.dims:
                 ds=ds.expand_dims(dim)
-        return self.from_ds(
+        
+        
+        new_data = self.from_ds(
             ds,
             data_vars=self.core.non_coord_objects(),
             keep_ds_names=True,
             name=self.name,
         )
+        if not new_data.core.is_projected():
+            new_data.proj.set_utm(self.proj.utm())
+        return new_data
 
     def insert(self, name: str, data: np.ndarray, **kwargs) -> None:
         """Inserts a slice of data into the Skeleton.

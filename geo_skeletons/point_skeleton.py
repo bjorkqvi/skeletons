@@ -66,7 +66,7 @@ class PointSkeleton(Skeleton):
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
         
         crs = crs or skeleton.proj.crs()
-        if crs is not None:
+        if crs is not None and new_skeleton.core.is_projected():
             new_skeleton.proj.set(crs)
 
         return new_skeleton

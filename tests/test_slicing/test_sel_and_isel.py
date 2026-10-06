@@ -155,8 +155,8 @@ def test_yank_slice_x_y_in_pointskeleton():
     np.testing.assert_array_almost_equal(points2.lat(), 20)
 
 def test_sel_one_lonlat_point_from_xy_gridded():
-    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
-    utm_grid = grid.proj_grid()
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52))
+    utm_grid = grid.proj_grid(crs=(33,'W'))
     point = utm_grid.sel(lon=6, lat=51)
     # There is a rotation etc so won't match exactly here
     np.testing.assert_almost_equal(6, point.lon(), decimal=1)
@@ -164,7 +164,7 @@ def test_sel_one_lonlat_point_from_xy_gridded():
     
 
 def test_sel_one_xy_point_from_lonlat_gridded():
-    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52))
     x0, y0 = grid.ravel().x()[2], grid.ravel().y()[2]
     point = grid.sel(x=x0, y=y0)
     np.testing.assert_almost_equal(grid.ravel().lon()[2], point.lon())
@@ -172,8 +172,8 @@ def test_sel_one_xy_point_from_lonlat_gridded():
     
 
 def test_sel_one_lonlat_point_from_xy_gridded_with_third_coordinate():
-    grid = GriddedSkeleton.add_coord('depth')(lon=(5,6,7), lat=(50,51,52), depth=(10,20, 30,40),crs=(33,'W'))
-    utm_grid = grid.proj_grid()
+    grid = GriddedSkeleton.add_coord('depth')(lon=(5,6,7), lat=(50,51,52), depth=(10,20, 30,40))
+    utm_grid = grid.proj_grid(crs=(33,'W'))
     point = utm_grid.sel(lon=6, lat=51)
     # There is a rotation etc so won't match exactly here
     np.testing.assert_almost_equal(6, point.lon(), decimal=1)
@@ -187,7 +187,7 @@ def test_sel_one_lonlat_point_from_xy_gridded_with_third_coordinate():
     np.testing.assert_almost_equal((20, 30), point.depth())
 
 def test_sel_one_xy_point_from_lonlat_gridded_with_third_coordinate():
-    grid = GriddedSkeleton.add_coord('depth')(lon=(5,6,7), lat=(50,51,52), depth=(10,20, 30,40),crs=(33,'W'))
+    grid = GriddedSkeleton.add_coord('depth')(lon=(5,6,7), lat=(50,51,52), depth=(10,20, 30,40))
     x0, y0 = grid.ravel().x()[2], grid.ravel().y()[2]
     point = grid.sel(x=x0, y=y0)
     np.testing.assert_almost_equal(grid.ravel().lon()[2], point.lon())
@@ -200,8 +200,8 @@ def test_sel_one_xy_point_from_lonlat_gridded_with_third_coordinate():
     np.testing.assert_almost_equal((20, 30), point.depth())
 
 def test_sel_two_lonlat_points_from_xy_gridded():
-    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
-    utm_grid = grid.proj_grid()
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52))
+    utm_grid = grid.proj_grid(crs=(33,'W'))
     point = utm_grid.sel(lon=(6, 7), lat=(51, 52))
     assert point.size() == (2,2)
 
@@ -217,7 +217,7 @@ def test_sel_two_lonlat_points_from_xy_gridded():
 
 
 def test_sel_two_xy_points_from_lonlat_gridded():
-    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52))
 
     x0, y0 = grid.ravel().x()[2], grid.ravel().y()[2:4]
     with pytest.raises(ValueError): # 1 x and 2 y coordinates wont work
@@ -238,8 +238,8 @@ def test_sel_two_xy_points_from_lonlat_gridded():
 
 
 def test_sel_lonlat_slice_from_xy_gridded():
-    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
-    utm_grid = grid.proj_grid()
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52))
+    utm_grid = grid.proj_grid(crs=(33,'W'))
 
     point = utm_grid.sel(lon=slice(5.5,6.6))
     assert point.size() == (3,1)
@@ -275,7 +275,7 @@ def test_sel_lonlat_slice_from_xy_gridded():
 
 
 def test_sel_xy_slice_from_lonlat_gridded():
-    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52), crs=(33,'W'))
+    grid = GriddedSkeleton(lon=(5,6,7), lat=(50,51,52))
     x0 = grid.ravel().x()[4]
     y0 = grid.ravel().y()[4]
 
@@ -284,6 +284,7 @@ def test_sel_xy_slice_from_lonlat_gridded():
     assert point.size() == (3,1)
 
     # There is a rotation etc so won't match exactly here
+
     np.testing.assert_almost_equal([x0/10_000,x0/10_000,x0/10_000], point.ravel().x()/10_000, decimal=0)
     np.testing.assert_almost_equal(grid.ygrid()[:,1]/10_000, point.ravel().y()/10_000, decimal=0)
 
