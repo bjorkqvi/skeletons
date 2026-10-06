@@ -302,6 +302,10 @@ class ProjManager:
         
             self._meta.set(self._coordinate_manager.get('x').meta.meta_dict(),'x')
             self._meta.set(self._coordinate_manager.get('y').meta.meta_dict(),'y')
+    def is_engineering(self) -> bool:
+        """Checks if the current CRS is an engineering CRS."""
+        crs = self.crs()
+        return not isinstance(crs, tuple) and crs.is_engineering
 
     def crs_attrs(self, crs: Optional[CRSValue]=None) -> dict:
         """Returns the CRS attributes as a dictionary suitable for NetCDF."""

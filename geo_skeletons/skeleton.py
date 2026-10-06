@@ -1683,7 +1683,7 @@ class Skeleton:
 
         # Allows for setting using opposite direction variable
         if gp.is_gp(name):
-            name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
+            name, dir_type, wrt = _find_variable_in_core(name, self.core, dir_type, wrt, verbose)
 
         _dir_type_consistency_check(name, self.core, dir_type)
         
@@ -2216,7 +2216,7 @@ class Skeleton:
             )
 
         if gp.is_gp(name):
-            name, dir_type, projected = _find_variable_in_core(name, self.core, dir_type, projected, verbose)
+            name, dir_type, wrt = _find_variable_in_core(name, self.core, dir_type, wrt, verbose)
 
         if name == "x":
             return self.x(strict=strict, **kwargs)
@@ -3300,7 +3300,7 @@ def _determine_inds(coord_slice, all_vals):
     return coord_inds
 
 
-def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_type: str, projected: bool, verbose: bool) -> str:
+def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_type: str, wrt: CRSValue, verbose: bool) -> str:
     """Finds a geo-parameter in the core, accounting for that we might have been given an opposite direction (DirTo instead of Dir)
     or that we might have a projected vs lonlat co,mponent
     
@@ -3328,10 +3328,10 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
                 if len(names) > 0:
                     if logger.is_verbose(verbose):
                         logger.log.info(f"Found component geo-parameter {var} in dataset")
-                    if projected is None:
-                        projected = var.projection_type() == 'xy'
+                    if wrt is None:
+                        wrt = var.projection_type()
                         if logger.is_verbose(verbose):
-                            logger.log.info(f"'projected' not specified, setting to '{projected}'")
+                            logger.log.info(f"'wrt' not specified, setting to '{wrt}'")
                     break
     else:
         names = core.find(name)
@@ -3352,7 +3352,7 @@ def _find_variable_in_core(name: MetaParameter, core: CoordinateManager, dir_typ
     if logger.is_verbose(verbose):
         logger.log.info(f"Reading variable '{name}'")
 
-    return name, dir_type, projected
+    return name, dir_type, wrt
 
 
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from ..errors import SkeletonError
+
 if TYPE_CHECKING:
     from geo_skeletons import Skeleton
 
@@ -331,6 +333,12 @@ class ResampleManager:
         """
         if engine not in REGRID_ENGINES.keys():
             raise ValueError(f"'engine' needs to be in {list(REGRID_ENGINES.keys())}, not '{engine}'!")
+
+        if new_grid.proj.is_engineering() and not self.skeleton.proj.is_engineering():
+            raise SkeletonError("Regridding from a geospatial CRS to an engineering CRS is not possible.")
+
+        if not new_grid.proj.is_engineering() and self.skeleton.proj.is_engineering():
+            raise SkeletonError("Regridding from an engineering CRS to a geospatial CRS is not possible.")
 
         regridder_dict = REGRID_ENGINES.get(engine)
         regrid_type = sort_out_regridded_type(self.skeleton, new_grid)

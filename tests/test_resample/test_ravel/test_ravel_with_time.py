@@ -32,7 +32,7 @@ def test_ravel_lonlat_and_reproj():
 
 def test_ravel_xy_and_reporj():
     grid = GriddedSkeleton.add_time()(lon=(10,20,30), lat=(50,60,70), time=('2020-01-01 00:00', '2020-01-01 06:00'))
-    grid.proj.set((33,'W'))
+    grid.proj.set_utm((33,'W'))
     points = grid.ravel(proj='lonlat')
     glon, glat = grid.lonlat()
     lon, lat = points.xy(native=True)
