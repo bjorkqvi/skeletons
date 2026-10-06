@@ -74,14 +74,15 @@ class ProjManager:
     def __init__(
         self,  lat: np.ndarray[np.float64], lon: np.ndarray[np.float64],y: np.ndarray[np.float64], x: np.ndarray[np.float64], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None, utm: Optional[tuple[int, str]]=None
     ):
-        if lon is not None and len(np.atleast_1d(lon)) == 1:
-            lon = np.array([lon, lon])
-        if lat is not None and len(np.atleast_1d(lat)) == 1:
-            lat = np.array([lat, lat])
-        if x is not None and len(np.atleast_1d(x)) == 1:
-            x = np.array([x, x])
-        if y is not None and len(np.atleast_1d(y)) == 1:
-            y = np.array([y, y])
+        if lat is None:
+            lat = (None, None)
+        if lon is None:
+            lon = (None, None)
+        if x is None:
+            x = (None, None)
+        if y is None:
+            y = (None, None)
+        
         self._lat_values: np.ndarray[np.float64] = lat
         self._lon_values: np.ndarray[np.float64] = lon      
         self._y_values: np.ndarray[np.float64] = y
@@ -147,7 +148,8 @@ class ProjManager:
         """Returns the optimal UTM (Universal Transverse Mercator) zone based on the grid's longitude and latitude edges."""
         if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             return None
-        if self._lon_values is None:
+ 
+        if len(self._lon_values) == 2 and tuple(self._lon_values) == (None, None):
             lon, lat = self._lonlat(tuple(self._x_values), tuple(self._y_values), self.crs())
         else:
             lon, lat = self._lon_values, self._lat_values
