@@ -66,6 +66,7 @@ def test_from_xy_ds(windxy, wind):
 def test_rlon_rlon_from_ds(windrot, wind):
     ds = windrot.ds()
     wind2 = Wind.from_ds(ds)
+
     wind2.ds().x.attrs.get('standard_name') == 'grid_longitude'
     wind2.ds().x.attrs.get('units') == 'degrees'
 
