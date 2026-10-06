@@ -130,15 +130,18 @@ class Skeleton:
                 chunks = self._chunks
 
         self.dask = DaskManager(skeleton=self, chunks=chunks)
-        lon, lat = self.edges('lon',strict=True)
-        x, y = self.edges('x',strict=True)
-        self.proj = ProjManager(crs=crs, utm=utm, lon=lon, lat=lat, x=x, y=y,metadata_manager=self.meta, coordinate_manager=self.core)
         lon, lat = self.lonlat(strict=True)
         x, y = self.xy(strict=True)
-        self.proj._lat_values = lat
-        self.proj._lon_values = lon
-        self.proj._x_values = x
-        self.proj._y_values = y
+        #lon, lat = self.edges('lon',strict=True), self.edges('lat',strict=True)
+        #x, y = self.edges('x',strict=True), self.edges('y',strict=True)
+        self.proj = ProjManager(crs=crs, utm=utm, lon=lon, lat=lat, x=x, y=y,metadata_manager=self.meta, coordinate_manager=self.core)
+
+
+        
+        # self.proj._lat_values = lat
+        # self.proj._lon_values = lon
+        # self.proj._x_values = x
+        # self.proj._y_values = y
 
         self.core.proj = self.proj
         if utm is not None:
@@ -1786,7 +1789,6 @@ class Skeleton:
         self,
         name: str,
         data: np.ndarray,
-        
         verbose: bool,
     ) -> None:
         """Sets a magnitude variable.
@@ -1798,13 +1800,16 @@ class Skeleton:
         x_component, y_component = obj.x, obj.y
         if obj.direction is None:
             raise SkeletonError(f"Cannot set a magnitude '{name}' that has no associated direction! Set componensts '{obj.x}' and '{obj.y}' separatesly, or modify class to have an associated direction.")
-        
         dir_data = self.get(obj.direction.name, dir_type="math", strict=False, squeeze=False)
 
         s = dask_computations.sin(dir_data)
         c = dask_computations.cos(dir_data)
         ux = data * c
         uy = data * s
+
+        projection_to_do = _determine_projection_to_do(x_component, self.core, obj.direction.meta.projection_type()) # List of rotations/unrotation to perform
+        ux, uy = self._apply_projection_to_do(x_component, ux, uy, projection_to_do, verbose, proj_type='set', twin=y_component)
+        
         self._set_data(
             name=x_component,
             data=ux,
@@ -1841,9 +1846,10 @@ class Skeleton:
         c = dask_computations.cos(data)
         ux = mag_data * c
         uy = mag_data * s
-
-        self.set(name=x_component, data=ux, wrt=wrt)
-        self.set(name=y_component, data=uy, wrt=wrt)
+        projection_to_do = _determine_projection_to_do(x_component, self.core, obj.meta.projection_type()) # List of rotations/unrotation to perform
+        ux, uy = self._apply_projection_to_do(x_component, ux, uy, projection_to_do, verbose, proj_type='set', twin=y_component)
+        self.set(name=x_component, data=ux)
+        self.set(name=y_component, data=uy)
 
 
     def _set_component(self, name:str, data: np.ndarray, wrt: Union[str, CRSValue, None], verbose: bool) -> None:
@@ -2320,7 +2326,7 @@ class Skeleton:
             metaparam = self.core.get(name).meta
             if metaparam is not None:
                 projection_to_do = _determine_projection_to_do(name, self.core, wrt)
-                if projection_to_do:
+                if projection_to_do and metaparam.i_am() in ['x', 'y', 'east', 'north']:
                     projection_to_do = projection_to_do[0]
                     #The ordering is for 'setting', so first element is what we end up with when 'getting'
                     if projection_to_do[0] == 'lonlat' and metaparam.projection_type() == 'xy':

@@ -667,6 +667,12 @@ class GriddedSkeleton(Skeleton):
 
         x, y = self._native_xy(**kwargs)
 
+        if self.core.is_projected() and crs is None:
+            return x, y
+
+        if not self.core.is_projected() and native and crs is None:
+            return x, y
+
         if self.core.is_projected():
             points = PointSkeleton(x=x, y=y)
             self_crs = self.proj.crs()
@@ -706,14 +712,13 @@ class GriddedSkeleton(Skeleton):
 
         if self.core.is_projected() and strict:
             return None, None
-
-
+        
         x, y = self._native_xy(**kwargs)
 
         if not self.core.is_projected():
             return x, y
         
-        if self.core.is_projected() and native:
+        if self.core.is_projected() and native and crs is None:
             return x, y
             
 

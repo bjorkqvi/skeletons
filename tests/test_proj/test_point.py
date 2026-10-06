@@ -22,7 +22,7 @@ def test_xy_utm():
     
     
     points = PointSkeleton(x=lon, y=lat)
-    assert points.proj.crs() is None
+    assert points.proj.is_engineering()
 
 def test_xy_utm_from_proj4():
     
@@ -92,7 +92,7 @@ def test_utm_lonlat():
     np.testing.assert_array_almost_equal(lon, lo)
     np.testing.assert_array_almost_equal(lat, la)
 
-    with pytest.raises(Warning):
+    with pytest.warns(Warning):
         lo, la = points.lonlat(crs=(26,'U'))
     np.testing.assert_array_almost_equal(lon, lo)
     np.testing.assert_array_almost_equal(lat, la)
