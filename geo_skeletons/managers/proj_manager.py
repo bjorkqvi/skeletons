@@ -288,7 +288,7 @@ class ProjManager:
         else:
             raise ValueError(f"{crs} is not a valid coordinate reference system!")
         self._crs = crs
-        self._meta.set(crs_to_netcdf_attrs(crs),'crs')
+        self._meta.set(self.crs_attrs(crs),'crs')
         if utm is not None and self._utm != utm:
             self.set_utm(utm, verbose=verbose)
         
@@ -302,6 +302,15 @@ class ProjManager:
         
             self._meta.set(self._coordinate_manager.get('x').meta.meta_dict(),'x')
             self._meta.set(self._coordinate_manager.get('y').meta.meta_dict(),'y')
+
+    def crs_attrs(self, crs: Optional[CRSValue]=None) -> dict:
+        """Returns the CRS attributes as a dictionary suitable for NetCDF."""
+        if crs is None:
+            crs = self.crs()
+        else:
+            crs = self.to_crs(crs)
+        return crs_to_netcdf_attrs(crs)
+
 
     def to_crs(self, crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
         """Converts the given CRS into a pyproj CRS object or UTM tuple.
