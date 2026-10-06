@@ -2326,22 +2326,27 @@ class Skeleton:
             metaparam = self.core.get(name).meta
             if metaparam is not None:
                 projection_to_do = _determine_projection_to_do(name, self.core, wrt)
-                if projection_to_do and metaparam.i_am() in ['x', 'y', 'east', 'north']:
+                if projection_to_do and (metaparam.i_am() in ['x', 'y', 'east', 'north'] or metaparam.dir_type() is not None):
                     projection_to_do = projection_to_do[0]
                     #The ordering is for 'setting', so first element is what we end up with when 'getting'
                     if projection_to_do[0] == 'lonlat' and metaparam.projection_type() == 'xy':
                         if metaparam.i_am() == 'x':
-                            new_meta = metaparam.my_family().get('east')
+                            new_meta = metaparam.my_family().get('east').meta_dict()
                         elif metaparam.i_am() == 'y':
-                            new_meta = metaparam.my_family().get('north')
-                        data =data.assign_attrs(new_meta.meta_dict())
+                            new_meta = metaparam.my_family().get('north').meta_dict()
+                        elif metaparam.dir_type() is not None:
+                            new_meta = metaparam.meta_dict()
+                        data =data.assign_attrs(new_meta)
                         data.attrs['grid_mapping'] = 'crs'
                     elif projection_to_do[0] != 'lonlat' and metaparam.projection_type() == 'lonlat':
                         if metaparam.i_am() == 'east':
-                            new_meta = metaparam.my_family().get('x')
+                            new_meta = metaparam.my_family().get('x').meta_dict()
                         elif metaparam.i_am() == 'north':
-                            new_meta = metaparam.my_family().get('y')
-                        data = data.assign_attrs(new_meta.meta_dict())
+                            new_meta = metaparam.my_family().get('y').meta_dict()
+                        elif metaparam.dir_type() is not None:
+                            new_meta = metaparam.meta_dict()
+                            new_meta['comment'] = 'Values have been rotated and are no longer with respect to lon-lat'
+                        data = data.assign_attrs(new_meta)
                         data.attrs['grid_mapping'] = 'crs'
                 if not data.attrs:
                     data = data.assign_attrs(metaparam.meta_dict()) # Might have been lost in calculations
