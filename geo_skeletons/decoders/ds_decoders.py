@@ -44,7 +44,7 @@ def find_proj(ds: xr.Dataset, verbose: bool):
     #4 Go through data variables and see if we can find projection information there
     for var in ds.data_vars:
         da = ds.get(var)
-        if 'grid_mapping_name' in da.attrs:
+        if 'grid_mapping_name' in da.attrs or 'crs_wkt' in da.attrs:
             attrs = da.attrs
             if attrs.get('grid_mapping_name') == 'transverse_mercator': # UTM
                 zone, letter = attrs.get('utm_zone_number'), attrs.get('utm_latitude_band')

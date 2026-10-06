@@ -33,7 +33,7 @@ def windrot(wind):
     data = Wind(x=x, y=y, crs=proj4)
     data.set_u(wind.u(wrt=proj4))
     data.set_v(wind.v(wrt=proj4))
-
+    
     return data
 
 
@@ -69,6 +69,8 @@ def test_rlon_rlon_from_ds(windrot, wind):
     wind2.ds().x.attrs.get('standard_name') == 'grid_longitude'
     wind2.ds().x.attrs.get('units') == 'degrees'
 
+    assert windrot.proj.optimal_utm() == wind.proj.optimal_utm()
+    assert windrot.proj.optimal_utm() == wind2.proj.optimal_utm()
 def test_point_cartesian():
     @add_coord(name="test")
     class AddedCoordinate(PointSkeleton):
