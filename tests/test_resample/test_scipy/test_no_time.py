@@ -254,7 +254,7 @@ def test_nan_treatment_point_grid():
     data = Wind(lon=(10,11,12,20), lat=(50,50,51,60))
     data_high = Wind(lon=(10,11,12,20), lat=(50,50,51,60))
     data_nan = Wind(lon=(10,11,12,20), lat=(50,50,51,60))
-    breakpoint()
+
     data.set_dd(0)
     data.set_ff(10)
     

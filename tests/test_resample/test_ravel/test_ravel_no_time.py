@@ -1,15 +1,16 @@
 from geo_skeletons import PointSkeleton, GriddedSkeleton
 import pytest
 import numpy as np
+from geo_skeletons.errors import SkeletonError
 def test_cant_go_to_gridded():
     grid = GriddedSkeleton(x=10, y=20)
     points = PointSkeleton(x=10, y=20)
     grid2 = GriddedSkeleton(lon=5, lat=6)
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(SkeletonError):
         grid.resample.grid(grid2, engine='ravel')
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(SkeletonError):
         points.resample.grid(grid2, engine='ravel')
 
 def test_ravel_lonlat():
