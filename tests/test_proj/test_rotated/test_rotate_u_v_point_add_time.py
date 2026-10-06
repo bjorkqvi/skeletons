@@ -6,8 +6,8 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_u():
     wind = Wind.add_time()(lat=10, lon=np.linspace(-180,180, 181), crs=proj4, time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_ff(10)
     wind.set_dd(180)
-    np.testing.assert_array_almost_equal(wind.isel(time=0).u(rotated=True), wind.isel(time=6).u(rotated=True))
-    rot_u = wind.isel(time=0).u(rotated=True) 
+    np.testing.assert_array_almost_equal(wind.isel(time=0).u(wrt=proj4), wind.isel(time=6).u(wrt=proj4))
+    rot_u = wind.isel(time=0).u(wrt=proj4) 
     assert rot_u[0] == rot_u[-1]
 
     ind = np.where(wind.lon()==180)[0][0]
@@ -24,7 +24,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_u():
     ind = np.where(wind.lon()==-90)[0][0]
     np.testing.assert_almost_equal(rot_u[ind],10)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
     np.testing.assert_almost_equal(rot_u[ind],10)
 
@@ -42,8 +42,8 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_v():
     wind = Wind.add_time()(lat=10, lon=np.linspace(-180,180, 181), crs=proj4, time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_ff(10)
     wind.set_dd(180)
-    np.testing.assert_array_almost_equal(wind.isel(time=0).u(rotated=True), wind.isel(time=6).u(rotated=True))
-    rot_v = wind.isel(time=0).v(rotated=True) 
+    np.testing.assert_array_almost_equal(wind.isel(time=0).u(wrt=proj4), wind.isel(time=6).u(wrt=proj4))
+    rot_v = wind.isel(time=0).v(wrt=proj4) 
     assert rot_v[0] == rot_v[-1]
 
     ind = np.where(wind.lon()==180)[0][0]
@@ -60,7 +60,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_v():
     ind = np.where(wind.lon()==-90)[0][0]
     np.testing.assert_almost_equal(rot_v[ind],0)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
     np.testing.assert_almost_equal(rot_v[ind],0)
 
@@ -78,8 +78,8 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20_u():
     wind = Wind.add_time()(lat=10, lon=np.linspace(-180,180, 181), crs=proj4, time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_ff(10)
     wind.set_dd(180)
-    np.testing.assert_array_almost_equal(wind.isel(time=0).u(rotated=True), wind.isel(time=6).u(rotated=True))
-    rot_u = wind.isel(time=0).u(rotated=True) 
+    np.testing.assert_array_almost_equal(wind.isel(time=0).u(wrt=proj4), wind.isel(time=6).u(wrt=proj4))
+    rot_u = wind.isel(time=0).u(wrt=proj4) 
     assert rot_u[0] == rot_u[-1]
 
     ind = np.where(wind.lon()==180-20)[0][0]
@@ -96,7 +96,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20_u():
     ind = np.where(wind.lon()==-90-20)[0][0]
     np.testing.assert_almost_equal(rot_u[ind],10)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
     np.testing.assert_almost_equal(rot_u[ind],10)
 
@@ -115,8 +115,8 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20_v():
     wind = Wind.add_time()(lat=10, lon=np.linspace(-180,180, 181), crs=proj4, time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_ff(10)
     wind.set_dd(180)
-    np.testing.assert_array_almost_equal(wind.isel(time=0).u(rotated=True), wind.isel(time=6).u(rotated=True))
-    rot_v = wind.isel(time=0).v(rotated=True) 
+    np.testing.assert_array_almost_equal(wind.isel(time=0).u(wrt=proj4), wind.isel(time=6).u(wrt=proj4))
+    rot_v = wind.isel(time=0).v(wrt=proj4) 
     assert rot_v[0] == rot_v[-1]
 
     ind = np.where(wind.lon()==180-20)[0][0]
@@ -133,7 +133,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20_v():
     ind = np.where(wind.lon()==-90-20)[0][0]
     np.testing.assert_almost_equal(rot_v[ind],0)
 
-    x, y = wind.xy()
+    x, y = wind.xy(crs=proj4)
     ind = np.argmin(x)
     np.testing.assert_almost_equal(rot_v[ind],0)
 
@@ -151,12 +151,12 @@ def test_reproj_southerly_winds_rotated_grid_utm_u():
     wind = Wind.add_time()(lon=(20,20.2), lat=(58,58.1), time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_ff(10)
     wind.set_dd(180)
-    assert wind.proj.crs() == (34, 'V')
+    assert wind.proj.utm() == (34, 'V')
 
-    np.testing.assert_array_almost_equal(wind.isel(time=0).u(rotated=True), wind.isel(time=6).u(rotated=True))
-    np.testing.assert_array_almost_equal(wind.isel(time=0).v(rotated=True), wind.isel(time=6).v(rotated=True))
-    rot_u = wind.isel(time=0).u(rotated=True)
-    rot_v = wind.isel(time=0).v(rotated=True) 
+    np.testing.assert_array_almost_equal(wind.isel(time=0).u(wrt=(34,'V')), wind.isel(time=6).u(wrt=(34,'V')))
+    np.testing.assert_array_almost_equal(wind.isel(time=0).v(wrt=(34,'V')), wind.isel(time=6).v(wrt=(34,'V')))
+    rot_u = wind.isel(time=0).u(wrt=(34,'V'))
+    rot_v = wind.isel(time=0).v(wrt=(34,'V')) 
     # Rotation should be minimal in a small area
     np.testing.assert_array_almost_equal(wind.u(time='2020-01-01 00:00'), rot_u, decimal=1)
     np.testing.assert_array_almost_equal(wind.v(time='2020-01-01 00:00'), rot_v, decimal=3)
