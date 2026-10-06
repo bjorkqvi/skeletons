@@ -1,7 +1,9 @@
+import pytest
+
 from geo_skeletons import PointSkeleton, GriddedSkeleton
 import numpy as np
 import utm
-
+import pytest
 
 def test_basic_spherical_to_utm_point():
     points = PointSkeleton(lon=range(1, 6), lat=range(10, 60, 10))
@@ -218,11 +220,14 @@ def test_point_spherical():
         x2,
         decimal=7,
     )
-    np.testing.assert_array_almost_equal(points.lon(), points.lon(crs=(30, "W")),decimal=7)
-    np.testing.assert_array_almost_equal(points.lat(), points.lat(crs=(30, "W")), decimal=7)
+    with pytest.warns(Warning):
+        np.testing.assert_array_almost_equal(points.lon(), points.lon(crs=(30, "W")),decimal=7)
+    with pytest.warns(Warning):
+        np.testing.assert_array_almost_equal(points.lat(), points.lat(crs=(30, "W")), decimal=7)
 
     lon, lat = points.lonlat()
-    lon2, lat2 = points.lonlat(crs=(30, "W"))
+    with pytest.warns(Warning):
+        lon2, lat2 = points.lonlat(crs=(30, "W"))
     np.testing.assert_array_almost_equal(lon, lon2,decimal=7)
     np.testing.assert_array_almost_equal(lat, lat2, decimal=7)
 

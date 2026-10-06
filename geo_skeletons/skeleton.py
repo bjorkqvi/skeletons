@@ -139,10 +139,11 @@ class Skeleton:
         self.proj._lon_values = lon
         self.proj._x_values = x
         self.proj._y_values = y
+
         self.core.proj = self.proj
         if utm is not None:
             self.proj.set_utm(utm)
-        elif self.core.is_projected():
+        else:
             self.proj.reset_utm()
         
         self.resample = ResampleManager(self)
