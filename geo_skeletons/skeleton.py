@@ -143,7 +143,7 @@ class Skeleton:
         self.core.proj = self.proj
         if utm is not None:
             self.proj.set_utm(utm)
-        else:
+        elif not self.core.is_projected():
             self.proj.reset_utm()
         
         self.resample = ResampleManager(self)
