@@ -34,7 +34,7 @@ def test_xy_utm():
     
     
     points = GriddedSkeleton(x=lon, y=lat)
-    assert points.proj.crs() is None
+    assert points.proj.is_engineering()
 
 def test_utm_request():
     lon = np.array([-31.023573, -30.959545, -30.895535, -30.831545, -30.767574, -30.703623, -30.639692, -30.575779, -30.511889, -30.448015])
