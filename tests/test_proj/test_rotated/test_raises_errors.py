@@ -28,8 +28,7 @@ def test_no_projection_present():
     data = Wind(x=5, y=6)
     data.set_u(10)
     data.set_v(30)
-    with pytest.raises(ProjectionError):
-        data.u(wrt=(33,'W'))
+    data.u(wrt=(33,'W')) # Should ignore this
 
 def test_magnitude():
     data = Wind(lon=5, lat=6)

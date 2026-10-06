@@ -29,32 +29,8 @@ def test_dummy_ok():
     assert wind.ff() == 10
 
 
-
-
-# def test_no_gp_components():
-#     @add_datavar('v')
-#     @add_datavar('u')
-#     class NoGP(GriddedSkeleton):
-#         pass
-
-#     # adding a magnitude should automatically give u,v the wgs84 projection
-
-#     wind = NoGP(lon=0, lat=0)
-#     assert not wind.core.values_are_projected('u')
-
-#     @add_magnitude('ff', x='u', y='v', direction='dd', dir_type='from')
-#     @add_datavar('v')
-#     @add_datavar('u')
-#     class NoGP(GriddedSkeleton):
-#         pass
-
-#     # adding a magnitude should automatically give u,v the wgs84 projection
-#     wind = NoGP(lon=0, lat=0)
-#     assert not wind.core.values_are_projected('u')
-#     assert not wind.core.values_are_projected('v')
-
 def test_mixing_components_raises_error():
-    wind = WindGrid(x=0, y=0)
+    wind = WindGrid(x=0, y=0, crs=(33,'W'))
     wind.set_u(10, wrt='lonlat')
 
     with pytest.raises(ProjectionError):

@@ -1806,8 +1806,11 @@ class Skeleton:
         c = dask_computations.cos(dir_data)
         ux = data * c
         uy = data * s
-
-        projection_to_do = _determine_projection_to_do(x_component, self.core, obj.direction.meta.projection_type(), self.proj.is_engineering()) # List of rotations/unrotation to perform
+        if obj.direction.meta is not None:
+            wrt = obj.direction.meta.projection_type()
+        else:
+            wrt = None
+        projection_to_do = _determine_projection_to_do(x_component, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         ux, uy = self._apply_projection_to_do(x_component, ux, uy, projection_to_do, verbose, proj_type='set', twin=y_component)
         
         self._set_data(
@@ -1846,7 +1849,8 @@ class Skeleton:
         c = dask_computations.cos(data)
         ux = mag_data * c
         uy = mag_data * s
-        wrt = wrt or obj.meta.projection_type()
+        if obj.meta is not None:
+            wrt = wrt or obj.meta.projection_type()
         projection_to_do = _determine_projection_to_do(x_component, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         ux, uy = self._apply_projection_to_do(x_component, ux, uy, projection_to_do, verbose, proj_type='set', twin=y_component)
         self.set(name=x_component, data=ux)
@@ -2393,8 +2397,8 @@ class Skeleton:
             empty or self._ds_manager.get(self.core.get(name).x, strict=True) is None
         ):
             x_data = self.dask.undask_me(x_data)
-
-        wrt = wrt or self.core.get(name).meta.projection_type()
+        if self.core.get(name).meta is not None:
+            wrt = wrt or self.core.get(name).meta.projection_type()
         projection_to_do = _determine_projection_to_do(x_name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         x_data, y_data = self._apply_projection_to_do(x_name, x_data, y_data, projection_to_do, verbose, proj_type='get', twin=y_name)
 
@@ -3401,8 +3405,13 @@ def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[s
     if wrt is None:
         return []
 
-    if is_engineering and wrt != 'xy':
-        raise ProjectionError(f'Cannot project data to {wrt} from an engineering coordinate system!')
+    #if is_engineering and wrt != 'xy':
+    #    raise ProjectionError(f'Cannot project data to {wrt} from an engineering coordinate system!')
+
+    # We won't raise errors her, but just ignore the request for projection
+    # This is because the reqest is necessarily not from the user, but e.g. from getting wind direction
+    if is_engineering:
+        return []
 
     if hasattr(wrt, 'to_epsg'):
         if wrt.to_epsg() == 4326:
