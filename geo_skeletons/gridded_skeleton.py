@@ -46,8 +46,9 @@ class GriddedSkeleton(Skeleton):
     def from_skeleton(
         cls,
         skeleton: Skeleton,
+        crs: Optional[CRSValue] = None,
     ) -> GriddedSkeleton:
-        """Creates a new PointSkeleton containing only points from another GriddedSkeleton.
+        """Creates a new GriddedSkeleton containing only points from another GriddedSkeleton.
 
         Points can be selected by a boolean mask. No data is transferred"""
         if not skeleton.is_gridded():
@@ -60,7 +61,9 @@ class GriddedSkeleton(Skeleton):
         x, y = skeleton.x(strict=True), skeleton.y(strict=True)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        new_skeleton.proj.set(skeleton.proj.crs())
+        crs = crs or skeleton.proj.crs()
+        if crs is not None and new_skeleton.core.is_projected():
+            new_skeleton.proj.set(crs)
 
         return new_skeleton
 
@@ -258,7 +261,7 @@ class GriddedSkeleton(Skeleton):
 
         return ax
     
-    def proj_grid(self, area: str = 'outer', **kwargs) -> "GriddedSkeleton":
+    def proj_grid(self, crs, area: str = 'outer',**kwargs) -> "GriddedSkeleton":
         """Creates a new instance of the class that is based on the projected CRS is the original instance is spherical, and vice versa.
         
         The new grid minimally covers the old grid"""
@@ -291,13 +294,13 @@ class GriddedSkeleton(Skeleton):
         del coord_dict[not_y_str]
         
         if area == 'inner':
-            mean_x = sum(self.edges(x_str))/2
-            mean_y = sum(self.edges(y_str))/2
+            mean_x = sum(self.edges(x_str, crs=crs))/2
+            mean_y = sum(self.edges(y_str, crs=crs))/2
             coord_dict[x_str] = (mean_x-dx, mean_x+dx)
             coord_dict[y_str] = (mean_y-dy, mean_y+dy)
 
 
-            new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+            new_grid = create_new_grid(coord_dict, crs=crs,**kwargs)
         
             x_too_small, y_too_small = True, True
             xstep = 10
@@ -331,18 +334,18 @@ class GriddedSkeleton(Skeleton):
                     coord_dict[y_str] = (coord_dict[y_str][0]-ystep*new_grid.dy(native=True), coord_dict[y_str][1]+ystep*new_grid.dy(native=True))
 
 
-                new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+                new_grid = create_new_grid(coord_dict, crs=crs,**kwargs)
 
             if 'y' in expansions[-2:]:
                 coord_dict[y_str] = (coord_dict[y_str][0]+ystep*new_grid.dy(native=True), coord_dict[y_str][1]-ystep*new_grid.dy(native=True))
             if 'x' in expansions[-2:]:
                 coord_dict[x_str] = (coord_dict[x_str][0]+xstep*new_grid.dx(native=True), coord_dict[x_str][1]-xstep*new_grid.dx(native=True))
-            new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+            new_grid = create_new_grid(coord_dict, crs=crs,**kwargs)
 
         elif area == 'outer':
-            coord_dict[x_str] = self.edges(x_str)
-            coord_dict[y_str] = self.edges(y_str)
-            new_grid = create_new_grid(coord_dict, crs=self.proj.crs(),**kwargs)
+            coord_dict[x_str] = self.edges(x_str, crs=crs)
+            coord_dict[y_str] = self.edges(y_str, crs=crs)
+            new_grid = create_new_grid(coord_dict, crs=crs,**kwargs)
 
         else:
             raise ValueError(f"'area' needs to be 'inner' or 'outer', not {area}!")
