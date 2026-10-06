@@ -545,7 +545,7 @@ class PointSkeleton(Skeleton):
         The resolution is based on a random sample of 10,000 points
         
         set full = True to use all points."""
-        x, y = self.xy(crs=self.proj.my_utm())
+        x, y = self.xy(crs=self.proj.utm())
         if not full and len(x) > 10_000:
             x = np.random.choice(x,10_000, replace=False)
             y = np.random.choice(y,10_000, replace=False)
