@@ -320,8 +320,8 @@ class Skeleton:
     def add_magnitude(
         cls,
         name: Union[str, MetaParameter],
-        x: str,
-        y: str,
+        x: Optional[str] = None,
+        y: Optional[str] = None,
         direction: Optional[Union[str, MetaParameter]] = None,
         dir_type: Optional[str] = None,
         cls_name: Optional[str] = None,
@@ -2315,7 +2315,32 @@ class Skeleton:
             data = data.data
             if name == "time":
                 data = pd.to_datetime(data)
-
+        else:
+            # If we have e.g. x_wind and have unrotated it, we need to update the metadata
+            metaparam = self.core.get(name).meta
+            if metaparam is not None:
+                projection_to_do = _determine_projection_to_do(name, self.core, wrt)
+                if projection_to_do:
+                    projection_to_do = projection_to_do[0]
+                    #The ordering is for 'setting', so first element is what we end up with when 'getting'
+                    if projection_to_do[0] == 'lonlat' and metaparam.projection_type() == 'xy':
+                        if metaparam.i_am() == 'x':
+                            new_meta = metaparam.my_family().get('east')
+                        elif metaparam.i_am() == 'y':
+                            new_meta = metaparam.my_family().get('north')
+                        data =data.assign_attrs(new_meta.meta_dict())
+                        data.attrs['grid_mapping'] = 'crs'
+                    elif projection_to_do[0] != 'lonlat' and metaparam.projection_type() == 'lonlat':
+                        if metaparam.i_am() == 'east':
+                            new_meta = metaparam.my_family().get('x')
+                        elif metaparam.i_am() == 'north':
+                            new_meta = metaparam.my_family().get('y')
+                        data = data.assign_attrs(new_meta.meta_dict())
+                        data.attrs['grid_mapping'] = 'crs'
+                if not data.attrs:
+                    data = data.assign_attrs(metaparam.meta_dict()) # Might have been lost in calculations
+                    data.attrs['grid_mapping'] = 'crs'
+    
         return data
 
     def _get_direction(
@@ -2567,7 +2592,7 @@ class Skeleton:
         if "x" in present_spatial_coords:
             return ["x"]
 
-    def ds(self, compile: bool = False, projected: bool = False) -> Union[xr.Dataset, None]:
+    def ds(self, compile: bool = False, wrt: Optional[str] = None) -> Union[xr.Dataset, None]:
         """Returns the underlying xarray Dataset for the Skeleton.
 
         This method provides access to the underlying xarray Dataset associated with 
@@ -2578,8 +2603,9 @@ class Skeleton:
             compile (bool, optional): If `True`, adds computed magnitudes and directional 
                 variables to the Dataset. Note that this operation performs a deep copy 
                 of the data and may be computationally expensive. Defaults to False.
-            projected (bool, optional): If `True`, rotates directional variables to align 
-                with the set CRS (e.g., UTM or rotated pole). Defaults to False.
+            wrt (str, optional): If specified, rotates directional variables to align 
+                with the set CRS (e.g., UTM or rotated pole) with respect to the given 
+                coordinate system. Defaults to str.
 
         Returns:
             Union[xr.Dataset, None]: The underlying xarray Dataset. Returns `None` if 
@@ -2588,8 +2614,8 @@ class Skeleton:
         Notes:
             - If `compile=True`, the method computes and adds magnitudes and directions 
             to the Dataset.
-            - If `projected=True`, the method applies rotation to directional variables 
-            (e.g., wind directions) based on the set CRS.
+            - If `wrt` is specified, the method applies rotation to directional variables 
+            (e.g., wind directions) based on the set CRS with respect to the given coordinate system.
 
         Examples:
             Retrieving the underlying Dataset:
@@ -2599,34 +2625,28 @@ class Skeleton:
             >>> compiled_dataset = skeleton.ds(compile=True)
 
             Retrieving the Dataset with projected directions:
-            >>> projected_dataset = skeleton.ds(projected=True)
+            >>> projected_dataset = skeleton.ds(wrt='xy')
 
             Combining both options:
-            >>> compiled_and_projected_dataset = skeleton.ds(compile=True, projected=True)
+            >>> compiled_and_projected_dataset = skeleton.ds(compile=True, wrt='xy')
         """
         if not hasattr(self, "_ds_manager"):
             return None
         ds = self._ds_manager.ds()
-        if compile or projected:
+        if compile or wrt is not None:
             ds = deepcopy(ds)
-            crs = self.proj.crs()
-            if isinstance(crs, tuple):
-                crs = {'utm_zone': str(crs[0]), 'utm_letter': crs[1]}
-            else:
-                crs = crs.to_cf()
-            ds['crs'].attrs = crs
-            if projected:
+            if wrt is not None:
                 for var in self.core.data_vars():
                     param = self.core.meta_parameter(var)
                     if param is None:
                         continue
-                    if param.i_am() in ['x', 'y'] or param.dir_type() is not None:
-                        ds[var] = self.get(var, data_array=True, projected=projected, squeeze=False)
+                    if param.i_am() in ['x', 'y', 'north','east'] or param.dir_type() is not None:
+                        ds[var] = self.get(var, data_array=True, wrt=wrt, squeeze=False)
                 
             for mag in self.core.magnitudes():
                 ds[mag] = self.get(mag, data_array=True, squeeze=False)
             for dirs in self.core.directions():
-                ds[dirs] = self.get(dirs, data_array=True, projected=projected, squeeze=False)
+                ds[dirs] = self.get(dirs, data_array=True, wrt=wrt, squeeze=False)
 
         return ds
 
@@ -3367,6 +3387,10 @@ def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[s
     if wrt is None:
         return []
 
+    if hasattr(wrt, 'to_epsg'):
+        if wrt.to_epsg() == 4326:
+            wrt = 'lonlat'
+
     # What is the rotational convention defined by the metadata?
     if core.values_are_projected(name) and core.is_projected():
         target_crs = 'xy'
@@ -3374,17 +3398,19 @@ def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[s
         target_crs = 'lonlat'
     
     # If the specified CRS is the same as the cf-convention in skeleton -> do nothing
-
     if wrt == target_crs:
         return []
 
     # Otherwise rotate or unrotate    
     if wrt == 'lonlat': 
+        if not core.is_projected(): # 'lonlat', and 'xy' are the same in this case
+            return []
         return [('lonlat','xy')]
     if wrt == 'xy':
+        if not core.is_projected(): # 'lonlat', and 'xy' are the same in this case
+            return []
         return [('xy','lonlat')]
-    
-    
+
     if target_crs == 'lonlat':
         return [(wrt,'lonlat')]
     elif target_crs == 'xy':
