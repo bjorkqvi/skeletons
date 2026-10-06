@@ -12,14 +12,15 @@ from typing import Optional, Union
 from .dask_computations import undask_me
 from . import logger
 from .errors import SkeletonError, MissingDatasetError, ProjectionError
-lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial")
-lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial")
+rlon_var = Coordinate(name="x", meta=gp.grid.RLon, coord_group="spatial")
+rlat_var = Coordinate(name="y", meta=gp.grid.RLat, coord_group="spatial")
+lon_var = Coordinate(name="lon", meta=gp.grid.Lon, coord_group="spatial", rotated_version=rlon_var)
+lat_var = Coordinate(name="lat", meta=gp.grid.Lat, coord_group="spatial", rotated_version=rlat_var)
 x_var = Coordinate(name="x", meta=gp.grid.X, coord_group="spatial")
 y_var = Coordinate(name="y", meta=gp.grid.Y, coord_group="spatial")
 
 INITIAL_CARTESIAN_COORDS = [y_var, x_var]
-INITIAL_SPERICAL_COORDS = [lat_var, lon_var]
-
+INITIAL_SPHERICAL_COORDS = [lat_var, lon_var]
 INITIAL_VARS = []
 
 CRSValue = Union[int, str, tuple[int, str], dict]
@@ -71,7 +72,7 @@ class GriddedSkeleton(Skeleton):
         can be added by decorators (e.g. @add_coord, @add_time).
         """
         if spherical:
-            return INITIAL_SPERICAL_COORDS
+            return INITIAL_SPHERICAL_COORDS
         else:
             return INITIAL_CARTESIAN_COORDS
 

@@ -16,13 +16,15 @@ from .errors import MissingDatasetError
 inds_coord = Coordinate(name="inds", meta=gp.grid.Inds, coord_group="spatial")
 INITIAL_COORDS = [inds_coord]
 
+rlon_var = DataVar(name="x", meta=gp.grid.RLon, coord_group="spatial", default_value=0)
+rlat_var = DataVar(name="y", meta=gp.grid.RLat, coord_group="spatial", default_value=0)
 lon_var = DataVar(name="lon", meta=gp.grid.Lon, coord_group="spatial", default_value=0)
 lat_var = DataVar(name="lat", meta=gp.grid.Lat, coord_group="spatial", default_value=0)
-x_var = DataVar(name="x", meta=gp.grid.X, coord_group="spatial", default_value=0)
-y_var = DataVar(name="y", meta=gp.grid.Y, coord_group="spatial", default_value=0)
+x_var = DataVar(name="x", meta=gp.grid.X, coord_group="spatial", rotated_version=rlon_var, default_value=0)
+y_var = DataVar(name="y", meta=gp.grid.Y, coord_group="spatial", rotated_version=rlat_var, default_value=0)
+
 INITIAL_CARTESIAN_VARS = [x_var, y_var]  #: "inds", "y": "inds"}
 INITIAL_SPHERICAL_VARS = [lon_var, lat_var]  # {"lat": "inds", "lon": "inds"}
-
 
 CRSValue = Union[int, str, tuple[int, str], dict]
 class PointSkeleton(Skeleton):

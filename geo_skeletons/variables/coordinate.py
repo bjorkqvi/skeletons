@@ -7,3 +7,4 @@ class Coordinate:
     name: str
     meta: MetaParameter
     coord_group: str
+    rotated_version: "Coordinate" = None
