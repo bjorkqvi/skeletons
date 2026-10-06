@@ -147,7 +147,6 @@ class ProjManager:
         """Returns the optimal UTM (Universal Transverse Mercator) zone based on the grid's longitude and latitude edges."""
         if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             return None
-
         if self._lon_values is None:
             lon, lat = self._lonlat(tuple(self._x_values), tuple(self._y_values), self.crs())
         else:
@@ -204,8 +203,7 @@ class ProjManager:
         """
         if isinstance(self.crs(), tuple):
             return False
-        if self.crs() is None:
-            return False
+        
         return self.crs().is_geographic
 
     def set_utm(self, utm:tuple[int, str], verbose: Optional[bool] = None) -> None:
@@ -218,7 +216,7 @@ class ProjManager:
         
         self._utm = utm
 
-        if self._crs is None or isinstance(self._crs, tuple):
+        if isinstance(self._crs, tuple) or self._crs.is_engineering:
             # Set CRS to new UTM to not have conflicting values
             self.set(utm, verbose=verbose)
 
@@ -385,7 +383,7 @@ class ProjManager:
     def _lon(self, x: np.ndarray, y: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates lon coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
-        if crs is None:
+        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             return None
         if isinstance(crs, tuple):
             lon = self._utm_lon(x=tuple(x), y=tuple(y), utm=crs)
@@ -396,7 +394,7 @@ class ProjManager:
     def _lat(self, x: np.ndarray, y: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
-        if crs is None:
+        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             return None
         if isinstance(crs, tuple):
             lat = self._utm_lat(x=tuple(x), y=tuple(y), utm=crs)
@@ -416,7 +414,7 @@ class ProjManager:
     def _x(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates projected x coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.utm()
-        if crs is None:
+        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             logger.log.info("Can't transform lon-lat without a projection!")
             return None
         if isinstance(crs, tuple):
@@ -428,7 +426,7 @@ class ProjManager:
     def _y(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates projected y coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.utm()
-        if crs is None:
+        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             logger.log.info("Can't transform lon-lat without a projection!")
             return None
         if isinstance(crs, tuple):
