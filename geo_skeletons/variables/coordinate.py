@@ -8,3 +8,4 @@ class Coordinate:
     meta: MetaParameter
     coord_group: str
     rotated_version: "Coordinate" = None
+    unrotated_version: "Coordinate" = None
