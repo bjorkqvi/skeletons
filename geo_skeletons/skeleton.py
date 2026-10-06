@@ -1846,6 +1846,7 @@ class Skeleton:
         c = dask_computations.cos(data)
         ux = mag_data * c
         uy = mag_data * s
+        wrt = wrt or obj.meta.projection_type()
         projection_to_do = _determine_projection_to_do(x_component, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
         ux, uy = self._apply_projection_to_do(x_component, ux, uy, projection_to_do, verbose, proj_type='set', twin=y_component)
         self.set(name=x_component, data=ux)
@@ -1924,6 +1925,8 @@ class Skeleton:
     def _apply_projection_to_do(self, name, x_data, y_data, projection_to_do, verbose, proj_type: str, twin=None):
         """Applies a list of rotations/unrotations to components.
         If twin is not give, then we are just rotating components that was internally calculated for a directional variable."""
+        if not projection_to_do:
+            return x_data, y_data
         lon, lat = self.lonlat()
         for proj_tuple in projection_to_do:
             if proj_type == 'get': # Were determined for setting data, so flip order if getting data
@@ -2391,9 +2394,9 @@ class Skeleton:
         ):
             x_data = self.dask.undask_me(x_data)
 
-        projection_to_do = _determine_projection_to_do(name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
-        if projection_to_do:
-            x_data, y_data = self._apply_projection_to_do(name, x_data, y_data, projection_to_do, verbose, proj_type='get')
+        wrt = wrt or self.core.get(name).meta.projection_type()
+        projection_to_do = _determine_projection_to_do(x_name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
+        x_data, y_data = self._apply_projection_to_do(x_name, x_data, y_data, projection_to_do, verbose, proj_type='get', twin=y_name)
 
         dir_type = dir_type or self.core.get(name).dir_type
         data = dir_conversions.compute_math_direction(x_data, y_data)
