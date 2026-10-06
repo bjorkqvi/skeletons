@@ -111,7 +111,7 @@ class ProjManager:
         if not isinstance(self.crs(), tuple):
             self.reset_utm()
         self._alpha: dict = {}
-        
+        self._original_ds_proj_data = None
 
     def _is_valid_utm(self, utm: tuple[int, str]) -> bool:
         """Checks that the given utm zone is valid"""

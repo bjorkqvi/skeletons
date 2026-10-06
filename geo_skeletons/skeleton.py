@@ -705,7 +705,8 @@ class Skeleton:
         )
         
 
-        proj_obj = find_proj(ds, verbose=verbose)
+        proj_obj, orig_data = find_proj(ds, verbose=verbose)
+        points.proj._original_ds_proj_data = orig_data
         if proj_obj and points.proj.crs() != points.proj.to_crs(proj_obj):
             if logger.is_verbose(verbose):
                 logger.log.info(f'Setting projection as: {proj_obj}')
