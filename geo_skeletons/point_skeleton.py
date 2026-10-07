@@ -553,7 +553,8 @@ class PointSkeleton(Skeleton):
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         
         if not self.core.is_projected() and strict and (not native):
             return None
@@ -575,7 +576,8 @@ class PointSkeleton(Skeleton):
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         
         if not self.core.is_projected() and strict and (not native):
             return None
@@ -596,7 +598,8 @@ class PointSkeleton(Skeleton):
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         
         if (not self.core.is_cartesian()) and strict and (not native):
             return None
@@ -617,7 +620,8 @@ class PointSkeleton(Skeleton):
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         
         if (not self.core.is_projected() or self.proj.units_are_in_degrees()) and strict and (not native):
             return None
@@ -635,7 +639,8 @@ class PointSkeleton(Skeleton):
     
     def dlat(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.proj.is_engineering() and not native:
             return None
         
@@ -660,7 +665,8 @@ class PointSkeleton(Skeleton):
     
     def dlon(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the x vector. Conversion made for spherical grids."""
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         if self.proj.is_engineering() and not native:
             return None
                 
