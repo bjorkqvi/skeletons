@@ -100,11 +100,6 @@ def sort_out_regridded_type(data, new_grid) -> str:
 def create_new_class(data, new_grid, projected: Optional[bool]=None):
     """Creates a new class that will contain the gridded data. 
     If we change type (i.e. from gridded to point), then we will reconstruct the class to contain the correct data variables etc"""
-    # if data.is_gridded() and new_grid.is_gridded():
-    #     return data.__class__
-    # if not data.is_gridded() and not new_grid.is_gridded():
-    #     return data.__class__
-
     
     old_base = find_original_skeleton_in_inheritance_chain(new_grid)
     if new_grid.is_gridded():
