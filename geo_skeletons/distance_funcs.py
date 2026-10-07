@@ -1,20 +1,41 @@
 import geopy.distance
 import numpy as np
-from scipy.spatial.distance import cdist
+#from scipy.spatial.distance import cdist
+from scipy.spatial import cKDTree
+
+# def get_dist_point_old(x, y):
+#     """Calculates the distance to the nearest neaighbour for each point"""
+#     if len(x) == 1 and len(y) == 1:
+#         return np.array([0.0])
+#     points = [(i, j) for i, j in zip(x, y)]
+#     dist = cdist(points, points, metric="euclidean")
+#     dist_point = []
+#     for i in range(dist.shape[0]):
+#         sl = dist[i,:]
+#         sl[sl<0.0000001] = 99999999
+#         dist_point.append(float(np.min(sl)))
+#     return dist_point
 
 
-def get_dist_point(x, y):
-    """Calculates the distance to the nearest neaighbour for each point"""
+
+def get_dist_point(x: np.ndarray, y: np.ndarray):
+    """Calculates the distance to the nearest neighbor for each point."""
     if len(x) == 1 and len(y) == 1:
         return np.array([0.0])
-    points = [(i, j) for i, j in zip(x, y)]
-    dist = cdist(points, points, metric="euclidean")
-    dist_point = []
-    for i in range(dist.shape[0]):
-        sl = dist[i,:]
-        sl[sl<0.0000001] = 99999999
-        dist_point.append(float(np.min(sl)))
-    return dist_point
+    
+    # Combine x and y into a single array of points
+    points = np.column_stack((x, y))
+    
+    # Use KDTree for efficient nearest neighbor queries
+    tree = cKDTree(points)
+    
+    # Query the tree for the second nearest neighbor (k=2)
+    distances, _ = tree.query(points, k=2)
+    
+    # Return the distances to the nearest neighbor (excluding self)
+    return distances[:, 1]
+
+
 
 def min_distance(
     lon: float, lat: float, lon_vec: np.ndarray, lat_vec: np.ndarray, npoints: int = 1

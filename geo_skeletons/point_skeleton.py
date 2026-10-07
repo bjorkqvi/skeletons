@@ -536,24 +536,23 @@ class PointSkeleton(Skeleton):
             return None, None
         return lon, lat
 
-    def resolution(self, full: bool=False) -> np.ndarray:
+    def resolution(self, full: bool=True) -> np.ndarray:
         """Returns an array with the resolution (in metres).
         
         Resolution at a grid point is determined as the distance to nearest neighbour.
         A UTM projection is used to calculate the distances.
         
-        For large grids the resolution is based on a random sample of 10,000 points
-        
-        set full = True to use all points."""
+        full [bool]: If `True` (default), uses all points to calculate the resolution.
+                    If `False`, uses a random sample of 10,000 points."""
         x, y = self.xy(crs=self.proj.utm())
         if not full and len(x) > 10_000:
             x = np.random.choice(x,10_000, replace=False)
             y = np.random.choice(y,10_000, replace=False)
 
-        return distance_funcs.get_dist_point(x, y)
+        return distance_funcs.get_dist_point(x.astype(int), y.astype(int))
     
 
-    def dy(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
+    def dy(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -571,11 +570,11 @@ class PointSkeleton(Skeleton):
         if self.core.is_cartesian() and native:
             return float(np.median(self.resolution(full=full)))
         
-        return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
+        return float(np.median(distance_funcs.get_dist_point(self.x().astype(int), self.y().astype(int))))
 
 
     
-    def dx(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
+    def dx(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -593,10 +592,10 @@ class PointSkeleton(Skeleton):
         if self.core.is_cartesian() and native:
             return float(np.median(self.resolution(full=full)))
         
-        return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
+        return float(np.median(distance_funcs.get_dist_point(self.x().astype(int),self.y().astype(int))))
     
 
-    def dmy(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
+    def dmy(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -617,7 +616,7 @@ class PointSkeleton(Skeleton):
         
         return float(np.median(self.resolution(full=full)))
     
-    def dmx(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
+    def dmx(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
         """Median grid spacing. Conversion made for spherical grids.
         
         Note, methods dx() and dy() are same for cartesian grids"""
@@ -637,7 +636,7 @@ class PointSkeleton(Skeleton):
 
         return float(np.median(self.resolution(full=full)))
     
-    def dlat(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
+    def dlat(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
@@ -660,7 +659,7 @@ class PointSkeleton(Skeleton):
         return float(np.median(dlats))
 
     
-    def dlon(self, native: bool = False, strict: bool = False, full: bool = False) -> float:
+    def dlon(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
 
         
