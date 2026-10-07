@@ -1,7 +1,10 @@
+from functools import lru_cache
+
 import geopy.distance
 import numpy as np
 from scipy.spatial import cKDTree
 
+@lru_cache(maxsize=10)
 def get_dist_point(x: np.ndarray, y: np.ndarray):
     """Calculates the distance to the nearest neighbor for each point.
     Used in case we have very high or low latitudes so that a cartesian UTM projection is not available"""

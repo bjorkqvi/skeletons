@@ -541,8 +541,12 @@ class PointSkeleton(Skeleton):
         
         Resolution at a grid point is determined as the distance to nearest neighbour.
         A UTM projection is used to calculate the distances."""
-        x, y = self.xy(crs=self.proj.utm())
-        return distance_funcs.get_dist_point(x, y)
+        if self.core.is_cartesian():
+            crs = self.proj.crs()
+        else:
+            crs = self.proj.utm()
+        x, y = self.xy(crs=crs)
+        return distance_funcs.get_dist_point(tuple(x), tuple(y))
     
 
     def dy(self, native: bool = False, strict: bool = False) -> float:
@@ -563,7 +567,7 @@ class PointSkeleton(Skeleton):
         if self.core.is_cartesian() and native:
             return float(np.median(self.resolution()))
         
-        return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
+        return float(np.median(distance_funcs.get_dist_point(tuple(self.x()), tuple(self.y()))))
 
 
     
@@ -585,7 +589,7 @@ class PointSkeleton(Skeleton):
         if self.core.is_cartesian() and native:
             return float(np.median(self.resolution()))
         
-        return float(np.median(distance_funcs.get_dist_point(self.x(),self.y())))
+        return float(np.median(distance_funcs.get_dist_point(tuple(self.x()), tuple(self.y()))))
     
 
     def dmy(self, native: bool = False, strict: bool = False) -> float:
