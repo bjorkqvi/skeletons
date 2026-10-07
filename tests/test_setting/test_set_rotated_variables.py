@@ -12,7 +12,7 @@ def test_mag_ok():
     wind = WindGrid(lon=0, lat=0)
     wind.set_ff(10, wrt='lonlat')
     assert wind.ff() == 10
-    wind.set_ff(10, wrt='xy')
+    wind.set_ff(10, wrt='crs')
     assert wind.ff() == 10
     wind.set_ff(10, wrt=(33,'W'))
     assert wind.ff() == 10
@@ -23,7 +23,7 @@ def test_dummy_ok():
     wind = GriddedSkeleton.add_datavar('ff')(lon=0, lat=0)
     wind.set_ff(10, wrt='lonlat')
     assert wind.ff() == 10
-    wind.set_ff(10, wrt='xy')
+    wind.set_ff(10, wrt='crs')
     assert wind.ff() == 10
     wind.set_ff(10, wrt=(33,'W'))
     assert wind.ff() == 10
@@ -34,7 +34,7 @@ def test_mixing_components_raises_error():
     wind.set_u(10, wrt='lonlat')
 
     with pytest.raises(ProjectionError):
-        wind.set_v(10, wrt='xy')
+        wind.set_v(10, wrt='crs')
 
 def test_components_mag():
     wind = WindGrid(lon=0, lat=0)
@@ -66,13 +66,13 @@ def test_set_directional_parameter():
 
     xydata.set_dd(180)
     np.testing.assert_almost_equal(xydata.dd(), 180)
-    np.testing.assert_almost_equal(xydata.dd(wrt='xy'), 165)
+    np.testing.assert_almost_equal(xydata.dd(wrt='crs'), 165)
     np.testing.assert_almost_equal(xydata.dd(wrt=proj4), 165)
     with pytest.raises(AssertionError):
         np.testing.assert_almost_equal(xydata.dd(wrt=(33,'W')), 165)
-    xydata.set_dd(165, wrt='xy')
+    xydata.set_dd(165, wrt='crs')
     np.testing.assert_almost_equal(xydata.dd(), 180)
-    np.testing.assert_almost_equal(xydata.dd(wrt='xy'), 165)
+    np.testing.assert_almost_equal(xydata.dd(wrt='crs'), 165)
     np.testing.assert_almost_equal(xydata.dd(wrt=proj4), 165)
     with pytest.raises(AssertionError):
         np.testing.assert_almost_equal(xydata.dd(wrt=(33,'W')), 165)

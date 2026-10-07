@@ -252,7 +252,7 @@ def test_yank_point_lon_ambiguity():
 
 def test_yank_point_complex_lonlat():
     all_points = GriddedSkeleton(lon=(-179.8, 179.999999999999), lat=(46.2, 61.900000000000006) )
-    all_points.set_spacing(nx=500, ny=500)
+    all_points.set_spacing(nx=100, ny=100)
 
     lon, lat = all_points.lonlat()
     all_points = PointSkeleton(lon=lon, lat=lat)
@@ -262,9 +262,3 @@ def test_yank_point_complex_lonlat():
     # Using one UTM zone for all points lead to some points showing up in this region
     # Looping through points and setting UTM zone per point fixed this
     assert not np.any(np.logical_and(lon[ii]>50, lon[ii]<100))
-    #import matplotlib.pyplot as plt
-    #plt.scatter(points.lon(), points.lat())
-    #plt.scatter(lon, lat)
-    #plt.scatter(lon[ii], lat[ii])
-    #plt.show()
-    #breakpoint()    

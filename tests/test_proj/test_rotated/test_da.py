@@ -29,14 +29,14 @@ def test_reproj_from_rotated():
     wind.set_ff(10)
 
     wind.set_dd(180)
-    np.testing.assert_array_almost_equal(wind.dd(wrt='xy', data_array=True).values, wind.dd(wrt='xy'))
-    assert np.min(wind.dd(wrt='xy', data_array=True).values) < 180
+    np.testing.assert_array_almost_equal(wind.dd(wrt='crs', data_array=True).values, wind.dd(wrt='crs'))
+    assert np.min(wind.dd(wrt='crs', data_array=True).values) < 180
     np.testing.assert_array_almost_equal(wind.dd(data_array=True).values, wind.dd())
     
-    np.testing.assert_array_almost_equal(wind.u(wrt='xy', data_array=True).values, wind.u(wrt='xy'))
-    assert np.min(wind.u(wrt='xy', data_array=True).values) < 0
+    np.testing.assert_array_almost_equal(wind.u(wrt='crs', data_array=True).values, wind.u(wrt='crs'))
+    assert np.min(wind.u(wrt='crs', data_array=True).values) < 0
     np.testing.assert_array_almost_equal(wind.u(data_array=True).values, wind.u())
 
-    np.testing.assert_array_almost_equal(wind.v(wrt='xy', data_array=True).values, wind.v(wrt='xy'))
-    assert np.min(wind.v(wrt='xy', data_array=True).values) < 10
+    np.testing.assert_array_almost_equal(wind.v(wrt='crs', data_array=True).values, wind.v(wrt='crs'))
+    assert np.min(wind.v(wrt='crs', data_array=True).values) < 10
     np.testing.assert_array_almost_equal(wind.v(data_array=True).values, wind.v())

@@ -28,7 +28,7 @@ def test_reproj_from_rotated():
 
     wind.set_ff(10)
     wind.set_dd(180)
-    ds_rot = wind.ds(compile=True, wrt='xy')
+    ds_rot = wind.ds(compile=True, wrt='crs')
     
     ds_lonlat = wind.ds(compile=True, wrt='lonlat')
     ds = wind.ds(compile=True)
@@ -39,5 +39,5 @@ def test_reproj_from_rotated():
     np.testing.assert_array_almost_equal(ds_lonlat.u.values, wind.u(wrt='lonlat', squeeze=False))
     np.testing.assert_array_almost_equal(ds_lonlat.v.values, wind.v(wrt='lonlat', squeeze=False))
     np.testing.assert_array_almost_equal(ds.dd.values, wind.dd(wrt='lonlat', squeeze=False))
-    np.testing.assert_array_almost_equal(ds.u.values, wind.u(wrt='xy',squeeze=False))
-    np.testing.assert_array_almost_equal(ds.v.values, wind.v(wrt='xy', squeeze=False))
+    np.testing.assert_array_almost_equal(ds.u.values, wind.u(wrt='crs',squeeze=False))
+    np.testing.assert_array_almost_equal(ds.v.values, wind.v(wrt='crs', squeeze=False))
