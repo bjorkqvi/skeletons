@@ -519,7 +519,7 @@ def _map_similar_geo_parameter_to_ds_variable(
     if not gp.is_gp(var):
         var = var_alias_to_gp(var) or coord_alias_to_gp(var)
     if var is None:
-        return None, None, None
+        return None, None, None, None
 
     if var.i_am() == "period":
         ds_var = _map_geo_parameter_to_ds_variable(
@@ -657,7 +657,7 @@ def _map_geo_parameter_to_components_in_ds(
     if not gp.is_gp(var):
         var = var_alias_to_gp(var) or coord_alias_to_gp(var)
     if var is None:
-        return None, None, None, None
+        return None, None, None, None, None
 
     if var.i_am() in ["magnitude", "direction", "opposite_direction"]:
         if var.my_family("x") is not None and var.my_family("y") is not None:
@@ -682,29 +682,28 @@ def _map_geo_parameter_to_components_in_ds(
                 verbose=verbose,
             )
             projected = True
-        if ds_var_x is None and ds_var_y is None:
-            if var.my_family("east") is not None and var.my_family("north") is not None:
-                ds_var_x = _map_geo_parameter_to_ds_variable(
-                    var.my_family("east"),
-                    ds,
-                    aliases=aliases,
-                    ds_aliases=ds_aliases,
-                    ignore_vars=ignore_vars,
-                    only_vars=only_vars,
-                    ignore_dir_ambiguity=False,
-                    verbose=verbose,
-                )
-                ds_var_y = _map_geo_parameter_to_ds_variable(
-                    var.my_family("north"),
-                    ds,
-                    aliases=aliases,
-                    ds_aliases=ds_aliases,
-                    ignore_vars=ignore_vars,
-                    only_vars=only_vars,
-                    ignore_dir_ambiguity=False,
-                    verbose=verbose,
-                )
-                projected = False
+        elif var.my_family("east") is not None and var.my_family("north") is not None:
+            ds_var_x = _map_geo_parameter_to_ds_variable(
+                var.my_family("east"),
+                ds,
+                aliases=aliases,
+                ds_aliases=ds_aliases,
+                ignore_vars=ignore_vars,
+                only_vars=only_vars,
+                ignore_dir_ambiguity=False,
+                verbose=verbose,
+            )
+            ds_var_y = _map_geo_parameter_to_ds_variable(
+                var.my_family("north"),
+                ds,
+                aliases=aliases,
+                ds_aliases=ds_aliases,
+                ignore_vars=ignore_vars,
+                only_vars=only_vars,
+                ignore_dir_ambiguity=False,
+                verbose=verbose,
+            )
+            projected = False
 
         else:
              return None, None, None, None, None

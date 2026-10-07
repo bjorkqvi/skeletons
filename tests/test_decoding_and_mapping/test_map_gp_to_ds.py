@@ -272,15 +272,15 @@ def test_gp_to_stdname(wave_std):
     )
 
 
-def test_get_inverse(wave_std):
+def test_get_similar(wave_std):
     assert (
-        _map_inverse_geo_parameter_to_ds_variable(
+        _map_similar_geo_parameter_to_ds_variable(
             gp.wave.Fp, wave_std.ds(), {}, {}, [], [], verbose=False
         )[0]
         == "tp"
     )
     assert (
-        _map_inverse_geo_parameter_to_ds_variable(
+        _map_similar_geo_parameter_to_ds_variable(
             "fp", wave_std.ds(), {}, {}, [], [], verbose=False
         )[0]
         == "tp"
@@ -294,11 +294,16 @@ def test_get_components(wind_xy):
         "ux",
         "uy",
     )
+
     assert (
         _map_geo_parameter_to_components_in_ds(
             gp.wind.Wind, wind_xy.ds(), {}, {}, [], [], verbose=False
         )[-1]
-        is None
+    )
+    assert (
+        _map_geo_parameter_to_components_in_ds(
+            gp.wind.Wind, wind_xy.ds(), {}, {}, [], [], verbose=False
+        )[-2] is None
     )
 
     assert _map_geo_parameter_to_components_in_ds(
@@ -317,7 +322,7 @@ def test_get_components(wind_xy):
     assert (
         _map_geo_parameter_to_components_in_ds(
             gp.wind.WindDir, wind_xy.ds(), {}, {}, [], [], verbose=False
-        )[-1]
+        )[-2]
         == "math"
     )
 
@@ -336,7 +341,7 @@ def test_get_components(wind_xy):
     assert (
         _map_geo_parameter_to_components_in_ds(
             gp.wind.WindDirTo, wind_xy.ds(), {}, {}, [], [], verbose=False
-        )[-1]
+        )[-2]
         == "math"
     )
 
@@ -346,202 +351,3 @@ def test_get_components(wind_xy):
         "ux",
         "uy",
     )
-    # assert _map_geo_parameter_to_components_in_ds("fp", wave_std.ds()) == "tp"
-
-
-# def test_std_name(wave_std):
-#     """Uses trivial mapping"""
-#     data_vars, coords = map_ds_to_gp(wave_std.ds())
-
-#     assert set(data_vars.keys()) == {"hs", "tp", "dirp"}
-#     assert data_vars.get("hs").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp").is_same(gp.wave.Dirp)
-#     assert coords.get("lon").is_same(gp.grid.Lon)
-#     assert coords.get("lat").is_same(gp.grid.Lat)
-
-#     data_vars, coords = map_ds_to_gp(wave_std.ds(), decode_cf=False)
-
-#     assert data_vars.get("hs").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp") == "dirp"
-#     assert coords.get("lon").is_same(gp.grid.Lon)
-#     assert coords.get("lat").is_same(gp.grid.Lat)
-
-
-# def test_std_name_long_coord_name(wave_std):
-#     """Uses trivial mapping"""
-#     ds = wave_std.ds().rename_vars({"lon": "longitude", "lat": "latitude"})
-
-#     data_vars, coords = map_ds_to_gp(ds)
-
-#     assert set(data_vars.keys()) == {"hs", "tp", "dirp"}
-#     assert data_vars.get("hs").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp").is_same(gp.wave.Dirp)
-#     assert coords.get("longitude").is_same(gp.grid.Lon)
-#     assert coords.get("latitude").is_same(gp.grid.Lat)
-
-#     data_vars, coords = map_ds_to_gp(ds, decode_cf=False)
-
-#     assert data_vars.get("hs").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp") == "dirp"
-#     assert coords.get("longitude").is_same(gp.grid.Lon)
-#     assert coords.get("latitude").is_same(gp.grid.Lat)
-
-
-# def test_std_name_long_coord_name_alias(wave_std):
-#     """Uses trivial mapping"""
-#     ds = wave_std.ds().rename_vars({"lon": "longitude_degrees", "lat": "latitude"})
-
-#     data_vars, coords = map_ds_to_gp(ds, aliases={"longitude_degrees": gp.grid.Lon})
-
-#     assert set(data_vars.keys()) == {"hs", "tp", "dirp"}
-#     assert data_vars.get("hs").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp").is_same(gp.wave.Dirp)
-#     assert coords.get("longitude_degrees").is_same(gp.grid.Lon)
-#     assert coords.get("latitude").is_same(gp.grid.Lat)
-
-
-# def test_no_std_name_gridded(wave2_no_std):
-#     """Uses trivial mapping"""
-#     data_vars, coords = map_ds_to_gp(wave2_no_std.ds())
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert set(data_vars.values()) == {"hs2", "tp2", "dirp2"}
-#     assert coords.get("y").is_same(gp.grid.Y)
-#     assert coords.get("x").is_same(gp.grid.X)
-
-
-# def test_std_name_gridded(wave2_std):
-#     """Uses trivial mapping"""
-#     data_vars, coords = map_ds_to_gp(wave2_std.ds())
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert data_vars.get("hs2").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp2").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp2").is_same(gp.wave.Dirp)
-#     assert coords.get("lon").is_same(gp.grid.Lon)
-#     assert coords.get("lat").is_same(gp.grid.Lat)
-
-#     data_vars, coords = map_ds_to_gp(wave2_std.ds(), decode_cf=False)
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert set(data_vars.values()) == {"hs2", "tp2", "dirp2"}
-#     assert coords.get("lon").is_same(gp.grid.Lon)
-#     assert coords.get("lat").is_same(gp.grid.Lat)
-
-
-# def test_std_name_long_coord_name_gridded(wave2_std):
-#     """Uses trivial mapping"""
-#     ds = wave2_std.ds().rename_vars({"lon": "longitude", "lat": "latitude"})
-
-#     data_vars, coords = map_ds_to_gp(ds)
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert data_vars.get("hs2").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp2").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp2").is_same(gp.wave.Dirp)
-#     assert coords.get("longitude").is_same(gp.grid.Lon)
-#     assert coords.get("latitude").is_same(gp.grid.Lat)
-
-#     data_vars, coords = map_ds_to_gp(ds, decode_cf=False)
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert set(data_vars.values()) == {"hs2", "tp2", "dirp2"}
-#     assert coords.get("longitude").is_same(gp.grid.Lon)
-#     assert coords.get("latitude").is_same(gp.grid.Lat)
-
-
-# def test_std_name_long_coord_name_alias_gridded(wave2_std):
-#     """Uses trivial mapping"""
-#     ds = wave2_std.ds().rename_vars({"lon": "longitude_degrees", "lat": "latitude"})
-
-#     data_vars, coords = map_ds_to_gp(ds, aliases={"longitude_degrees": gp.grid.Lon})
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert data_vars.get("hs2").is_same(gp.wave.Hs)
-#     assert data_vars.get("tp2").is_same(gp.wave.Tp)
-#     assert data_vars.get("dirp2").is_same(gp.wave.Dirp)
-#     assert coords.get("longitude_degrees").is_same(gp.grid.Lon)
-#     assert coords.get("latitude").is_same(gp.grid.Lat)
-
-
-# def test_no_std_name_gridded_aliases(wave2_no_std):
-#     """Uses trivial mapping"""
-#     data_vars, coords = map_ds_to_gp(
-#         wave2_no_std.ds(), aliases={"hs2": gp.wave.Hs("hsig")}
-#     )
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert data_vars.get("tp2") == "tp2"
-#     assert data_vars.get("dirp2") == "dirp2"
-#     assert gp.is_gp_instance(data_vars.get("hs2"))
-#     assert data_vars.get("hs2").name == "hsig"
-
-#     assert coords.get("y").is_same(gp.grid.Y)
-#     assert coords.get("x").is_same(gp.grid.X)
-
-
-# def test_std_name_gridded_aliases_keep_ds_names(wave2_std):
-#     """Uses trivial mapping"""
-#     data_vars, coords = map_ds_to_gp(
-#         wave2_std.ds(), aliases={"hs2": gp.wave.Hs("hsig")}, keep_ds_names=True
-#     )
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert gp.is_gp_instance(data_vars.get("hs2"))
-#     assert gp.is_gp_instance(data_vars.get("tp2"))
-#     assert gp.is_gp_instance(data_vars.get("dirp2"))
-#     assert data_vars.get("hs2").name == "hsig"
-#     assert data_vars.get("tp2").name == "tp2"
-#     assert data_vars.get("dirp2").name == "dirp2"
-#     assert gp.is_gp_instance(coords.get("lon"))
-#     assert gp.is_gp_instance(coords.get("lat"))
-#     assert coords.get("lat").name == "lat"
-#     assert coords.get("lon").name == "lon"
-
-
-# def test_std_name_long_coord_name_alias_gridded_keep_ds_names(wave2_std):
-#     """Uses trivial mapping"""
-#     ds = wave2_std.ds().rename_vars({"lon": "longitude_degrees", "lat": "latitude"})
-
-#     data_vars, coords = map_ds_to_gp(
-#         ds, aliases={"longitude_degrees": gp.grid.Lon}, keep_ds_names=True
-#     )
-
-#     assert set(data_vars.keys()) == {"hs2", "tp2", "dirp2"}
-#     assert gp.is_gp_instance(data_vars.get("hs2"))
-#     assert gp.is_gp_instance(data_vars.get("tp2"))
-#     assert gp.is_gp_instance(data_vars.get("dirp2"))
-#     assert data_vars.get("hs2").name == "hs2"
-#     assert data_vars.get("tp2").name == "tp2"
-#     assert data_vars.get("dirp2").name == "dirp2"
-
-#     assert gp.is_gp_instance(coords.get("longitude_degrees"))
-#     assert gp.is_gp_instance(coords.get("latitude"))
-#     # ds-names never kept for coordinates
-#     assert coords.get("latitude").name == "lat"
-#     assert coords.get("longitude_degrees").name == "lon"
-
-
-# def test_freq_dirs_no_std_name(freq_dirs_no_std):
-#     data_vars, coords = map_ds_to_gp(freq_dirs_no_std.ds())
-
-#     assert data_vars.get("hs").is_same(gp.wave.Hs)
-#     assert coords.get("y").is_same(gp.grid.Y)
-#     assert coords.get("x").is_same(gp.grid.X)
-#     assert coords.get("frequency").is_same(gp.wave.Freq)
-#     assert coords.get("directions").is_same(gp.wave.Dirs)
-
-
-# def test_freq_dirs_std_name(freq_dirs_std):
-#     data_vars, coords = map_ds_to_gp(freq_dirs_std.ds())
-#     assert set(data_vars.keys()) == {"hs"}
-#     assert data_vars.get("hs").is_same(gp.wave.Hs)
-#     assert coords.get("lon").is_same(gp.grid.Lon)
-#     assert coords.get("lat").is_same(gp.grid.Lat)
-#     assert coords.get("freq").is_same(gp.wave.Freq)
-#     assert coords.get("dirs").is_same(gp.wave.Dirs)

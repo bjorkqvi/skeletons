@@ -353,7 +353,7 @@ class GriddedSkeleton(Skeleton):
         return new_grid
 
     def xgrid(
-        self, native: bool = False, strict: bool = False, normalize: bool = False
+        self, native: bool = False, strict: bool = False,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of projected x-values.
 
@@ -364,19 +364,16 @@ class GriddedSkeleton(Skeleton):
                 is spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            normalize (bool, optional): If `True`, normalizes the x-values by subtracting 
-                the minimum value. Defaults to `False`.
-
         Returns:
             np.ndarray: A meshgrid of projected x-values.
         """
         if not self.core.is_projected() and strict:
             return None
-        x, _ = self.xy(native=native, normalize=normalize)
+        x, _ = self.xy(native=native)
         return np.reshape(x, self.size("spatial"))
 
     def ygrid(
-        self, native: bool = False, strict: bool = False, normalize: bool = False
+        self, native: bool = False, strict: bool = False,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of projected y-values. 
 
@@ -387,15 +384,12 @@ class GriddedSkeleton(Skeleton):
                 is spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            normalize (bool, optional): If `True`, normalizes the y-values by subtracting 
-                the minimum value. Defaults to `False`.
-
         Returns:
             np.ndarray: A meshgrid of projected y-values.
         """
         if not self.core.is_projected() and strict:
             return None
-        _, y = self.xy(native=native, normalize=normalize)
+        _, y = self.xy(native=native)
         return np.reshape(y, self.size("spatial"))
 
     def longrid(self, native: bool = False, strict: bool = False) -> Union[np.ndarray, None]:
@@ -441,7 +435,6 @@ class GriddedSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False, 
-        normalize: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -452,8 +445,6 @@ class GriddedSkeleton(Skeleton):
                 is spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            normalize (bool, optional): If `True`, normalizes the x-values by subtracting 
-                the minimum value. Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
                 the x-coordinate. Defaults to the current grid CRS.
             **kwargs: Additional arguments passed to internal methods.
@@ -479,8 +470,6 @@ class GriddedSkeleton(Skeleton):
                     crs=crs,
                 )
 
-                if normalize:
-                    x = x - min(x)
                 return x
             return None
         
@@ -489,15 +478,12 @@ class GriddedSkeleton(Skeleton):
         else:
             return None
 
-        if normalize:
-            x = x - min(x)
         return x
 
     def y(
         self,
         native: bool = False,
         strict: bool = False,
-        normalize: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -508,8 +494,6 @@ class GriddedSkeleton(Skeleton):
                 is spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            normalize (bool, optional): If `True`, normalizes the x-values by subtracting 
-                the minimum value. Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
                 the x-coordinate. Defaults to the current grid CRS.
             **kwargs: Additional arguments passed to internal methods.
@@ -535,8 +519,6 @@ class GriddedSkeleton(Skeleton):
                     crs=crs,
                 )
 
-                if normalize:
-                    y = y - min(y)
                 return y
             return None
 
@@ -544,9 +526,6 @@ class GriddedSkeleton(Skeleton):
             y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
             return None
-
-        if normalize:
-            y = y - min(y)
 
         return y
     
@@ -640,7 +619,6 @@ class GriddedSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         crs: Optional[Union[int, str, dict]] = None,
-        normalize: bool = False,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns a tuple of x- and y-coordinates for all points.
@@ -652,8 +630,6 @@ class GriddedSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
                 the coordinates. Defaults to the current grid CRS.
-            normalize (bool, optional): If `True`, normalizes the x- and y-values by subtracting 
-                the minimum value. Defaults to `False`.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
@@ -683,7 +659,7 @@ class GriddedSkeleton(Skeleton):
             self_crs = self.proj.utm()
 
 
-        return points.xy(normalize=normalize, native=native, crs = crs or self_crs)
+        return points.xy(native=native, crs = crs or self_crs)
     
     def lonlat(
         self,

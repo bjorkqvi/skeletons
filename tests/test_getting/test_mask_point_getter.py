@@ -54,7 +54,7 @@ def test_triggered_land_mask():
     np.testing.assert_array_equal(
         grid.land_mask(), np.logical_not(grid.get("sea_mask"))
     )
-
+    #breakpoint()
     np.testing.assert_array_almost_equal(grid.sea_points(), grid.get("sea_points"))
 
     assert grid.sea_points(coord="x", strict=True) == grid.get("sea_points", coord="x")

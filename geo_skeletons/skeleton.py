@@ -784,7 +784,7 @@ class Skeleton:
        
         return vars
     
-    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, projected: Optional[bool]=None, sparse: bool=True, show: bool=True, coastline: bool=True) -> None:
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = True, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, wrt: Optional[str]=None, sparse: bool=True, show: bool=True, coastline: bool=True) -> None:
         """Generates a quick visualization of the data in the Skeleton instance.
 
         If a time variable is present, the first time instance is displayed. This method 
@@ -794,7 +794,7 @@ class Skeleton:
         Args:
             proj (str, optional): Projection for the plot. Can be one of:
                 - `'lonlat'`: Longitude-latitude projection.
-                - `'xy'`: Projected or rotated projection.
+                - `'crs'`: Projected or rotated projection.
                 If `None`, uses the default projection of the data. Defaults to None.
             compare ("Skeleton", optional): Another Skeleton instance to compare with. 
                 The points of the comparison Skeleton are plotted in the same projection 
@@ -812,9 +812,8 @@ class Skeleton:
                 - `{'hs': 'dirp'}`: Plots peak wave direction (`dirp`) on top of significant 
                 wave height (`hs`).
                 If `None`, no specific arrow variables are defined. Defaults to None.
-            projected (Optional[bool], optional): If `True`, rotates directions and arrows 
-                to align with the projection set by the CRS. If `None`, follows the behavior 
-                defined by the `proj` argument. Defaults to None.
+            wrt (Optional[str], optional): The reference coordinate system or variable with 
+                respect to which directions and arrows should be plotted. Defaults to None.
             sparse (bool, optional): If `True`, plots only a sparse set of arrows (e.g., 
                 25 arrows in each direction) instead of plotting arrows at every grid point. 
                 Defaults to True.
@@ -850,7 +849,7 @@ class Skeleton:
 
 
         if compare is not None:
-            if proj == 'xy' or proj is None and self.core.is_projected():
+            if proj == 'crs' or proj is None and self.core.is_projected():
                 xedge, yedge = compare.xy(crs=self.proj.crs())
             else:
                 xedge, yedge = compare.lonlat()
@@ -865,7 +864,7 @@ class Skeleton:
                 x, y = self.xy(native=True)
             elif proj =='lonlat':
                 x, y = self.lonlat()
-            elif proj == 'xy':
+            elif proj == 'crs':
                 x, y = self.xy()
             plt.scatter(x,y)
             if compare is not None:
@@ -879,52 +878,30 @@ class Skeleton:
         rows = int(np.ceil(len(vars)/cols))
 
 
-        # if coastline:
-        #     try:
-        #         from cartopy import feature as cfeature
-        #         from cartopy import crs as ccrs
-        #     except ImportError as e:
-        #         logger.log.info(f"Coastlines requires cartopy")
-        #         raise e
-        #     if proj == 'lonlat':
-        #         plot_proj = ccrs.PlateCarree()
-        #     elif proj == 'xy':
-        #         if isinstance(self.proj.crs(), tuple):
-        #             plot_proj = ccrs.UTM(self.proj.crs()[0])
-        #         else:
-        #             raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
-        #     else:
-        #         if not self.core.is_projected():
-        #             plot_proj = ccrs.PlateCarree()
-        #         else:
-        #             if isinstance(self.proj.crs(), tuple):
-        #                 plot_proj = ccrs.UTM(self.proj.crs()[0])
-        #             else:
-        #                 raise NotImplementedError('Coastlines impemented only for lon-lat and UTM')
-        #     fig, ax = plt.subplots(rows, cols,subplot_kw={"projection": plot_proj})
-        # else:
         fig, ax = plt.subplots(rows, cols)
         
         
         ax = np.atleast_2d(ax)
         
-        if projected is None:
-            if proj == 'xy':
-                projected = True
-            elif proj == 'lonlat':
-                projected = False
-            elif self.core.is_projected():
-                projected = True
-            else:
-                projected = False
+        if wrt not in ['crs', 'lonlat', None]:
+            raise ValueError(f"Invalid value for 'wrt': {wrt}. Must be one of 'crs', 'lonlat', or None.")
 
+        
         r, c = 0, 0
         for var, var_dict in vars.items():
             try:
-                data = self.get(var, projected=projected, squeeze=False)
-                wrt = ' with respect to CRS' if projected else ''
+                data = self.get(var, wrt=wrt, squeeze=False)
+                if wrt == 'crs':
+                    wrt_str = ' with respect to CRS'
+                elif wrt == 'lonlat':
+                    wrt_str = ''
+                elif self.core.values_are_projected(var):
+                    wrt_str = ' with respect to CRS'
+                else:
+                    wrt_str = ''
+
             except ProjectionError:
-                data = self.get(var, projected=False, squeeze=False)
+                data = self.get(var, wrt=None, squeeze=False)
                 wrt = ''
             if not var_dict.get('is_arrow', False):
                 if 'time' in self.core.coords():
@@ -944,16 +921,14 @@ class Skeleton:
 
                 arrow_var = var_dict.get('arrow_data', '')
                 if arrow_var:
-                    wrt = ' with respect to CRS' if projected else ''
-                    arrow_data = self.get(arrow_var, dir_type='math', projected=projected, squeeze=False)
+                    arrow_data = self.get(arrow_var, dir_type='math', wrt=wrt, squeeze=False)
                     if 'time' in self.core.coords():
                         arrow_data = arrow_data[0,...]
                     ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, arrow_var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
                     ax[r,c].legend(loc='upper right')
                     wrt = ''
             else:
-                arrow_data = self.get(var, dir_type='math', projected=projected, squeeze=False)
-                wrt = ' with respect to CRS' if projected else ''
+                arrow_data = self.get(var, dir_type='math', wrt=wrt, squeeze=False)
                 if 'time' in self.core.coords():
                     arrow_data = arrow_data[0,...]
                 ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
@@ -968,7 +943,7 @@ class Skeleton:
             elif proj == 'lonlat':
                 ax[r,c].set_xlabel('longitude')
                 ax[r,c].set_ylabel('latitude')
-            elif proj == 'xy':
+            elif proj == 'crs':
                 ax[r,c].set_xlabel('x')
                 ax[r,c].set_ylabel('y')
 
@@ -988,7 +963,7 @@ class Skeleton:
                         units += ' from'
                 else:
                     units = '?'
-                cbar.set_label(f"{var} [{units}]{wrt}")
+                cbar.set_label(f"{var} [{units}]{wrt_str}")
             if compare is not None:
                 ax[r,c].scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
                 plt.legend()
@@ -1615,7 +1590,7 @@ class Skeleton:
             wrt (Union[str, CRSValue], optional): Data rotated "With Respect To" (used for directions and components). 
                 If specified, indicates the reference coordinate system frame for the data. Three possibilities:
                 - `None` (default): Data assumed to be in the CRS of the CF convention set in the skeleton metadata
-                - `'lonlat'/'xy'`: Data is rotated with respect to the longitude-latitude or coordinate system defined by the skeleton 'crs'.
+                - `'lonlat'/'crs'`: Data is rotated with respect to the longitude-latitude or coordinate system defined by the skeleton 'crs'.
                 - `CRSValue`: Data is rotated with respect to the specified coordinate reference system. 
                     -- Can be given as e.g. a proj4 string, EPSG code, UTM tuple, or pyproj CRS object.
             coords (list[str], optional): A list of coordinate names (e.g., `['freq', 'inds']`) 
@@ -1938,7 +1913,7 @@ class Skeleton:
             else:
                 proj = proj_tuple
             if proj[0] == 'lonlat': # We need to rotate
-                if proj[1] == 'xy':
+                if proj[1] == 'crs':
                     target_crs = self.proj.crs()
                 else:
                     target_crs = self.proj.to_crs(proj[1])
@@ -1949,7 +1924,7 @@ class Skeleton:
                         logger.log.info(f"Rotating '{name}' data ('lonlat' -> '{target_crs}')...")
                 x_data, y_data = self.proj._rotate_u_v(x_data, y_data, lon=lon, lat=lat, grid_shape=self.size('spatial'), target_crs=target_crs)
             else: # We need to unrotate
-                if proj[0] == 'xy':
+                if proj[0] == 'crs':
                     source_crs = self.proj.crs()
                 else:
                     source_crs = self.proj.to_crs(proj[0])
@@ -2154,7 +2129,7 @@ class Skeleton:
             wrt (Union[str, CRSValue], optional): Request data rotated "With Respect To" (used for directions and components). 
                 If specified, indicates the reference coordinate system frame for the data. Three possibilities:
                 - `None` (default): Data assumed to be in the CRS of the CF convention set in the skeleton metadata
-                - `'lonlat'/'xy'`: Data is rotated with respect to the longitude-latitude or coordinate system defined by the skeleton 'crs'.
+                - `'lonlat'/'crs'`: Data is rotated with respect to the longitude-latitude or coordinate system defined by the skeleton 'crs'.
                 - `CRSValue`: Data is rotated with respect to the specified coordinate reference system. 
                     -- Can be given as e.g. a proj4 string, EPSG code, UTM tuple, or pyproj CRS object.
             squeeze (bool, optional): If `True`, removes trivial dimensions (e.g., dimensions 
@@ -2240,11 +2215,10 @@ class Skeleton:
         elif name == "lat":
             return self.lat(strict=strict, **kwargs)
 
-        if name not in self.core.all_objects():
+        if name not in self.core.all_objects() and name not in self.core.mask_points():
             return None
 
         _dir_type_consistency_check(name, self.core, dir_type)
-
         if name in self.core.magnitudes("all"):
             data = self._get_magnitude(
                 name=name,
@@ -2643,10 +2617,10 @@ class Skeleton:
             >>> compiled_dataset = skeleton.ds(compile=True)
 
             Retrieving the Dataset with projected directions:
-            >>> projected_dataset = skeleton.ds(wrt='xy')
+            >>> projected_dataset = skeleton.ds(wrt='crs')
 
             Combining both options:
-            >>> compiled_and_projected_dataset = skeleton.ds(compile=True, wrt='xy')
+            >>> compiled_and_projected_dataset = skeleton.ds(compile=True, wrt='crs')
         """
         if not hasattr(self, "_ds_manager"):
             return None
@@ -3405,7 +3379,7 @@ def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[s
     if wrt is None:
         return []
 
-    #if is_engineering and wrt != 'xy':
+    #if is_engineering and wrt != 'crs':
     #    raise ProjectionError(f'Cannot project data to {wrt} from an engineering coordinate system!')
 
     # We won't raise errors her, but just ignore the request for projection
@@ -3419,7 +3393,7 @@ def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[s
 
     # What is the rotational convention defined by the metadata?
     if core.values_are_projected(name) and core.is_projected():
-        target_crs = 'xy'
+        target_crs = 'crs'
     else:
         target_crs = 'lonlat'
     
@@ -3429,16 +3403,16 @@ def _determine_projection_to_do(name: str, core: CoordinateManager, wrt: Union[s
 
     # Otherwise rotate or unrotate    
     if wrt == 'lonlat': 
-        if not core.is_projected(): # 'lonlat', and 'xy' are the same in this case
+        if not core.is_projected(): # 'lonlat', and 'crs' are the same in this case
             return []
-        return [('lonlat','xy')]
-    if wrt == 'xy':
-        if not core.is_projected(): # 'lonlat', and 'xy' are the same in this case
+        return [('lonlat','crs')]
+    if wrt == 'crs':
+        if not core.is_projected(): # 'lonlat', and 'crs' are the same in this case
             return []
-        return [('xy','lonlat')]
+        return [('crs','lonlat')]
 
     if target_crs == 'lonlat':
         return [(wrt,'lonlat')]
-    elif target_crs == 'xy':
-        return [(wrt, 'lonlat'), ('lonlat', 'xy')]
+    elif target_crs == 'crs':
+        return [(wrt, 'lonlat'), ('lonlat', 'crs')]
 

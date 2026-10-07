@@ -90,7 +90,7 @@ def test_numpy_array_in_ds(wave_data):
 
     # Reset data in dataset to numpy to we can continue testing
     points.dask.deactivate()
-    points.set_hs()
+    points.set_hs(0)
     points.dask.activate(rechunk=False)
     assert not data_is_dask(points.ds().hs)
 
@@ -99,7 +99,7 @@ def test_numpy_array_in_ds(wave_data):
 
     # Reset data in dataset to numpy to we can continue testing
     points.dask.deactivate()
-    points.set_hs()
+    points.set_hs(0)
     points.dask.activate(rechunk=False)
     assert not data_is_dask(points.ds().hs)
 

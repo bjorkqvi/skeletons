@@ -101,7 +101,7 @@ def test_add_gridpoint_coord_and_mask():
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3), time=times)
     data.set_spacing(nx=10, ny=10)
     data.set_z_spacing(nx=4)
-    data.set_sea_mask()
+    data.set_sea_mask(1)
 
     np.testing.assert_array_equal(
         data.sea_mask(), np.full(data.size(coord_group="grid"), True)
@@ -127,9 +127,9 @@ def test_get_points():
     data = WaveHeight(lon=(10, 30), lat=(30, 50))
     data.set_spacing(nx=3, ny=3)
     assert data.sea_mask(strict=True) is None
-    assert data.sea_points(strict=True) is None
+    assert data.sea_points(strict=True) == (None, None)
     assert data.land_mask(strict=True) is None
-    assert data.land_points(strict=True) is None
+    assert data.land_points(strict=True) == (None, None)
 
 
     mask = data.sea_mask(empty=True)

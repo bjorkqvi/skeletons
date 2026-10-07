@@ -476,7 +476,6 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         crs: Optional[CRSValue] = None,
-        normalize: bool = False,
         **kwargs,
     ) -> tuple[np.ndarray, np.ndarray]:           
         """Returns a tuple of projected x- and y-coordinates for all points.
@@ -488,8 +487,6 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
                 the coordinates. Defaults to the current grid CRS.
-            normalize (bool, optional): If `True`, normalizes the x- and y-values by subtracting 
-                the minimum value. Defaults to `False`.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
@@ -498,8 +495,8 @@ class PointSkeleton(Skeleton):
 
         # Transforms x-y to lon-lat if necessary
         x, y = self.x(
-            strict=strict, native=native, normalize=normalize, crs=crs, **kwargs
-        ), self.y(strict=strict, native=native, normalize=normalize, crs=crs, **kwargs)
+            strict=strict, native=native, crs=crs, **kwargs
+        ), self.y(strict=strict, native=native, crs=crs, **kwargs)
 
         if x is None:
             return None, None

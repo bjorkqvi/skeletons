@@ -1,5 +1,6 @@
 from geo_skeletons import GriddedSkeleton, PointSkeleton
 from geo_skeletons.decorators import add_datavar, add_magnitude
+from geo_skeletons.errors import UnknownVariableError
 import numpy as np
 import geo_parameters as gp
 import pytest 
@@ -486,7 +487,7 @@ def test_set_magnitude_with_gp_decode_components_and_disable_direction():
 
 
 def test_warn_if_x_xomponent_is_not_consistent():
-    with pytest.warns(Warning):
+    with pytest.raises(UnknownVariableError):
         @add_magnitude(name=gp.wind.Wind, x=gp.ocean.XCurrent)
         @add_datavar(gp.ocean.XCurrent)
         @add_datavar(gp.wind.YWind)
@@ -494,7 +495,7 @@ def test_warn_if_x_xomponent_is_not_consistent():
             pass
 
 def test_warn_if_y_xomponent_is_not_consistent():
-    with pytest.warns(Warning):
+    with pytest.raises(UnknownVariableError):
         @add_magnitude(name=gp.wind.Wind, y=gp.ocean.YCurrent)
         @add_datavar(gp.ocean.YCurrent)
         @add_datavar(gp.wind.XWind)

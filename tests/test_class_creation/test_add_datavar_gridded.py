@@ -12,7 +12,7 @@ def test_add_datavar():
     data.set_spacing(nx=10, ny=10)
     np.testing.assert_almost_equal(np.mean(data.hs(strict=False)), 0.0)
     assert data.hs(strict=True) is None
-    data.set_hs()
+    data.set_hs(0)
     assert np.mean(data.hs()) == 0.0
     data.set_hs(1)
     assert np.mean(data.hs()) == 1

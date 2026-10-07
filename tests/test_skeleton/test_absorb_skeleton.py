@@ -40,9 +40,7 @@ def test_absorb_gridded_cartesian():
     assert grid.inds() is None
 
     np.testing.assert_array_almost_equal(grid.x(), np.array([1, 2, 3, 4]))
-    np.testing.assert_array_almost_equal(grid.x(normalize=True), np.array([0, 1, 2, 3]))
     np.testing.assert_array_almost_equal(grid.y(), np.array([0, 3]))
-    np.testing.assert_array_almost_equal(grid.y(normalize=True), np.array([0, 3]))
     np.testing.assert_array_almost_equal(
         grid.xy(),
         (np.array([1, 2, 3, 4, 1, 2, 3, 4]), np.array([0, 0, 0, 0, 3, 3, 3, 3])),
