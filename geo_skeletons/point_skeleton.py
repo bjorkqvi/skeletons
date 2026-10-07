@@ -542,7 +542,7 @@ class PointSkeleton(Skeleton):
         Resolution at a grid point is determined as the distance to nearest neighbour.
         A UTM projection is used to calculate the distances.
         
-        The resolution is based on a random sample of 10,000 points
+        For large grids the resolution is based on a random sample of 10,000 points
         
         set full = True to use all points."""
         x, y = self.xy(crs=self.proj.utm())

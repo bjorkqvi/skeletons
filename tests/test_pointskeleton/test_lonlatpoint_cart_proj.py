@@ -12,11 +12,11 @@ RES = get_dist_point(X,Y)
 
 
 def test_resolution():
-    data = PointSkeleton(lon=LON, lat=LAT, crs=CRS)
+    data = PointSkeleton(lon=LON, lat=LAT)
     np.testing.assert_almost_equal(data.resolution(), RES)
 
 def test_dx_dy():
-    data = PointSkeleton(lon=LON, lat=LAT, crs=CRS)
+    data = PointSkeleton(lon=LON, lat=LAT)
     np.testing.assert_almost_equal(data.dx(), np.median(RES))
     np.testing.assert_almost_equal(data.dy(), np.median(RES))
     assert data.dx(strict=True) is None
@@ -26,7 +26,7 @@ def test_dx_dy():
     np.testing.assert_almost_equal(data.dy(native=True), data.dmy()/111_000, decimal=2)
 
 def test_dmx_dmy():
-    data = PointSkeleton(lon=LON, lat=LAT, crs=CRS)
+    data = PointSkeleton(lon=LON, lat=LAT)
     np.testing.assert_almost_equal(data.dmx(), np.median(RES))
     np.testing.assert_almost_equal(data.dmy(), np.median(RES))
     assert data.dmx(strict=True) is None
@@ -36,7 +36,7 @@ def test_dmx_dmy():
     np.testing.assert_almost_equal(data.dmy(native=True), data.dmy()/111_000, decimal=2)
 
 def test_dlon_dlat():
-    data = PointSkeleton(lon=LON, lat=LAT, crs=CRS)
+    data = PointSkeleton(lon=LON, lat=LAT)
     np.testing.assert_almost_equal(data.dlat(), data.dmy()/111_000, decimal=2)
     dlon = dx_to_dlon(dx=data.dmx(), lon=data.lon()[1], lat=data.lat()[1])
     np.testing.assert_almost_equal(data.dlon(), dlon)

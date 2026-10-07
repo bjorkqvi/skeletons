@@ -70,6 +70,26 @@ def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
     
     return None, crs, None, None, None
 
+def _determine_crs(crs: Optional[CRSValue], utm: Optional[tuple[int, str]], is_projected: bool) -> CRSValue:
+    """Determines the appropriate CRS based on the given inputs."""
+    if not is_projected:
+        if crs is not None and crs != CRS.from_epsg(4326):
+            raise ProjectionError("Cannot set a new CRS for a skeleton defined with lon-lat!")
+            
+        return CRS.from_epsg(4326)
+    if crs is not None:
+        return crs
+    if utm is not None:
+        return utm
+    wkt = (
+        'ENGINEERINGCRS["Local Cartesian", '
+        'ENGINEERINGDATUM["Local datum"], '
+        'CS[Cartesian,2], '
+        'AXIS["x",east], AXIS["y",north], '
+        'LENGTHUNIT["metre",1]]'
+    )
+    return CRS.from_wkt(wkt)
+
 class ProjManager:
     def __init__(
         self,  lat: np.ndarray[np.float64], lon: np.ndarray[np.float64],y: np.ndarray[np.float64], x: np.ndarray[np.float64], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None, utm: Optional[tuple[int, str]]=None
@@ -93,21 +113,8 @@ class ProjManager:
         self._crs = None
         self._utm = None
 
-        if crs is None:
-            if not self._coordinate_manager.is_projected():
-                crs = CRS.from_epsg(4326)
-            else:
-                if utm is not None:
-                    crs = utm
-                else:
-                    wkt = (
-                        'ENGINEERINGCRS["Local Cartesian", '
-                        'ENGINEERINGDATUM["Local datum"], '
-                        'CS[Cartesian,2], '
-                        'AXIS["x",east], AXIS["y",north], '
-                        'LENGTHUNIT["metre",1]]'
-                    )
-                    crs = CRS.from_wkt(wkt)
+        crs = _determine_crs(crs, utm, self._coordinate_manager.is_projected())
+
         self.set(crs)
         if not isinstance(self.crs(), tuple):
             self.reset_utm()
