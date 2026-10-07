@@ -549,7 +549,7 @@ class PointSkeleton(Skeleton):
             x = np.random.choice(x,10_000, replace=False)
             y = np.random.choice(y,10_000, replace=False)
 
-        return distance_funcs.get_dist_point(x.astype(int), y.astype(int))
+        return distance_funcs.get_dist_point(x, y)
     
 
     def dy(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
@@ -570,7 +570,7 @@ class PointSkeleton(Skeleton):
         if self.core.is_cartesian() and native:
             return float(np.median(self.resolution(full=full)))
         
-        return float(np.median(distance_funcs.get_dist_point(self.x().astype(int), self.y().astype(int))))
+        return float(np.median(distance_funcs.get_dist_point(self.x(), self.y())))
 
 
     
@@ -592,7 +592,7 @@ class PointSkeleton(Skeleton):
         if self.core.is_cartesian() and native:
             return float(np.median(self.resolution(full=full)))
         
-        return float(np.median(distance_funcs.get_dist_point(self.x().astype(int),self.y().astype(int))))
+        return float(np.median(distance_funcs.get_dist_point(self.x(),self.y())))
     
 
     def dmy(self, native: bool = False, strict: bool = False, full: bool = True) -> float:
