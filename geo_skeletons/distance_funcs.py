@@ -1,25 +1,10 @@
 import geopy.distance
 import numpy as np
-#from scipy.spatial.distance import cdist
 from scipy.spatial import cKDTree
 
-# def get_dist_point_old(x, y):
-#     """Calculates the distance to the nearest neaighbour for each point"""
-#     if len(x) == 1 and len(y) == 1:
-#         return np.array([0.0])
-#     points = [(i, j) for i, j in zip(x, y)]
-#     dist = cdist(points, points, metric="euclidean")
-#     dist_point = []
-#     for i in range(dist.shape[0]):
-#         sl = dist[i,:]
-#         sl[sl<0.0000001] = 99999999
-#         dist_point.append(float(np.min(sl)))
-#     return dist_point
-
-
-
 def get_dist_point(x: np.ndarray, y: np.ndarray):
-    """Calculates the distance to the nearest neighbor for each point."""
+    """Calculates the distance to the nearest neighbor for each point.
+    Used in case we have very high or low latitudes so that a cartesian UTM projection is not available"""
     if len(x) == 1 and len(y) == 1:
         return np.array([0.0])
     
@@ -48,13 +33,12 @@ def min_distance(
     dx = []
     for n, __ in enumerate(lat_vec):
         dx.append(distance_2points(lat, lon, lat_vec[n], lon_vec[n]))
-    # inds = np.argpartition(dx, npoints - 1)[:npoints]
+
     inds = np.argsort(dx)[0:npoints]
-    # if npoints > 1:
-    #    breakpoint()
+
     return np.array(dx)[inds], inds
 
-    # return [np.array(dx).min()], [np.array(dx).argmin()]
+
 
 
 def min_cartesian_distance(
@@ -66,15 +50,8 @@ def min_cartesian_distance(
     Also returns incex of found minimum"""
     dx = ((y - y_vec) ** 2 + (x - x_vec) ** 2) ** 0.5
     inds = np.argsort(dx)[0:npoints]
-    # if npoints > 1:
-    #    breakpoint()
     return np.array(dx)[inds], inds
 
-    # inds = np.argpartition(dx, npoints - 1)[:npoints]
-    # # if npoints > 1:
-    # #     breakpoint()
-    # return dx[inds], inds
-    # # return dx.min(), dx.argmin()
 
 
 def lon_in_km(lat: float, lon: float) -> float:
