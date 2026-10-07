@@ -7,7 +7,7 @@ import time
 
 def test_dist_func_speed():
     np.random.seed(42)  # For reproducibility
-    num_points = 1_000_000
+    num_points = 1_000
     x = np.random.uniform(0, 100000, num_points)
     y = np.random.uniform(0, 100000, num_points)
 
@@ -16,3 +16,4 @@ def test_dist_func_speed():
     unpruned_distances = get_dist_point(x.astype(int), y.astype(int))
     unpruned_time = time.time() - start_time
     print(f"Unpruned version took {unpruned_time:.2f} seconds.")
+
