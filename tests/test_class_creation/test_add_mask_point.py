@@ -11,8 +11,8 @@ def test_add_mask_one_point():
         pass
 
     data = WaveHeight(lon=(10), lat=(30))
-    data.set_sea_mask()
-    data.set_hs()
+    data.set_sea_mask(1)
+    data.set_hs(0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), True))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), False))
     assert data.sea_mask(empty=True).shape == data.size()
@@ -30,8 +30,8 @@ def test_add_mask():
         pass
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40))
-    data.set_sea_mask()
-    data.set_hs()
+    data.set_sea_mask(1)
+    data.set_hs(0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), True))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), False))
     data.set_sea_mask(data.hs() > 0)
@@ -47,8 +47,8 @@ def test_add_coord_and_mask():
         pass
 
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3))
-    data.set_sea_mask()
-    data.set_hs()
+    data.set_sea_mask(1)
+    data.set_hs(0)
     np.testing.assert_array_equal(data.sea_mask(), np.full(data.size(), True))
     np.testing.assert_array_equal(data.land_mask(), np.full(data.size(), False))
     data.set_sea_mask(data.hs() > 0)
@@ -67,8 +67,8 @@ def test_add_gridpoint_coord_and_mask():
     times = pd.date_range("2018-01-01 00:00", "2018-02-01 00:00", freq="1h")
     data = WaveHeight(lon=(10, 20), lat=(30, 40), z=(1, 2, 3), time=times)
     data.set_land_mask(0)
-    data.set_sea_mask()
-    data.set_hs()
+    data.set_sea_mask(1)
+    data.set_hs(0)
     np.testing.assert_array_equal(
         data.sea_mask(), np.full(data.size(coord_group="grid"), True)
     )
@@ -103,8 +103,8 @@ def test_get_points():
         pass
 
     data = WaveHeight(x=(10, 20, 30), y=(30, 40, 50))
-    data.set_sea_mask()
-    data.set_hs()
+    data.set_sea_mask(1)
+    data.set_hs(0)
     mask = data.sea_mask()
 
     lon, lat = data.sea_points(coord="xy")

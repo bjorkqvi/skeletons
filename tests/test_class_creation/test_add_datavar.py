@@ -8,7 +8,7 @@ def test_add_datavar():
     points = PointSkeleton.add_datavar("hs")(x=0, y=4)
     assert "hs" in points.core.data_vars()
     assert "hs" not in list(points.ds().keys())
-    points.set_hs()
+    points.set_hs(0)
     assert "hs" in list(points.ds().keys())
 
 
@@ -29,8 +29,8 @@ def test_add_datavar_on_top():
     assert "hs" not in list(points.ds().keys())
     assert "tp" not in list(points.ds().keys())
 
-    points.set_hs()
-    points.set_tp()
+    points.set_hs(0)
+    points.set_tp(5)
     
     assert "hs" in list(points.ds().keys())
     assert "tp" in list(points.ds().keys())

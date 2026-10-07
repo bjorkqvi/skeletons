@@ -13,7 +13,7 @@ def test_dist_func_speed():
 
     # Measure execution time for unpruned version
     start_time = time.time()
-    unpruned_distances = get_dist_point(x.astype(int), y.astype(int))
+    unpruned_distances = get_dist_point(tuple(x), tuple(y))
     unpruned_time = time.time() - start_time
     print(f"Unpruned version took {unpruned_time:.2f} seconds.")
 

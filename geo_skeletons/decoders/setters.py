@@ -128,7 +128,7 @@ def set_core_vars_to_skeleton_from_ds(
             if projected is None:
                 wrt = None
             elif projected:
-                wrt = 'xy'
+                wrt = 'crs'
             else:
                 wrt = 'lonlat'
             if verbose:

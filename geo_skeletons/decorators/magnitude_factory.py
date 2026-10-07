@@ -153,7 +153,6 @@ def add_magnitude(
         coord_group = c.core.get(xstr).coord_group
         mag_obj = Magnitude(name=name_str, meta=meta, x=xstr, y=ystr, coord_group=coord_group)
 
-
         if direction is not None:
 
 
@@ -175,7 +174,7 @@ def add_magnitude(
             exec(f"c.set_{dir_str} = set_direction")
         else:
             dir_str = None
-
+        
         consistency_check_of_set_parameters(meta, x, y, direction, dir_type)
 
         exec(f"c.{name_str} = get_magnitude")
@@ -222,9 +221,10 @@ def add_magnitude(
 def figure_out_components(cls, name: Union[str, MetaParameter], x: Union[str, MetaParameter], y: Union[str, MetaParameter]) -> tuple[str, str]:
     """Figures out the components associated with a given magnitude."""
     if x is not None and y is not None:
-        return x, y
+        xstr = x.name if gp.is_gp(x) else x
+        ystr = y.name if gp.is_gp(y) else y
+        return xstr, ystr
 
-    
     if gp.is_gp(name):
         x = name.my_family().get('x')
         east = name.my_family().get('east')

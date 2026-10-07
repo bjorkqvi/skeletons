@@ -41,7 +41,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_u():
 
 def test_reproj_southerly_winds_rotated_grid_lon0_0_v():
     proj4 = "+proj=laea +lat_0=90 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-    wind = WindGrid.add_time()(lat=10, lon=(-180, 180), crs=proj4, time=('2020-01-01 00:00','2020-01-01 06:00'))
+    wind = WindGrid.add_time()(lat=10, lon=(-180, 180), time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_spacing(nx=181)
     wind.set_ff(10)
     wind.set_dd(180)
@@ -78,7 +78,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_0_v():
 
 def test_reproj_southerly_winds_rotated_grid_lon0_20_u():
     proj4 = "+proj=laea +lat_0=90 +lon_0=-20 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-    wind = WindGrid.add_time()(lat=10, lon=(-180, 180), crs=proj4, time=('2020-01-01 00:00','2020-01-01 06:00'))
+    wind = WindGrid.add_time()(lat=10, lon=(-180, 180),time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_spacing(nx=181)
     wind.set_ff(10)
     wind.set_dd(180)
@@ -116,7 +116,7 @@ def test_reproj_southerly_winds_rotated_grid_lon0_20_u():
 
 def test_reproj_southerly_winds_rotated_grid_lon0_20_v():
     proj4 = "+proj=laea +lat_0=90 +lon_0=-20 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-    wind = WindGrid.add_time()(lat=10, lon=(-180, 180), crs=proj4, time=('2020-01-01 00:00','2020-01-01 06:00'))
+    wind = WindGrid.add_time()(lat=10, lon=(-180, 180), time=('2020-01-01 00:00','2020-01-01 06:00'))
     wind.set_spacing(nx=181)
     wind.set_ff(10)
     wind.set_dd(180)
@@ -167,14 +167,3 @@ def test_reproj_southerly_winds_rotated_grid_utm_u():
     np.testing.assert_array_almost_equal(wind.u(time='2020-01-01 00:00'), rot_u, decimal=1)
     np.testing.assert_array_almost_equal(wind.v(time='2020-01-01 00:00'), rot_v, decimal=3)
 
-    # breakpoint()
-    # import matplotlib.pyplot as plt
-    # #plt.scatter(x,y,c=lon,s=2)
-    # x,y = wind.xy()
-    # plt.scatter(x,y,c=rot_u,s=10, label='u')
-
-    # plt.colorbar()
-    
-
-    # plt.show()
-    # breakpoint()
