@@ -14,3 +14,17 @@ def test_get_xy_lonlat():
         PointSkeleton(lon=1, lat=1).xy(strict=True, native=True)
     with pytest.raises(ValueError):
         PointSkeleton(lon=1, lat=1).lonlat(strict=True, native=True)
+
+def test_get_dxy_lonlat():
+    with pytest.raises(ValueError):
+        PointSkeleton(lon=1, lat=1).dx(strict=True, native=True)
+    with pytest.raises(ValueError):
+        PointSkeleton(lon=1, lat=1).dy(strict=True, native=True)
+    with pytest.raises(ValueError):
+        PointSkeleton(lon=1, lat=1).dlon(strict=True, native=True)
+    with pytest.raises(ValueError):
+        PointSkeleton(lon=1, lat=1).dlat(strict=True, native=True)
+    with pytest.raises(ValueError):
+        PointSkeleton(lon=1, lat=1).dmx(strict=True, native=True)
+    with pytest.raises(ValueError):
+        PointSkeleton(lon=1, lat=1).dmy(strict=True, native=True)

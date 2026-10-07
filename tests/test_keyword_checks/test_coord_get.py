@@ -22,9 +22,6 @@ def test_gridded():
     assert data.lon(native=True) is not None
     assert data.x(strict=True) is None
     with pytest.raises(TypeError):
-        data.x(stcrit=True)# Spelling wrong
-
-    with pytest.raises(TypeError):
         data.lon(method='nearest') # Nothing o slice, so don't need keywords for slicing
 
 

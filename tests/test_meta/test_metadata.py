@@ -32,7 +32,7 @@ def test_coord_meta():
         "freq",
         "dirs",
         "hs",
-        "wgs84"
+        "crs"
     }
 
 

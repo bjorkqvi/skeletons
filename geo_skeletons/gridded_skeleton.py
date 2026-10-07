@@ -972,7 +972,9 @@ class GriddedSkeleton(Skeleton):
         
         For cartesian grids this method is identical to .dx()
         For grids with non cartesian projectsion (e.g. rotated pole), .dx() will give """
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+        
         if (not self.core.is_projected() or self.core.is_rotated()) and strict and (not native):
             return None
         if self.nx() == 1:
@@ -989,20 +991,18 @@ class GriddedSkeleton(Skeleton):
                 else:
                     return self.dlon()
             midpoint = np.floor(self.ny()/2).astype(int)
-            data_slice = self.isel(**{self.core.y_str:midpoint})
-            
-            lat = data_slice.edges('lat')
-            lon = data_slice.edges('lon')
-            d = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
+            data_slice = self.isel(**{self.core.y_str:midpoint}).ravel()
+            data_slice.proj.reset_utm()
+            return data_slice.dmx()
 
-            #d = distance_funcs.lon_in_km(sum(lat)/2, lon[0])*1000*(lon[1]-lon[0])
-            return float(d/(data_slice.nx()-1))
 
     def dmy(self,native: bool = False, strict: bool = False) -> float:
         """The grid distance in metres for the y-direction.
         
         For cartesian grids this method is identical to .dy()
         For grids with non cartesian projectsion (e.g. rotated pole), .dy() will give """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
 
         if (not self.core.is_projected() or self.core.is_rotated()) and strict and (not native):
             return None
@@ -1021,145 +1021,135 @@ class GriddedSkeleton(Skeleton):
                 return self.dlat()
             
         midpoint = np.floor(self.nx()/2).astype(int)
-        data_slice = self.isel(**{self.core.x_str:midpoint})
-        
-        lat = data_slice.edges('lat')
-        lon = data_slice.edges('lon')
-
-        d = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
-        return float(d/(data_slice.ny()-1))
+        data_slice = self.isel(**{self.core.x_str:midpoint}).ravel()
+        data_slice.proj.reset_utm()
+        return data_slice.dmy()
 
     def dy(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the y vector. Conversion made for spherical grids."""
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         
-        if not self.core.is_projected() and strict and (not native):
-            return None
-
+        if not self.core.is_projected():
+            if native:
+                return self.dlat()
+            if strict:
+                return None
+            return self.dmy()
+        
         if self.ny() == 1:
             return 0.0
-
-        
-        if self.core.is_projected():
-            y = self.edges('y')
-            return float((y[1]-y[0])/(self.ny()-1))
-
-        if native:
-            return self.dlat()
-        
+      
         if self.proj.units_are_in_degrees():
             # Spherical grid with rotated pole (units in degrees, not meter)
             midpoint = np.floor(self.nx()/2).astype(int)
-            data_slice = self.isel(lon=midpoint)
+            data_slice = self.isel(x=midpoint)
             
             rlat = data_slice.edges('y')
             return float((rlat[1]-rlat[0])/(self.ny()-1))
 
         # Spherical grid with cartesian (e.g. UTM) projection
         return self.dmy(native=native, strict=strict)
-        # midpoint = np.floor(self.nx()/2).astype(int)
-        # data_slice = self.isel(lon=midpoint)
-        # lon = data_slice.lon()[0]
-        # lat = data_slice.edges('lat')
-        # d = distance_2points(lat[0], lon, lat[1], lon) 
-        # return float(d/(self.ny()-1))
 
 
     def dx(self, native: bool = False, strict: bool = False) -> float:
         """Mean grid spacing of the x vector. Conversion made for spherical grids."""
-        if not self.core.is_projected() and strict and (not native):
-            return None
-
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+        
+        if not self.core.is_projected():
+            if native:
+                return self.dlon()
+            if strict:
+                return None
+            return self.dmx()
+            
         if self.nx() == 1:
             return 0.0
 
-        
-        if self.core.is_projected():
-            x = self.edges('x')
-            return float((x[1]-x[0])/(self.nx()-1))
-
-        if native:
-            return self.dlon()
-            
         if self.proj.units_are_in_degrees():
             # Spherical grid with rotated pole (units in degrees, not meter)
             midpoint = np.floor(self.ny()/2).astype(int)
-            data_slice = self.isel(lat=midpoint)
+            data_slice = self.isel(y=midpoint)
             rlon = data_slice.edges('x')
             return float((rlon[1]-rlon[0])/(self.nx()-1))
 
         # Spherical grid with cartesian (e.g. UTM) projection
         return self.dmx(native=native, strict=strict)
-        # midpoint = np.floor(self.ny()/2).astype(int)
-        # data_slice = self.isel(lat=midpoint)
-        # lon = data_slice.edges('lon')
-        # lat = data_slice.lat()[0]
-        # d = distance_2points(lat, lon[0], lat, lon[1]) 
-        # return float(d/(self.nx()-1))
+
 
     def dlat(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""
-        if self.core.is_projected() and strict and (not native):
-            return None
-        
-        if self.ny() == 1:
-            return 0.0
-        
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         if not self.core.is_projected():
+            if self.ny() == 1:
+                return 0.0
             lat = self.edges('lat')
             return float((lat[1]-lat[0])/(self.ny()-1))
 
         if native:
             return self.dy()
+        if strict:
+            return None
+        
+        if self.proj.is_engineering():  # Cartesian grid with no set projection
+            return None
+
+        if self.ny() == 1:
+            return 0.0
+
+        # Take a slice at the midpoint of the x dimension to estimate the mean grid spacing in longitude
         midpoint = np.floor(self.nx()/2).astype(int)
         data_slice = self.isel(x=midpoint)
         lon, lat = data_slice.lonlat()
-
-        if lat is None: # Cartesian grid with no set projection
-            return None
-        
         lon, lat = np.median(lon), np.median(lat)
-        
-        if self.core.is_rotated():
-            # Non-spherical grid with rotated pole (units in degrees, not meter)
-            dmy = data_slice.dmy()
-        else:
-            dmy = self.dmy()
 
-        return distance_funcs.dy_to_dlat(dy=dmy, lat=lat, lon=lon)
+        if not self.proj.units_are_in_degrees():
+            dy = self.dmy()
+        else:
+            dy = data_slice.dmy()
+
+        return distance_funcs.dy_to_dlat(dy=dy, lat=lat, lon=lon)
+
 
     def dlon(self, native: bool = False, strict: bool = False):
         """Mean grid spacing of the latitude vector. Conversion made for
         cartesian grids."""
-        if self.core.is_projected() and strict and (not native):
-            return None
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
         
-        if self.nx() == 1:
-            return 0.0
         
         if not self.core.is_projected():
+            if self.nx() == 1:
+                return 0.0
             lon = self.edges('lon')
             return float((lon[1]-lon[0])/(self.nx()-1))
 
         if native:
             return self.dx()
+        if strict:
+            return None
         
+        if self.proj.is_engineering():  # Cartesian grid with no set projection
+            return None
 
+        if self.nx() == 1:
+            return 0.0
+
+        # Take a slice at the midpoint of the y dimension to estimate the mean grid spacing in longitude
         midpoint = np.floor(self.ny()/2).astype(int)
         data_slice = self.isel(y=midpoint)
         lon, lat = data_slice.lonlat()
-        
-        if lon is None: # Cartesian grid with no set projection
-            return None
-        
         lon, lat = np.median(lon), np.median(lat)
-        
-        if self.core.is_rotated():
-            dmx = data_slice.dmx()
-        else:
-            dmx = self.dmx()
 
-        return distance_funcs.dx_to_dlon(dx=dmx, lat=lat, lon=lon)
+        if not self.proj.units_are_in_degrees():
+            dx = self.dmx()
+        else:
+            dx = data_slice.dmx()
+
+        return distance_funcs.dx_to_dlon(dx=dx, lat=lat, lon=lon)
 
 
     def _check_mask_right_shape(

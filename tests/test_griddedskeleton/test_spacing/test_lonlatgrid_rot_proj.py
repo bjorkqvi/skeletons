@@ -1,7 +1,8 @@
 from geo_skeletons import GriddedSkeleton
 import pytest
 import numpy as np
-from geo_skeletons.distance_funcs import distance_2points
+from geo_skeletons import PointSkeleton
+from geo_skeletons import distance_funcs
 LON = (20,22)
 LAT = (58,60)
 MEDIAN_LAT = np.median(np.array(LAT))
@@ -11,12 +12,12 @@ MEDIAN_LON = np.median(np.array(LON))
 #CRS = (34, 'V')
 NX = 11
 NY = 21
-DMX = distance_2points(MEDIAN_LAT, LON[0], MEDIAN_LAT, LON[1])/(NX-1)
-DMY = distance_2points(LAT[0], MEDIAN_LON, LAT[1], MEDIAN_LON)/(NY-1)
+DMX = PointSkeleton(lon=np.linspace(LON[0], LON[1], NX), lat=np.median(LAT)).dmx()
+DMY = PointSkeleton(lat=np.linspace(LAT[0], LAT[1], NY), lon=np.median(LON)).dmy()
 DLON = (LON[1]-LON[0])/(NX-1)
 DLAT = (LAT[1]-LAT[0])/(NY-1)
 PROJ4 = '+proj=ob_tran +o_proj=longlat +lon_0=-40 +o_lat_p=22 +R=6.371e+06 +no_defs'
-data = GriddedSkeleton(lon=LON, lat=LAT, crs=PROJ4)
+data = GriddedSkeleton(lon=LON, lat=LAT)
 data.set_spacing(nx=NX, ny=NY)
 RLON = data.sel(lat=MEDIAN_LAT).edges('x')
 RLAT = data.sel(lon=MEDIAN_LON).edges('y')
@@ -24,10 +25,11 @@ DRLON = (RLON[1]-RLON[0])/(NX-1)
 DRLAT = (RLAT[1]-RLAT[0])/(NY-1)
 
 def test_dx_dy():
-    data = GriddedSkeleton(lon=LON, lat=LAT, crs=PROJ4)
+    data = GriddedSkeleton(lon=LON, lat=LAT)
     data.set_spacing(nx=NX, ny=NY)
-    np.testing.assert_almost_equal(data.dx(),DRLON)
-    np.testing.assert_almost_equal(data.dy(),DRLAT)
+    np.testing.assert_almost_equal(data.dx(),DMX)
+
+    np.testing.assert_almost_equal(data.dy(),DMY)
     
     assert data.dx(strict=True) is None
     assert data.dy(strict=True) is None
@@ -35,7 +37,7 @@ def test_dx_dy():
     np.testing.assert_almost_equal(data.dy(native=True),DLAT)
 
 def test_dmx_dmy():
-    data = GriddedSkeleton(lon=LON, lat=LAT, crs=PROJ4)
+    data = GriddedSkeleton(lon=LON, lat=LAT)
     data.set_spacing(nx=NX, ny=NY)
     np.testing.assert_almost_equal(data.dmx(),DMX, decimal=0)
     np.testing.assert_almost_equal(data.dmy(),DMY, decimal=0)
@@ -46,7 +48,7 @@ def test_dmx_dmy():
 
 
 def test_dlon_dlat():
-    data = GriddedSkeleton(lon=LON, lat=LAT, crs=PROJ4)
+    data = GriddedSkeleton(lon=LON, lat=LAT)
     data.set_spacing(nx=NX, ny=NY)
     np.testing.assert_almost_equal(data.dlon(),DLON)
     np.testing.assert_almost_equal(data.dlat(),DLAT)

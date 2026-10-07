@@ -61,7 +61,7 @@ def find_proj(ds: xr.Dataset, verbose: bool) -> tuple:
         elif 'proj4' in da.attrs:
             return da.attrs.get('proj4'), da.attrs
 
-    return
+    return None, None
 
 
 def map_ds_to_gp(

@@ -19,6 +19,7 @@ def ds():
     return ds
 
 def test_set_name_from_ds(ds):
+    
     points = PointSkeleton.from_ds(ds)
     assert points.name == 'TestName'
     assert points.ds().name == 'TestName'
