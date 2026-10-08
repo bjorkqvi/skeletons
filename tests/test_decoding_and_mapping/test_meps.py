@@ -90,7 +90,7 @@ def test_time_for_calculating_dd_with_rotation(ds):
 
     start = time.time()
     dd = wind.dd()
-    print(f"Step 2 (Calculate dd - first time): {time.time() - start:.6f} seconds")
+        
     start = time.time()
     dd = wind.dd()
     print(f"Step 3 (Calculate dd - second time): {time.time() - start:.6f} seconds")
@@ -98,3 +98,59 @@ def test_time_for_calculating_dd_with_rotation(ds):
     start = time.time()
     dd = wind.dd()
     print(f"Step 4 (Calculate dd - third time): {time.time() - start:.6f} seconds")
+
+def test_yank_point_speed(ds):
+    @add_magnitude(gp.wind.Wind)
+    @add_datavar(gp.wind.NorthWind('v'))
+    @add_datavar(gp.wind.EastWind('u'))
+    @add_time()
+    class WindLonLat(GriddedSkeleton):
+        pass
+
+    x0, y0 = -810084.06,-1082517.9
+
+    start = time.time()
+    wind = WindGrid.add_time().from_ds(ds, priority='components').sel(x=x0, y=y0)
+    wind.dd()
+    print(f"Time to sel point and calculate dd: {time.time() - start:.6f} seconds")
+
+    start = time.time()
+    grid = GriddedSkeleton.from_ds(ds)
+    inds = grid.yank_point(x=x0, y=y0)
+    wind2 = WindGrid.add_time().from_ds(ds.isel(x=inds['inds_x'][0], y=inds['inds_y'][0]), priority='components')
+    wind2.dd()
+    print(f"Time to yank point and calculate dd: {time.time() - start:.6f} seconds")
+
+def test_yank_point_speed_lonlat(ds):
+    
+    
+    @add_magnitude(gp.wind.Wind)
+    @add_datavar(gp.wind.NorthWind('v'))
+    @add_datavar(gp.wind.EastWind('u'))
+    @add_time()
+    class WindLonLat(GriddedSkeleton):
+        pass
+
+    lon0, lat0 =3.02166538, 52.93508008
+
+    start = time.time()
+    wind = WindGrid.add_time().from_ds(ds, priority='magdir').sel(lon=lon0, lat=lat0)
+    wind.dd()
+    print(f"Time to sel point and calculate dd: {time.time() - start:.6f} seconds")
+
+    start = time.time()
+    grid = GriddedSkeleton.from_ds(ds)
+    inds = grid.yank_point(lon=lon0, lat=lat0)
+    dds = ds.isel(x=inds['inds_x'][0], y=inds['inds_y'][0])
+    wind2 = WindGrid.add_time().from_ds(dds, priority='magdir')
+    wind2.dd()
+    print(f"Time to yank point and calculate dd: {time.time() - start:.6f} seconds")
+
+    start = time.time()
+    wind3 = WindGrid.add_time().from_ds(ds, priority='magdir').ravel()
+    wind3 = wind3.sel(lon=lon0, lat=lat0)
+    wind3.dd()
+    print(f"Time to sel point and calculate dd: {time.time() - start:.6f} seconds")
+
+
+

@@ -182,7 +182,6 @@ class PointSkeleton(Skeleton):
         self,
         native: bool = False,
         strict: bool = False,
-        normalize: bool = False,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of projected x-values.
 
@@ -193,20 +192,17 @@ class PointSkeleton(Skeleton):
                 if spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            normalize (bool, optional): If `True`, normalizes the x-values by subtracting the minimum value. 
-                Defaults to `False`.
 
         Returns:
             np.ndarray: A meshgrid of projected x-values.
         """
-        x, _ = self.xy(native=native, strict=strict, normalize=normalize)
+        x, _ = self.xy(native=native, strict=strict)
         return x
 
     def ygrid(
         self,
         native: bool = False,
         strict: bool = False,
-        normalize: bool = False,
     ) -> Union[np.ndarray, None]:
         """Returns a meshgrid of projected y-values.
 
@@ -217,13 +213,11 @@ class PointSkeleton(Skeleton):
                 if spherical. Defaults to `False`.
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
-            normalize (bool, optional): If `True`, normalizes the y-values by subtracting the minimum value. 
-                Defaults to `False`.
 
         Returns:
             np.ndarray: A meshgrid of projected y-values.
         """
-        _, y = self.xy(native=native, strict=strict, normalize=normalize)
+        _, y = self.xy(native=native, strict=strict)
         return y
 
     def longrid(
@@ -303,7 +297,7 @@ class PointSkeleton(Skeleton):
         if not self.core.is_projected() and strict:
             return None
 
-        if self.core.is_projected() and (crs is None or self.proj.crs() == self.proj.to_crs(crs)):
+        if self.core.is_projected() and (crs is None or self.proj.crs() == self.proj.to_crs(crs) or self.proj.is_engineering()):
             x = self._ds_manager.get("x", **kwargs).data.copy()
         else:
             x, _ = self.proj._xy(
@@ -353,7 +347,7 @@ class PointSkeleton(Skeleton):
             if crs is not None:
                 raise ValueError("Can't both ask ")
 
-        if self.core.is_projected() and (crs is None or self.proj.crs() == crs):
+        if self.core.is_projected() and (crs is None or self.proj.crs() == crs or self.proj.is_engineering()):
             y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
             _, y = self.proj._xy(
@@ -404,13 +398,13 @@ class PointSkeleton(Skeleton):
                 warnings.warn(f"Ignoring CRS={crs}, since requesting lon from a lon-lat skeleton...")
             return self._ds_manager.get("lon", **kwargs).data.copy()
 
-        
         lon, _  = self.proj._lonlat(
             x=self.x(**kwargs) ,
             y=self.y(**kwargs) ,
             crs=crs,
         )
         return lon
+
 
 
     def lat(
