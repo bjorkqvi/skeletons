@@ -491,8 +491,25 @@ def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_da
     alpha = broadcast_alpha_to_target(alpha, target_shape=x_data.shape)
     return alpha
 
+def _xy(lon: np.ndarray, lat: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
+    """Calculates x and y coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
+    if not isinstance(crs, tuple):
+        x, y = _pyproj_xy(lon=tuple(lon), lat=tuple(lat), crs=crs)
+    else:
+        x, y =_utm_xy(lon=tuple(lon), lat=tuple(lat), utm=crs)
+    return x, y
+
+def _lonlat(x: np.ndarray, y: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
+    """Calculates lon and lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
+    if not isinstance(crs, tuple):
+        lon, lat = _pyproj_lonlat(x=tuple(x), y=tuple(y), crs=crs)
+    else:
+        lon, lat = _utm_lonlat(x=tuple(x), y=tuple(y), utm=crs)
+    return lon, lat
+
+
 @lru_cache(maxsize=10)
-def _utm_lonlat(x: tuple[float], y: tuple[float], utm: tuple[int, str]) -> np.ndarray:
+def _utm_lonlat(x: tuple[float], y: tuple[float], utm: tuple[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """Calculates longitudes based on given x,y-coordinates and the set UTM-zone"""
     if not _is_valid_utm(utm):
         raise ValueError(f"{utm} is not a valid UTM zone!")
@@ -566,21 +583,6 @@ def _pyproj_xy(lon: tuple[float], lat: tuple[float], crs: Union[int, str]) -> tu
 
     return np.array(x),np.array(y)
 
-def _xy(lon: np.ndarray, lat: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
-    """Calculates x and y coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
-    if not isinstance(crs, tuple):
-        x, y = _pyproj_xy(lon=tuple(lon), lat=tuple(lat), crs=crs)
-    else:
-        x, y =_utm_xy(lon=tuple(lon), lat=tuple(lat), utm=crs)
-    return x, y
-
-def _lonlat(x: np.ndarray, y: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
-    """Calculates lon and lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
-    if not isinstance(crs, tuple):
-        lon, lat = _pyproj_lonlat(x=tuple(x), y=tuple(y), crs=crs)
-    else:
-        lon, lat = _utm_lonlat(x=tuple(x), y=tuple(y), utm=crs)
-    return lon, lat
 
 def _to_crs(crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
     """Converts the given CRS into a pyproj CRS object or UTM tuple.
