@@ -649,17 +649,26 @@ class GriddedSkeleton(Skeleton):
         if not self.core.is_projected() and native and crs is None:
             return x, y
 
+
+
         if self.core.is_projected():
-            points = PointSkeleton(x=x, y=y)
-            self_crs = self.proj.crs()
-            if self_crs is not None:
-                points.proj.set(self_crs)
+            crs = crs or self.proj.crs()
         else:
-            points = PointSkeleton(lon=x, lat=y)
-            self_crs = self.proj.utm()
+            crs = crs or self.proj.utm()
+
+        x = self.proj._x(
+            lon=x,
+            lat=y,
+            crs=crs,
+        )
+        y = self.proj._y(
+            lon=x,
+            lat=y,
+            crs=crs,
+        )
 
 
-        return points.xy(native=native, crs = crs or self_crs)
+        return x, y
     
     def lonlat(
         self,
@@ -682,9 +691,9 @@ class GriddedSkeleton(Skeleton):
         Returns:
             tuple[np.ndarray, np.ndarray]: A tuple of longitude and latitude values.
         """
-
         if native and strict:
             raise ValueError("Can't set both 'native' and 'strict' to True!")
+        
 
         if self.core.is_projected() and strict:
             return None, None
@@ -698,11 +707,21 @@ class GriddedSkeleton(Skeleton):
             return x, y
             
 
-        points = PointSkeleton(x=x, y=y)
-        if self.proj.crs() is None:
-            return None, None
-        points.proj.set(self.proj.crs())
-        return points.lonlat(native=native, crs = crs or self.proj.crs())
+        crs = crs or self.proj.crs()
+        lon = self.proj._lon(
+            x=x,
+            y=y,
+            crs=crs,
+        )
+        lat = self.proj._lat(
+            x=x,
+            y=y,
+            crs=crs,
+        )
+
+
+        return lon, lat
+
 
     def _native_xy(
         self, **kwargs
