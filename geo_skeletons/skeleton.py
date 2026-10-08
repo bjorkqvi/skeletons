@@ -8,7 +8,7 @@ from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager, create_new_class
 if TYPE_CHECKING:
     from .managers.coordinate_manager import CoordinateManager
-import time
+
 from . import logger
 from .decoders import (
     identify_core_in_ds,
