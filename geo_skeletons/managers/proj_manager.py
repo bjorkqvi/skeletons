@@ -364,56 +364,27 @@ class ProjManager:
         """
         return self._crs
 
-    def _lon(self, x: np.ndarray, y: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
+    def _lonlat(self, x: np.ndarray, y: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates lon coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
-        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
+        if self.is_engineering():
             return None
-        if isinstance(crs, tuple):
-            lon = _utm_lon(x=tuple(x), y=tuple(y), utm=crs)
-        else:
-            lon, __ = _lonlat(x=tuple(x), y=tuple(y), crs=crs)
-        return lon
-    
-    def _lat(self, x: np.ndarray, y: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
-        """Calculates lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
-        crs = self.to_crs(crs) or self.crs()
-
-        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
-            return None
-        
-        if isinstance(crs, tuple):
-            lat = _utm_lat(x=tuple(x), y=tuple(y), utm=crs)
-        else:
-            __, lat = _lonlat(x=tuple(x), y=tuple(y), crs=crs)
-
-        return lat
+        lon, lat =  _lonlat(x=x, y=y, crs=crs)
+        return lon, lat
     
 
 
-    def _x(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
+
+    def _xy(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
         """Calculates projected x coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.utm()
-        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
+        if self.is_engineering():
             logger.log.info("Can't transform lon-lat without a projection!")
             return None
-        if isinstance(crs, tuple):
-            x = _utm_x(lon=tuple(lon), lat=tuple(lat), utm=crs)
-        else:
-            x, __ = _xy(lon=tuple(lon), lat=tuple(lat), crs=crs)
-        return x
-    
-    def _y(self, lon: np.ndarray, lat: np.ndarray, crs: Optional[Union[int, str]]=None) -> np.ndarray:
-        """Calculates projected y coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
-        crs = self.to_crs(crs) or self.utm()
-        if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
-            logger.log.info("Can't transform lon-lat without a projection!")
-            return None
-        if isinstance(crs, tuple):
-            y = _utm_y(lon=tuple(lon), lat=tuple(lat), utm=crs)
-        else:
-            __, y = _xy(lon=tuple(lon), lat=tuple(lat), crs=crs)
-        return y
+        x, y =  _xy(lon=lon, lat=lat, crs=crs)
+        return x, y
+        
+
     
 
     def _calculate_rotation_alpha(self, lon, lat, target_crs: CRS) -> np.ndarray:
@@ -421,18 +392,10 @@ class ProjManager:
         saved_alpha = self._alpha.get(target_crs)
         if saved_alpha is not None:
             return saved_alpha
-        if isinstance(target_crs, tuple):
-            x = _utm_x(lon=tuple(lon), lat=tuple(lat), utm=target_crs)
-            y = _utm_y(lon=tuple(lon), lat=tuple(lat), utm=target_crs)
-            # Shift slightly towards north
-            dlat = 1e-5
-            x2 = _utm_x(lon=tuple(lon), lat=tuple(lat+dlat), utm=target_crs)
-            y2 = _utm_y(lon=tuple(lon), lat=tuple(lat+dlat), utm=target_crs)
-        else:
-            x, y = _xy(lon=tuple(lon), lat=tuple(lat), crs=target_crs)
-            # Shift slightly towards north
-            dlat = 1e-5
-            x2, y2 = _xy(lon=tuple(lon), lat=tuple(lat+dlat), crs=target_crs)
+        x, y = _xy(lon=lon, lat=lat, crs=target_crs)
+        # Shift slightly towards north
+        dlat = 1e-5
+        x2, y2 = _xy(lon=lon, lat=lat+dlat, crs=target_crs)
 
         alpha =np.arctan2(y2-y, x2-x)-np.pi/2
         self._alpha[target_crs] = alpha
@@ -699,72 +662,72 @@ def _is_valid_utm(utm: tuple[int, str]) -> bool:
     return True
 
 
-@lru_cache(maxsize=10)
-def _utm_lat(x: tuple[float], y: tuple[float], utm: tuple[int, str]) -> np.ndarray:
-    """Calculates latitudes based on given x,y-coordinates and the set UTM-zone"""
-    if not _is_valid_utm(utm):
-        raise ValueError(f"{utm} is not a valid UTM zone!")
-    x, y = np.atleast_1d(x), np.atleast_1d(y)
-    lat, __ = utm_module.to_latlon(
-        x,
-        np.mod(y, 10_000_000),
-        zone_number=utm[0],
-        zone_letter=utm[1],
-        strict=False,
-    )
-    return np.array(lat)
+# @lru_cache(maxsize=10)
+# def _utm_lat(x: tuple[float], y: tuple[float], utm: tuple[int, str]) -> np.ndarray:
+#     """Calculates latitudes based on given x,y-coordinates and the set UTM-zone"""
+#     if not _is_valid_utm(utm):
+#         raise ValueError(f"{utm} is not a valid UTM zone!")
+#     x, y = np.atleast_1d(x), np.atleast_1d(y)
+#     lat, __ = utm_module.to_latlon(
+#         x,
+#         np.mod(y, 10_000_000),
+#         zone_number=utm[0],
+#         zone_letter=utm[1],
+#         strict=False,
+#     )
+#     return np.array(lat)
 
 @lru_cache(maxsize=10)
-def _utm_lon(x: tuple[float], y: tuple[float], utm: tuple[int, str]) -> np.ndarray:
+def _utm_lonlat(x: tuple[float], y: tuple[float], utm: tuple[int, str]) -> np.ndarray:
     """Calculates longitudes based on given x,y-coordinates and the set UTM-zone"""
     if not _is_valid_utm(utm):
         raise ValueError(f"{utm} is not a valid UTM zone!")
     x, y = np.atleast_1d(x), np.atleast_1d(y)
-    __, lon = utm_module.to_latlon(
+    lat, lon = utm_module.to_latlon(
         x,
         np.mod(y, 10_000_000),
         zone_number=utm[0],
         zone_letter=utm[1],
         strict=False,
     )
-    return np.array(lon)
+    return np.array(lon), np.array(lat)
 
 
+
+# @lru_cache(maxsize=10)
+# def _utm_x(lon: tuple[float], lat: tuple[float], utm: tuple[int, str]) -> np.ndarray:
+#     """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone.
+
+#     latitudes higher than 84 or lower than -80 will produce np.nan"""
+#     assert len(lon) == len(
+#         lat
+#     ), f"lon and lat vectors need to be of equal length ({len(lon)}, {len(lat)})!"
+#     lat, lon = np.atleast_1d(lat), np.atleast_1d(lon)
+#     # High/low latitudes cannot be transformed to UTM
+#     good_mask = np.logical_and(lat <= 84, lat >= -80)
+#     posmask = np.logical_and(lat >= 0, good_mask)
+#     negmask = np.logical_and(lat < 0, good_mask)
+#     x = np.zeros(len(lon))
+#     if np.any(posmask):
+#         x[posmask], __, __, __ = utm_module.from_latlon(
+#             lat[posmask],
+#             lon[posmask],
+#             force_zone_number=utm[0],
+#             force_zone_letter=utm[1],
+#         )
+#     if np.any(negmask):
+#         x[negmask], __, __, __ = utm_module.from_latlon(
+#             -lat[negmask],
+#             lon[negmask],
+#             force_zone_number=utm[0],
+#             force_zone_letter=utm[1],
+#         )
+#     if not np.all(good_mask):
+#         x[np.logical_not(good_mask)] = np.nan
+#     return np.array(x)
 
 @lru_cache(maxsize=10)
-def _utm_x(lon: tuple[float], lat: tuple[float], utm: tuple[int, str]) -> np.ndarray:
-    """Calculates x-coordinates based on given lon,lat-coordinates and the set UTM-zone.
-
-    latitudes higher than 84 or lower than -80 will produce np.nan"""
-    assert len(lon) == len(
-        lat
-    ), f"lon and lat vectors need to be of equal length ({len(lon)}, {len(lat)})!"
-    lat, lon = np.atleast_1d(lat), np.atleast_1d(lon)
-    # High/low latitudes cannot be transformed to UTM
-    good_mask = np.logical_and(lat <= 84, lat >= -80)
-    posmask = np.logical_and(lat >= 0, good_mask)
-    negmask = np.logical_and(lat < 0, good_mask)
-    x = np.zeros(len(lon))
-    if np.any(posmask):
-        x[posmask], __, __, __ = utm_module.from_latlon(
-            lat[posmask],
-            lon[posmask],
-            force_zone_number=utm[0],
-            force_zone_letter=utm[1],
-        )
-    if np.any(negmask):
-        x[negmask], __, __, __ = utm_module.from_latlon(
-            -lat[negmask],
-            lon[negmask],
-            force_zone_number=utm[0],
-            force_zone_letter=utm[1],
-        )
-    if not np.all(good_mask):
-        x[np.logical_not(good_mask)] = np.nan
-    return np.array(x)
-
-@lru_cache(maxsize=10)
-def _utm_y(lon: tuple[float], lat: tuple[float], utm: tuple[int, str]) -> np.ndarray:
+def _utm_xy(lon: tuple[float], lat: tuple[float], utm: tuple[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """Calculates y-coordinates based on given lon,lat-coordinates and the set UTM-zone.
 
     latitudes higher than 84 or lower than -80 will produce np.nan"""
@@ -781,14 +744,14 @@ def _utm_y(lon: tuple[float], lat: tuple[float], utm: tuple[int, str]) -> np.nda
     y = np.zeros(len(lat))
 
     if np.any(posmask):
-        _, y[posmask], __, __ = utm_module.from_latlon(
+        x, y[posmask], __, __ = utm_module.from_latlon(
             lat[posmask],
             lon[posmask],
             force_zone_number=utm[0],
             force_zone_letter=utm[1],
         )
     if np.any(negmask):
-        _, y[negmask], __, __ = utm_module.from_latlon(
+        x, y[negmask], __, __ = utm_module.from_latlon(
             -lat[negmask],
             lon[negmask],
             force_zone_number=utm[0],
@@ -797,9 +760,11 @@ def _utm_y(lon: tuple[float], lat: tuple[float], utm: tuple[int, str]) -> np.nda
         y[negmask] = -y[negmask]
     if not np.all(good_mask):
         y[np.logical_not(good_mask)] = np.nan
+        x[np.logical_not(good_mask)] = np.nan
 
-    return y
+    return x, y
 
+@lru_cache(maxsize=10)
 def _pyproj_lonlat(x: tuple[float], y: tuple[float], crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """Calculates lon and lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
 
@@ -812,12 +777,61 @@ def _pyproj_lonlat(x: tuple[float], y: tuple[float], crs: Union[int, str]) -> tu
     return np.array(lon), np.array(lat)
 
 @lru_cache(maxsize=10)
-def _lonlat(x: tuple[float], y: tuple[float], crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
+def _pyproj_xy(lon: tuple[float], lat: tuple[float], crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
+    """Calculates projected x and y coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
+    # Make pyproj CRS object
+    transformer = Transformer.from_crs(CRS.from_epsg(4326), _to_crs(crs), always_xy=True)
+    x, y = transformer.transform(lon, lat)
+
+    return np.array(x),np.array(y)
+
+# def _x (lon: np.ndarray, lat: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
+#     """Calculates the x coordinate based on given lon,lat-coordinates and the set (or given) CRS projection"""
+#     if not isinstance(crs, tuple):
+#         x, _ = _pyproj_xy(lon=tuple(lon), lat=tuple(lat), crs=crs)
+#     else:
+#         x =_utm_x(lon=tuple(lon), lat=tuple(lat), utm=crs)
+#     return x
+
+# def _y (lon: np.ndarray, lat: np.ndarray, crs: Union[int, str]) -> np.ndarray:
+#     """Calculates the y coordinate based on given lon,lat-coordinates and the set (or given) CRS projection"""
+#     if not isinstance(crs, tuple):
+#         __, y = _pyproj_xy(lon=tuple(lon), lat=tuple(lat), crs=crs)
+#     else:
+#         y = _utm_y(lon=tuple(lon), lat=tuple(lat), utm=crs)
+#     return y
+
+# def _lon(x: np.ndarray, y: np.ndarray, crs: Union[int, str]) -> np.ndarray:
+#     """Calculates the longitude based on given projected x,y-coordinates and the set (or given) CRS projection"""
+#     if not isinstance(crs, tuple):
+#         lon, __ = _pyproj_lonlat(x=tuple(x), y=tuple(y), crs=crs)
+#     else:
+#         lon = _utm_lon(x=tuple(x), y=tuple(y), utm=crs)
+#     return lon
+
+# def _lat(x: np.ndarray, y: np.ndarray, crs: Union[int, str]) -> np.ndarray:
+#     """Calculates the latitude based on given projected x,y-coordinates and the set (or given) CRS projection"""
+#     if not isinstance(crs, tuple):
+#         __, lat = _pyproj_lonlat(x=tuple(x), y=tuple(y), crs=crs)
+#     else:
+#         lat = _utm_lat(x=tuple(x), y=tuple(y), utm=crs)
+#     return lat
+
+def _xy(lon: np.ndarray, lat: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
+    """Calculates x and y coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
+    if not isinstance(crs, tuple):
+        x, y = _pyproj_xy(lon=tuple(lon), lat=tuple(lat), crs=crs)
+    else:
+        x, y =_utm_xy(lon=tuple(lon), lat=tuple(lat), utm=crs)
+    return x, y
+
+def _lonlat(x: np.ndarray, y: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """Calculates lon and lat coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
     if not isinstance(crs, tuple):
-        return _pyproj_lonlat(x=x, y=y, crs=crs)
+        lon, lat = _pyproj_lonlat(x=tuple(x), y=tuple(y), crs=crs)
     else:
-        return _utm_lon(x=x, y=y, utm=crs), _utm_lat(x=x, y=y, utm=crs)
+        lon, lat = _utm_lonlat(x=tuple(x), y=tuple(y), utm=crs)
+    return lon, lat
 
 def _to_crs(crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, str], None]:
     """Converts the given CRS into a pyproj CRS object or UTM tuple.
@@ -859,11 +873,3 @@ def _to_crs(crs: Optional[Union[str, int, dict]]=None) -> Union[CRS, tuple[int, 
         return None
 
 
-@lru_cache(maxsize=10)
-def _xy(lon: tuple[float], lat: tuple[float], crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
-    """Calculates projected x and y coordinates based on given lon,lat-coordinates and the set (or given) CRS projection"""
-    # Make pyproj CRS object
-    transformer = Transformer.from_crs(CRS.from_epsg(4326), _to_crs(crs), always_xy=True)
-    x, y = transformer.transform(lon, lat)
-
-    return np.array(x),np.array(y)

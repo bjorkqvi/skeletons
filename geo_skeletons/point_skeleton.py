@@ -274,7 +274,6 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         crs: Optional[CRSValue] = None,
-        normalize: bool = False,
         **kwargs,
     ) -> Union[np.ndarray, None]:
         """Returns the projected x-coordinate.
@@ -286,8 +285,6 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue]], optional): Specifies the CRS to use for retrieving 
                 the x-coordinate. Defaults to the current grid CRS.
-            normalize (bool, optional): If `True`, normalizes the x-values by subtracting the minimum value. 
-                Defaults to `False`.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
@@ -309,14 +306,11 @@ class PointSkeleton(Skeleton):
         if self.core.is_projected() and (crs is None or self.proj.crs() == self.proj.to_crs(crs)):
             x = self._ds_manager.get("x", **kwargs).data.copy()
         else:
-            x = self.proj._x(
+            x, _ = self.proj._xy(
                 lon=self.lon(**kwargs),
                 lat=self.lat(**kwargs),
                 crs=crs,
             )
-
-        if normalize:
-            x = x - min(x)
 
         return x
 
@@ -325,7 +319,6 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         crs: Optional[CRSValue] = None,
-        normalize: bool = False,
         in_meters: bool = False, 
         **kwargs,
     ) -> Union[np.ndarray, None]:
@@ -338,8 +331,6 @@ class PointSkeleton(Skeleton):
                 Defaults to `False`.
             crs (Optional[CRSValue], optional): Specifies the CRS to use for retrieving 
                 the y-coordinate. Defaults to the current grid CRS.
-            normalize (bool, optional): If `True`, normalizes the y-values by subtracting the minimum value. 
-                Defaults to `False`.
             in_meters (bool, optional): If `True`, calculates the y-coordinate in meters. Defaults to `False`.
             **kwargs: Additional arguments passed to internal methods.
 
@@ -365,16 +356,12 @@ class PointSkeleton(Skeleton):
         if self.core.is_projected() and (crs is None or self.proj.crs() == crs):
             y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
-            y = self.proj._y(
+            _, y = self.proj._xy(
                 lon=self.lon(**kwargs),
                 lat=self.lat(**kwargs),
                 crs=crs,
             )
         
-
-
-        if normalize:
-            y = y - min(y)
 
         return y
 
@@ -418,11 +405,12 @@ class PointSkeleton(Skeleton):
             return self._ds_manager.get("lon", **kwargs).data.copy()
 
         
-        return self.proj._lon(
+        lon, _  = self.proj._lonlat(
             x=self.x(**kwargs) ,
             y=self.y(**kwargs) ,
             crs=crs,
         )
+        return lon
 
 
     def lat(
@@ -464,11 +452,12 @@ class PointSkeleton(Skeleton):
                 warnings.warn(f"Ignoring CRS={crs}, since requesting lat from a lon-lat skeleton...")
             return self._ds_manager.get("lat", **kwargs).data.copy()
 
-        return self.proj._lat(
+        _, lat= self.proj._lonlat(
             x=self.x(**kwargs),
             y=self.y(**kwargs),
             crs=crs,
         )
+        return lat
 
 
     def xy(
