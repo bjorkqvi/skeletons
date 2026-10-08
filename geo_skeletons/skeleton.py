@@ -1885,9 +1885,7 @@ class Skeleton:
         If twin is not give, then we are just rotating components that was internally calculated for a directional variable."""
         if not projection_to_do:
             return x_data, y_data
-        time_start = time.time()
         lon, lat = self.lonlat()
-        logger.log.info(f"lonlat calculated in {time.time() - time_start:.6f} seconds.")
         for proj_tuple in projection_to_do:
             if proj_type == 'get': # Were determined for setting data, so flip order if getting data
                 proj = (proj_tuple[1], proj_tuple[0])
@@ -2354,20 +2352,12 @@ class Skeleton:
             x_data = self.dask.undask_me(x_data)
         if self.core.get(name).meta is not None:
             wrt = wrt or self.core.get(name).meta.projection_type()
-        start = time.time()
         projection_to_do = _determine_projection_to_do(x_name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
-        logger.log.info(f"Projection to do determined in {time.time() - start:.6f} seconds.")
-        start = time.time()
         x_data, y_data = self._apply_projection_to_do(x_name, x_data, y_data, projection_to_do, verbose, proj_type='get', twin=y_name)
-        logger.log.info(f"Projection applied in {time.time() - start:.6f} seconds.")
 
         dir_type = dir_type or self.core.get(name).dir_type
-        start = time.time()
         data = dir_conversions.compute_math_direction(x_data, y_data)
-        logger.log.info(f"Math direction computed in {time.time() - start:.6f} seconds.")
-        start = time.time()
         data = dir_conversions.convert_from_math_dir(data, dir_type=dir_type)
-        logger.log.info(f"Converted from math direction in {time.time() - start:.6f} seconds.")
         data = data.assign_attrs(self.meta.get(name))
 
         return data
