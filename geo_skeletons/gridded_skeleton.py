@@ -473,7 +473,7 @@ class GriddedSkeleton(Skeleton):
                 return x
             return None
         
-        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
+        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None or self.proj.is_engineering()):
             x = self._ds_manager.get("x", **kwargs).data.copy()
         else:
             return None
@@ -495,7 +495,7 @@ class GriddedSkeleton(Skeleton):
             strict (bool, optional): If `True`, returns `None` if the Skeleton is spherical. 
                 Defaults to `False`.
             crs (Optional[Union[int, str, dict]], optional): Specifies the CRS to use for retrieving 
-                the x-coordinate. Defaults to the current grid CRS.
+                the y-coordinate. Defaults to the current grid CRS.
             **kwargs: Additional arguments passed to internal methods.
 
         Returns:
@@ -522,7 +522,7 @@ class GriddedSkeleton(Skeleton):
                 return y
             return None
 
-        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None):
+        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None or self.proj.is_engineering()):
             y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
             return None
@@ -562,11 +562,12 @@ class GriddedSkeleton(Skeleton):
             elif strict:
                 return None
             elif self.nx() == 1 and self.ny()==1:
-                return self.proj._lon(
+                lon, _ = self.proj._lonlat(
                     x=self.x(**kwargs) ,
                     y= self.y(**kwargs) ,
                     crs=crs,
                 )
+                return lon
             return None
         
         return self._ds_manager.get("lon", **kwargs).data.copy()
@@ -605,11 +606,12 @@ class GriddedSkeleton(Skeleton):
             elif strict:
                 return None
             elif self.nx() == 1 and self.ny()==1:
-                return self.proj._lat(
+                _, lat =  self.proj._lonlat(
                     x=self.x(**kwargs) ,
                     y=self.y(**kwargs) ,
                     crs=crs,
                 )
+                return lat
             return None
         
         return self._ds_manager.get("lat", **kwargs).data.copy()
@@ -643,7 +645,7 @@ class GriddedSkeleton(Skeleton):
 
         x, y = self._native_xy(**kwargs)
 
-        if self.core.is_projected() and crs is None:
+        if self.core.is_projected() and (crs is None or self.proj.is_engineering()):
             return x, y
 
         if not self.core.is_projected() and native and crs is None:

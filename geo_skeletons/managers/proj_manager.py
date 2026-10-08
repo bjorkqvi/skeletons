@@ -368,7 +368,7 @@ class ProjManager:
         """Calculates lon coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if self.is_engineering():
-            return None
+            return (None, None)
         lon, lat =  _lonlat(x=x, y=y, crs=crs)
         return lon, lat
     
@@ -380,7 +380,7 @@ class ProjManager:
         crs = self.to_crs(crs) or self.utm()
         if self.is_engineering():
             logger.log.info("Can't transform lon-lat without a projection!")
-            return None
+            return (None, None)
         x, y =  _xy(lon=lon, lat=lat, crs=crs)
         return x, y
         
@@ -413,7 +413,9 @@ class ProjManager:
             raise ProjectionError(f"No projection given. Cannot rotate!")
 
         alpha = self._calculate_rotation_alpha(lon, lat, target_crs)
-        alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
+        #alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
+        alpha = _broadcast_alpha_to_target(alpha, grid_shape=grid_shape, target_shape=x_data.shape)
+        
 
         x_rot, y_rot = _rotate_components(x_data, y_data, alpha)
 
@@ -431,7 +433,8 @@ class ProjManager:
 
         alpha = self._calculate_rotation_alpha(lon, lat, source_crs)
         alpha = -alpha
-        alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
+        #alpha = _broadcast_alpha_to_data_array(alpha, x_data, y_data, grid_shape)
+        alpha = _broadcast_alpha_to_target(alpha, grid_shape=grid_shape, target_shape=x_data.shape)
         x_unrot, y_unrot = _rotate_components(x_data, y_data, alpha)
 
 
@@ -448,12 +451,14 @@ def _rotate_components(x_data:xr.DataArray, y_data:xr.DataArray, alpha: xr.DataA
     return x_rot, y_rot
 
 
-def broadcast_alpha_to_target(alpha: np.ndarray, target_shape: tuple[int, ...], copy: bool = False) -> np.ndarray:
+def _broadcast_alpha_to_target(alpha: np.ndarray, grid_shape: tuple[int, ...], target_shape: tuple[int, ...], copy: bool = False) -> np.ndarray:
     """
     Broadcast `alpha` (numpy array) to `target_shape`.
     - alpha.shape must be a contiguous sub-shape of target_shape.
     - Returns a broadcasted view (read-only) unless copy=True.
     """
+    alpha = np.reshape(alpha, grid_shape)
+
     alpha = np.asarray(alpha)
     tshape = tuple(target_shape)
     ashape = tuple(alpha.shape)
@@ -484,12 +489,12 @@ def broadcast_alpha_to_target(alpha: np.ndarray, target_shape: tuple[int, ...], 
 
     raise ValueError(f"alpha.shape {ashape} is not a contiguous sub-shape of target.shape {tshape}")
 
-def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_data:xr.DataArray, grid_shape: tuple[int]) -> xr.DataArray:
-    """Broadcastsa a spatial np.ndarray of alpha values to possible time instances also"""
+# def _broadcast_alpha_to_data_array(alpha: np.ndarray, x_data: xr.DataArray, y_data:xr.DataArray, grid_shape: tuple[int]) -> xr.DataArray:
+#     """Broadcastsa a spatial np.ndarray of alpha values to possible time instances also"""
 
-    alpha = np.reshape(alpha, grid_shape)
-    alpha = broadcast_alpha_to_target(alpha, target_shape=x_data.shape)
-    return alpha
+#     alpha = np.reshape(alpha, grid_shape)
+#     alpha = broadcast_alpha_to_target(alpha, target_shape=x_data.shape)
+#     return alpha
 
 def _xy(lon: np.ndarray, lat: np.ndarray, crs: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """Calculates x and y coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
@@ -539,17 +544,18 @@ def _utm_xy(lon: tuple[float], lat: tuple[float], utm: tuple[int, str]) -> tuple
     good_mask = np.logical_and(lat <= 84, lat >= -80)
     posmask = np.logical_and(lat >= 0, good_mask)
     negmask = np.logical_and(lat < 0, good_mask)
+    x = np.zeros(len(lat))
     y = np.zeros(len(lat))
 
     if np.any(posmask):
-        x, y[posmask], __, __ = utm_module.from_latlon(
+        x[posmask], y[posmask], __, __ = utm_module.from_latlon(
             lat[posmask],
             lon[posmask],
             force_zone_number=utm[0],
             force_zone_letter=utm[1],
         )
     if np.any(negmask):
-        x, y[negmask], __, __ = utm_module.from_latlon(
+        x[negmask], y[negmask], __, __ = utm_module.from_latlon(
             -lat[negmask],
             lon[negmask],
             force_zone_number=utm[0],

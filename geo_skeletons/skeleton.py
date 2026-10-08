@@ -1278,11 +1278,16 @@ class Skeleton:
             `.isel()` with the computed indices for efficiency and compatibility with xarray's methods.
 
         """
+        
+
+
         # Xarray cant slice longitude and latitude if defined over inds
         lon_slice = kwargs.get("lon")
         lat_slice = kwargs.get("lat")
         x_slice = kwargs.get("x")
         y_slice = kwargs.get("y")
+        
+        
         if not self.is_gridded():
             slice_inds = self._determine_slice_inds(lon_slice, lat_slice, "lon", "lat")
             if slice_inds is None:
@@ -1333,9 +1338,12 @@ class Skeleton:
         x_y_inverse_search = ('x' in kwargs.keys() or 'y' in kwargs.keys()) and not self.core.is_projected()
 
         if lon_lat_inverse_search or x_y_inverse_search:
-            slice_inds_x, slice_inds_y = self._determine_gridded_slice_inds(lon_slice, lat_slice, "lon", "lat")
+            slice_inds_x, slice_inds_y = self._determine_gridded_slice_inds(x_slice, y_slice, "x", "y")
+            
             if slice_inds_x is None or slice_inds_y is None:
-                slice_inds_x, slice_inds_y = self._determine_gridded_slice_inds(x_slice, y_slice, "x", "y")
+                slice_inds_x, slice_inds_y = self._determine_gridded_slice_inds(lon_slice, lat_slice, "lon", "lat")
+            
+                
 
             if lon_slice is not None:
                 del kwargs["lon"]
@@ -1347,12 +1355,14 @@ class Skeleton:
                 del kwargs["y"]
 
             data = self.isel(**{self.core.x_str:slice_inds_x, self.core.y_str: slice_inds_y})
+
             new_data = data.from_ds(
                 data.ds().sel(**kwargs),
                 data_vars=data.core.non_coord_objects(),
                 keep_ds_names=True,
                 name=self.name,
             )
+
             if not new_data.core.is_projected():
                 new_data.proj.set_utm(self.proj.utm())
             return new_data
@@ -1416,8 +1426,7 @@ class Skeleton:
         for dim in expandable_dims:
             if dim not in ds.dims:
                 ds=ds.expand_dims(dim)
-        
-        
+
         new_data = self.from_ds(
             ds,
             data_vars=self.core.non_coord_objects(),
@@ -2017,9 +2026,13 @@ class Skeleton:
                 squeezed_coords = [ c for n, c in enumerate(coords) if data.shape[n] > 1 ]
             else: # Assuming only non-trivial coords are given
                 numer_of_non_trivial_dims = sum([True for n in data.shape if n>1])
-                if numer_of_non_trivial_dims != len(coords):
-                    raise DataWrongDimensionError(numer_of_non_trivial_dims, len(coords))
+                number_of_non_trivial_coords = len(coords)
+                if numer_of_non_trivial_dims != len(self.coord_squeeze(coords)):
+                    raise DataWrongDimensionError(numer_of_non_trivial_dims, number_of_non_trivial_coords)
+
                 if set(coords) == set(self.coord_squeeze(self.core.coords(coord_type))):
+                    squeezed_coords = coords
+                elif set(coords) == set(self.core.coords(coord_type)):
                     squeezed_coords = coords
                 else:
                     raise UnknownCoordinateError(f"Some of the provided coordinates are unknown: {coords}")
@@ -3007,8 +3020,8 @@ class Skeleton:
                 self_proj = self.proj.utm()
             else:
                 self_proj = self.proj.crs()
-            lat = self.proj._lat(x, y, crs=self_proj)
-            lon = self.proj._lon(x, y, crs=self_proj)
+            lon, lat = self.proj._lonlat(x, y, crs=self_proj)
+            
 
         inds, dx = self._yank_inds(x, y, lon, lat, self_proj, fast, npoints)
         return inds, dx
@@ -3028,8 +3041,7 @@ class Skeleton:
                 crs_to_use = self.proj._optimal_utm(lon=lo, lat=la)
             
             if crs_to_use is not None:
-                x = self.proj._x(lon=lo, lat=la, crs=crs_to_use)
-                y = self.proj._y(lon=lo, lat=la, crs=crs_to_use)
+                x, y = self.proj._xy(lon=lo, lat=la, crs=crs_to_use)
             else:
                 x, y = None, None
 
