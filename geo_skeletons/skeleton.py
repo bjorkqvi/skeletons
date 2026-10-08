@@ -8,7 +8,7 @@ from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager, create_new_class
 if TYPE_CHECKING:
     from .managers.coordinate_manager import CoordinateManager
-
+import time
 from . import logger
 from .decoders import (
     identify_core_in_ds,
@@ -132,16 +132,9 @@ class Skeleton:
         self.dask = DaskManager(skeleton=self, chunks=chunks)
         lon, lat = self.lonlat(strict=True)
         x, y = self.xy(strict=True)
-        #lon, lat = self.edges('lon',strict=True), self.edges('lat',strict=True)
-        #x, y = self.edges('x',strict=True), self.edges('y',strict=True)
+
         self.proj = ProjManager(crs=crs, utm=utm, lon=lon, lat=lat, x=x, y=y,metadata_manager=self.meta, coordinate_manager=self.core)
 
-
-        
-        # self.proj._lat_values = lat
-        # self.proj._lon_values = lon
-        # self.proj._x_values = x
-        # self.proj._y_values = y
 
         self.core.proj = self.proj
         if utm is not None:
@@ -1738,21 +1731,7 @@ class Skeleton:
                 wrt=wrt,
             )
 
-            # if False:
-            #     data = self.get(name, dir_type='math', data_array=True, squeeze=False)
-            #     x_data = dask_computations.cos(data)
-            #     y_data = dask_computations.sin(data)
-            #     lon, lat = self.lonlat()
-            #     x_data, y_data = self.proj._unrotate_u_v(x_data, y_data, lon=lon, lat=lat,grid_shape=self.size('spatial'))
-            #     data = dir_conversions.compute_math_direction(x_data, y_data)
-
-            #     self._set_data(
-            #         name=name,
-            #         data=data,
-            #         dir_type="math",
-            #     )
-
-        
+       
         if first_set:
             self.meta._metadata_to_ds(name)
             if self.core.get(name).coord_group in ['all', 'spatial', 'grid']:
@@ -1906,7 +1885,9 @@ class Skeleton:
         If twin is not give, then we are just rotating components that was internally calculated for a directional variable."""
         if not projection_to_do:
             return x_data, y_data
+        time_start = time.time()
         lon, lat = self.lonlat()
+        logger.log.info(f"lonlat calculated in {time.time() - time_start:.6f} seconds.")
         for proj_tuple in projection_to_do:
             if proj_type == 'get': # Were determined for setting data, so flip order if getting data
                 proj = (proj_tuple[1], proj_tuple[0])
@@ -2373,12 +2354,20 @@ class Skeleton:
             x_data = self.dask.undask_me(x_data)
         if self.core.get(name).meta is not None:
             wrt = wrt or self.core.get(name).meta.projection_type()
+        start = time.time()
         projection_to_do = _determine_projection_to_do(x_name, self.core, wrt, self.proj.is_engineering()) # List of rotations/unrotation to perform
+        logger.log.info(f"Projection to do determined in {time.time() - start:.6f} seconds.")
+        start = time.time()
         x_data, y_data = self._apply_projection_to_do(x_name, x_data, y_data, projection_to_do, verbose, proj_type='get', twin=y_name)
+        logger.log.info(f"Projection applied in {time.time() - start:.6f} seconds.")
 
         dir_type = dir_type or self.core.get(name).dir_type
+        start = time.time()
         data = dir_conversions.compute_math_direction(x_data, y_data)
+        logger.log.info(f"Math direction computed in {time.time() - start:.6f} seconds.")
+        start = time.time()
         data = dir_conversions.convert_from_math_dir(data, dir_type=dir_type)
+        logger.log.info(f"Converted from math direction in {time.time() - start:.6f} seconds.")
         data = data.assign_attrs(self.meta.get(name))
 
         return data
