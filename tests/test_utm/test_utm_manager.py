@@ -251,10 +251,13 @@ def test_gridded_spherical():
         x2,
         decimal=7,
     )
-    np.testing.assert_array_almost_equal(points.lon(), points.lon(crs=(30, "W")), decimal=7)
-    np.testing.assert_array_almost_equal(points.lat(), points.lat(crs=(30, "W")), decimal=7)
+    with pytest.warns():
+        np.testing.assert_array_almost_equal(points.lon(), points.lon(crs=(30, "W")), decimal=7)
+    with pytest.warns():
+        np.testing.assert_array_almost_equal(points.lat(), points.lat(crs=(30, "W")), decimal=7)
 
     lon, lat = points.lonlat()
-    lon2, lat2 = points.lonlat(crs=(30, "W"))
+    with pytest.warns():
+        lon2, lat2 = points.lonlat(crs=(30, "W"))
     np.testing.assert_array_almost_equal(lon, lon2, decimal=7)
     np.testing.assert_array_almost_equal(lat, lat2, decimal=7)
