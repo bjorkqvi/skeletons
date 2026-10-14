@@ -368,7 +368,7 @@ class ProjManager:
         """Calculates lon coordinates based on given projected x,y-coordinates and the set (or given) CRS projection"""
         crs = self.to_crs(crs) or self.crs()
         if self.is_engineering():
-            return (None, None)
+            return None, None
         lon, lat =  _lonlat(x=x, y=y, crs=crs)
         return lon, lat
     
@@ -380,7 +380,7 @@ class ProjManager:
         crs = self.to_crs(crs) or self.utm()
         if self.is_engineering():
             logger.log.info("Can't transform lon-lat without a projection!")
-            return (None, None)
+            return None, None
         x, y =  _xy(lon=lon, lat=lat, crs=crs)
         return x, y
         
