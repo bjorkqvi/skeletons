@@ -121,3 +121,21 @@ def test_dlon_dlat_cart():
     assert data.dlat(strict=True) is None
     np.testing.assert_almost_equal(data.dlon(native=True), data.dmx())
     np.testing.assert_almost_equal(data.dlat(native=True), data.dmy())
+
+def test_xy_cart_request_identical_crs():
+    data = PointSkeleton(x=X, y=Y, crs=CRS)
+    np.testing.assert_almost_equal(data.x(), data.x(crs=CRS))
+    np.testing.assert_almost_equal(data.y(), data.y(crs=CRS))
+    xcrs, ycrs = data.x(crs=CRS), data.y(crs=CRS)
+    x,y =data.xy()
+    np.testing.assert_almost_equal(x, xcrs)
+    np.testing.assert_almost_equal(y, ycrs)
+
+def test_xy_lambert_request_identical_crs():
+    data = PointSkeleton(x=LX, y=LY, crs=crs_metadata)
+    np.testing.assert_almost_equal(data.x(), data.x(crs=crs_metadata))
+    np.testing.assert_almost_equal(data.y(), data.y(crs=crs_metadata))
+    xcrs, ycrs = data.x(crs=crs_metadata), data.y(crs=crs_metadata)
+    x,y =data.xy()
+    np.testing.assert_almost_equal(x, xcrs)
+    np.testing.assert_almost_equal(y, ycrs)
