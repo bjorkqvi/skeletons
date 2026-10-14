@@ -862,7 +862,7 @@ class Skeleton:
             plt.scatter(x,y)
             if compare is not None:
                 plt.scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
-                plt.legend()
+                plt.legend(loc='upper right')
             if show:
                 plt.show()
             return

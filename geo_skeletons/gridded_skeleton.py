@@ -11,6 +11,7 @@ import geo_parameters as gp
 from typing import Optional, Union
 from .dask_computations import undask_me
 from . import logger
+import warnings
 from .errors import SkeletonError, MissingDatasetError, ProjectionError
 rlon_var = Coordinate(name="x", meta=gp.grid.RLon, coord_group="spatial")
 rlat_var = Coordinate(name="y", meta=gp.grid.RLat, coord_group="spatial")
@@ -473,7 +474,8 @@ class GriddedSkeleton(Skeleton):
                 return x
             return None
         
-        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None or self.proj.is_engineering()):
+        use_native_projection = (not hasattr(self, 'proj')) or (crs is None) or (self.proj.crs() == crs) or self.proj.is_engineering() or self.proj.crs() == self.proj.to_crs(crs)
+        if  use_native_projection:
             x = self._ds_manager.get("x", **kwargs).data.copy()
         else:
             return None
@@ -518,11 +520,11 @@ class GriddedSkeleton(Skeleton):
                     lat=self.lat(**kwargs),
                     crs=crs,
                 )
-
                 return y
             return None
 
-        if (not hasattr(self, 'proj') or self.proj.crs() == crs or crs is None or self.proj.is_engineering()):
+        use_native_projection = (not hasattr(self, 'proj')) or (crs is None) or (self.proj.crs() == crs) or self.proj.is_engineering() or self.proj.crs() == self.proj.to_crs(crs)
+        if  use_native_projection:
             y = self._ds_manager.get("y", **kwargs).data.copy()
         else:
             return None
@@ -564,12 +566,13 @@ class GriddedSkeleton(Skeleton):
             elif self.nx() == 1 and self.ny()==1:
                 lon, _ = self.proj._lonlat(
                     x=self.x(**kwargs) ,
-                    y= self.y(**kwargs) ,
+                    y=self.y(**kwargs) ,
                     crs=crs,
                 )
                 return lon
             return None
-        
+        if crs is not None:
+            warnings.warn(f"Ignoring CRS={crs}, since requesting lon from a lon-lat skeleton...")
         return self._ds_manager.get("lon", **kwargs).data.copy()
 
     def lat(
@@ -613,7 +616,8 @@ class GriddedSkeleton(Skeleton):
                 )
                 return lat
             return None
-        
+        if crs is not None:
+            warnings.warn(f"Ignoring CRS={crs}, since requesting lat from a lon-lat skeleton...")
         return self._ds_manager.get("lat", **kwargs).data.copy()
 
     def xy(
@@ -645,21 +649,25 @@ class GriddedSkeleton(Skeleton):
 
         x, y = self._native_xy(**kwargs)
 
-        if self.core.is_projected() and (crs is None or self.proj.is_engineering()):
-            return x, y
 
-        if not self.core.is_projected() and native and crs is None:
-            return x, y
-
-
-
+        if self.core.is_projected() or (not self.core.is_projected() and native):
+            use_native_projection = (crs is None) or (self.proj.crs() == crs) or self.proj.is_engineering() or self.proj.crs() == self.proj.to_crs(crs)
+            if use_native_projection:
+                return x, y
+        
         if self.core.is_projected():
             crs = crs or self.proj.crs()
+            lon, lat = self.proj._lonlat(
+                x=x,
+                y=y,
+                crs=crs,
+            )
         else:
             crs = crs or self.proj.utm()
+            lon, lat = x, y
 
-        x, y = self.proj._xy(lon=x,
-            lat=y,
+        x, y = self.proj._xy(lon=lon,
+            lat=lat,
             crs=crs,
         )
         return x, y
@@ -695,8 +703,10 @@ class GriddedSkeleton(Skeleton):
         x, y = self._native_xy(**kwargs)
 
         if not self.core.is_projected():
+            if crs is not None:
+                warnings.warn(f"Ignoring CRS={crs}, since requesting lon-lat from a lon-lat skeleton...")
             return x, y
-        
+
         if self.core.is_projected() and native and crs is None:
             return x, y
             
