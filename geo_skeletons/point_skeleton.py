@@ -297,14 +297,17 @@ class PointSkeleton(Skeleton):
         if not self.core.is_projected() and strict:
             return None
 
-        if self.core.is_projected() and (crs is None or self.proj.crs() == self.proj.to_crs(crs) or self.proj.is_engineering()):
-            x = self._ds_manager.get("x", **kwargs).data.copy()
-        else:
-            x, _ = self.proj._xy(
-                lon=self.lon(**kwargs),
-                lat=self.lat(**kwargs),
-                crs=crs,
-            )
+        
+        if self.core.is_projected() or (not self.core.is_projected() and native):
+            use_native_projection = (crs is None) or (self.proj.crs() == crs) or self.proj.is_engineering() or self.proj.crs() == self.proj.to_crs(crs)
+            if use_native_projection:
+                return self._ds_manager.get("x", **kwargs).data.copy()
+  
+        x, _ = self.proj._xy(
+            lon=self.lon(**kwargs),
+            lat=self.lat(**kwargs),
+            crs=crs,
+        )
 
         return x
 
@@ -313,7 +316,6 @@ class PointSkeleton(Skeleton):
         native: bool = False,
         strict: bool = False,
         crs: Optional[CRSValue] = None,
-        in_meters: bool = False, 
         **kwargs,
     ) -> Union[np.ndarray, None]:
         """Returns the projected y-coordinate.
@@ -343,19 +345,16 @@ class PointSkeleton(Skeleton):
         if not self.core.is_projected() and strict:
             return None
 
-        if in_meters:
-            if crs is not None:
-                raise ValueError("Can't both ask ")
-
-        if self.core.is_projected() and (crs is None or self.proj.crs() == crs or self.proj.is_engineering()):
-            y = self._ds_manager.get("y", **kwargs).data.copy()
-        else:
-            _, y = self.proj._xy(
-                lon=self.lon(**kwargs),
-                lat=self.lat(**kwargs),
-                crs=crs,
-            )
+        if self.core.is_projected() or (not self.core.is_projected() and native):
+            use_native_projection = (crs is None) or (self.proj.crs() == crs) or self.proj.is_engineering() or self.proj.crs() == self.proj.to_crs(crs)
+            if use_native_projection:
+                return self._ds_manager.get("y", **kwargs).data.copy()
         
+        _, y = self.proj._xy(
+            lon=self.lon(**kwargs),
+            lat=self.lat(**kwargs),
+            crs=crs,
+        )
 
         return y
 
@@ -475,14 +474,34 @@ class PointSkeleton(Skeleton):
         Returns:
             tuple[np.ndarray, np.ndarray]: A tuple of x- and y-coordinates.
         """
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+        if self.ds() is None:
+            raise MissingDatasetError
 
-        # Transforms x-y to lon-lat if necessary
-        x, y = self.x(
-            strict=strict, native=native, crs=crs, **kwargs
-        ), self.y(strict=strict, native=native, crs=crs, **kwargs)
+        if not self.core.is_projected() and native:
+            lon, lat = self.lonlat(**kwargs)
+            return lon, lat
 
-        if x is None:
+
+        if not self.core.is_projected() and strict:
             return None, None
+
+
+        if self.core.is_projected() or (not self.core.is_projected() and native):
+            use_native_projection = (crs is None) or (self.proj.crs() == crs) or self.proj.is_engineering() or self.proj.crs() == self.proj.to_crs(crs)
+            if use_native_projection:
+                x = self._ds_manager.get("x", **kwargs).data.copy()
+                y = self._ds_manager.get("y", **kwargs).data.copy()
+                return x, y
+
+        lon, lat = self.lonlat(**kwargs)
+        x, y = self.proj._xy(
+            lon=lon,
+            lat=lat,
+            crs=crs,
+        )
+    
 
         return x, y
 
@@ -508,12 +527,29 @@ class PointSkeleton(Skeleton):
             tuple[np.ndarray, np.ndarray]: A tuple of longitude and latitude values.
         """
 
-        lon, lat = self.lon(
-            native=native, strict=strict, crs=crs ,**kwargs
-        ), self.lat(native=native, strict=strict, crs=crs, **kwargs)
-        
-        if lon is None:
+        if native and strict:
+            raise ValueError("Can't set both 'native' and 'strict' to True!")
+
+        if self.ds() is None:
+            raise MissingDatasetError
+
+        if self.core.is_projected() and native:
+            x, y = self.xy(crs=crs, **kwargs)
+            return x, y
+
+        if self.core.is_projected() and strict:
             return None, None
+
+        if not self.core.is_projected():
+            if crs is not None:
+                warnings.warn(f"Ignoring CRS={crs}, since requesting lat from a lon-lat skeleton...")
+            return self._ds_manager.get("lon", **kwargs).data.copy(), self._ds_manager.get("lat", **kwargs).data.copy()
+
+        lon, lat= self.proj._lonlat(
+            x=self.x(**kwargs),
+            y=self.y(**kwargs),
+            crs=crs,
+        )
         return lon, lat
 
     def resolution(self) -> np.ndarray:
