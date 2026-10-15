@@ -18,7 +18,7 @@ def ds():
     current_dir = Path(__file__).parent
 
     # Construct the path to the NetCDF file
-    file_path = current_dir / 'meps_wind_only_small_area.nc'
+    file_path = current_dir / 'meps_small_test.nc'
 
     # Open and return the dataset
     return xr.open_dataset(file_path)
@@ -39,7 +39,7 @@ def test_check_consistency_decode_components(ds):
     
     # Only check one point, since there are apparently some differences in how to reprojection was made, leading to some values with a couple of degrees difference
     # We are not checking the reprojecton here, but to see that everything was decoded correctly
-    diff = (ds.wind_direction.values.squeeze()[0,100,:] - wind_components.dd()[0,100,:])
+    diff = (ds.wind_direction.values.squeeze()[0,10,:] - wind_components.dd()[0,10,:])
     diff = np.mod(diff, 360)
     diff = np.minimum(diff, 360-diff)
     np.testing.assert_array_almost_equal(diff, 0, decimal=1)
@@ -61,7 +61,7 @@ def test_check_consistency_decode_magdir(ds):
     
     # Only check one point, since there are apparently some differences in how to reprojection was made, leading to some values with a couple of degrees difference
     # We are not checking the reprojecton here, but to see that everything was decoded correctly
-    diff = (ds.wind_direction.values.squeeze()[0,100,:] - wind_components.dd()[0,100,:])
+    diff = (ds.wind_direction.values.squeeze()[0,10,:] - wind_components.dd()[0,10,:])
     diff = np.mod(diff, 360)
     diff = np.minimum(diff, 360-diff)
     np.testing.assert_array_almost_equal(diff, 0, decimal=1)
@@ -74,7 +74,7 @@ def test_crs_components(ds):
     
     # Only check one point, since there are apparently some differences in how to reprojection was made, leading to some values with a couple of degrees difference
     # We are not checking the reprojecton here, but to see that everything was decoded correctly
-    diff = (ds.wind_direction.values.squeeze()[0,100,:] - wind.dd()[0,100,:])
+    diff = (ds.wind_direction.values.squeeze()[0,10,:] - wind.dd()[0,10,:])
     diff = np.mod(diff, 360)
     diff = np.minimum(diff, 360-diff)
     np.testing.assert_array_almost_equal(diff, 0, decimal=1)
