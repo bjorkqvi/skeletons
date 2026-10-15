@@ -177,10 +177,10 @@ def determine_nx(data, x_type: str, nx: int, dx: float, dmx: float, dlon: float,
             x = data.edges('x')
             y = data.edges('y')
             #points = PointSkeleton(x=x, y=y, crs=data.proj.crs())
+            if data.proj.is_engineering():
+                raise SkeletonError("Can't set spherical spacing (dlon/dlat) since no projeection is defined!")
             lon, lat = proj_manager._lonlat(x=x, y=y, crs=data.proj.crs())
-            #lon, lat = points.lonlat()
-            if lon is None:
-                raise ProjectionError("Can't set spacing with dlon/dlat since there is not projection information for the grid!")
+
             lon, lat = sum(lon)/2, sum(lat)/2
             if x_type == 'x':
                 spacing = dlon_to_dx(dlon, lat=lat, lon=lon)
@@ -236,7 +236,7 @@ def determine_nx(data, x_type: str, nx: int, dx: float, dmx: float, dlon: float,
             spacing = dlon
         elif dx:
             if data.core.is_rotated():
-                raise ProjectionError(f"Can't use spacing in d{x_type} for grids spherical grids with a projection with units in rotated degrees! Use dm{x_type}, n{x_type} or dlon/dlat instead.")                        
+                raise SkeletonError(f"Can't use spacing in d{x_type} for grids spherical grids with a projection with units in rotated degrees! Use dm{x_type}, n{x_type} or dlon/dlat instead.")                        
             else:
                 dmx = dx
         
