@@ -2,20 +2,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..errors import SkeletonError
-
 if TYPE_CHECKING:
     from geo_skeletons import Skeleton
-
+from .. import distance_funcs
 import pandas as pd
-import geo_parameters as gp
 import numpy as np
 from scipy.stats import circmean
 from typing import Union, Optional
 from .resample.scipy_regridders import scipy_regridders
 from .resample.ravel import ravel_regridders
+import xarray as xr
+from scipy.ndimage import gaussian_filter
 import geo_parameters as gp
 from copy import deepcopy
 from .. import logger
+import geo_parameters as gp
+from geo_parameters.metaparameter import MetaParameter
 def squared_mean(x, *args, **kwargs):
     """Calculates root mean of squares. Used for averaging significant wave height"""
     return np.sqrt(np.mean(x**2, *args, **kwargs))
@@ -96,6 +98,12 @@ def sort_out_regridded_type(data, new_grid) -> str:
     target = 'gridded' if new_grid.is_gridded() else 'point'
     return f"{source}_to_{target}"
 
+def _determine_nx_ny(nx, ny, dx, dy, dlon, dlat, dm, dnmi):
+    return nx, ny
+
+def _sort_out_filter_type(data):
+    """Determines if the filtering should be spatial, temporal, or spatiotemporal based on the data and the input."""
+    pass
 
 def create_new_class(data, new_grid, projected: Optional[bool]=None):
     """Creates a new class that will contain the gridded data. 
@@ -282,6 +290,113 @@ class ResampleManager:
             
             logger.log.info(f"'{key}'\t\t{value.get('options')}")
         logger.log.info('-'*125)
+
+    def filter(self, dx: Optional[float]=None, dy: Optional[float]=None, 
+               dlon: Optional[float]=None, dlat: Optional[float]=None, 
+               dmx: Optional[float]=None, dmy: Optional[float]=None, 
+               dm: Optional[float]=None, dnmi: Optional[float]=None, 
+               nx: Optional[int]=None, ny: Optional[int]=None, 
+               dt: Optional[Union[str, pd.Timedelta]]=None,
+               nt: Optional[int]=None,
+               data_vars: list[Union[str, MetaParameter]] = None, 
+               drop_vars: bool = False,
+               method='gaussian'):
+        """Filters the data based on the specified spatial and temporal resolutions.
+
+        Args:
+            dx (Optional[float], optional): The desired resolution in the x-direction. Defaults to None.
+            dy (Optional[float], optional): The desired resolution in the y-direction. Defaults to None.
+            dlon (Optional[float], optional): The desired resolution in longitude. Defaults to None.
+            dlat (Optional[float], optional): The desired resolution in latitude. Defaults to None.
+            dmx (Optional[float], optional): The desired resolution in the x-direction in metres. Defaults to None.
+            dmy (Optional[float], optional): The desired resolution in the y-direction in metres. Defaults to None.
+            nx (Optional[int], optional): The desired number of grid points in the x-direction. Defaults to None.
+            ny (Optional[int], optional): The desired number of grid points in the y-direction. Defaults to None.
+            dt (Optional[Union[str, pd.Timedelta]], optional): The desired temporal resolution. Defaults to None.
+            nt (Optional[int], optional): The desired number of time steps. Defaults to None.
+            method (str, optional): The filtering method to use. Defaults to 'gaussian'.
+
+        Returns:
+            Skeleton: A new Skeleton instance filtered according to the specified resolutions.
+        """
+
+        if method not in {'gaussian'}:
+            raise ValueError(f"Unsupported filter method: {method} ['gaussian']")
+        if dm is not None:
+            dmx, dmy = dm, dm
+
+        if data_vars is None:
+            data_vars = self.skeleton.core.data_vars()
+        else:
+            new_data_vars = []
+            for var in data_vars:
+                if gp.is_gp(var):
+                    new_data_vars.append(self.skeleton.core.find(var, strict=True)[0])
+                else:
+                    new_data_vars.append(var)
+            data_vars = new_data_vars
+
+        if nx is None:
+            if all(v is None for v in [nx, dx, dmx, dlon, dnmi]):
+                nx = 0
+            else:
+                nx, _ = distance_funcs.determine_nx(self.skeleton, 'x', nx, dx, dmx, dlon, dnmi, floating_edge=False)
+                nx = int(self.skeleton.nx()/nx)+1
+        if ny is None:
+            if all(v is None for v in [ny, dy, dmy, dlat, dnmi]):
+                ny = 0
+            else:
+                ny, _ = distance_funcs.determine_nx(self.skeleton, 'y', ny, dy, dmy, dlat, dnmi, floating_edge=False)
+                ny = int(self.skeleton.ny()/ny)+1
+        dask = 'parallelized' if self.skeleton.dask.is_active() else 'forbidden'
+
+        if not self.skeleton.is_gridded():
+            if nx > 0 or ny > 0:
+                raise ValueError(f"Non-gridded data cannot be resampled spatially! (nx={nx}>0, ny={ny}>0)")
+
+        if 'time' in self.skeleton.core.coords():
+            if dt is None and nt is None:
+                nt = 0
+            elif nt is None:
+                if dt == 0:
+                    nt = 0
+                else:
+                    if not isinstance(dt, str) and not isinstance(dt, pd.Timedelta):
+                        raise ValueError("dt must be either a string (e.g., '1h') or a pandas Timedelta object.")
+                    nt = int(pd.Timedelta(dt)/(pd.Timedelta(f"{self.skeleton.dt()}h")))
+            if self.skeleton.is_gridded():
+                sigma_vals = (nt, ny, nx)
+            else:
+                sigma_vals = (nt,0)
+        else:
+            sigma_vals = (ny, nx)
+
+        filtered_ds = xr.apply_ufunc(
+            gaussian_filter,
+            self.skeleton.ds()[data_vars],
+            kwargs={"sigma": sigma_vals},  # Smoothing in the time, x, and y dimensions
+            input_core_dims=[[]],         # No specific core dimensions
+            dask=dask,                    # Enable Dask for large datasets
+            #output_dtypes=[float],        # Specify output data type
+        )
+        if not self.skeleton.is_gridded():
+            xstr, ystr = self.skeleton.core.x_str, self.skeleton.core.y_str
+            filtered_ds[xstr] = self.skeleton.ds()[xstr]
+            filtered_ds[ystr] = self.skeleton.ds()[ystr]
+
+        new_data = self.skeleton.from_ds(filtered_ds)
+
+        if self.skeleton.dask.is_active():
+            new_data.dask.activate()
+        if new_data.core.is_projected():
+            new_data.proj.set(self.skeleton.proj.crs())
+        if not drop_vars:
+            for var in new_data.core.data_vars():
+                if var not in data_vars:
+                    new_data.set(var, self.skeleton.get(var))
+
+
+        return new_data
 
     def grid(self, new_grid: Skeleton, target_class: Optional[Skeleton] = None, engine: str='scipy', verbose: Optional[bool]=None, projected: Optional[bool]=None, **kwargs) -> Skeleton:
         """Regrids the data of the Skeleton onto a new grid.

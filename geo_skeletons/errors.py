@@ -4,15 +4,29 @@ from typing import Union
 class SkeletonError(Exception):
     pass
 
-class UnknownCoordinateError(SkeletonError):
+
+class CoordinateError(SkeletonError):
     pass
 
 
-class UnknownVariableError(SkeletonError):
+class UnknownCoordinateError(CoordinateError):
     pass
 
 
-class CoordinateWrongLengthError(SkeletonError):
+class VariableError(SkeletonError):
+    pass
+
+class UnknownVariableError(VariableError):
+    pass
+
+class AmbiguousVariableError(VariableError):
+    pass
+
+class VariableExistsError(VariableError):
+    def __init__(self, var_name):
+        super().__init__(f"'{var_name}' has already been added to the class!!!")
+
+class CoordinateWrongLengthError(CoordinateError):
     def __init__(
         self,
         variable: str,
@@ -51,10 +65,6 @@ class GridError(SkeletonError):
     ):
         super().__init__(msg)
 
-
-class VariableExistsError(SkeletonError):
-    def __init__(self, var_name):
-        super().__init__(f"'{var_name}' has already been added to the class!!!")
 
 
 class DirTypeError(SkeletonError):

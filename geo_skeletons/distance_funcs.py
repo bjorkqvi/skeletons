@@ -1,5 +1,6 @@
 from functools import lru_cache
-
+from .errors import SkeletonError, ProjectionError
+from .managers import proj_manager
 import geopy.distance
 import numpy as np
 from scipy.spatial import cKDTree
@@ -108,3 +109,159 @@ def distance_2points(lat1, lon1, lat2, lon2, geodesic: bool=True) -> float:
         dx = lon_in_km((lat2+lat1)/2, (lon2+lon1)/2)*1000*(lon2-lon1)
         dy = lat_in_km((lat2+lat1)/2, (lon2+lon1)/2)*1000*(lat2-lat1)
         return (dx**2+dy**2)**0.5
+
+
+def determine_nx(data, x_type: str, nx: int, dx: float, dmx: float, dlon: float, dnmi: float, floating_edge: bool) -> tuple[int, float]:
+    """Determines how many points is needed to get the desired resolution in one dimension
+    x_type is 'x' or 'y', determining if we are in x/lon or y/lat direction.
+    
+    nx: number of points
+    dx: cartesian grid spacing in metres (either dx or dy depending on x_type)
+    dlon: spherical grid spacing in degrees (either dlon or dlat depending on x_type)
+    dnmi: spacing in nautical miles
+
+    floating_edge  [bool]: If True, then spacing is exact and edge of grid is moved.
+    
+    return nx and right/east (or upper/north) edge of grid"""
+
+    if all(v is None for v in [nx, dx, dmx, dlon, dnmi]):
+        raise ValueError("At least one of nx, dx, dmx, dlon, or dnmi must be specified.")
+
+    assert x_type in ['x', 'y']
+    
+    if x_type == "x":
+        lon_type = "lon"
+    else:
+        lon_type = "lat"
+
+    x_end = data.edges(x_type, native=True)[1]
+
+    if nx:
+        return int(nx), x_end
+
+    if dnmi:
+        if data.core.is_cartesian():
+            dmx = dnmi * 1850.0
+        elif not data.core.is_projected():
+            dlon = dnmi / 60.0
+            if x_type == 'x':
+                lon = sum(data.edges('lon'))/2
+                lat = sum(data.edges('lat'))/2
+                dy = lat_in_km(lat=lat, lon=lon)*1000*dlon
+                dlon = dx_to_dlon(dy, lat=lat, lon=lon)
+        else: # Rotated degrees
+            dlon = dnmi / 60.0
+            if x_type == 'x':
+                x = data.edges('x')
+                y = data.edges('y')
+                #points = PointSkeleton(x=x, y=y, crs=data.proj.crs())
+                #lon, lat = points.lonlat()
+                lon, lat = proj_manager._lonlat(x=x, y=y, crs=data.proj.crs())
+                lon, lat = sum(lon)/2, sum(lat)/2
+                dy = lat_in_km(lat=lat, lon=lon)*1000*dlon
+                dlon = dx_to_dlon(dy, lat=lat, lon=lon)
+    
+    # Convert dx/dlon to the native spacing for the grid
+    if data.core.is_cartesian():
+        if dmx:
+                spacing = dmx
+        elif dx:
+            spacing = dx
+        else:
+            if floating_edge:
+                raise SkeletonError(
+                    "Grid is projected, so cant set exact dlon/dlat using floating_edge!"
+                )
+            
+            # Reproject edges to get mid point of grid in spherical coordinates
+            x = data.edges('x')
+            y = data.edges('y')
+            #points = PointSkeleton(x=x, y=y, crs=data.proj.crs())
+            lon, lat = proj_manager._lonlat(x=x, y=y, crs=data.proj.crs())
+            #lon, lat = points.lonlat()
+            if lon is None:
+                raise ProjectionError("Can't set spacing with dlon/dlat since there is not projection information for the grid!")
+            lon, lat = sum(lon)/2, sum(lat)/2
+            if x_type == 'x':
+                spacing = dlon_to_dx(dlon, lat=lat, lon=lon)
+            else:
+                spacing = dlat_to_dy(dlon, lat=lat, lon=lon)
+            
+    elif data.core.is_rotated(): # Rotated lon/lat
+        if dx:
+            spacing = dx
+        if dlon:
+
+            x = data.edges('x')
+            y = data.edges('y')
+            #points = PointSkeleton(x=x, y=y, crs=data.proj.crs())
+            #lon, lat = points.lonlat()
+            lon, lat = proj_manager._lonlat(x=x, y=y, crs=data.proj.crs())
+            lon, lat = sum(lon)/2, sum(lat)/2
+            if x_type == 'x':
+                dmx = dlon_to_dx(dlon, lat=lat, lon=lon)
+            else:
+                dmx = dlat_to_dy(dlon, lat=lat, lon=lon)
+        if dmx:
+
+            if x_type == 'x':
+                lon = data.isel(y=0).edges('lon')
+                lat = data.isel(y=0).edges('lat')
+                d1 = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
+                n1 = d1/dmx + 1
+
+                lon = data.isel(y=-1).edges('lon')
+                lat = data.isel(y=-1).edges('lat')
+                d2 = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
+                n2 = d2/dmx + 1
+                n = int(np.round((n1+n2)/2))
+                spacing = (data.edges('x')[1] - data.edges('x')[0])/(n-1)
+                
+            else:
+                lon = data.isel(x=0).edges('lon')
+                lat = data.isel(x=0).edges('lat')
+                d1 = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
+                n1 = d1/dmx + 1
+
+                lon = data.isel(x=-1).edges('lon')
+                lat = data.isel(x=-1).edges('lat')
+                d2 = distance_2points(lat[0],lon[0], lat[1], lon[1], geodesic=False)
+                n2 = d2/dmx + 1
+
+                n = int(np.round((n1+n2)/2))
+                spacing = (data.edges('y')[1] - data.edges('y')[0])/(n-1)
+
+    elif not data.core.is_projected():
+        if dlon:
+            spacing = dlon
+        elif dx:
+            if data.core.is_rotated():
+                raise ProjectionError(f"Can't use spacing in d{x_type} for grids spherical grids with a projection with units in rotated degrees! Use dm{x_type}, n{x_type} or dlon/dlat instead.")                        
+            else:
+                dmx = dx
+        
+        if dmx:                    
+            if floating_edge:
+                raise SkeletonError(
+                    "Grid is spherical, so cant set exact dx/dy using floating_edge!"
+                )
+            
+            lon = data.edges('lon')
+            lat = data.edges('lat')
+            lon, lat = sum(lon)/2, sum(lat)/2
+            if x_type == 'x':
+                spacing = dx_to_dlon(dmx, lat=lat, lon=lon)
+            else:
+                spacing = dy_to_dlat(dmx, lat=lat, lon=lon)
+
+
+        
+    nx = (
+        np.round((data.edges(lon_type, native=True)[1] - data.edges(lon_type, native=True)[0]) / spacing)
+        + 1
+    )
+
+    if floating_edge:
+        x_end = data.edges(x_type, native=True)[0] + (nx - 1) * spacing
+
+    return nx.astype(int), x_end
