@@ -7,7 +7,7 @@ from geo_skeletons.variables import DataVar, Magnitude, Direction, GridMask, Coo
 from typing import Union
 
 from geo_skeletons.variable_archive import SPATIAL_COORDS
-
+from ..errors import UnknownVariableError, AmbiguousVariableError
 
 class CoordinateManager:
     """Keeps track of coordinates and data variables that are added to classes
@@ -1005,7 +1005,7 @@ class CoordinateManager:
             return True
         return False
         
-    def find(self, param: Union[MetaParameter, str]) -> list[str]:
+    def find(self, param: Union[MetaParameter, str], strict: bool = False) -> list[str]:
         """Finds the names of parameters based on a CF standard name or MetaParameter.
 
         This method searches for parameters in the Skeleton that match a given CF 
@@ -1014,6 +1014,7 @@ class CoordinateManager:
 
         Args:
             param (Union[MetaParameter, str]): The standard name or `MetaParameter` to search for.
+            strict (bool, optional): If `True`, raises an error when the parameter is not found or is ambiguous. Defaults to `False`.
 
         Returns:
             list[str]: A list of parameter names that match the given standard name or `MetaParameter`.
@@ -1026,12 +1027,19 @@ class CoordinateManager:
         names = self.find_cf(std_name)
 
         if len(names) < 2 or not gp.is_gp_instance(param):
-            return names
+            pass
         else:
             clean_names = [n for n in names if n == param.name]
             if clean_names:
-                return clean_names
+                names = clean_names
+        if not strict:
             return names
+        
+        if len(names) == 0:
+            raise UnknownVariableError(f"Variable '{param}' not found in the core.")
+        elif len(names) > 1:
+            raise AmbiguousVariableError(f"Variable '{param}' is ambiguous in the core: {names}")
+        return names
 
     def values_are_projected(self, var: str) -> bool:
         """Checks if the values of the given variable are projected.

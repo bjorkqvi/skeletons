@@ -764,9 +764,11 @@ class Skeleton:
                             vars[var] = {'arrow_data': dirparam.name}
                         elif arrows:
                             vars[dirparam.name] = {'is_arrow': True}
-            return vars
     
         for var in self.core.data_vars():
+            # Don't plot components if magnitudes or directions are being plotted
+            if (mag or dir) and self.core.is_component(var):
+                continue
             if self.get(var, strict=True) is not None:
                 vars[var] = {}
                 if self.core.get(var).dir_type is not None:
@@ -851,7 +853,6 @@ class Skeleton:
         vars = self._determine_quicklook_variables(mag, dir, arrows,arrow_vars)
 
         # No data to plot: only plot points
-        
         if not vars:
             if proj is None:
                 x, y = self.xy(native=True)
