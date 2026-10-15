@@ -316,6 +316,8 @@ class ResampleManager:
             nt (Optional[int], optional): The desired number of time steps. Defaults to None.
             method (str, optional): The filtering method to use. Defaults to 'gaussian'.
 
+        Leaving a value as None or setting it to 0 will disable filtering in that dimension.
+        For PointSkeletons (non-gridded data), only filtering in time is available.
         Returns:
             Skeleton: A new Skeleton instance filtered according to the specified resolutions.
         """
@@ -352,7 +354,7 @@ class ResampleManager:
 
         if not self.skeleton.is_gridded():
             if nx > 0 or ny > 0:
-                raise ValueError(f"Non-gridded data cannot be resampled spatially! (nx={nx}>0, ny={ny}>0)")
+                raise NotImplementedError(f"Spatial filtering for non-gridded data is not implemented! (nx={nx}>0, ny={ny}>0)")
 
         if 'time' in self.skeleton.core.coords():
             if dt is None and nt is None:
