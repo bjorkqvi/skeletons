@@ -1134,9 +1134,27 @@ class Skeleton:
 
         return new_skeleton
 
-    def cut_to_grid(self, skeleton: "GriddedSkeleton") -> "Skeleton":
-        pass
+    def cut_to_area(self, skeleton: "GriddedSkeleton") -> "Skeleton":
+        if not skeleton.is_gridded():
+            raise SkeletonError('Can only cut to an area defined by a GriddedSkeleton')
+        xstr, ystr = skeleton.core.x_str, skeleton.core.y_str
+        x,y = skeleton.edges(xstr), skeleton.edges(ystr)
+        if self.is_gridded() and self.proj.crs() == skeleton.proj.crs():
+            return self.sel(**{xstr: slice(*x), ystr: slice(*y)})
 
+        if skeleton.core.is_projected():
+            points = self.ravel(proj='xy', crs=skeleton.proj.crs())
+            points = points.sel(**{xstr: slice(*x), ystr: slice(*y)})
+
+        else:
+            points = self.ravel(proj='lonlat')
+            points = points.sel(**{xstr: slice(*x), ystr: slice(*y)})
+        if self.core.is_projected():
+            return points.ravel(proj='xy', crs=self.proj.crs())
+        else:
+            return points.ravel(proj='lonlat')                
+             
+    
     def cut_to_common_times(self, skeleton_to_compare_with: "Skeleton") -> tuple["Skeleton", "Skeleton"]:
         """Restricts the Skeletons to their common time values.
 

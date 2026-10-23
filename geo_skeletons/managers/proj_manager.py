@@ -255,8 +255,11 @@ class ProjManager:
         """
         if self.crs() == self.to_crs(4326):
             raise ProjectionError("Cannot set a new CRS for a skeleton defined with lon-lat!")
+        if self._coordinate_manager.is_projected() and self.to_crs(crs) == self.to_crs(4326):
+            raise ProjectionError("Cannot set a WGS84 CRS to a projected Skeleton! Create a proper lon-lat skeleton.")
         epsg, proj4, cf_dict, utm, crs_obj = decode_crs(crs)
 
+        
         # if epsg is not None:
         #     if logger.is_verbose(verbose):
         #         logger.log.info(f"CRS: EPSG code {epsg}")

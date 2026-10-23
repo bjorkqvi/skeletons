@@ -53,18 +53,29 @@ class PointSkeleton(Skeleton):
         """Creates a new PointSkeleton containing only points from another Gridded- or PointSkeleton."""
 
        
+        
         if proj is None:
-            lon, lat = skeleton.lonlat(strict=True)
-            x, y = skeleton.xy(strict=True)
-        elif proj == 'lonlat':
+            if skeleton.core.is_projected():
+                proj = 'xy'
+            else:
+                proj = 'lonlat'
+        
+        if proj == 'lonlat':
             lon, lat = skeleton.lonlat()
             x, y = None, None
+            if crs is not None:
+                raise ValueError(f"Cannot give 'crs' if projectiing to 'lonlat'!")
         elif proj == 'xy':
+            if skeleton.core.is_projected():
+                crs = crs or skeleton.proj.crs()
+            else:
+                crs = crs or skeleton.proj.utm()
             lon, lat = None, None
-            x, y = skeleton.xy()
+            x, y = skeleton.xy(crs=crs)
+
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        
+
         crs = crs or skeleton.proj.crs()
         if crs is not None and new_skeleton.core.is_projected():
             new_skeleton.proj.set(crs)
@@ -94,6 +105,20 @@ class PointSkeleton(Skeleton):
         
     def ravel(self, proj: Optional[str] = None, crs: Optional[CRSValue] = None) -> "PointSkeleton":
         cls = find_original_skeleton_in_inheritance_chain(self)
+        if proj is None:
+            if self.core.is_projected():
+                proj = 'xy'
+            else:
+                proj = 'lonlat'
+        if proj == 'xy':
+            if self.core.is_projected():
+                crs = crs or self.proj.crs()
+            else:
+                crs = crs or self.proj.utm()
+        elif proj == 'lonlat':
+            if crs is not None:
+                raise ValueError(f"Cannot give 'crs' if projectiing to 'lonlat'!")
+
         points = cls.from_skeleton(self, proj=proj, crs=crs)
         return self.resample.grid(points, engine='ravel')
     
