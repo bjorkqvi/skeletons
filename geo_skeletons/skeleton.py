@@ -1048,7 +1048,7 @@ class Skeleton:
         if show:
             plt.show()
 
-    def absorb(self, skeleton_to_absorb: "Skeleton", dim: str) -> "Skeleton":
+    def absorb(self, skeleton_to_absorb: "Skeleton", dim=None):
         """Absorbs another Skeleton object along a specified dimension.
 
         This method combines the data from the current Skeleton instance with the 
@@ -1081,6 +1081,35 @@ class Skeleton:
             For a `PointSkeleton`, reorganizing the `inds` dimension:
             >>> new_skeleton = skeleton.absorb(other_skeleton, dim='inds')
         """
+        def find_coordinates_that_are_not_equal(skeleton1, skeleton2):
+            not_close = []
+            for coord in skeleton1.core.coords():
+                if coord == 'inds':
+                    if skeleton1.nx() != skeleton2.ny():
+                        not_close.append(coord)    
+                    else:
+                        x_eq = np.all(np.isclose(skeleton1.x(native=True), skeleton2.x(native=True)))
+                        y_eq = np.all(np.isclose(skeleton1.y(native=True), skeleton2.y(native=True)))
+                        if not (x_eq and y_eq):
+                            not_close.append(coord)
+                else:
+                    if not np.all(np.isclose(skeleton1.get(coord), skeleton2.get(coord))):
+                        not_close.append(coord)
+
+            return not_close
+
+        if dim is None:
+            coords = find_coordinates_that_are_not_equal(self, skeleton_to_absorb)
+            if self.is_gridded():
+                if len(coords) == 1 and len(self.core.coords()) == 2:
+                    dim = coords[0]
+            else: 
+                if len(coords) == 1:
+                    dim = coords[0]
+
+        if dim is None:
+            raise ValueError("Define a dimension to absorb over ('dim'), since there are several options!")
+
         if not self.is_gridded() and dim == "inds":
             inds = skeleton_to_absorb.inds() + len(self.inds())
             skeleton_to_absorb.ds()["inds"] = inds
@@ -1091,6 +1120,9 @@ class Skeleton:
             ).sortby(dim)
         )
         return new_skeleton
+
+    def cut_to_grid(self, skeleton: "GriddedSkeleton") -> "Skeleton":
+        pass
 
     def cut_to_common_times(self, skeleton_to_compare_with: "Skeleton") -> tuple["Skeleton", "Skeleton"]:
         """Restricts the Skeletons to their common time values.
