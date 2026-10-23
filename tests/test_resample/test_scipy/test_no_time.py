@@ -114,7 +114,7 @@ def test_nan_treatment_point_point_to_utm():
     data_nan.set_v(vnan)
 
 
-    grid = Wind(x=data.edges('x'),y=data.edges('y'), crs=data.proj.crs())
+    grid = Wind(x=data.edges('x'),y=data.edges('y'), crs=data.proj.utm())
 
     new_data_high = data_high.resample.grid(grid)
     new_data_high_from_nan = data_nan.resample.grid(grid, mask_nan=100)
