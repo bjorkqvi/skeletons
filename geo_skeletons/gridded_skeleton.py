@@ -47,11 +47,10 @@ class GriddedSkeleton(Skeleton):
     def from_skeleton(
         cls,
         skeleton: Skeleton,
-        crs: Optional[CRSValue] = None,
     ) -> GriddedSkeleton:
         """Creates a new GriddedSkeleton containing only points from another GriddedSkeleton.
 
-        Points can be selected by a boolean mask. No data is transferred"""
+         No data is transferred"""
         if not skeleton.is_gridded():
             raise TypeError(
                 "Can't create a GriddedSkeleton from a non-gridded data structure!"
@@ -62,9 +61,8 @@ class GriddedSkeleton(Skeleton):
         x, y = skeleton.x(strict=True), skeleton.y(strict=True)
 
         new_skeleton = cls(lon=lon, lat=lat, x=x, y=y, name=skeleton.name)
-        crs = crs or skeleton.proj.crs()
-        if crs is not None and new_skeleton.core.is_projected():
-            new_skeleton.proj.set(crs)
+        if new_skeleton.core.is_projected():
+            new_skeleton.proj.set(skeleton.proj.crs())
 
         return new_skeleton
 

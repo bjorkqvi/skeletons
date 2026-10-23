@@ -1,7 +1,8 @@
 from geo_skeletons import PointSkeleton
 import geo_parameters as gp
 from geo_skeletons.classes import WindGrid
-
+import pytest
+from geo_skeletons.errors import ProjectionError
 def test_no_meta():
     points = PointSkeleton(x=0, y=0)
     assert points.meta.get('crs') == {'grid_mapping_name': 'local_cartesian', 'crs_wkt': 'ENGCRS["Local Cartesian",EDATUM["Local datum"],CS[Cartesian,2],AXIS["x",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["y",north,ORDER[2],LENGTHUNIT["metre",1]]]', 'spatial_ref': 'ENGCRS["Local Cartesian",EDATUM["Local datum"],CS[Cartesian,2],AXIS["x",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["y",north,ORDER[2],LENGTHUNIT["metre",1]]]', 'units': 'metre', 'description': 'Local engineering Cartesian CRS (no geodetic tie).'}
@@ -29,7 +30,10 @@ def test_dict():
 
 
 def test_epsg():
-    points = PointSkeleton(x=0, y=0, crs=4326)
+    with pytest.raises(ProjectionError):
+        points = PointSkeleton(x=0, y=0, crs=4326)
+
+    points = PointSkeleton(lon=0, lat=0, crs=4326)
 
     assert points.meta.get('crs').get('epsg_code') == 'EPSG:4326'
 
