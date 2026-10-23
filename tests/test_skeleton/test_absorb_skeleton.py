@@ -178,3 +178,30 @@ def test_point_implicit_raises_errors():
     grid = PointSkeleton.add_coord('z')(x=(1,2), y=(5,6),z=5)
     grid2 = PointSkeleton.add_coord('z')(x=(1,2), y=(5,6),z=6)
     grid.absorb(grid2)
+
+def test_merge():
+    import geo_skeletons as gs
+    grid = PointSkeleton(x=(1, 2), y=(0, 3))
+    grid2 = PointSkeleton(x=(3, 4), y=(0, 3))
+    grid3 = PointSkeleton(x=(5, 6), y=(0, 3))
+
+    grid4 = gs.merge([grid,grid2, grid3])
+
+
+    np.testing.assert_array_almost_equal(grid.x(), np.array([1, 2]))
+    np.testing.assert_array_almost_equal(grid.y(), np.array([0, 3]))
+    np.testing.assert_array_almost_equal(grid.inds(), np.array([0, 1]))
+    
+    np.testing.assert_array_almost_equal(grid2.x(), np.array([3,4]))
+    np.testing.assert_array_almost_equal(grid2.y(), np.array([0, 3]))
+
+    np.testing.assert_array_almost_equal(grid2.inds(), np.array([0, 1]))
+
+    np.testing.assert_array_almost_equal(grid3.x(), np.array([5,6]))
+    np.testing.assert_array_almost_equal(grid3.y(), np.array([0, 3]))
+    np.testing.assert_array_almost_equal(grid3.inds(), np.array([0, 1]))
+
+    
+    np.testing.assert_array_almost_equal(grid4.x(), np.array([1, 2, 3, 4, 5,6]))
+    np.testing.assert_array_almost_equal(grid4.y(), np.array([0, 3, 0, 3,0,3]))
+    np.testing.assert_array_almost_equal(grid4.inds(), np.array([0, 1, 2, 3,4,5]))
