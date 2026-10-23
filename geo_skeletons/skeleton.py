@@ -1048,7 +1048,7 @@ class Skeleton:
         if show:
             plt.show()
 
-    def absorb(self, skeleton_to_absorb: "Skeleton", dim=None):
+    def absorb(self, skeleton_to_absorb: Union["Skeleton",list["Skeleton"]], dim: Optional[str]=None):
         """Absorbs another Skeleton object along a specified dimension.
 
         This method combines the data from the current Skeleton instance with the 
@@ -1098,6 +1098,15 @@ class Skeleton:
 
             return not_close
 
+        if isinstance(skeleton_to_absorb, list):
+            if len(skeleton_to_absorb) == 1:
+                skeleton_to_absorb = skeleton_to_absorb[0]
+            else:
+                new_skeleton = self
+                for skeleton in skeleton_to_absorb:
+                    new_skeleton = new_skeleton.absorb(skeleton, dim=dim)
+                return new_skeleton
+
         if dim is None:
             coords = find_coordinates_that_are_not_equal(self, skeleton_to_absorb)
             if self.is_gridded():
@@ -1119,6 +1128,10 @@ class Skeleton:
                 [self.ds(), skeleton_to_absorb.ds()], dim=dim, data_vars="minimal"
             ).sortby(dim)
         )
+        if not self.is_gridded() and skeleton_to_absorb.inds().min() > 0:
+            inds = skeleton_to_absorb.inds() - len(self.inds())
+            skeleton_to_absorb.ds()["inds"] = inds
+
         return new_skeleton
 
     def cut_to_grid(self, skeleton: "GriddedSkeleton") -> "Skeleton":
