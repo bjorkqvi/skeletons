@@ -751,6 +751,16 @@ class Skeleton:
         vars: dict[str, dict] = {}
         if dir and arrows:
             mag = True
+        for var in self.core.data_vars():
+            if self.get(var, strict=True) is not None:
+                if self.core.is_component(var) and (mag or dir):
+                    continue
+                vars[var] = {}
+                if self.core.get(var).dir_type is not None:
+                    vars[var] = {'cmap': 'twilight'}
+                if arrow_vars.get(var) is not None:
+                    vars[var] = {'arrow_data': arrow_vars.get(var)}
+        
         if mag or dir or arrows:
             for var in self.core.magnitudes(): # Every direction is connected to a magnitude
                 if self.get(var, strict=True) is not None:
@@ -764,15 +774,11 @@ class Skeleton:
                             vars[var] = {'arrow_data': dirparam.name}
                         elif arrows:
                             vars[dirparam.name] = {'is_arrow': True}
-            return vars
+        return vars
     
-        for var in self.core.data_vars():
-            if self.get(var, strict=True) is not None:
-                vars[var] = {}
-                if self.core.get(var).dir_type is not None:
-                    vars[var] = {'cmap': 'twilight'}
-                if arrow_vars.get(var) is not None:
-                    vars[var] = {'arrow_data': arrow_vars.get(var)}
+
+                
+
         
        
         return vars
@@ -849,7 +855,7 @@ class Skeleton:
 
         arrow_vars = arrow_vars or {}
         vars = self._determine_quicklook_variables(mag, dir, arrows,arrow_vars)
-
+        
         # No data to plot: only plot points
         
         if not vars:
