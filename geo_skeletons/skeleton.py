@@ -647,7 +647,6 @@ class Skeleton:
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
-        logger.log.info(f'-- gather_coord_values ')
         resubmit = False
 
         if cls.is_gridded():
@@ -687,7 +686,6 @@ class Skeleton:
         ds_remapped_coords, __ = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
-        logger.log.info(f'--. remap_coords_of_ds_vars_to_skeleton_names')            
 
         proj_obj, orig_data = find_proj(ds, verbose=verbose)
         points.proj._original_ds_proj_data = orig_data
