@@ -70,7 +70,7 @@ def decode_crs(crs:Optional[Union[str, int]]=None) -> tuple[int, str, dict]:
     
     return None, crs, None, None, None
 
-def _determine_crs(crs: Optional[CRSValue], utm: Optional[tuple[int, str]], is_projected: bool) -> CRSValue:
+def _determine_crs(crs: Optional[CRSValue],  is_projected: bool) -> CRSValue:
     """Determines the appropriate CRS based on the given inputs."""
     if not is_projected:
         if crs is not None and crs != CRS.from_epsg(4326):
@@ -79,8 +79,6 @@ def _determine_crs(crs: Optional[CRSValue], utm: Optional[tuple[int, str]], is_p
         return CRS.from_epsg(4326)
     if crs is not None:
         return crs
-    if utm is not None:
-        return utm
     wkt = (
         'ENGINEERINGCRS["Local Cartesian", '
         'ENGINEERINGDATUM["Local datum"], '
@@ -92,8 +90,7 @@ def _determine_crs(crs: Optional[CRSValue], utm: Optional[tuple[int, str]], is_p
 
 class ProjManager:
     def __init__(
-        self,  lat: np.ndarray[np.float64], lon: np.ndarray[np.float64],y: np.ndarray[np.float64], x: np.ndarray[np.float64], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None, utm: Optional[tuple[int, str]]=None
-    ):
+        self,  lat: np.ndarray[np.float64], lon: np.ndarray[np.float64],y: np.ndarray[np.float64], x: np.ndarray[np.float64], metadata_manager: MetaDataManager, coordinate_manager: CoordinateManager, crs: Optional[Union[int, str]]=None):
         if lat is None:
             lat = (None, None)
         if lon is None:
@@ -113,8 +110,7 @@ class ProjManager:
         self._crs = None
         self._utm = None
 
-        crs = _determine_crs(crs, utm, self._coordinate_manager.is_projected())
-
+        crs = _determine_crs(crs, self._coordinate_manager.is_projected())
         self.set(crs)
         if not isinstance(self.crs(), tuple):
             self.reset_utm()
@@ -147,12 +143,35 @@ class ProjManager:
         """Returns the optimal UTM (Universal Transverse Mercator) zone based on the grid's longitude and latitude edges."""
         if not isinstance(self.crs(), tuple) and self.crs().is_engineering:
             return None
- 
+
         if len(self._lon_values) == 2 and tuple(self._lon_values) == (None, None):
-            lon, lat = _lonlat(tuple(self._x_values), tuple(self._y_values), self.crs())
+            N =len(self._x_values) 
+            if N > 1000:
+                xvals = [self._x_values.min(), self._x_values.max(), np.median(self._x_values)]
+                yvals = [self._y_values.min(), self._y_values.max(), np.median(self._y_values)]
+
+                
+                xvals = np.concatenate([np.array(xvals), self._x_values[::int(N/996)]])
+                yvals = np.concatenate([np.array(yvals), self._y_values[::int(N/996)]])
+            else:
+                xvals = self._x_values
+                yvals = self._y_values
+
+            lon, lat = _lonlat(tuple(xvals), tuple(yvals), self.crs())
         else:
-            lon, lat = self._lon_values, self._lat_values
+            N =len(self._lon_values) 
+            if N > 1000:
+                lon = [self._lon_values.min(), self._lon_values.max(), np.median(self._lon_values)]
+                lat = [self._lat_values.min(), self._lat_values.max(), np.median(self._lat_values)]
+                
+                lon = np.concatenate([np.array(lon), self._lon_values[::int(N/996)]])
+                lat = np.concatenate([np.array(lat), self._lat_values[::int(N/996)]])
+            else:
+                lon, lat = self._lon_values, self._lat_values
         return self._optimal_utm(lon, lat)
+        
+    
+    
 
     def utm(self) -> Union[tuple[int, str], None]:
         """Returns the UTM (Universal Transverse Mercator) zone for the grid.
