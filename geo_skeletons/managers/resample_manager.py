@@ -300,7 +300,8 @@ class ResampleManager:
                nt: Optional[int]=None,
                data_vars: list[Union[str, MetaParameter]] = None, 
                drop_vars: bool = False,
-               method='gaussian'):
+               method='gaussian', 
+               verbose: bool=False):
         """Filters the data based on the specified spatial and temporal resolutions.
 
         Args:
@@ -386,6 +387,10 @@ class ResampleManager:
             filtered_ds[xstr] = self.skeleton.ds()[xstr]
             filtered_ds[ystr] = self.skeleton.ds()[ystr]
 
+        filtered_ds = filtered_ds.assign_attrs(self.skeleton.ds().attrs)
+        meta = filtered_ds.attrs.get('history', '')
+        meta += f' gaussian filtered with {sigma_vals}'
+        filtered_ds = filtered_ds.assign_attrs({'history':meta})
         new_data = self.skeleton.from_ds(filtered_ds)
 
         if self.skeleton.dask.is_active():
