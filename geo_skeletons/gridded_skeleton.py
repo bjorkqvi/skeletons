@@ -139,13 +139,18 @@ class GriddedSkeleton(Skeleton):
         else:
             levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data))+1),1)
             min_levels = 10
+            max_levels = 25
             if len(levels) == 0:
                 levels = 1
             else:
                 mul = np.ceil(min_levels/len(levels))
                 if mul > 1:
                     spacing = 1/2**(mul-1)
-                    levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data)))+spacing,spacing)
+                else:
+                    spacing = np.floor(len(levels)/max_levels)
+                
+                levels = np.arange(int(np.floor(np.nanmin(data))), int(np.ceil(np.nanmax(data)))+spacing,spacing)
+                    
             if len(levels) == 1:
                 levels = np.arange(int(np.round(levels[0]))-1, int(np.round(levels[0]))+2,1)
 
@@ -157,7 +162,6 @@ class GriddedSkeleton(Skeleton):
             logger.log.info(f'Need true 2D-data (not {data.shape}) to use contour. Setting to False.')
             contour=False
       
-
         if proj is None:
             if contour:
 
@@ -175,11 +179,14 @@ class GriddedSkeleton(Skeleton):
                     cmap = plt.cm.viridis
                 else:
                     cmap = plt.cm.twilight
-
+                if len(levels) > cmap.N:
+                    levels = np.linspace(levels.min(),levels.max(),cmap.N)
                 norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
                 if len(data.shape) > 1:
-                
-                    cont = ax.imshow(self.x(native=True), self.y(native=True),data, cmap=cmap,norm=norm)
+                    xe = self.edges('x', native=True)
+                    ye = self.edges('y', native=True)
+                    
+                    cont = ax.imshow(data, cmap=cmap,norm=norm, extent=(xe[0], xe[1], ye[1], ye[0]))
                 else:
                     cont = ax.scatter(self.xgrid(native=True), self.ygrid(native=True),c=data, s=10, cmap=cmap, norm=norm)
         elif proj == 'lonlat':
