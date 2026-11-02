@@ -79,15 +79,9 @@ class Skeleton:
         chunks: Optional[Union[tuple[int], str]] = None,
         **kwargs,
     ) -> None:
-        logger.log.info(f'### init_strcture')            
         self._init_structure(x, y, lon, lat, **kwargs)
-        logger.log.info(f'--- init_strcture')            
-        logger.log.info(f'### init_managers')            
         self._init_managers(crs=crs, chunks=chunks)
-        logger.log.info(f'--- init_managers')            
-        logger.log.info(f'### init_metadata')            
         self._init_metadata(name=name)
-        logger.log.info(f'--- init_metadata')            
         self._u_v_buffer: dict[str, np.ndarray] = {}
 
     def _init_structure(self, x: Optional[CoordinateValue] = None, y: Optional[CoordinateValue] = None, lon: Optional[CoordinateValue] = None, lat: Optional[CoordinateValue] = None, **kwargs) -> None:
@@ -132,26 +126,17 @@ class Skeleton:
         if chunks is None:
             if hasattr(self, "_chunks"):  # Set by @activate_dask-decorator
                 chunks = self._chunks
-        logger.log.info(f'### init_dask')            
         self.dask = DaskManager(skeleton=self, chunks=chunks)
-        logger.log.info(f'### get lonlat')            
         lon, lat = self.lonlat(strict=True)
-        logger.log.info(f'--- get lonlat')            
-        logger.log.info(f'### get xy')            
         x, y = self.xy(strict=True)
-        logger.log.info(f'--- get xy')            
-        logger.log.info(f'### init proj')            
         self.proj = ProjManager(crs=crs, lon=lon, lat=lat, x=x, y=y,metadata_manager=self.meta, coordinate_manager=self.core)
-        logger.log.info(f'--- init proj')            
 
         self.core.proj = self.proj
         # if utm is not None:
         #     self.proj.set_utm(utm)
         # elif not self.core.is_projected():
         #     self.proj.reset_utm()
-        logger.log.info(f'### init resample')            
         self.resample = ResampleManager(self)
-        logger.log.info(f'--- init resample')            
 
     def _init_metadata(self, name: str) -> None:
         """Initialized the metadata by using availabe metadata in the GeoParameters"""
@@ -644,7 +629,6 @@ class Skeleton:
             )
         
         # These are the mappings identified in the ds. Might miss some that are provided as keywords
-        logger.log.info(f'### identify_core_in_ds')
         (
             core_coords_to_ds_coords,
             core_vars_to_ds_vars,
@@ -660,14 +644,11 @@ class Skeleton:
             verbose=verbose,
             priority=priority
         )
-        logger.log.info(f'--- identify_core_in_ds ')
-        logger.log.info(f'### gather_coord_values ')
         coords = gather_coord_values(
             coords_needed, ds, core_coords_to_ds_coords, extra_coords=kwargs
         )
         logger.log.info(f'-- gather_coord_values ')
         resubmit = False
-        logger.log.info(f'### Check if resumbit')    
 
         if cls.is_gridded():
             for key in ['lat', 'lon', 'x','y']:
@@ -690,12 +671,9 @@ class Skeleton:
                                     name=name, 
                                     **kwargs)
 
-        logger.log.info(f'--- Check if resumbit')    
 
-        logger.log.info(f'### Init points')            
         name = name or ds.attrs.get("name")
         points = cls(**coords, chunks=chunks, name=name)
-        logger.log.info(f'--- Init points')            
         # Lengths needed for matching coordinates with wrong name
         # We do this instead of reading the lengths of the arrays directyl
         # Reason is that we want 'inds' for PointSkeletons etc
@@ -706,13 +684,11 @@ class Skeleton:
             c: v for (c, v) in core_coords_to_ds_coords.items() if c in coords_needed
         }
         # Remap the names of the Dataset dimension so that we can traspose data when setting
-        logger.log.info(f'### remap_coords_of_ds_vars_to_skeleton_names')            
         ds_remapped_coords, __ = remap_coords_of_ds_vars_to_skeleton_names(
             ds, cls.core, core_vars_to_ds_vars, core_coords_to_ds_coords, core_lens
         )
         logger.log.info(f'--. remap_coords_of_ds_vars_to_skeleton_names')            
 
-        logger.log.info(f'### setting projection')            
         proj_obj, orig_data = find_proj(ds, verbose=verbose)
         points.proj._original_ds_proj_data = orig_data
         if proj_obj and points.proj.crs() != points.proj.to_crs(proj_obj):
@@ -723,9 +699,7 @@ class Skeleton:
         elif points.core.is_projected():
             if logger.is_verbose(verbose):
                 logger.log.warning('Could not decode any projection for the cartesian data!')
-        logger.log.info(f'--- setting projection')            
         # Set data
-        logger.log.info(f'### set_core_vars_to_skeleton_from_ds')            
         points = set_core_vars_to_skeleton_from_ds(
             points,
             ds,
@@ -735,7 +709,6 @@ class Skeleton:
             meta_dict=meta_dict,
 
         )
-        logger.log.info(f'--- set_core_vars_to_skeleton_from_ds')            
         metadata = meta_dict.get("_global_") or ds.attrs
 
         metadata = {key: value for key, value in metadata.items() if key != 'name'}
