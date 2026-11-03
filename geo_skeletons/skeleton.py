@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 from .managers.dataset_manager import DatasetManager
 from .managers.dask_manager import DaskManager
+from .managers.quicklook_manager import QuickLookManager
 from .managers.reshape_manager import ReshapeManager
 from .managers.resample_manager import ResampleManager, create_new_class
 if TYPE_CHECKING:
@@ -137,6 +138,7 @@ class Skeleton:
         # elif not self.core.is_projected():
         #     self.proj.reset_utm()
         self.resample = ResampleManager(self)
+        self._ql_manager = QuickLookManager(self)
 
     def _init_metadata(self, name: str) -> None:
         """Initialized the metadata by using availabe metadata in the GeoParameters"""
@@ -716,55 +718,8 @@ class Skeleton:
 
         return points
 
-    def _determine_quicklook_variables(self, mag: bool, dir: bool, arrows: bool, arrow_vars: dict[str, str]) -> dict[str, dict]:
-        """Determines which variables to plot and how to plot them (arrows etc)
-        
-        If mag = dir = arrows = False:
-        Plot only normal data variables (components in case of e.g. wind)
 
-        If mag = True:
-        Plot only magnitudes
-            If arrows = True:
-                Plot quiver plot of direction on top of magnitude
-        If dir = True:
-        Plot directions as magnitudes with circular colormap
-
-        If arrows = True:
-        Plot quiver plots of directions
-        """
-        vars: dict[str, dict] = {}
-        if dir and arrows:
-            mag = True
-        
-        if mag or dir or arrows:
-            for var in self.core.magnitudes(): # Every direction is connected to a magnitude
-                if self.get(var, strict=True) is not None:
-                    if mag:
-                        vars[var] = {}
-                    dirparam = self.core.get(var).direction
-                    if dirparam is not None:
-                        if dir:
-                            vars[dirparam.name] = {'cmap': 'twilight'}
-                        if arrows and mag:
-                            vars[var] = {'arrow_data': dirparam.name}
-                        elif arrows:
-                            vars[dirparam.name] = {'is_arrow': True}
-    
-        for var in self.core.data_vars():
-            # Don't plot components if magnitudes or directions are being plotted
-            if (mag or dir) and self.core.is_component(var):
-                continue
-            if self.get(var, strict=True) is not None:
-                vars[var] = {}
-                if self.core.get(var).dir_type is not None:
-                    vars[var] = {'cmap': 'twilight'}
-                if arrow_vars.get(var) is not None:
-                    vars[var] = {'arrow_data': arrow_vars.get(var)}
-        
-       
-        return vars
-    
-    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = False, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, wrt: Optional[str]=None, sparse: bool=True, show: bool=True, coastline: bool=True, fast: Optional[bool]=None) -> None:
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = False, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, wrt: Optional[str]=None, sparse: bool=True, show: bool=True, coastline: bool=True, res: str='auto', compare_colors: list[str]=None, compare_markers: list[str]=None, compare_sizes: list[float]=None) -> None:
         """Generates a quick visualization of the data in the Skeleton instance.
 
         If a time variable is present, the first time instance is displayed. This method 
@@ -821,218 +776,7 @@ class Skeleton:
             >>> skeleton.quicklook(arrow_vars={'hs': 'dirp'})
 
         """
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError as e:
-            logger.log.info(f"Quicklook required matplotlib")
-            raise e
-
-
-        if compare is not None:
-            if proj == 'crs' or proj is None and self.core.is_projected():
-                xedge, yedge = compare.xy(crs=self.proj.crs())
-            else:
-                xedge, yedge = compare.lonlat()
-
-        arrow_vars = arrow_vars or {}
-        vars = self._determine_quicklook_variables(mag, dir, arrows,arrow_vars)
-        
-        # No data to plot: only plot points
-        if not vars:
-            if proj is None:
-                x, y = self.xy(native=True)
-            elif proj =='lonlat':
-                x, y = self.lonlat()
-            elif proj == 'crs':
-                x, y = self.xy()
-            plt.scatter(x,y)
-            if compare is not None:
-                plt.scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
-                plt.legend(loc='upper right')
-            if show:
-                plt.show()
-            return
-
-        cols = int(np.ceil(len(vars)**0.5))
-        rows = int(np.ceil(len(vars)/cols))
-
-
-        fig, ax = plt.subplots(rows, cols)
-        
-        
-        ax = np.atleast_2d(ax)
-        
-        if wrt not in ['crs', 'lonlat', None]:
-            raise ValueError(f"Invalid value for 'wrt': {wrt}. Must be one of 'crs', 'lonlat', or None.")
-
-        
-        r, c = 0, 0
-        for var, var_dict in vars.items():
-            try:
-                data = self.get(var, wrt=wrt, squeeze=False)
-                if wrt == 'crs':
-                    wrt_str = ' with respect to CRS'
-                elif wrt == 'lonlat':
-                    wrt_str = ''
-                elif self.core.values_are_projected(var):
-                    wrt_str = ' with respect to CRS'
-                else:
-                    wrt_str = ''
-
-            except ProjectionError:
-                data = self.get(var, wrt=None, squeeze=False)
-                wrt = ''
-            if not var_dict.get('is_arrow', False):
-                if 'time' in self.core.coords():
-                    data = data[0,...]
-                        
-                # Set possible limits if plotting direction as magnitude
-                cmap = var_dict.get('cmap','viridis') 
-                if cmap == 'twilight':
-                    if self.core.meta_parameter(var).dir_type() in  ['to', 'from']:
-                        vlim = (0, 360)
-                    else:
-                        vlim = (-np.pi, np.pi)
-                else:
-                    vlim = (None, None)
-
-                ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour, cmap, vlim=vlim, fast=fast) # Implementation varies for GriddedSkeleton and PointSkeleton
-
-                arrow_var = var_dict.get('arrow_data', '')
-                if arrow_var:
-                    arrow_data = self.get(arrow_var, dir_type='math', wrt=wrt, squeeze=False)
-                    if 'time' in self.core.coords():
-                        arrow_data = arrow_data[0,...]
-                    ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, arrow_var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
-                    ax[r,c].legend(loc='upper right')
-                    wrt = ''
-            else:
-                arrow_data = self.get(var, dir_type='math', wrt=wrt, squeeze=False)
-                if 'time' in self.core.coords():
-                    arrow_data = arrow_data[0,...]
-                ax[r,c] = self._quicklook_quiver(ax[r,c], arrow_data, proj, var, wrt, sparse) # Implementation varies for GriddedSkeleton and PointSkeleton
-                cont = None
-                ax[r,c].legend(loc='upper right')
-                wrt = ''
-            
-            
-            if proj is None:
-                ax[r,c].set_xlabel(self.core.x_str)
-                ax[r,c].set_ylabel(self.core.y_str)
-            elif proj == 'lonlat':
-                ax[r,c].set_xlabel('longitude')
-                ax[r,c].set_ylabel('latitude')
-            elif proj == 'crs':
-                ax[r,c].set_xlabel('x')
-                ax[r,c].set_ylabel('y')
-
-            title_str = f"{self.name}"
-            if 'time' in self.core.coords():
-                title_str += f": {self.time(datetime=False)[0]}"
-            
-            ax[r,c].set_title(title_str)
-            if cont is not None:
-                cbar = fig.colorbar(cont, ax=ax[r, c])
-                param = self.core.meta_parameter(var)
-                if param is not None:
-                    units = param.units()
-                    if param.dir_type() == 'to':
-                        units += ' to'
-                    elif param.dir_type() == 'from':
-                        units += ' from'
-                else:
-                    units = '?'
-                cbar.set_label(f"{var} [{units}]{wrt_str}")
-            if compare is not None:
-                ax[r,c].scatter(xedge, yedge,c='k',s=0.5, label=f'{compare.name}')
-                plt.legend()
-            
-            if coastline:
-                from pyproj import Transformer, CRS
-                def crs_from_utm(utm: tuple[int, str]) -> CRS:
-                    """Return a pyproj CRS for UTM zone (1..60) and band letter (C..X).
-                    Uses hemisphere implied by band (C..M => southern, N..X => northern).
-                    """
-                    zone, band = utm
-                    if not (1 <= zone <= 60):
-                        raise ValueError("Zone must be 1..60")
-                    band = band.upper()
-                    BAND_LETTERS = "CDEFGHJKLMNPQRSTUVWX"
-                    if band not in BAND_LETTERS:
-                        raise ValueError("Band must be one of " + ", ".join(BAND_LETTERS))
-                    hemisphere = "N" if BAND_LETTERS.index(band) >= BAND_LETTERS.index("N") else "S"
-                    epsg_base = 32600 if hemisphere == "N" else 32700
-                    epsg = epsg_base + zone
-                    return CRS.from_epsg(epsg)
-                if proj is None and self.core.is_projected():
-                    crs = self.proj.crs()
-
-                elif proj == "xy":
-                    crs = self.proj.crs()
-                else:
-                    crs = "EPSG:4326"
-
-                if isinstance(crs, tuple):
-                    crs = crs_from_utm(crs)
-                transformer = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
-                from shapely.ops import transform
-
-                import cartopy.feature as cfeature 
-                coast_feat = cfeature.NaturalEarthFeature('physical', 'coastline', '10m')
-                geoms = list(coast_feat.geometries())
-                def reproject_geom(geom):
-                    return transform(lambda x, y, z=None: transformer.transform(x, y), geom)
-
-
-                def plot_features(ax, geoms):
-                    for geom in geoms:
-                        proj_geom = reproject_geom(geom)
-                        # proj_geom can be LineString, MultiLineString, Polygon, MultiPolygon
-                        # handle common types:
-                        if proj_geom.geom_type == 'LineString':
-                            x, y = proj_geom.xy
-                            ax[r,c].plot(x, y, color='black', linewidth=0.5)
-                        elif proj_geom.geom_type == 'MultiLineString':
-                            for part in proj_geom.geoms:
-                                x, y = part.xy
-                                ax[r,c].plot(x, y, color='black', linewidth=0.5)
-                        elif proj_geom.geom_type == 'Polygon':
-                            x, y = proj_geom.exterior.xy
-                            ax[r,c].plot(x, y, color='black', linewidth=0.5)
-                        elif proj_geom.geom_type == 'MultiPolygon':
-                            for poly in proj_geom.geoms:
-                                x, y = poly.exterior.xy
-                                ax[r,c].plot(x, y, color='black', linewidth=0.5)
-
-
-
-                if proj is None:
-                    plot_features(ax, geoms)
-                    ax[r,c].set_xlim(self.edges('lon', native=True))
-                    ax[r,c].set_ylim(self.edges('lat', native=True))
-                elif proj == 'lonlat':
-                    plot_features(ax, geoms)
-                    ax[r,c].set_xlim(self.edges('lon'))
-                    ax[r,c].set_ylim(self.edges('lat'))
-                elif proj == 'xy':
-                    plot_features(ax, geoms)
-                    ax[r,c].set_xlim(self.edges('x'))
-                    ax[r,c].set_ylim(self.edges('y'))
-
-            #     ax[r,c].add_feature(
-            #         cfeature.NaturalEarthFeature(
-            #     "physical", "coastline", "10m", facecolor="none", edgecolor="black"
-            #     )
-            #     )
-
-            c += 1
-            if c > cols-1:
-                c = 0
-                r += 1
-
-
-        if show:
-            plt.show()
+        self._ql_manager.ql_main(proj, compare, contour, mag, dir, arrows, arrow_vars, wrt, sparse, show, coastline, res, compare_colors, compare_markers, compare_sizes)
 
     def absorb(self, skeleton_to_absorb: Union["Skeleton",list["Skeleton"]], dim: Optional[str]=None):
         """Absorbs another Skeleton object along a specified dimension.
