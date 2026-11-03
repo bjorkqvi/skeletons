@@ -764,7 +764,7 @@ class Skeleton:
        
         return vars
     
-    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = False, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, wrt: Optional[str]=None, sparse: bool=True, show: bool=True, coastline: bool=True) -> None:
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = False, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, wrt: Optional[str]=None, sparse: bool=True, show: bool=True, coastline: bool=True, fast: Optional[bool]=None) -> None:
         """Generates a quick visualization of the data in the Skeleton instance.
 
         If a time variable is present, the first time instance is displayed. This method 
@@ -896,7 +896,7 @@ class Skeleton:
                 else:
                     vlim = (None, None)
 
-                ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour, cmap, vlim=vlim) # Implementation varies for GriddedSkeleton and PointSkeleton
+                ax[r,c], cont = self._quicklook(ax[r,c], data, proj, contour, cmap, vlim=vlim, fast=fast) # Implementation varies for GriddedSkeleton and PointSkeleton
 
                 arrow_var = var_dict.get('arrow_data', '')
                 if arrow_var:
@@ -1186,6 +1186,30 @@ class Skeleton:
         return self.sel(time=common_times), skeleton_to_compare_with.sel(
             time=common_times
         )
+
+    def dropnan(self, var: Optional[Union[str, list[str]]]=None):
+        """Returns a skeleton with all NaN-values dropped for certain variables."""
+        if len(self.core.data_vars()) == 0:
+            raise SkeletonError(f"No data variables prsent. Can't drop NaN-values.")
+        if var is None:
+            if len(self.core.data_vars()) == 1:
+                var = self.core.data_vars()[0]
+            else:
+                raise ValueError(f"Several data variables present ({self.core.data_vars()}). Choose one or several explicitly.")
+
+        data = self.ravel()
+
+        if  isinstance(var, str):
+            var = [var]
+
+        for v in var:
+            mask = np.logical_not(np.isnan(data.get(v)))
+            inds = np.where(mask)[0]
+            data = data.isel(inds=inds)
+
+        return data
+            
+
 
     def _determine_slice_inds(self, x_slice, y_slice, x: str, y: str) -> np.ndarray:
         """Determines the indeces of e.g. a lon-slice for a PointSkeleton"""

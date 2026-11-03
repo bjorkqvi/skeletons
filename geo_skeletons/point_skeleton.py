@@ -122,7 +122,7 @@ class PointSkeleton(Skeleton):
         points = cls.from_skeleton(self, proj=proj, crs=crs)
         return self.resample.grid(points, engine='ravel')
     
-    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float]):
+    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float], fast: bool):
         """This is called by the quicklook method of the Skelton class"""
         vmin, vmax = vlim
         if vmin is not None:
@@ -154,10 +154,9 @@ class PointSkeleton(Skeleton):
         elif proj == 'xy':
             x, y = self.xy()
 
-        if contour:
-            mask = np.logical_not(np.isnan(data))
-            if sum(mask)<3:
-                contour = False
+        mask = np.logical_not(np.isnan(data))
+        if contour and sum(mask)<3:
+            contour = False
 
         if contour:
             cont = ax.tricontourf(x[mask], y[mask],data[mask], levels=levels, cmap=cmap)
@@ -173,10 +172,14 @@ class PointSkeleton(Skeleton):
                 cmap = plt.cm.viridis
             else:
                 cmap = plt.cm.twilight
+
             norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
-            import matplotlib.tri as mtri
-            tri = mtri.Triangulation(x, y)          # compute once
-            cont = plt.tripcolor(tri, data, shading='gouraud', cmap=cmap, norm=norm)  # or shading='gouraud'
+            if fast or (fast is None and len(data)>40_000):
+                cont = plt.hexbin(x[mask], y[mask], C=data[mask], gridsize=200, reduce_C_function=np.nanmean, cmap=cmap, norm=norm)
+            else:
+                import matplotlib.tri as mtri
+                tri = mtri.Triangulation(x, y)          # compute once
+                cont = plt.tripcolor(tri, data, shading='gouraud', cmap=cmap, norm=norm)  # or shading='gouraud'
             
             #cont = ax.scatter(x, y,c=data, s=2,  cmap=cmap, norm=norm, rasterized=True)
         

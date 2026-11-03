@@ -131,7 +131,7 @@ class GriddedSkeleton(Skeleton):
             points = PointSkeleton(x=x, y=y, crs=crs)
         return self.resample.grid(points, engine='ravel', verbose=verbose)
 
-    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float]):
+    def _quicklook(self, ax, data: np.ndarray, proj: str, contour: bool, cmap: str, vlim: tuple[float], fast:bool):
         """This is called by the quicklook method of the Skelton class"""
         vmin, vmax = vlim
         if vmin is not None:
@@ -179,8 +179,7 @@ class GriddedSkeleton(Skeleton):
                     cmap = plt.cm.viridis
                 else:
                     cmap = plt.cm.twilight
-                if len(levels) > cmap.N:
-                    levels = np.linspace(levels.min(),levels.max(),cmap.N)
+
                 norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=cmap.N, clip=True)
                 if len(data.shape) > 1:
                     xe = self.edges('x', native=True)
