@@ -56,7 +56,8 @@ def test_utm_request():
 
     x, y = points.xy()
 
-    points = PointSkeleton(lon=lon, lat=lat, utm=(26, 'U'))
+    points = PointSkeleton(lon=lon, lat=lat)
+    points.proj.set_utm((26, 'U'))
     xx, yy = points.xy(crs=(25,'U'))
 
     np.testing.assert_array_almost_equal(x,xx)
@@ -74,7 +75,8 @@ def test_utm_request_cartesian():
     x26, y26 = points.xy()
 
 
-    points = PointSkeleton(x=x25, y=y25, utm=(25, 'U'))
+    points = PointSkeleton(x=x25, y=y25)
+    points.proj.set_utm((25, 'U'))
     x, y = points.xy(crs=(25,'U'))
     np.testing.assert_array_almost_equal(x25,x)
     np.testing.assert_array_almost_equal(y25,y)
@@ -105,8 +107,8 @@ def test_utm_lonlat_cartesian():
     x25, y25 = points.xy()
     x26, y26 = points.xy(crs=(26,'U'))
 
-    p25 = PointSkeleton(x=x25, y=y25, utm=(25,'U'))
-    p26 = PointSkeleton(x=x26, y=y26, utm=(26,'U'))
+    p25 = PointSkeleton(x=x25, y=y25, crs=(25,'U'))
+    p26 = PointSkeleton(x=x26, y=y26, crs=(26,'U'))
     
     lo, la = p25.lonlat()
     np.testing.assert_array_almost_equal(lon, lo)

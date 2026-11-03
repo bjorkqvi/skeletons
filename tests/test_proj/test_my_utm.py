@@ -23,7 +23,8 @@ def test_point_lonlat():
     assert data.proj.utm() == UTM
 
 def test_point_lonlat_modified_utm():
-    data = PointSkeleton(lon=LON, lat=LAT, utm=(33,'W'))
+    data = PointSkeleton(lon=LON, lat=LAT)
+    data.proj.set_utm((33,'W'))
     assert data.proj.utm() == (33,'W')
     assert data.proj.optimal_utm() == UTM
 
@@ -49,7 +50,8 @@ def test_gridded_lonlat():
     assert data.proj.utm() == UTM
 
 def test_gridded_lonlat_modified_utm():
-    data = GriddedSkeleton(lon=LON, lat=LAT, utm=(33,'W'))
+    data = GriddedSkeleton(lon=LON, lat=LAT)
+    data.proj.set_utm((33,'W'))
     data.set_spacing(nx=10, ny=20)
     assert data.proj.utm() == (33,'W')
     assert data.proj.optimal_utm() == UTM

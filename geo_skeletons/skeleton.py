@@ -1033,7 +1033,7 @@ class Skeleton:
         return var_inds
 
 
-    def sel(self, name: str, **kwargs) -> "Skeleton":
+    def sel(self, name: Optional[str] = None, **kwargs) -> "Skeleton":
         """Creates a new Skeleton instance by selecting subsets of the data based on specified criteria.
 
         This method enables slicing and subsetting of the Skeleton's data using coordinates 
@@ -1194,7 +1194,7 @@ class Skeleton:
         if not new_data.core.is_projected():
             new_data.proj.set_utm(self.proj.utm())
         return new_data
-    def isel(self, name: str, **kwargs) -> "Skeleton":
+    def isel(self, name: Optional[str] = None, **kwargs) -> "Skeleton":
         """Creates a new Skeleton instance by selecting subsets of the data using indices.
 
         This method enables subsetting of the Skeleton's data by specifying indices for 

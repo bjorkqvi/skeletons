@@ -24,6 +24,10 @@ def determine_levels(vlim):
     
     # Start out by trying bin size 1
     l0, l1 = np.floor(vmin), np.ceil(vmax)
+
+    if int(l0) == int(l1):
+        return np.arange(l0-1, l1+1, 1)
+
     res = 1
     nbins = (l1-l0)/res
 
@@ -41,9 +45,7 @@ def determine_levels(vlim):
         l0, l1 =np.floor(vmin/res)*res, np.ceil(vmax/res)*res
         nbins = (l1-l0)/res
 
- 
     levels = np.arange(l0, l1+res, res)
-
     return levels
 
 
@@ -97,9 +99,13 @@ class QuickLookManager:
                 x, y = self.skeleton.lonlat()
             elif proj == 'crs':
                 x, y = self.skeleton.xy()
-            ax[1,1].scatter(x,y)
-            ax[1,1] = self.plot_compare_grids(ax[1,1], compare, proj, compare_colors, compare_markers, compare_sizes, compare_labels)
-            ax[1,1].legend(loc='upper right')
+            ax.scatter(x,y)
+            ax = self.plot_compare_grids(ax, compare, proj, compare_colors, compare_markers, compare_sizes, compare_labels)
+            
+            __, labels = ax.get_legend_handles_labels()
+            if any(lbl for lbl in labels if not lbl.startswith('_')):
+                ax.legend(loc='upper right')
+ 
             if show:
                 plt.show()
             return
@@ -207,8 +213,9 @@ class QuickLookManager:
             if 'time' in self.skeleton.core.coords():
                 title_str += f": {self.skeleton.time(datetime=False)[0]}"
             ax[r,c].set_title(title_str)
-            
-            ax[r,c].legend(loc='upper right')
+            __, labels = ax[r,c].get_legend_handles_labels()
+            if any(lbl for lbl in labels if not lbl.startswith('_')):
+                ax[r,c].legend(loc='upper right')
             
             c += 1
             if c > cols-1:
@@ -337,12 +344,12 @@ class QuickLookManager:
                 else:
                     gridsize = 300
                 cont = plt.hexbin(x[mask], y[mask], C=data[mask], gridsize=gridsize, reduce_C_function=np.mean, cmap=cmap, norm=norm)
-            else:
+            elif len(x) >= 3:
                 import matplotlib.tri as mtri
                 tri = mtri.Triangulation(x, y)        
                 cont = plt.tripcolor(tri, data, shading='gouraud', cmap=cmap, norm=norm) 
-            
-                #cont = ax.scatter(x, y,c=data, s=2,  cmap=cmap, norm=norm, rasterized=True)
+            else:
+                cont = ax.scatter(x, y,c=data, s=2,  cmap=cmap, norm=norm)
         
 
         return ax, cont
@@ -409,6 +416,9 @@ class QuickLookManager:
 
     def add_coastline(self, ax, proj):
         """Adds a coastline to the plot. Requires that shapely and cartopy are installed"""
+        if self.skeleton.proj.is_engineering():
+            return ax
+        
         try:
             from shapely.ops import transform
         except ImportError as e:
@@ -424,17 +434,18 @@ class QuickLookManager:
 
         # Determine to which CRS the coastline needs to be projected
         if proj is None and self.skeleton.core.is_projected():
-            crs = self.proj.crs()
+            crs = self.skeleton.proj.crs()
 
         elif proj == "xy":
-            crs = self.proj.crs()
+            crs = self.skeleton.proj.crs()
         else:
             crs = "EPSG:4326"
 
         if isinstance(crs, tuple):
             crs = crs_from_utm(crs)
-        
+
         transformer = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+
 
         coast_feat = cfeature.NaturalEarthFeature('physical', 'coastline', '10m')
         geoms = list(coast_feat.geometries())

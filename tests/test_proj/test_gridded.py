@@ -46,7 +46,8 @@ def test_utm_request():
 
     x, y = points.xy()
 
-    points = GriddedSkeleton(lon=lon, lat=lat, utm=(26, 'U'))
+    points = GriddedSkeleton(lon=lon, lat=lat)
+    points.proj.set_utm((26, 'U'))
     xx, yy = points.xy(crs=(25,'U'))
 
     np.testing.assert_array_almost_equal(x,xx)
