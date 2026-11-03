@@ -719,7 +719,7 @@ class Skeleton:
         return points
 
 
-    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = False, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, wrt: Optional[str]=None, sparse: bool=True, show: bool=True, coastline: bool=True, res: str='auto', compare_colors: list[str]=None, compare_markers: list[str]=None, compare_sizes: list[float]=None) -> None:
+    def quicklook(self, proj: str = None, compare: "Skeleton" = None, contour: bool = False, mag: bool=True, dir: bool=False, arrows: bool=True, arrow_vars: dict[str, str] = None, wrt: Optional[str]=None, sparse: bool=True, show: bool=True, coastline: bool=True, res: str='auto', compare_colors: list[str]=None, compare_markers: list[str]=None, compare_sizes: list[float]=None, compare_labels: list[str]=None) -> None:
         """Generates a quick visualization of the data in the Skeleton instance.
 
         If a time variable is present, the first time instance is displayed. This method 
@@ -776,7 +776,7 @@ class Skeleton:
             >>> skeleton.quicklook(arrow_vars={'hs': 'dirp'})
 
         """
-        self._ql_manager.ql_main(proj, compare, contour, mag, dir, arrows, arrow_vars, wrt, sparse, show, coastline, res, compare_colors, compare_markers, compare_sizes)
+        self._ql_manager.ql_main(proj, compare, contour, mag, dir, arrows, arrow_vars, wrt, sparse, show, coastline, res, compare_colors, compare_markers, compare_sizes, compare_labels)
 
     def absorb(self, skeleton_to_absorb: Union["Skeleton",list["Skeleton"]], dim: Optional[str]=None):
         """Absorbs another Skeleton object along a specified dimension.

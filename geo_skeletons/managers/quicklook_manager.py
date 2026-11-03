@@ -51,7 +51,7 @@ class QuickLookManager:
     def __init__(self, skeleton):
         self.skeleton = skeleton
 
-    def plot_compare_grids(self, ax, compare, proj, compare_colors: list[str]=None, compare_markers: list[str]=None, compare_sizes: list[float]=None):
+    def plot_compare_grids(self, ax, compare, proj, compare_colors: list[str]=None, compare_markers: list[str]=None, compare_sizes: list[float]=None, compare_labels: list[str] = None):
         """Plots points for grids that we want to compare to"""
         if compare is None:
             return ax
@@ -61,8 +61,8 @@ class QuickLookManager:
 
         compare_colors = compare_colors or COMPARE_COLORS
         compare_markers = compare_markers or COMPARE_MARKERS
-        compare_sizes = compare_sizes or np.full(len(compare), 5)
-        
+        compare_sizes = compare_sizes or [5]*len(compare)
+        compare_labels = compare_labels or [c.name for c in compare]
         if len(compare) > len(compare_colors):
             raise ValueError(f"Can't compare {len(compare)} skeletons since I only have {len(compare_colors)} defined colors!")
 
@@ -73,12 +73,12 @@ class QuickLookManager:
                 x, y = comp.xy(crs=self.proj.crs())
             else:
                 x, y = comp.lonlat()
-
-            ax.scatter(x, y,c=compare_colors[n],s=compare_sizes[n], marker=compare_markers[n],label=f'{comp.name}')
+            
+            ax.scatter(x, y,c=compare_colors[n],s=compare_sizes[n], marker=compare_markers[n],label=compare_labels[n])
         return ax
 
 
-    def ql_main(self, proj, compare: "Skeleton", contour: bool , mag: bool, dir: bool, arrows: bool, arrow_vars: dict[str, str], wrt: Optional[str], sparse: bool, show: bool, coastline: bool, res: str, compare_colors: list[str], compare_markers: list[str], compare_sizes: list[float]):
+    def ql_main(self, proj, compare: "Skeleton", contour: bool , mag: bool, dir: bool, arrows: bool, arrow_vars: dict[str, str], wrt: Optional[str], sparse: bool, show: bool, coastline: bool, res: str, compare_colors: list[str], compare_markers: list[str], compare_sizes: list[float], compare_labels:list[str]):
         try:
             import matplotlib.pyplot as plt
         except ImportError as e:
@@ -98,7 +98,7 @@ class QuickLookManager:
             elif proj == 'crs':
                 x, y = self.skeleton.xy()
             ax[1,1].scatter(x,y)
-            ax[1,1] = self.plot_compare_grids(ax[1,1], compare, proj, compare_colors, compare_markers, compare_sizes)
+            ax[1,1] = self.plot_compare_grids(ax[1,1], compare, proj, compare_colors, compare_markers, compare_sizes, compare_labels)
             ax[1,1].legend(loc='upper right')
             if show:
                 plt.show()
@@ -187,7 +187,7 @@ class QuickLookManager:
                     units = '?'
                 cbar.set_label(f"{var} [{units}]{wrt_str}")
 
-            ax[r,c] = self.plot_compare_grids(ax[r,c], compare, proj, compare_colors, compare_markers, compare_sizes)
+            ax[r,c] = self.plot_compare_grids(ax[r,c], compare, proj, compare_colors, compare_markers, compare_sizes, compare_labels)
             
             if coastline:
                 ax[r,c] = self.add_coastline(ax[r,c], proj)
